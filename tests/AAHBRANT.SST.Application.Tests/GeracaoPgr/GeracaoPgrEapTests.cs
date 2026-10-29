@@ -575,6 +575,77 @@ public class GeracaoPgrEapTests
     }
 
     [Fact]
+    public void NomesFuncoes_CaixaAlta_EncarregadoPorServico_EMesmoNomeEmTodosOsGhes()
+    {
+        var e = new EstruturaGeracaoPgr
+        {
+            Ghes = new()
+            {
+                new GheGerado { Numero = 1, Nome = "Terraplenagem", Funcoes = new()
+                {
+                    new FuncaoGerada { Nome = "Encarregado" }, new FuncaoGerada { Nome = "Greidista / Nivelador" },
+                    new FuncaoGerada { Nome = "OPERADOR DE MÁQUINAS" },
+                } },
+                new GheGerado { Numero = 2, Nome = "Pavimentação", Funcoes = new()
+                {
+                    new FuncaoGerada { Nome = "Encarregado" }, new FuncaoGerada { Nome = "Greidista" },
+                    new FuncaoGerada { Nome = "Encarregado de Obras" },
+                } },
+                new GheGerado { Numero = 3, Nome = "Topografia", Funcoes = new() { new FuncaoGerada { Nome = "Greidista" } } },
+            },
+        };
+
+        NomesFuncoes.Padronizar(e);
+
+        var nomes = e.Ghes.Select(g => g.Funcoes.Select(f => f.Nome).ToArray()).ToArray();
+        Assert.Equal(new[] { "Encarregado de Terraplenagem", "Greidista", "Operador de Máquinas" }, nomes[0]);
+        Assert.Equal(new[] { "Encarregado de Pavimentação", "Greidista", "Encarregado de Obras" }, nomes[1]);
+        Assert.Equal(new[] { "Greidista" }, nomes[2]);
+    }
+
+    [Theory]
+    [InlineData("Auxilia na demolição e na limpeza da área.", null)]
+    [InlineData("Faz limpeza das áreas do canteiro.", "não começa")]
+    [InlineData("Auxilia no transporte e dirige o caminhão quando preciso.", "dirige")]
+    [InlineData("Auxilia na terraplenagem e opera o rolo compactador.", "opera")]
+    public void AjudanteGeral_DescricaoSoAuxilia(string descricao, string? problema)
+    {
+        var r = AjudanteGeral.ProblemaDescricao(descricao);
+        if (problema is null) Assert.Null(r);
+        else Assert.Contains(problema, r);
+    }
+
+    [Fact]
+    public async Task SugerirGhes_IaTrocaCboDoCadastroQueNaoCombinaComAAtividade_EAjudanteForaDaRegraVaiParaPendencias()
+    {
+        var (db, obra, _) = await CriarAsync();
+        db.TitulosCbo.AddRange(
+            new TituloCbo { Codigo = "717020", Titulo = "Servente de obras", Oficial = true },
+            new TituloCbo { Codigo = "414205", Titulo = "Apontador de mão de obra", Oficial = true },
+            new TituloCbo { Codigo = "414205", Titulo = "Apontador de obras", Oficial = false });
+        var apontador = new Funcao { Nome = "Apontador", CboCodigo = "7170-20" };
+        db.Funcoes.Add(apontador);
+        await db.SaveChangesAsync();
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        ia.Ghes = new() { new GheGerado { Nome = "Estrutura", Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" } }, Funcoes = new()
+        {
+            new FuncaoGerada { Nome = "Apontador", Descricao = "Registra presença e horas" },
+            new FuncaoGerada { Nome = "Servente", Descricao = "Faz a limpeza da frente" },
+        } } };
+        ia.Cbos = new() { new("Apontador", "414205"), new("Ajudante Geral", "717020") };
+
+        await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
+
+        Assert.Equal("717020", ia.CboPedidos.Single(p => p.Nome == "Apontador").CboAtual);
+        var dto = await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default);
+        var funcoes = dto.Estrutura.Ghes.Single(g => g.Nome == "Estrutura").Funcoes;
+        Assert.Equal(("414205", true), (funcoes.Single(f => f.Nome == "Apontador").Cbo, funcoes.Single(f => f.Nome == "Apontador").CboSugeridoPelaIa));
+        Assert.Equal(("717020", true), (funcoes.Single(f => f.Nome == "Ajudante Geral").Cbo, funcoes.Single(f => f.Nome == "Ajudante Geral").CboSugeridoPelaIa));
+        Assert.Contains(dto.PendenciasAprovacao, p => p.Contains("Ajudante Geral com descrição que não começa"));
+    }
+
+    [Fact]
     public async Task SugerirGhes_AjudanteGeral_RecebeServenteDeObrasComoCandidato()
     {
         var (db, obra, _) = await CriarAsync();
@@ -797,7 +868,8 @@ public class GeracaoPgrEapTests
 
         await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
 
-        Assert.DoesNotContain(ia.CboPedidos, p => p.Nome == "Armador");
+        // O CBO do cadastro também vai para a IA revisar, como "CBO atual"; ela não trocou, então fica.
+        Assert.Equal("715315", ia.CboPedidos.Single(p => p.Nome == "Armador").CboAtual);
         Assert.Contains(ia.CboPedidos.Single(p => p.Nome == "Rasteleiro").Candidatos, c => c.Codigo == "715205");
         var dto = await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default);
         var funcoes = dto.Estrutura.Ghes.Single(g => g.Nome == "Estrutura").Funcoes;

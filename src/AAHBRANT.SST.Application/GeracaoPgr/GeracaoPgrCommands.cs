@@ -137,6 +137,8 @@ public static class PendenciasGeracaoPgr
             if (g.Funcoes.Count == 0) p.Add($"{nome} sem funções.");
             foreach (var f in g.Funcoes.Where(f => string.IsNullOrWhiteSpace(f.Descricao)))
                 p.Add($"{nome}: função {f.Nome} sem descrição das atividades.");
+            foreach (var f in g.Funcoes.Where(f => f.Nome == AjudanteGeral.Nome && !string.IsNullOrWhiteSpace(f.Descricao)))
+                if (AjudanteGeral.ProblemaDescricao(f.Descricao) is { } problema) p.Add($"{nome}: Ajudante Geral {problema}");
             if (g.Atividades.Count == 0) p.Add($"{nome} sem atividades da EAP.");
             foreach (var a in g.Atividades.Where(a => !a.RiscosGerados))
                 p.Add($"{nome}: riscos ainda não gerados para {a.Nome}.");
@@ -439,22 +441,33 @@ public class SugerirGhesGeracaoPgrCommandHandler : IRequestHandler<SugerirGhesGe
     // nome e a IA só escolhe entre eles. Falha da IA não derruba os GHEs: a função fica sem CBO para o técnico escolher.
     // O Ajudante Geral é o servente da obra: o 7170-20 (Servente de obras) entra sempre como primeiro candidato, já que o
     // nome "Ajudante Geral" sozinho não leva a ele na busca por palavras.
-    private static List<ResultadoBuscaCbo> CandidatosCbo(CatalogoCbo catalogo, string nome)
+    private static List<ResultadoBuscaCbo> CandidatosCbo(CatalogoCbo catalogo, FuncaoGerada f)
     {
-        var candidatos = catalogo.Candidatos(nome);
-        if (AjudanteGeral.EhGenerico(nome) && candidatos.All(c => c.Codigo != AjudanteGeral.CboServenteDeObras)
-            && catalogo.Buscar(AjudanteGeral.CboServenteDeObras).FirstOrDefault() is { } servente)
+        var candidatos = catalogo.Candidatos(f.Nome, f.Descricao);
+        if (AjudanteGeral.EhGenerico(f.Nome) && candidatos.All(c => c.Codigo != AjudanteGeral.CboServenteDeObras)
+            && catalogo.PorCodigo(AjudanteGeral.CboServenteDeObras) is { } servente)
             candidatos.Insert(0, servente);
+        // O código atual sempre entra, para a IA poder mantê-lo.
+        if (catalogo.PorCodigo(f.Cbo) is { } atual && candidatos.All(c => c.Codigo != atual.Codigo))
+            candidatos.Insert(0, atual);
         return candidatos;
     }
 
+    // Revisão do CBO de TODAS as funções (29/10/2026): o CBO do cadastro também é conferido contra as atividades descritas,
+    // porque um código que existe na tabela pode não ser o da atividade (Apontador com o código de servente, eletricista de
+    // rede com o de manutenção eletroeletrônica). A IA mantém o atual quando serve; troca vira "sugerido pela IA".
     private async Task SugerirCboAsync(EstruturaGeracaoPgr e, CatalogoCbo catalogo, CancellationToken ct)
     {
         if (catalogo.Vazio) return;
-        var semCbo = e.Ghes.SelectMany(x => x.Funcoes).Where(f => !catalogo.Existe(f.Cbo)).ToList();
-        var pedidos = semCbo
+        var funcoes = e.Ghes.SelectMany(x => x.Funcoes).ToList();
+        var pedidos = funcoes
             .GroupBy(f => FuncaoSstClassifier.Normalizar(f.Nome))
-            .Select(x => (Chave: x.Key, Funcao: x.First(), Candidatos: CandidatosCbo(catalogo, x.First().Nome)))
+            .Select(x =>
+            {
+                var modelo = x.FirstOrDefault(f => catalogo.Existe(f.Cbo)) ?? x.First();
+                return (Chave: x.Key, Funcao: modelo, Atual: catalogo.Existe(modelo.Cbo) ? CodigoCbo.Normalizar(modelo.Cbo) : null,
+                    Candidatos: CandidatosCbo(catalogo, modelo));
+            })
             .Where(x => x.Candidatos.Count > 0)
             .ToList();
         if (pedidos.Count == 0) return;
@@ -463,7 +476,7 @@ public class SugerirGhesGeracaoPgrCommandHandler : IRequestHandler<SugerirGhesGe
         try
         {
             sugestoes = await _ia.SugerirCboAsync(pedidos.Select(p => new FuncaoParaCbo(p.Funcao.Nome, p.Funcao.Descricao,
-                p.Candidatos.Select(c => new CandidatoCbo(c.Codigo, c.Titulo, c.Sinonimo)).ToList())).ToList(), ct);
+                p.Candidatos.Select(c => new CandidatoCbo(c.Codigo, c.Titulo, c.Sinonimo)).ToList(), p.Atual)).ToList(), ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -474,8 +487,8 @@ public class SugerirGhesGeracaoPgrCommandHandler : IRequestHandler<SugerirGhesGe
         {
             var pedido = pedidos.FirstOrDefault(p => p.Chave == FuncaoSstClassifier.Normalizar(s.Funcao));
             var codigo = CodigoCbo.Normalizar(s.Codigo);
-            if (pedido.Funcao is null || codigo is null || pedido.Candidatos.All(c => c.Codigo != codigo)) continue;
-            foreach (var f in semCbo.Where(f => FuncaoSstClassifier.Normalizar(f.Nome) == pedido.Chave))
+            if (pedido.Funcao is null || codigo is null || pedido.Candidatos.All(c => c.Codigo != codigo) || codigo == pedido.Atual) continue;
+            foreach (var f in funcoes.Where(f => FuncaoSstClassifier.Normalizar(f.Nome) == pedido.Chave))
             {
                 f.Cbo = codigo;
                 f.CboTitulo = catalogo.TituloOficial(codigo);

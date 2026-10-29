@@ -112,6 +112,25 @@ public class CatalogoCbo
             .ToList();
     }
 
+    // Candidatos pelo nome e, depois, pelas atividades descritas (29/10/2026): o CBO é da atividade exercida, não do nome do
+    // cargo. "Motorista" que dirige veículos leves precisa ver "Motorista de carro de passeio", e não só caminhão.
+    public List<ResultadoBuscaCbo> Candidatos(string nomeFuncao, string? descricao, int maximo = 20)
+    {
+        var lista = Candidatos(nomeFuncao, 12);
+        if (string.IsNullOrWhiteSpace(descricao)) return Candidatos(nomeFuncao, maximo);
+        foreach (var c in Candidatos($"{nomeFuncao} {descricao}", maximo))
+        {
+            if (lista.Count >= maximo) break;
+            if (lista.All(x => x.Codigo != c.Codigo)) lista.Add(c);
+        }
+        return lista;
+    }
+
+    public ResultadoBuscaCbo? PorCodigo(string? codigo) =>
+        CodigoCbo.Normalizar(codigo) is { } c && _oficiais.TryGetValue(c, out var titulo)
+            ? new ResultadoBuscaCbo(c, CodigoCbo.Formatar(c), titulo, null)
+            : null;
+
     private ResultadoBuscaCbo Resultado(Linha l) =>
         new(l.Codigo, CodigoCbo.Formatar(l.Codigo), _oficiais.GetValueOrDefault(l.Codigo) ?? l.Titulo, l.Oficial ? null : l.Titulo);
 

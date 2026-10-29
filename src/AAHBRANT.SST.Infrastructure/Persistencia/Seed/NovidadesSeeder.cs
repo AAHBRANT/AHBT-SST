@@ -1915,6 +1915,21 @@ public static class NovidadesSeeder
                     "Cada GHE ganhava um nome diferente para o ajudante: Ajudante/Servente, Servente, Ajudante de obras.",
                     "O ajudante genérico se chama sempre Ajudante Geral, em todos os GHEs, e só a descrição das atividades muda de um GHE para outro. Ajudantes de ofício, como Ajudante de Eletricista e Auxiliar de Topógrafo, continuam com o nome próprio."),
             }),
+        new(
+            Versao: "5.109.2",
+            Titulo: "PGR: funções padronizadas e CBO pela atividade",
+            DataPublicacao: new DateTime(2026, 10, 29, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "CBO conferido pela atividade de cada função",
+                    "O CBO que vinha do cadastro ficava mesmo quando não combinava com o que a função faz, como o Apontador com o código de servente.",
+                    "A IA revisa o CBO de todas as funções pela descrição das atividades, inclusive o do cadastro. Quando sugere outro código, a função aparece com o selo amarelo para conferir."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Nomes das funções padronizados",
+                    "A mesma função aparecia com nomes diferentes nos GHEs (Greidista e Greidista / Nivelador), alguns em caixa alta, e o encarregado sem o serviço.",
+                    "A mesma função tem o mesmo nome em todos os GHEs, os nomes saem com iniciais maiúsculas e o encarregado leva o nome do serviço do GHE, como Encarregado de Terraplenagem. A descrição do Ajudante Geral que não começa com \"Auxilia\" ou que fala em dirigir ou operar aparece nas pendências. No PDF, os expostos do Ajudante Geral somam quem está no cadastro como Ajudante/Servente ou Servente."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
