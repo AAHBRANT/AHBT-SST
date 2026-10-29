@@ -502,6 +502,72 @@ public class GeracaoPgrEapTests
         Assert.DoesNotContain(dto.PendenciasAprovacao, p => p.Contains("sem GHE"));
     }
 
+    [Theory]
+    [InlineData("Ajudante/Servente", true)]
+    [InlineData("Servente", true)]
+    [InlineData("Ajudante de obras", true)]
+    [InlineData("AJUDANTE GERAL", true)]
+    [InlineData("Auxiliar de serviços gerais", true)]
+    [InlineData("Ajudante de Eletricista", false)]
+    [InlineData("Auxiliar de Topógrafo", false)]
+    [InlineData("Auxiliar administrativo", false)]
+    [InlineData("Pedreiro", false)]
+    public void AjudanteGeral_SoOGenericoViraAjudanteGeral(string nome, bool generico) =>
+        Assert.Equal(generico, AjudanteGeral.EhGenerico(nome));
+
+    [Fact]
+    public async Task SugerirGhes_AjudanteGenericoViraAjudanteGeralEmTodoGhe_ComADescricaoDeCada()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var ajudanteCadastro = new Funcao { Nome = "AJUDANTE GERAL" };
+        db.Funcoes.Add(ajudanteCadastro);
+        await db.SaveChangesAsync();
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoComDuasAtividadesAsync(db, obra, ia);
+        ia.Ghes = new()
+        {
+            new GheGerado
+            {
+                Nome = "Demolição", Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" } },
+                Funcoes = new()
+                {
+                    new FuncaoGerada { Nome = "Ajudante/Servente", Descricao = "Recolhe entulho" },
+                    new FuncaoGerada { Nome = "Servente", Descricao = "outra" },
+                    new FuncaoGerada { Nome = "Ajudante de Eletricista", Descricao = "Apoia o eletricista" },
+                },
+            },
+            new GheGerado
+            {
+                Nome = "Pavimentação", Atividades = new() { new AtividadeGerada { CodigoEap = "1.2" } },
+                Funcoes = new() { new FuncaoGerada { Nome = "Ajudante de obras", Descricao = "Espalha material" } },
+            },
+        };
+
+        await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
+
+        var ghes = (await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default)).Estrutura.Ghes;
+        var dem = ghes.Single(g => g.Nome == "Demolição").Funcoes;
+        Assert.Equal(new[] { "Ajudante Geral", "Ajudante de Eletricista" }, dem.Select(f => f.Nome).ToArray());
+        Assert.Equal(("Recolhe entulho", ajudanteCadastro.Id), (dem[0].Descricao, dem[0].FuncaoId));
+        var pav = ghes.Single(g => g.Nome == "Pavimentação").Funcoes.Single();
+        Assert.Equal(("Ajudante Geral", "Espalha material", ajudanteCadastro.Id), (pav.Nome, pav.Descricao, pav.FuncaoId));
+    }
+
+    [Fact]
+    public async Task Aprovacao_RascunhoAntigoComAjudanteServente_CriaUmaFuncaoAjudanteGeral()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var estrutura = EstruturaSimplesAprovavel("Instalar linha de vida");
+        estrutura.Ghes[0].Funcoes.Add(new FuncaoGerada { Nome = "Ajudante/Servente", Descricao = "Auxilia a armação" });
+
+        await AprovarAsync(db, obra, new IaFalsa(), estrutura);
+
+        Assert.True(await db.Funcoes.AnyAsync(f => f.Nome == "Ajudante Geral"));
+        Assert.False(await db.Funcoes.AnyAsync(f => f.Nome == "Ajudante/Servente"));
+        var ghe = await db.Ghes.Include(g => g.Funcoes).ThenInclude(f => f.Funcao).SingleAsync(g => g.Ativo);
+        Assert.Equal("Auxilia a armação", ghe.Funcoes.Single(f => f.Funcao!.Nome == "Ajudante Geral").DescricaoAtividades);
+    }
+
     [Fact]
     public void Administrativo_ReconheceCodigoENome_MasNaoCanteiroDeObra()
     {

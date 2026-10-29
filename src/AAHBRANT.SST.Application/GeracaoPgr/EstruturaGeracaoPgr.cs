@@ -250,6 +250,56 @@ public class FuncaoGerada
     public bool CboSugeridoPelaIa { get; set; }
 }
 
+// O único ajudante genérico do PGR é o "Ajudante Geral" (decisão do usuário, 29/10/2026): Servente, Ajudante/Servente,
+// Ajudante de obras etc. viram ele, em todo GHE, e só a descrição muda de um GHE para outro. Ajudante de um ofício
+// (de eletricista, de topógrafo...) continua sendo função própria.
+public static class AjudanteGeral
+{
+    public const string Nome = "Ajudante Geral";
+
+    private static readonly HashSet<string> PalavrasGenericas = new()
+    {
+        "ajudante", "auxiliar", "geral", "gerais", "de", "da", "do", "obra", "obras", "servico", "servicos", "construcao", "civil",
+    };
+
+    public static bool EhGenerico(string? nome)
+    {
+        var palavras = Common.FuncaoSstClassifier.Normalizar(nome ?? string.Empty)
+            .Split(new[] { ' ', '/', '-', '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
+        if (palavras.Length == 0) return false;
+        if (palavras.Any(p => p.StartsWith("servente"))) return true;
+        return palavras.Any(p => p is "ajudante" or "auxiliar") && palavras.All(PalavrasGenericas.Contains);
+    }
+
+    // Renomeia o ajudante genérico de cada GHE, liga ao "Ajudante Geral" do cadastro (quando existe) e deixa um só por
+    // GHE, com a primeira descrição preenchida.
+    public static void Unificar(EstruturaGeracaoPgr e, Guid? idCadastro)
+    {
+        foreach (var g in e.Ghes)
+        {
+            var ajudantes = g.Funcoes.Where(f => EhGenerico(f.Nome)).ToList();
+            if (ajudantes.Count == 0) continue;
+            var fica = ajudantes[0];
+            if (string.IsNullOrWhiteSpace(fica.Descricao))
+                fica.Descricao = ajudantes.Select(f => f.Descricao).FirstOrDefault(d => !string.IsNullOrWhiteSpace(d));
+            fica.Cbo ??= ajudantes.Select(f => f.Cbo).FirstOrDefault(c => !string.IsNullOrWhiteSpace(c));
+            fica.Nome = Nome;
+            fica.FuncaoId = idCadastro;
+            foreach (var outro in ajudantes.Skip(1)) g.Funcoes.Remove(outro);
+        }
+    }
+
+    public static async Task<Guid?> IdNoCadastroAsync(IAppDbContext db, CancellationToken ct) =>
+        (await db.Funcoes.Select(f => new { f.Id, f.Nome }).ToListAsync(ct))
+            .FirstOrDefault(f => Common.FuncaoSstClassifier.Normalizar(f.Nome) == Common.FuncaoSstClassifier.Normalizar(Nome))?.Id;
+
+    public static async Task UnificarAsync(IAppDbContext db, EstruturaGeracaoPgr e, CancellationToken ct)
+    {
+        if (e.Ghes.SelectMany(g => g.Funcoes).Any(f => EhGenerico(f.Nome)))
+            Unificar(e, await IdNoCadastroAsync(db, ct));
+    }
+}
+
 // Completa e confere o CBO das funções da geração com a tabela oficial. Função sem CBO que casou com o cadastro herda
 // o CBO dele (se o cadastro tiver um válido ou não); o código válido fica com 6 dígitos e o título oficial.
 public static class CboFuncoesGeracao
