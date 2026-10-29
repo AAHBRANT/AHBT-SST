@@ -35,6 +35,7 @@ import {
   type Obra,
 } from '../../../lib/api';
 import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
+import { useFiltroObra } from '../../../lib/ObraAtivaContext';
 
 // Mesmo mapa de tons de AlertasListaTab.tsx/AlertasConfiguracaoTab.tsx (Guia de conversão item 5) —
 // as três telas do módulo leem severidade igual (status não vira StatusChip nesta tela, só texto
@@ -61,7 +62,8 @@ export function AlertasDashboardTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [processandoId, setProcessandoId] = useState<string | null>(null);
 
-  const [obraId, setObraId] = useState('');
+  // Ligado à obra ativa do cabeçalho: vale para o sistema todo (28/10/2026).
+  const [obraId, setObraId] = useFiltroObra();
   const [categoriaFiltro, setCategoriaFiltro] = useState('');
   const [severidadeFiltro, setSeveridadeFiltro] = useState('');
 

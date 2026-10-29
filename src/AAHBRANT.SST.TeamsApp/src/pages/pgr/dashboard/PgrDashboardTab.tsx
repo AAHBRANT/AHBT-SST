@@ -29,6 +29,7 @@ import {
 } from '../../../lib/api';
 import { PgrPlanoAcaoVencidoPanel, type AcaoPlanoComContexto } from './PgrPlanoAcaoVencidoPanel';
 import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
+import { useFiltroObra } from '../../../lib/ObraAtivaContext';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -44,7 +45,8 @@ export function PgrDashboardTab() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  const [obraId, setObraId] = useState('');
+  // Ligado à obra ativa do cabeçalho: vale para o sistema todo (28/10/2026).
+  const [obraId, setObraId] = useFiltroObra();
   const [statusFiltro, setStatusFiltro] = useState('');
 
   useEffect(() => {

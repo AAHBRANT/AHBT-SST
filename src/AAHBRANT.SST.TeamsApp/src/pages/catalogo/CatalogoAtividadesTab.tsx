@@ -30,6 +30,7 @@ import {
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { hojeIso } from '../../lib/datas';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
 
 type TipoCatalogo = 'apr' | 'pt';
 
@@ -48,7 +49,8 @@ export function CatalogoAtividadesTab({ tipo }: { tipo: TipoCatalogo }) {
   const [linhas, setLinhas] = useState<CatalogoAtividade[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
-  const [obraId, setObraId] = useState('');
+  // Ligado à obra ativa do cabeçalho: vale para o sistema todo (28/10/2026).
+  const [obraId, setObraId] = useFiltroObra();
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<CatalogoAtividade | null>(null);

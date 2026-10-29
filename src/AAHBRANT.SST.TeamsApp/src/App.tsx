@@ -7,6 +7,7 @@ import { HashRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } f
 import { aahbrantTheme, aahbrantLightTheme } from './theme';
 import { ThemeModeProvider, useThemeMode } from './theme/ThemeModeContext';
 import { UsuarioLogadoProvider } from './lib/UsuarioLogadoContext';
+import { ObraAtivaProvider } from './lib/ObraAtivaContext';
 import { processarLoginNavegadorPendente } from './lib/browserAuth';
 import { queryClient } from './lib/consultas';
 import { AppShell } from './layout/AppShell';
@@ -97,7 +98,10 @@ function App() {
         {/* Quem está logado e o que pode fazer — uma chamada por sessão, no topo da árvore, para
             qualquer tela decidir se mostra uma ação restrita (ver UsuarioLogadoContext). */}
         <UsuarioLogadoProvider>
-          <AppRoteado />
+          {/* Obra escolhida no cabeçalho, valendo para o sistema inteiro (ver ObraAtivaContext). */}
+          <ObraAtivaProvider>
+            <AppRoteado />
+          </ObraAtivaProvider>
         </UsuarioLogadoProvider>
       </ThemeModeProvider>
     </QueryClientProvider>
