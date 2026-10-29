@@ -92,6 +92,9 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
           equivalente; só proponha função nova quando nenhuma cadastrada servir.
         - descricao (por função): o que a função faz nestas atividades, em linguagem clara para o
           trabalhador, até 600 caracteres. Não amplie além das atividades do GHE.
+        - Atividade de código ADM (administrativo, escritório, almoxarifado, apontamento) fica SEMPRE sozinha
+          num GHE de nome "Administrativo", com as funções de apoio (ex.: auxiliar administrativo, almoxarife,
+          apontador), nunca junto com frentes de obra.
         """;
 
     private static readonly object SchemaGhe = new

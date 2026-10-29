@@ -1841,6 +1841,25 @@ public static class NovidadesSeeder
                     "A ficha do funcionário pedia o polegar direito e o polegar esquerdo, com o direito aparecendo primeiro.",
                     "Na ficha do funcionário, o cartão Biometria digital agora pede o indicador esquerdo, na coluna da esquerda, e o indicador direito, na coluna da direita, na mesma posição das mãos. A janela de cadastro e o perfil também passaram a dizer \"indicador\"."),
             }),
+        new(
+            Versao: "5.108.0",
+            Titulo: "PGR pela EAP: pré-visualização do rascunho e Administrativo padrão",
+            DataPublicacao: new DateTime(2026, 10, 29, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Pré-visualizar o PGR antes de enviar para aprovação",
+                    "A minuta do PGR só aparecia para o engenheiro, depois do envio para aprovação, e baixava um arquivo.",
+                    "No gerador de PGR pela EAP, o botão \"Pré-visualizar PGR\" no topo salva o que está na tela e abre o PGR dentro do app, do jeito que vai sair, com a marca RASCUNHO. Na fila do engenheiro a marca é MINUTA."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Sugestão da IA que ninguém mexeu entra como padrão",
+                    "Medida sugerida pela IA só entrava no PGR depois de aceita uma a uma, e a aprovação travava com \"medidas sem decisão\".",
+                    "O que a IA sugeriu e ninguém descartou entra no PGR como padrão: na prévia, no PDF e na aprovação. O que foi editado sai editado, e o que foi descartado ou excluído não aparece."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Administrativo em toda obra e itens incluídos à mão",
+                    "O passo \"Conferir a leitura\" só mostrava o que veio da EAP, sem a parte administrativa da obra.",
+                    "Todo PGR novo já traz o item Administrativo / Canteiro, que vira o GHE Administrativo (dá para desmarcar). No mesmo passo, o botão \"Adicionar item\" inclui o que a EAP não trouxe."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

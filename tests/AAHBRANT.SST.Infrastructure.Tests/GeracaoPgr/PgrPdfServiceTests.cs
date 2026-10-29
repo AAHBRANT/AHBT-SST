@@ -156,6 +156,18 @@ public class PgrPdfServiceTests
     }
 
     [Fact]
+    public void Gerar_RascunhoComMedidaSemDecisao_DevolvePdfValido()
+    {
+        var dados = DadosCompletos() with { Minuta = true, Rascunho = true };
+        foreach (var m in dados.Estrutura.Ghes.SelectMany(g => g.Atividades).SelectMany(a => a.Riscos).SelectMany(r => r.Medidas))
+            m.Decisao = "Pendente";
+
+        var pdf = new PgrPdfService().Gerar(dados, null);
+
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+    }
+
+    [Fact]
     public void Gerar_SemLogo_DevolvePdfValido()
     {
         var pdf = new PgrPdfService().Gerar(DadosCompletos(), null);

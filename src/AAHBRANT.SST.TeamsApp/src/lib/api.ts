@@ -2989,7 +2989,8 @@ export interface MinutaOrdemServico {
 }
 
 // Gerador de PGR pela EAP (21/10/2026). Status: 1 Rascunho, 2 Aguardando aprovação, 3 Aprovado, 4 Devolvido.
-export interface ItemEapGerado { codigo: string; nome: string; nivel: number; periodo?: string | null; usar: boolean; conferir: boolean }
+// manual: incluído à mão no passo 2 (29/10/2026). ADM e ADM.1 são o Administrativo, padrão em toda obra.
+export interface ItemEapGerado { codigo: string; nome: string; nivel: number; periodo?: string | null; usar: boolean; conferir: boolean; manual?: boolean }
 export type CategoriaMedida = 'Eliminação' | 'EPC' | 'Administrativa' | 'EPI';
 export interface MedidaGerada {
   fase: 1 | 2 | 3; texto: string; categoria?: CategoriaMedida | null; decisao: 'Pendente' | 'Aceita' | 'Descartada';

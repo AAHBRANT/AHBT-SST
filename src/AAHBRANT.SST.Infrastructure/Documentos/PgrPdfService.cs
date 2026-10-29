@@ -11,7 +11,7 @@ namespace AAHBRANT.SST.Infrastructure.Documentos;
 // sumário, informações gerais, introdução, objetivos, responsabilidades, matriz de risco, GHE com fichas de
 // risco, plano de ação, acompanhamento, emergência e assinaturas) e em design minimalista: fundo branco,
 // texto em cinza, linhas finas e o vinho da marca só como detalhe. Os textos fixos são redação institucional
-// própria; só riscos não excluídos e medidas aceitas entram no documento.
+// própria; só riscos não excluídos e medidas não descartadas entram no documento (regra do padrão, 29/10/2026).
 public class PgrPdfService : IPgrPdfService
 {
     private const string Marca = "#670000";
@@ -74,7 +74,7 @@ public class PgrPdfService : IPgrPdfService
 
         container.Page(p =>
         {
-            ConfigurarPagina(p, marcaDagua);
+            ConfigurarPagina(p, marcaDagua, carimbo: Carimbo(d));
             p.Content().Column(c =>
             {
                 c.Item().Height(60);
@@ -98,7 +98,7 @@ public class PgrPdfService : IPgrPdfService
     {
         container.Page(p =>
         {
-            ConfigurarPagina(p, marcaDagua, logoLarga is null ? 0 : BarraInterna);
+            ConfigurarPagina(p, marcaDagua, logoLarga is null ? 0 : BarraInterna, Carimbo(d));
             Cabecalho(p, d, logoLarga);
             p.Content().Column(c =>
             {
@@ -123,7 +123,7 @@ public class PgrPdfService : IPgrPdfService
     {
         container.Page(p =>
         {
-            ConfigurarPagina(p, marcaDagua, logoLarga is null ? 0 : BarraInterna);
+            ConfigurarPagina(p, marcaDagua, logoLarga is null ? 0 : BarraInterna, Carimbo(d));
             Cabecalho(p, d, logoLarga);
             p.Content().Column(c =>
             {
@@ -423,8 +423,14 @@ public class PgrPdfService : IPgrPdfService
 
     // ───────────────────────────── Peças reutilizáveis ─────────────────────────────
 
-    private static void ConfigurarPagina(PageDescriptor p, MarcaDagua? marcaDagua, float barraLateral = 0)
+    // Carimbo diagonal da prévia (29/10/2026): RASCUNHO enquanto o técnico monta, MINUTA na fila do engenheiro.
+    private static string? Carimbo(DadosPgrPdf d) => !d.Minuta ? null : d.Rascunho ? "RASCUNHO" : "MINUTA";
+
+    private static void ConfigurarPagina(PageDescriptor p, MarcaDagua? marcaDagua, float barraLateral = 0, string? carimbo = null)
     {
+        if (carimbo is not null)
+            p.Foreground().AlignCenter().AlignMiddle().Rotate(-35)
+                .Text(carimbo).FontSize(84).Bold().LetterSpacing(0.08f).FontColor(Color.FromARGB(30, 103, 0, 0));
         p.Size(PageSizes.A4);
         p.Margin(2f, Unit.Centimetre);
         p.DefaultTextStyle(s => s.FontSize(9.5f).FontColor(Texto).LineHeight(1.35f));
@@ -449,7 +455,7 @@ public class PgrPdfService : IPgrPdfService
         var revisao = (d.Revisoes is { Count: > 0 } revisoes ? revisoes.Max(r => r.Numero) : 0).ToString("00");
         container.Page(p =>
         {
-            ConfigurarPagina(p, null, BarraCapa);
+            ConfigurarPagina(p, null, BarraCapa, Carimbo(d));
             p.Content().Column(c =>
             {
                 c.Item().PaddingTop(16).AlignCenter().Width(290).Height(66).Image(logo).FitArea();
@@ -509,7 +515,9 @@ public class PgrPdfService : IPgrPdfService
                 });
             });
             if (d.Minuta)
-                h.Item().PaddingTop(3).Text("MINUTA PARA CONFERÊNCIA · NÃO ASSINADO · SEM VALOR DOCUMENTAL").FontSize(8).Bold().FontColor(Marca);
+                h.Item().PaddingTop(3).Text(d.Rascunho
+                    ? "RASCUNHO PARA CONFERÊNCIA · NÃO ENVIADO PARA APROVAÇÃO · SEM VALOR DOCUMENTAL"
+                    : "MINUTA PARA CONFERÊNCIA · NÃO ASSINADO · SEM VALOR DOCUMENTAL").FontSize(8).Bold().FontColor(Marca);
             if (logoLarga is null)
                 h.Item().PaddingTop(4).LineHorizontal(0.5f).LineColor(Linha);
             else
@@ -731,7 +739,7 @@ public class PgrPdfService : IPgrPdfService
     {
         var nivel = NivelDe(m, r);
         var medidas = r.Medidas
-            .Where(x => x.Decisao == "Aceita" && !string.IsNullOrWhiteSpace(x.Texto))
+            .Where(x => x.EntraNoPgr() && !string.IsNullOrWhiteSpace(x.Texto))
             .OrderBy(x => x.Fase)
             .ToList();
 
@@ -750,7 +758,7 @@ public class PgrPdfService : IPgrPdfService
                 Linha2(b, "Fontes ou circunstâncias", $"EAP {atividade.CodigoEap} — {atividade.Nome}");
                 if (r.Base.Count > 0) Linha2(b, "Requisitos legais", string.Join(", ", r.Base));
                 Grupo(b, "Prevenção e controle");
-                if (medidas.Count == 0) b.Item().Text("Nenhuma medida aceita.").FontSize(8.5f).FontColor(Secundario).Italic();
+                if (medidas.Count == 0) b.Item().Text("Nenhuma medida de prevenção.").FontSize(8.5f).FontColor(Secundario).Italic();
                 else
                 {
                     // Na ordem de prioridade da NR-01; medida sem classificação (rascunho antigo) vai por último.

@@ -142,10 +142,9 @@ public static class PendenciasGeracaoPgr
             var riscos = g.Atividades.SelectMany(a => a.Riscos).Where(r => !r.Excluido).ToList();
             var naoRevisados = riscos.Count(r => !r.Revisado);
             if (naoRevisados > 0) p.Add($"{nome}: {naoRevisados} risco(s) não revisado(s).");
-            var medidas = riscos.SelectMany(r => r.Medidas).Count(m => m.Decisao == "Pendente");
-            if (medidas > 0) p.Add($"{nome}: {medidas} medida(s) sem decisão.");
-            var semCategoria = riscos.SelectMany(r => r.Medidas).Count(m => m.Decisao == "Aceita" && !CategoriasMedida.Valida(m.Categoria));
-            if (semCategoria > 0) p.Add($"{nome}: {semCategoria} medida(s) aceita(s) sem classificação (eliminação, EPC, administrativa ou EPI).");
+            // Medida sem decisão não trava mais: vale como aceita (regra do padrão, 29/10/2026).
+            var semCategoria = riscos.SelectMany(r => r.Medidas).Count(m => m.EntraNoPgr() && !CategoriasMedida.Valida(m.Categoria));
+            if (semCategoria > 0) p.Add($"{nome}: {semCategoria} medida(s) sem classificação (eliminação, EPC, administrativa ou EPI).");
             foreach (var r in riscos.Where(r => r.Probabilidade < 1 || r.Probabilidade > maxP || r.Severidade < 1 || r.Severidade > maxS))
                 p.Add($"{nome}: {r.Perigo} com probabilidade/severidade fora da matriz.");
 
@@ -158,7 +157,7 @@ public static class PendenciasGeracaoPgr
                     p.Add($"{nome}: medição de {r.Perigo} incompleta (informe data, valor e unidade).");
 
                 if (epis is null) continue;
-                foreach (var m in r.Medidas.Where(m => m.Decisao == "Aceita" && m.CatalogoEpiId is not null))
+                foreach (var m in r.Medidas.Where(m => m.EntraNoPgr() && m.CatalogoEpiId is not null))
                 {
                     if (!epis.TryGetValue(m.CatalogoEpiId!.Value, out var epi))
                         p.Add($"{nome}: o EPI escolhido para {r.Perigo} não existe mais no catálogo.");
@@ -279,6 +278,7 @@ public class CriarGeracaoPgrEapCommandHandler : IRequestHandler<CriarGeracaoPgrE
 
         // Dados da obra (emergência, CNAE, CREA...) já preenchidos na última geração aprovada seguem para esta.
         var estrutura = new EstruturaGeracaoPgr { Itens = itens };
+        ItemAdministrativoEap.Garantir(estrutura);
         var anterior = await _db.GeracoesPgrEap
             .Where(x => x.ObraId == request.ObraId && x.Status == StatusGeracaoPgrEap.Aprovado)
             .OrderByDescending(x => x.AprovadoEmUtc)
@@ -684,7 +684,7 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
                     _db.Riscos.Add(risco);
 
                     var ordem = 0;
-                    foreach (var m in r.Medidas.Where(m => m.Decisao == "Aceita").OrderBy(m => m.Fase))
+                    foreach (var m in r.Medidas.Where(m => m.EntraNoPgr()).OrderBy(m => m.Fase))
                     {
                         _db.MedidasPrevencao.Add(new MedidaPrevencao
                         {
