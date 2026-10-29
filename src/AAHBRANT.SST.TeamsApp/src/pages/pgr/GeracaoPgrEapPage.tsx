@@ -5,7 +5,7 @@ import {
 } from '@ui';
 import {
   api, StatusUsuario, type AcaoPlanoGerada, type AtividadeGerada, type CatalogoEpi, type CategoriaMedida, type EstruturaGeracaoPgr, type GeracaoPgrEap,
-  type GheGerado, type Obra, type RiscoGerado, type Usuario,
+  type GheGerado, type ItemEapGerado, type Obra, type RiscoGerado, type Usuario,
 } from '../../lib/api';
 import { rotuloStatusGeracao } from './GeracoesPgrEapCard';
 import { DadosComplementaresPgr } from './DadosComplementaresPgr';
@@ -14,6 +14,7 @@ import { ExposicaoRiscoEditor, SeletorEpi } from './ExposicaoRiscoEditor';
 import { InventarioPorPerigo } from './InventarioPorPerigo';
 import { CronogramaTreinamentosCard } from './CronogramaTreinamentosCard';
 import { BotaoRascunhoPcmso } from '../saude-ocupacional/BotaoRascunhoPcmso';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const PASSOS = ['Enviar a EAP', 'Conferir a leitura', 'Funções e GHE', 'Inventário de riscos', 'Aprovar'];
 const FASES: Record<number, string> = { 1: 'Antes', 2: 'Durante', 3: 'Após' };
@@ -141,6 +142,7 @@ function Assistente({ id }: { id: string }) {
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar(irParaPasso?: number) {
     const d = await api.geracoesPgrEap.obter(id);
@@ -178,6 +180,18 @@ function Assistente({ id }: { id: string }) {
 
   const salvar = (p: number) => api.geracoesPgrEap.salvar(id, p, e);
 
+  // Prévia do PGR como vai sair (29/10/2026): salva o que está na tela e abre a minuta no visualizador do app.
+  // Enquanto é rascunho sai carimbada RASCUNHO; na fila do engenheiro, MINUTA.
+  const previsualizar = () => void visualizar({
+    titulo: editavel ? 'Pré-visualização do PGR · Rascunho' : 'Pré-visualização do PGR · Minuta',
+    nomeArquivo: `${g.nome.replace(/[\\/:*?"<>|]/g, '-')} - ${editavel ? 'RASCUNHO' : 'MINUTA'}.pdf`,
+    obter: async () => {
+      if (editavel) await salvar(Math.max(passo, g.passo));
+      setSalvo(false);
+      return api.geracoesPgrEap.baixarMinuta(id);
+    },
+  });
+
   async function gerarInventario() {
     await salvar(4);
     const fila = e!.ghes.flatMap((gh) => gh.atividades.filter((a) => !a.riscosGerados).map((a) => ({ gh, a })));
@@ -201,7 +215,9 @@ function Assistente({ id }: { id: string }) {
         status={<StatusChip tom={rotuloStatusGeracao[g.status].tom}>{rotuloStatusGeracao[g.status].rotulo}</StatusChip>}
         voltarPara="/gestao-sst?secao=pgr"
         rotuloVoltar="Voltar para PGR"
+        acoes={g.status !== 3 && <Button disabled={!!ocupado} onClick={previsualizar}>Pré-visualizar PGR</Button>}
       />
+      {dialogoVisualizador}
       <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
         Obra: {g.obraNome} · EAP: {g.nomeArquivoEap} · Elaborado por {g.elaboradoPorNome ?? '—'}
       </Text>
@@ -231,12 +247,19 @@ function Assistente({ id }: { id: string }) {
                 <Input value={item.nome} disabled={!editavel} style={{ flex: 1 }} onChange={(_, d) => alterar((x) => { x.itens[i].nome = d.value; x.itens[i].conferir = false; })} />
                 <Text size={200} style={{ minWidth: 110 }}>{item.periodo ?? ''}</Text>
                 {item.conferir && <StatusChip tom="atencao">conferir</StatusChip>}
+                {item.codigo === 'ADM' && <StatusChip tom="info">padrão em toda obra</StatusChip>}
+                {item.manual && <StatusChip tom="neutro">incluído à mão</StatusChip>}
+                {item.manual && editavel && (
+                  <Button size="small" onClick={() => alterar((x) => { x.itens.splice(i, 1); })}>Remover</Button>
+                )}
               </div>
             ))}
           </div>
           <Text size={200} style={{ display: 'block', marginTop: 8 }}>
             Itens sem frente de trabalho (orçamento, compras, medições) vêm desmarcados. Itens em amarelo a IA não leu com segurança: confira o nome.
+            {' '}Administrativo / Canteiro entra em toda obra e vira o GHE Administrativo; desmarque se a obra não tiver essa área.
           </Text>
+          {editavel && <NovoItemEap aoAdicionar={(item) => alterar((x) => { x.itens.push(item); })} />}
           {editavel && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
               <Button disabled={!!ocupado} onClick={() => void executar('Salvando…', async () => { await salvar(2); setSalvo(true); })}>Salvar</Button>
@@ -297,15 +320,7 @@ function Assistente({ id }: { id: string }) {
       {passo === 5 && (
         <Aprovacao g={g} ocupado={!!ocupado}
           devolver={(motivo) => void executar('Devolvendo…', async () => { await api.geracoesPgrEap.devolver(id, motivo); await carregar(4); })}
-          baixarMinuta={() => void executar('Gerando a minuta…', async () => {
-            const blob = await api.geracoesPgrEap.baixarMinuta(id);
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `${g.nome.replace(/[\\/:*?"<>|]/g, '-')} - MINUTA.pdf`;
-            link.click();
-            URL.revokeObjectURL(url);
-          })}
+          baixarMinuta={previsualizar}
           aprovar={() => void executar('Assinando e aprovando o PGR…', async () => {
             const { pgrId } = await api.geracoesPgrEap.aprovar(id);
             navigate(`/prevencao/pgr/${pgrId}`);
@@ -422,7 +437,7 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
         {kpi(e.ghes.reduce((t, x) => t + x.atividades.length, 0), 'atividades')}
         {kpi(riscos.length, 'riscos')}
         {kpi(riscos.filter((r) => !r.revisado).length, 'riscos não revisados', riscos.some((r) => !r.revisado) ? 'var(--colorPaletteRedForeground1)' : undefined)}
-        {kpi(medidas.filter((m) => m.decisao === 'Pendente').length, 'medidas sem decisão')}
+        {kpi(medidas.filter((m) => m.decisao === 'Pendente').length, 'sugestões da IA (entram como padrão)')}
       </div>
       {semGerar > 0 && editavel && (
         <FeedbackInline tom="aviso" acao={{ rotulo: `Gerar as ${semGerar} restantes`, aoClicar: gerarPendentes }}>
@@ -570,7 +585,7 @@ function RiscoEditor({ r, maxP, maxS, editavel, epis, alterar }: {
               <SeletorEpi medida={m} epis={epis} editavel={editavel} alterar={(f) => alterar((x) => f(x.medidas[mi]))} />
             )}
             <Text style={{ flex: 1 }}>{m.texto}</Text>
-            {m.decisao === 'Aceita' ? <StatusChip tom="ok">Aceita</StatusChip> : <StatusChip tom="atencao">Sugestão da IA</StatusChip>}
+            {m.decisao === 'Aceita' ? <StatusChip tom="ok">Aceita</StatusChip> : <StatusChip tom="atencao">Sugestão da IA · entra como padrão</StatusChip>}
             {editavel && m.decisao === 'Pendente' && <Button size="small" appearance="primary" onClick={() => alterar((x) => { x.medidas[mi].decisao = 'Aceita'; })}>Aceitar</Button>}
             {editavel && <Button size="small" onClick={() => alterar((x) => { x.medidas[mi].decisao = 'Descartada'; })}>Descartar</Button>}
           </div>
@@ -714,7 +729,7 @@ function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf, baixarMinuta }: {
             </Field>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
               <Button disabled={ocupado || !motivo.trim()} onClick={() => devolver(motivo.trim())}>Devolver para ajustes</Button>
-              <Button disabled={ocupado} onClick={baixarMinuta}>Ver minuta em PDF</Button>
+              <Button disabled={ocupado} onClick={baixarMinuta}>Pré-visualizar PGR</Button>
               <Button appearance="primary" disabled={ocupado || g.pendenciasAprovacao.length > 0} onClick={aprovar}>
                 {assinaNoSistema ? 'Aprovar e assinar o PGR' : 'Aprovar PGR'}
               </Button>
@@ -727,6 +742,34 @@ function Aprovacao({ g, ocupado, devolver, aprovar, baixarPdf, baixarMinuta }: {
       <Card titulo="Documento PGR">
         <Text size={200}>O PDF do PGR fica disponível depois da aprovação do Engenheiro de Segurança.</Text>
       </Card>
+    </div>
+  );
+}
+
+// Item incluído à mão no passo 2 (29/10/2026): o que a EAP não trouxe. Segue o mesmo caminho dos itens lidos.
+function NovoItemEap({ aoAdicionar }: { aoAdicionar: (item: ItemEapGerado) => void }) {
+  const [codigo, setCodigo] = useState('');
+  const [nome, setNome] = useState('');
+  const [nivel, setNivel] = useState('2');
+  const adicionar = () => {
+    if (!nome.trim()) return;
+    aoAdicionar({ codigo: codigo.trim() || `M${Date.now().toString().slice(-5)}`, nome: nome.trim(), nivel: Number(nivel), usar: true, conferir: false, manual: true });
+    setCodigo('');
+    setNome('');
+  };
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 12, padding: 12, border: '1px dashed var(--colorNeutralStroke1)', borderRadius: 8 }}>
+      <Field label="Código (opcional)" style={{ width: 120 }}><Input value={codigo} onChange={(_, d) => setCodigo(d.value)} placeholder="ex.: 3.10" /></Field>
+      <Field label="Nome do item" style={{ flex: 1, minWidth: 220 }}>
+        <Input value={nome} onChange={(_, d) => setNome(d.value)} placeholder="ex.: Instalações provisórias de energia" />
+      </Field>
+      <Field label="Tipo" style={{ width: 200 }}>
+        <Select value={nivel} onChange={(_, d) => setNivel(d.value)}>
+          <option value="2">Atividade</option>
+          <option value="1">Pacote</option>
+        </Select>
+      </Field>
+      <Button appearance="primary" disabled={!nome.trim()} onClick={adicionar}>Adicionar item</Button>
     </div>
   );
 }

@@ -48,7 +48,9 @@ public record DadosPgrPdf(
     // Código, endereço e QR de verificação: só existem depois de o documento do motor ser finalizado.
     VerificacaoPgrPdf? Verificacao = null,
     // Minuta para o engenheiro ler antes de assinar: marcada como "não assinado" em todas as páginas.
-    bool Minuta = false);
+    bool Minuta = false,
+    // Prévia do técnico antes de enviar para aprovação (29/10/2026): a minuta sai carimbada como RASCUNHO.
+    bool Rascunho = false);
 
 // Uma linha de assinatura. AssinadoEmUtc preenchido = carimbo de assinatura eletrônica; AMao = a linha sai em branco, para
 // assinatura fora do sistema; sem as duas coisas, ainda não assinou.
@@ -98,7 +100,9 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
             .Select(o => new { o.Nome, o.Cnpj, o.Endereco, o.Cidade, o.Uf, o.LogoConteudo })
             .FirstOrDefaultAsync(ct) ?? throw new KeyNotFoundException("Obra não encontrada.");
         var estrutura = SerializacaoGeracao.Ler(g.EstruturaJson);
-        var nomeArquivo = $"PGR - {obra.Nome} - {g.DataElaboracao:yyyyMMdd}{(request.Minuta ? " - MINUTA" : string.Empty)}.pdf";
+        var rascunho = request.Minuta && g.Status is StatusGeracaoPgrEap.Rascunho or StatusGeracaoPgrEap.Devolvido;
+        var sufixo = !request.Minuta ? string.Empty : rascunho ? " - RASCUNHO" : " - MINUTA";
+        var nomeArquivo = $"PGR - {obra.Nome} - {g.DataElaboracao:yyyyMMdd}{sufixo}.pdf";
         var documentoMotor = request.Minuta
             ? null
             : await _db.DocumentosAssinatura.FirstOrDefaultAsync(d => d.EntidadeTipo == AssinaturaGeracaoPgr.EntidadeTipo && d.EntidadeId == g.Id, ct);
@@ -181,7 +185,8 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
             treinamentos,
             assinaturas,
             verificacao,
-            request.Minuta);
+            request.Minuta,
+            rascunho);
 
         return new ArquivoPgrPdf(_pdf.Gerar(dados, obra.LogoConteudo), nomeArquivo);
     }

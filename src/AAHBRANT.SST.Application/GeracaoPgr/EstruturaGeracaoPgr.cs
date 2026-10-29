@@ -185,6 +185,26 @@ public class ItemEapGerado
     public string? Periodo { get; set; }
     public bool Usar { get; set; } = true;
     public bool Conferir { get; set; }
+    // Incluído à mão no passo 2 (29/10/2026): não veio do arquivo da EAP.
+    public bool Manual { get; set; }
+}
+
+// Toda obra tem administrativo, e a EAP não traz (29/10/2026): o item entra sempre no passo 2, já marcado, e vira o
+// GHE Administrativo. Quem não tiver essa área desmarca.
+public static class ItemAdministrativoEap
+{
+    public const string CodigoPacote = "ADM";
+    public const string CodigoAtividade = "ADM.1";
+
+    public static void Garantir(EstruturaGeracaoPgr e)
+    {
+        if (e.Itens.Any(i => i.Codigo == CodigoPacote || i.Codigo == CodigoAtividade)) return;
+        e.Itens.InsertRange(0, new[]
+        {
+            new ItemEapGerado { Codigo = CodigoPacote, Nome = "Administrativo / Canteiro", Nivel = 1, Periodo = "Toda a obra" },
+            new ItemEapGerado { Codigo = CodigoAtividade, Nome = "Escritório da obra, almoxarifado e apontamento", Nivel = 2, Periodo = "Toda a obra" },
+        });
+    }
 }
 
 public class GheGerado
@@ -300,4 +320,8 @@ public class MedidaGerada
     public Guid? CatalogoEpiId { get; set; }
     // "Pendente", "Aceita" ou "Descartada".
     public string Decisao { get; set; } = "Pendente";
+
+    // Regra do padrão (29/10/2026): o que a IA sugeriu e ninguém decidiu vale como aceito, na prévia, no PDF e na
+    // aprovação. Só a medida descartada fica de fora.
+    public bool EntraNoPgr() => Decisao != "Descartada";
 }

@@ -1,0 +1,266 @@
+<title>Prévia do PGR pela EAP</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: tela do gerador (Teams/Fluent) em 3 abas de mockup; a prévia abre num visualizador sobre a tela, com uma folha A4 do PGR. */
+  :root {
+    --vinho:#670000; --vinho-suave:#f6ecec; --bege:#ebe9ad;
+    --bg:#f5f4f2; --sup:#ffffff; --borda:#e1dfdd; --fg:#242424; --sub:#616161;
+    --ok:#107c10; --okbg:#dff6dd; --at:#8a5a00; --atbg:#fff4ce; --info:#0f6cbd; --infobg:#ebf3fc;
+    --folha:#ffffff; --folha-fg:#1b1b1b; --vis-bg:#3b3a39; --marca:rgba(103,0,0,.09);
+    --f-ui:"Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --vinho:#d98a8a; --vinho-suave:#3a2222; --bg:#1c1b1a; --sup:#292827; --borda:#3d3b39; --fg:#ececec; --sub:#a8a6a4;
+    --ok:#6ccb5f; --okbg:#1f3a1c; --at:#f2c661; --atbg:#3d3214; --info:#79b8f2; --infobg:#17304a; --vis-bg:#111; color-scheme:dark; } }
+  :root[data-theme="dark"] {
+    --vinho:#d98a8a; --vinho-suave:#3a2222; --bg:#1c1b1a; --sup:#292827; --borda:#3d3b39; --fg:#ececec; --sub:#a8a6a4;
+    --ok:#6ccb5f; --okbg:#1f3a1c; --at:#f2c661; --atbg:#3d3214; --info:#79b8f2; --infobg:#17304a; --vis-bg:#111; color-scheme:dark; }
+
+  * { box-sizing:border-box; }
+  body { background:var(--bg); color:var(--fg); font-family:var(--f-ui); font-size:14px; }
+  .pag { max-width:1120px; margin:0 auto; padding-block:20px 48px; padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px)); }
+  .mock-abas { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px; padding:6px; background:var(--sup); border:1px solid var(--borda); border-radius:8px; }
+  .mock-abas button { font:inherit; font-size:13px; font-weight:600; border:0; background:transparent; color:var(--sub); padding:7px 12px; border-radius:6px; cursor:pointer; }
+  .mock-abas button[aria-selected="true"] { background:var(--vinho); color:#fff; }
+  .mock-abas button:focus-visible, .btn:focus-visible { outline:2px solid var(--info); outline-offset:2px; }
+  .rot { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--sub); font-weight:600; }
+
+  .cab { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+  .cab h1 { font-size:21px; margin:2px 0; text-wrap:balance; }
+  .cab .meta { color:var(--sub); font-size:13px; }
+  .cab-acoes { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .passos { display:flex; overflow-x:auto; margin:12px 0 16px; }
+  .passo { flex:1; min-width:140px; padding:9px 10px; border-bottom:3px solid var(--borda); color:var(--sub); font-weight:600; font-size:13px; }
+  .passo b { display:inline-flex; width:21px; height:21px; border-radius:50%; background:var(--borda); color:var(--fg); align-items:center; justify-content:center; margin-right:6px; font-size:12px; }
+  .passo.on { border-color:var(--vinho); color:var(--vinho); } .passo.on b { background:var(--vinho); color:#fff; }
+  .passo.feito b { background:var(--ok); color:#fff; }
+
+  .card { background:var(--sup); border:1px solid var(--borda); border-radius:8px; padding:14px 16px; margin-bottom:14px; min-width:0; }
+  .card h3 { margin:0 0 10px; font-size:15px; display:flex; justify-content:space-between; gap:8px; align-items:center; flex-wrap:wrap; }
+  .chip { display:inline-flex; align-items:center; font-size:12px; font-weight:600; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .ok{background:var(--okbg);color:var(--ok)} .at{background:var(--atbg);color:var(--at)} .info{background:var(--infobg);color:var(--info)} .vin{background:var(--vinho-suave);color:var(--vinho)}
+  .btn { font:inherit; font-weight:600; font-size:13px; border-radius:4px; padding:7px 14px; border:1px solid var(--borda); background:var(--sup); color:var(--fg); cursor:pointer; }
+  .btn.pri { background:var(--vinho); border-color:var(--vinho); color:#fff; }
+  .btn.peq { font-size:12px; padding:4px 9px; }
+  .btn.prev { border-color:var(--vinho); color:var(--vinho); }
+  .acoes { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .novo { position:relative; }
+  .novo::after { content:"novo"; position:absolute; top:-8px; right:-6px; background:var(--bege); color:#4a3b00; font-size:10px; font-weight:700; padding:1px 6px; border-radius:999px; }
+
+  .linha { display:flex; gap:10px; align-items:center; padding:6px 0; border-bottom:1px solid var(--borda); min-width:0; }
+  .linha input[type=checkbox] { width:16px; height:16px; accent-color:var(--vinho); flex:none; }
+  .linha .cod { min-width:44px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .linha .nome { flex:1; min-width:0; border:1px solid var(--borda); border-radius:4px; padding:5px 8px; background:var(--sup); color:var(--fg); }
+  .linha .per { min-width:96px; font-size:12px; color:var(--sub); }
+  .linha.n2 { padding-left:22px; } .linha.n3 { padding-left:44px; }
+  .linha.conf { background:var(--atbg); }
+  .linha.adm { background:var(--vinho-suave); }
+  .linha.man .nome { border-style:dashed; }
+  .lista-wrap { overflow-x:auto; }
+  .lista-wrap > div { min-width:560px; }
+
+  .add { margin-top:12px; padding:12px; border:1px dashed var(--vinho); border-radius:8px; display:grid; grid-template-columns:110px 1fr 170px auto; gap:10px; align-items:end; }
+  .add label { display:block; font-size:12px; font-weight:600; color:var(--sub); margin-bottom:4px; }
+  .add input, .add select { width:100%; font:inherit; border:1px solid var(--borda); border-radius:4px; padding:6px 8px; background:var(--sup); color:var(--fg); }
+  .nota { font-size:12.5px; color:var(--sub); line-height:1.55; margin-top:8px; }
+
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  table.reg { width:100%; border-collapse:collapse; }
+  table.reg th, table.reg td { text-align:left; padding:8px; border-bottom:1px solid var(--borda); font-size:13px; vertical-align:top; }
+  table.reg th { color:var(--sub); font-size:12px; }
+  ul.limpa { margin:0; padding-left:18px; } ul.limpa li { margin:4px 0; }
+  .riscado { text-decoration:line-through; color:var(--sub); }
+
+  /* Visualizador */
+  .vis { position:fixed; inset:0; background:var(--vis-bg); z-index:20; display:flex; flex-direction:column; }
+  .vis-barra { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; background:var(--sup); color:var(--fg); border-bottom:1px solid var(--borda);
+    padding-block:10px; padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px)); padding-top:calc(10px + env(safe-area-inset-top,0px)); }
+  .vis-barra .tit { font-weight:700; }
+  .vis-resumo { font-size:12.5px; color:var(--sub); }
+  .vis-corpo { flex:1; overflow:auto; padding:24px 16px 60px; }
+  .folha { background:var(--folha); color:var(--folha-fg); width:min(794px, 100%); margin:0 auto 24px; padding:40px 44px; position:relative; box-shadow:0 2px 14px rgba(0,0,0,.35); overflow:hidden; font-size:12px; line-height:1.45; }
+  .folha::before { content:"RASCUNHO"; position:absolute; top:42%; left:50%; transform:translate(-50%,-50%) rotate(-30deg); font-size:110px; font-weight:800; color:var(--marca); letter-spacing:.08em; pointer-events:none; white-space:nowrap; }
+  .f-cab { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #670000; padding-bottom:8px; margin-bottom:6px; gap:10px; }
+  .f-logo { font-weight:800; color:#670000; letter-spacing:.04em; font-size:15px; }
+  .f-tit { text-align:center; flex:1; font-weight:700; font-size:13px; }
+  .f-cod { font-size:10px; color:#555; text-align:right; }
+  .f-faixa { background:#670000; color:#fff; font-size:9.5px; font-weight:700; letter-spacing:.05em; text-align:center; padding:3px; margin-bottom:14px; }
+  .folha h4 { font-size:12.5px; color:#670000; margin:16px 0 6px; border-bottom:1px solid #ddd; padding-bottom:3px; }
+  .folha table { width:100%; border-collapse:collapse; font-size:11px; }
+  .folha th, .folha td { border:1px solid #cfcfcf; padding:4px 6px; text-align:left; vertical-align:top; }
+  .folha th { background:#f1efe0; font-weight:700; }
+  .nv { font-weight:700; padding:1px 6px; border-radius:3px; font-size:10px; white-space:nowrap; }
+  .nv.m { background:#fff1b8; color:#6b4f00; } .nv.a { background:#ffd3c2; color:#8a2a00; } .nv.b { background:#d9f2d0; color:#225c12; }
+  .folha .tab-wrap { overflow-x:auto; }
+  .f-rod { margin-top:18px; border-top:1px solid #ccc; padding-top:6px; font-size:9.5px; color:#666; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+
+  @media (max-width:760px){ .grid2{grid-template-columns:1fr} .add{grid-template-columns:1fr} .folha{padding:24px 18px} .folha::before{font-size:64px} }
+  @media (prefers-reduced-motion:no-preference){ .vis { animation:surge .18s ease-out; } @keyframes surge { from { opacity:0 } to { opacity:1 } } }
+</style>
+
+<div class="pag">
+  <div class="mock-abas" role="tablist">
+    <button role="tab" aria-selected="true" data-tela="p2">1 · Conferir leitura (adicionar item + Administrativo)</button>
+    <button role="tab" aria-selected="false" data-tela="p4">2 · Pré-visualizar o rascunho</button>
+    <button role="tab" aria-selected="false" data-tela="regras">3 · Regras e aprovação</button>
+  </div>
+
+  <!-- Cabeçalho do gerador, comum aos passos -->
+  <div class="cab">
+    <div>
+      <div class="rot">Gestão SST › PGR › Gerar pela EAP</div>
+      <h1>PGR [Obra Parque Roger Fase II] · Rev. [03]</h1>
+      <div class="meta">EAP: [EAP_ParqueRoger_out26.xlsx] · Elaborado por [Técnico Fulano] · <span class="chip at">Rascunho</span></div>
+    </div>
+    <div class="cab-acoes">
+      <button class="btn prev novo" id="abrir-previa" type="button">Pré-visualizar PGR</button>
+    </div>
+  </div>
+  <div class="passos" id="passos">
+    <div class="passo feito"><b>1</b>Enviar a EAP</div>
+    <div class="passo on" data-p="p2"><b>2</b>Conferir a leitura</div>
+    <div class="passo feito"><b>3</b>Funções e GHE</div>
+    <div class="passo" data-p="p4"><b>4</b>Inventário de riscos</div>
+    <div class="passo"><b>5</b>Aprovação</div>
+  </div>
+
+  <!-- TELA: passo 2 -->
+  <section id="p2" class="tela">
+    <div class="card">
+      <h3>Estrutura lida da EAP · [14] itens · [11] entram no PGR
+        <span><span class="chip vin">1 padrão</span> <span class="chip info">1 incluído à mão</span> <span class="chip at">1 para conferir</span></span>
+      </h3>
+      <div class="lista-wrap"><div>
+        <div class="linha adm"><input type="checkbox" checked aria-label="Usar"><span class="cod">ADM</span><input class="nome" value="Administrativo / Canteiro" aria-label="Nome"><span class="per">toda a obra</span><span class="chip vin">padrão em toda obra</span></div>
+        <div class="linha n2 adm"><input type="checkbox" checked aria-label="Usar"><span class="cod">ADM.1</span><input class="nome" value="Escritório da obra, almoxarifado e apontamento" aria-label="Nome"><span class="per">toda a obra</span></div>
+        <div class="linha"><input type="checkbox" checked aria-label="Usar"><span class="cod">1</span><input class="nome" value="[Infraestrutura]" aria-label="Nome"><span class="per">[nov/26 – fev/27]</span></div>
+        <div class="linha n2"><input type="checkbox" checked aria-label="Usar"><span class="cod">1.1</span><input class="nome" value="[Escavação de fundações]" aria-label="Nome"><span class="per">[nov/26]</span></div>
+        <div class="linha n2 conf"><input type="checkbox" checked aria-label="Usar"><span class="cod">1.2</span><input class="nome" value="[Armaçao e concretag. blocos]" aria-label="Nome"><span class="per">[dez/26]</span><span class="chip at">conferir</span></div>
+        <div class="linha"><input type="checkbox" aria-label="Usar"><span class="cod">2</span><input class="nome" value="[Orçamento e medições]" aria-label="Nome"><span class="per">—</span></div>
+        <div class="linha"><input type="checkbox" checked aria-label="Usar"><span class="cod">3</span><input class="nome" value="[Superestrutura]" aria-label="Nome"><span class="per">[jan/27 – jun/27]</span></div>
+        <div class="linha n2"><input type="checkbox" checked aria-label="Usar"><span class="cod">3.1</span><input class="nome" value="[Montagem de formas e escoramento]" aria-label="Nome"><span class="per">[jan/27]</span></div>
+        <div class="linha n2 man"><input type="checkbox" checked aria-label="Usar"><span class="cod">3.9</span><input class="nome" value="Içamento de cargas com guindaste" aria-label="Nome"><span class="per">[mar/27]</span><span class="chip info">incluído à mão</span> <button class="btn peq" type="button">Remover</button></div>
+      </div></div>
+
+      <form class="add" id="form-add">
+        <div><label for="add-cod">Código (opcional)</label><input id="add-cod" placeholder="ex.: 3.10"></div>
+        <div><label for="add-nome">Nome do item *</label><input id="add-nome" placeholder="ex.: Instalações provisórias de energia"></div>
+        <div><label for="add-tipo">Tipo</label><select id="add-tipo"><option>Atividade (dentro de um pacote)</option><option>Pacote</option></select></div>
+        <div><button class="btn pri" type="submit">Adicionar item</button></div>
+      </form>
+      <p class="nota">
+        <b>Administrativo / Canteiro</b> entra sempre, em toda obra, mesmo que a EAP não traga. Ele vira o GHE Administrativo (auxiliar administrativo, almoxarife, apontador…). Se a obra não tiver essa área, é só desmarcar.<br>
+        Itens <b>incluídos à mão</b> seguem o mesmo caminho dos itens da EAP: viram GHE, funções e riscos quando você confirmar a estrutura.
+      </p>
+      <div class="acoes"><button class="btn" type="button">Salvar</button><button class="btn pri" type="button">Confirmar estrutura</button></div>
+    </div>
+  </section>
+
+  <!-- TELA: passo 4 com prévia -->
+  <section id="p4" class="tela" hidden>
+    <div class="card">
+      <h3>Inventário de riscos · GHE 02 – [Estrutura] <span class="chip info">clique em “Pré-visualizar PGR” no topo</span></h3>
+      <p class="nota" style="margin-top:0">O botão fica no topo do gerador, do passo 2 ao 5, enquanto o PGR não foi aprovado. Ele salva o que está na tela e abre o PGR dentro do app, do jeito que vai sair, com a marca <b>RASCUNHO</b>.</p>
+      <div class="lista-wrap"><div>
+        <table class="reg">
+          <tr><th>Risco</th><th>Medida</th><th>Situação no rascunho</th><th>Sai no PGR?</th></tr>
+          <tr><td>Queda de altura</td><td>Linha de vida e cinto paraquedista tipo [X]</td><td><span class="chip at">sugestão IA, ninguém mexeu</span></td><td><span class="chip ok">sim, como padrão</span></td></tr>
+          <tr><td>Queda de altura</td><td>Guarda-corpo em todo o perímetro da laje <i>(editada)</i></td><td><span class="chip info">editada pelo técnico</span></td><td><span class="chip ok">sim, editada</span></td></tr>
+          <tr><td>Queda de altura</td><td class="riscado">Rede de proteção abaixo da laje</td><td><span class="chip vin">descartada</span></td><td>não</td></tr>
+          <tr><td class="riscado">Ruído contínuo</td><td class="riscado">Protetor auricular tipo plug</td><td><span class="chip vin">risco excluído</span></td><td>não</td></tr>
+          <tr><td>Queda de materiais</td><td>Isolamento da área sob o içamento</td><td><span class="chip info">acrescentada à mão</span></td><td><span class="chip ok">sim</span></td></tr>
+        </table>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- TELA: regras -->
+  <section id="regras" class="tela" hidden>
+    <div class="grid2">
+      <div class="card">
+        <h3>Regra do rascunho</h3>
+        <table class="reg">
+          <tr><th>O que aconteceu com o item</th><th>Sai no PGR</th></tr>
+          <tr><td>Ninguém mexeu (função, risco ou medida da IA)</td><td><span class="chip ok">sim, como padrão</span></td></tr>
+          <tr><td>Foi editado</td><td><span class="chip ok">sim, editado</span></td></tr>
+          <tr><td>Foi aceito</td><td><span class="chip ok">sim</span></td></tr>
+          <tr><td>Foi acrescentado à mão</td><td><span class="chip ok">sim</span></td></tr>
+          <tr><td>Foi recusado, descartado ou excluído</td><td>não aparece</td></tr>
+          <tr><td>Item da EAP desmarcado</td><td>não aparece</td></tr>
+        </table>
+        <p class="nota">A mesma regra vale na prévia, no PDF final e na aprovação: o que você vê no rascunho é o que o engenheiro aprova.</p>
+      </div>
+      <div class="card">
+        <h3>Aprovação do engenheiro · o que muda</h3>
+        <ul class="limpa">
+          <li class="riscado">“GHE 02: 7 medida(s) sem decisão” travava o botão</li>
+          <li>Medida que ninguém decidiu <b>passa a valer como aceita</b></li>
+          <li>Continua travando: <b>risco não revisado</b> (probabilidade e severidade)</li>
+          <li>Continua travando: <b>medida sem classificação</b> (eliminação, EPC, administrativa ou EPI)</li>
+          <li>Continua travando: GHE sem função, função sem descrição, CA de EPI vencido</li>
+        </ul>
+        <p class="nota">O engenheiro também ganha o botão <b>Pré-visualizar PGR</b> no lugar de “Ver minuta em PDF”, que hoje baixa um arquivo. Na fila dele a marca muda para <b>MINUTA · AGUARDANDO APROVAÇÃO</b>.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Visualizador da prévia -->
+<div class="vis" id="vis" hidden role="dialog" aria-label="Pré-visualização do PGR">
+  <div class="vis-barra">
+    <div>
+      <div class="tit">Pré-visualização do PGR · Rascunho</div>
+      <div class="vis-resumo">Salvo às [14:32]. Inclui [9] sugestões da IA que ninguém alterou (entram como padrão) e não mostra [4] itens removidos ou descartados.</div>
+    </div>
+    <div class="cab-acoes">
+      <button class="btn" type="button">Baixar PDF do rascunho</button>
+      <button class="btn pri" id="fechar-previa" type="button">Fechar</button>
+    </div>
+  </div>
+  <div class="vis-corpo">
+    <div class="folha">
+      <div class="f-cab"><div class="f-logo">AAHBRANT</div><div class="f-tit">PROGRAMA DE GERENCIAMENTO DE RISCOS – PGR</div><div class="f-cod">[AHB-PGR-SST-001-03]<br>Pág. 6 de [24]</div></div>
+      <div class="f-faixa">RASCUNHO PARA CONFERÊNCIA · NÃO ENVIADO PARA APROVAÇÃO · SEM VALOR DOCUMENTAL</div>
+
+      <h4>4. Grupos Homogêneos de Exposição (GHE)</h4>
+      <div class="tab-wrap"><table>
+        <tr><th>GHE</th><th>Função</th><th>CBO</th><th>Expostos</th><th>Descrição das atividades</th></tr>
+        <tr><td>01 – Administrativo</td><td>Auxiliar administrativo</td><td>4110-10</td><td>[3]</td><td>Rotinas de escritório da obra, controle de documentos e apontamento.</td></tr>
+        <tr><td>01 – Administrativo</td><td>Almoxarife</td><td>4141-05</td><td>[2]</td><td>Recebimento, guarda e entrega de materiais, ferramentas e EPI.</td></tr>
+        <tr><td>02 – [Estrutura]</td><td>Carpinteiro</td><td>7155-05</td><td>[14]</td><td>Montagem e desmontagem de formas e escoramento das lajes.</td></tr>
+        <tr><td>02 – [Estrutura]</td><td>Operador de guindaste</td><td>7151-30</td><td>[1]</td><td>Içamento de cargas com guindaste.</td></tr>
+      </table></div>
+
+      <h4>5. Inventário de riscos · GHE 02 – [Estrutura]</h4>
+      <div class="tab-wrap"><table>
+        <tr><th>Perigo</th><th>Danos</th><th>P</th><th>S</th><th>Nível</th><th>Medidas de prevenção</th></tr>
+        <tr><td>Queda de altura (borda de laje)</td><td>Fraturas, morte</td><td>3</td><td>5</td><td><span class="nv a">Alto</span></td>
+          <td><b>EPC:</b> Guarda-corpo em todo o perímetro da laje.<br><b>EPI:</b> Linha de vida e cinto paraquedista tipo [X] – CA [12345].<br><b>Adm.:</b> PT para trabalho em altura (NR-35).</td></tr>
+        <tr><td>Queda de materiais</td><td>Contusões, traumatismo</td><td>2</td><td>4</td><td><span class="nv m">Médio</span></td>
+          <td><b>Adm.:</b> Isolamento da área sob o içamento.<br><b>EPI:</b> Capacete com jugular – CA [67890].</td></tr>
+        <tr><td>Esforço físico / postura</td><td>Lombalgia</td><td>3</td><td>2</td><td><span class="nv b">Baixo</span></td>
+          <td><b>Adm.:</b> Rodízio de tarefas e pausas.</td></tr>
+      </table></div>
+
+      <div class="f-rod"><span>Gerado em [29/10/2026 14:32] · Rascunho · Rev. [03]</span><span>Responsável técnico: a definir na aprovação</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const abas = document.querySelectorAll('[role=tab]');
+  const telas = { p2: document.getElementById('p2'), p4: document.getElementById('p4'), regras: document.getElementById('regras') };
+  const passos = document.querySelectorAll('.passo[data-p]');
+  function mostrar(id) {
+    abas.forEach(a => a.setAttribute('aria-selected', String(a.dataset.tela === id)));
+    Object.entries(telas).forEach(([k, el]) => { el.hidden = k !== id; });
+    passos.forEach(p => p.classList.toggle('on', p.dataset.p === id));
+    document.getElementById('passos').hidden = id === 'regras';
+  }
+  abas.forEach(a => a.addEventListener('click', () => mostrar(a.dataset.tela)));
+  const vis = document.getElementById('vis');
+  document.getElementById('abrir-previa').addEventListener('click', () => { vis.hidden = false; });
+  document.getElementById('fechar-previa').addEventListener('click', () => { vis.hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') vis.hidden = true; });
+  document.getElementById('form-add').addEventListener('submit', e => e.preventDefault());
+</script>

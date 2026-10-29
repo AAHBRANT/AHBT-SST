@@ -69,6 +69,32 @@ public class GeracaoPgrEapTests
     }
 
     [Fact]
+    public async Task Criar_SempreIncluiAdministrativoNoInicio_MarcadoParaUsar()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var id = await CriarGeracaoAsync(db, obra, new IaFalsa());
+
+        var g = await db.GeracoesPgrEap.SingleAsync(x => x.Id == id);
+        var itens = SerializacaoGeracaoTeste.Ler(g.EstruturaJson).Itens;
+        Assert.Equal(new[] { "ADM", "ADM.1", "1", "1.1", "9" }, itens.Select(i => i.Codigo));
+        Assert.True(itens[0].Usar && itens[1].Usar);
+        Assert.Equal(2, itens[1].Nivel);
+
+        // Não duplica se a estrutura já tem o administrativo.
+        var e = new EstruturaGeracaoPgr { Itens = itens };
+        ItemAdministrativoEap.Garantir(e);
+        Assert.Single(e.Itens, i => i.Codigo == "ADM.1");
+    }
+
+    [Fact]
+    public void Medida_SoDescartadaFicaForaDoPgr()
+    {
+        Assert.True(new MedidaGerada { Decisao = "Pendente" }.EntraNoPgr());
+        Assert.True(new MedidaGerada { Decisao = "Aceita" }.EntraNoPgr());
+        Assert.False(new MedidaGerada { Decisao = "Descartada" }.EntraNoPgr());
+    }
+
+    [Fact]
     public async Task SugerirGhes_CasaFuncaoDoCadastro_ENumera_EDescartaAtividadeQueNaoEstaNaEap()
     {
         var (db, obra, armador) = await CriarAsync();
@@ -339,16 +365,17 @@ public class GeracaoPgrEapTests
             Complementares = ComplementaresCompletos(),
         };
 
-        // Com medida pendente, nem envia nem aprova sem resolver.
+        // Medida sem decisão vale como aceita (regra do padrão, 29/10/2026); o que ainda trava é o risco não revisado.
         estrutura.Ghes[0].Atividades[0].Riscos[0].Medidas[0].Decisao = "Pendente";
+        estrutura.Ghes[0].Atividades[0].Riscos[0].Revisado = false;
         await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
         await new EnviarGeracaoPgrParaAprovacaoCommandHandler(db).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(id), default);
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             new AprovarGeracaoPgrCommandHandler(db).Handle(new AprovarGeracaoPgrCommand(id, null, "Eng. Carlos"), default));
 
         // Engenheiro devolve; técnico resolve e reenvia; engenheiro aprova.
-        await new DevolverGeracaoPgrCommandHandler(db).Handle(new DevolverGeracaoPgrCommand(id, "Decidir medidas"), default);
-        estrutura.Ghes[0].Atividades[0].Riscos[0].Medidas[0].Decisao = "Aceita";
+        await new DevolverGeracaoPgrCommandHandler(db).Handle(new DevolverGeracaoPgrCommand(id, "Revisar o risco"), default);
+        estrutura.Ghes[0].Atividades[0].Riscos[0].Revisado = true;
         await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
         await new EnviarGeracaoPgrParaAprovacaoCommandHandler(db).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(id), default);
         var pgrId = await new AprovarGeracaoPgrCommandHandler(db).Handle(new AprovarGeracaoPgrCommand(id, null, "Eng. Carlos"), default);
@@ -773,4 +800,10 @@ public class GeracaoPgrEapTests
         Assert.Equal(0, n);
         Assert.Null(ia.ContextoAcompanhamento);
     }
+}
+
+internal static class SerializacaoGeracaoTeste
+{
+    public static EstruturaGeracaoPgr Ler(string json) =>
+        System.Text.Json.JsonSerializer.Deserialize<EstruturaGeracaoPgr>(json, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
 }
