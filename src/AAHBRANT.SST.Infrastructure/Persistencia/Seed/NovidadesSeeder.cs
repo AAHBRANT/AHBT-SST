@@ -1860,6 +1860,17 @@ public static class NovidadesSeeder
                     "O passo \"Conferir a leitura\" só mostrava o que veio da EAP, sem a parte administrativa da obra.",
                     "Todo PGR novo já traz o item Administrativo / Canteiro, que vira o GHE Administrativo (dá para desmarcar). No mesmo passo, o botão \"Adicionar item\" inclui o que a EAP não trouxe."),
             }),
+        new(
+            Versao: "5.108.1",
+            Titulo: "Assinatura facial de EPI e uniforme só com câmera ao vivo",
+            DataPublicacao: new DateTime(2026, 10, 29, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Foto da galeria não assina mais entrega de EPI e uniforme",
+                    "Na entrega de EPI e de uniforme, a assinatura facial aceitava \"Anexar foto da galeria\", o que permitia assinar com uma foto guardada do funcionário.",
+                    "A assinatura facial dessas entregas agora exige a câmera ao vivo, como já acontecia no cadastro facial, no quiosque, no DDS e nos treinamentos. O funcionário precisa estar na frente da câmera na hora da entrega."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
