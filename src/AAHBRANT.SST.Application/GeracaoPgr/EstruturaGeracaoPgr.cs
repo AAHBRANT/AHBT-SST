@@ -195,6 +195,19 @@ public static class ItemAdministrativoEap
 {
     public const string CodigoPacote = "ADM";
     public const string CodigoAtividade = "ADM.1";
+    public const string NomeGhe = "Administrativo";
+
+    // "Canteiro" sozinho não conta: mobilização e instalação de canteiro são frente de obra.
+    private static readonly string[] TermosAdministrativos = { "administrativ", "escritorio", "almoxarifado", "apontamento" };
+
+    // Item da área administrativa: o padrão (código ADM) ou um incluído à mão com esse nome, como em rascunho
+    // anterior ao item padrão (29/10/2026).
+    public static bool EhAdministrativo(ItemEapGerado i)
+    {
+        if (i.Codigo.StartsWith(CodigoPacote, StringComparison.OrdinalIgnoreCase)) return true;
+        var nome = AAHBRANT.SST.Application.Common.FuncaoSstClassifier.Normalizar(i.Nome);
+        return TermosAdministrativos.Any(nome.Contains);
+    }
 
     public static void Garantir(EstruturaGeracaoPgr e)
     {

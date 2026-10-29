@@ -17,7 +17,12 @@ public class GeracaoPgrEapTests
         public ContextoRiscosAtividade? ContextoRiscos { get; private set; }
 
         public Task<List<ItemEapGerado>> LerEapAsync(string textoEap, CancellationToken ct) => Task.FromResult(Itens);
-        public Task<List<GheGerado>> SugerirGhesAsync(IReadOnlyList<ItemEapGerado> atividades, IReadOnlyList<string> funcoesCadastradas, CancellationToken ct) => Task.FromResult(Ghes);
+        public List<string> AtividadesEnviadas { get; private set; } = new();
+        public Task<List<GheGerado>> SugerirGhesAsync(IReadOnlyList<ItemEapGerado> atividades, IReadOnlyList<string> funcoesCadastradas, CancellationToken ct)
+        {
+            AtividadesEnviadas = atividades.Select(a => a.Codigo).ToList();
+            return Task.FromResult(Ghes);
+        }
         public Task<List<RiscoGerado>> GerarRiscosAsync(ContextoRiscosAtividade contexto, CancellationToken ct)
         {
             ContextoRiscos = contexto;
@@ -113,7 +118,8 @@ public class GeracaoPgrEapTests
         await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
 
         var dto = await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default);
-        var ghe = Assert.Single(dto.Estrutura.Ghes);
+        // O ADM.1 padrão, que a IA falsa não agrupou, vai para o GHE Administrativo (no fim).
+        var ghe = Assert.Single(dto.Estrutura.Ghes, g => g.Nome != ItemAdministrativoEap.NomeGhe);
         Assert.Equal(1, ghe.Numero);
         Assert.Equal(armador.Id, ghe.Funcoes.Single(f => f.Nome == "Armador").FuncaoId);
         Assert.Null(ghe.Funcoes.Single(f => f.Nome == "Soldador").FuncaoId);
@@ -433,9 +439,68 @@ public class GeracaoPgrEapTests
         await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
 
         var dto = await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default);
-        var ghe = Assert.Single(dto.Estrutura.Ghes);
+        var ghe = Assert.Single(dto.Estrutura.Ghes, g => g.Nome != ItemAdministrativoEap.NomeGhe);
         Assert.Equal(new[] { "1.1", "1.2" }, ghe.Atividades.Select(a => a.CodigoEap).ToArray());
         Assert.Equal(2, ghe.Funcoes.Count); // Armador não repete
+    }
+
+    private static async Task IncluirItensManuaisAsync(Infrastructure.Persistencia.SstDbContext db, Guid id, params ItemEapGerado[] itens)
+    {
+        var estrutura = (await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default)).Estrutura;
+        estrutura.Itens.AddRange(itens);
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 2, estrutura), default);
+    }
+
+    [Fact]
+    public async Task SugerirGhes_ItemManualComoPacoteENomeAdministrativo_VaiParaIa_EFicaNoGheAdministrativo()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        await IncluirItensManuaisAsync(db, id, new ItemEapGerado { Codigo = "01.02", Nome = "Administrativo", Nivel = 1, Manual = true });
+        // A IA junta o administrativo à frente de obra e esquece o ADM.1 padrão.
+        ia.Ghes = new()
+        {
+            new GheGerado { Nome = "Estrutura", Funcoes = new() { new FuncaoGerada { Nome = "ARMADOR", Descricao = "x" } },
+                Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" }, new AtividadeGerada { CodigoEap = "01.02" } } },
+        };
+
+        await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
+
+        Assert.Contains("01.02", ia.AtividadesEnviadas);
+        var ghes = (await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default)).Estrutura.Ghes;
+        Assert.Equal(new[] { "1.1" }, ghes.Single(g => g.Nome == "Estrutura").Atividades.Select(a => a.CodigoEap).ToArray());
+        var adm = ghes.Single(g => g.Nome == ItemAdministrativoEap.NomeGhe);
+        Assert.Equal(new[] { "ADM.1", "01.02" }, adm.Atividades.Select(a => a.CodigoEap).OrderBy(c => c == "01.02").ToArray());
+        Assert.Equal("Administrativo", adm.Atividades.Single(a => a.CodigoEap == "01.02").Nome);
+    }
+
+    [Fact]
+    public async Task SugerirGhes_ItemQueAIaNaoAgrupou_NaoSome_VaiParaGheAConferir()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        await IncluirItensManuaisAsync(db, id, new ItemEapGerado { Codigo = "M1", Nome = "Ponte provisória", Nivel = 2, Manual = true });
+        ia.Ghes = new() { new GheGerado { Nome = "Estrutura", Funcoes = new() { new FuncaoGerada { Nome = "ARMADOR", Descricao = "x" } }, Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" } } } };
+
+        await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
+
+        var dto = await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default);
+        var conferir = dto.Estrutura.Ghes.Single(g => g.Atividades.Any(a => a.CodigoEap == "M1"));
+        Assert.StartsWith("Itens a conferir", conferir.Nome);
+        Assert.Empty(conferir.Funcoes);
+        Assert.Contains(dto.PendenciasAprovacao, p => p.Contains($"GHE {conferir.Numero:00} sem funções"));
+        Assert.DoesNotContain(dto.PendenciasAprovacao, p => p.Contains("sem GHE"));
+    }
+
+    [Fact]
+    public void Administrativo_ReconheceCodigoENome_MasNaoCanteiroDeObra()
+    {
+        Assert.True(ItemAdministrativoEap.EhAdministrativo(new ItemEapGerado { Codigo = "ADM.1", Nome = "x" }));
+        Assert.True(ItemAdministrativoEap.EhAdministrativo(new ItemEapGerado { Codigo = "01.02", Nome = "Administrativo" }));
+        Assert.True(ItemAdministrativoEap.EhAdministrativo(new ItemEapGerado { Codigo = "9", Nome = "Escritório da obra" }));
+        Assert.False(ItemAdministrativoEap.EhAdministrativo(new ItemEapGerado { Codigo = "1.1", Nome = "Mobilização do canteiro" }));
     }
 
     [Fact]
@@ -448,10 +513,13 @@ public class GeracaoPgrEapTests
         await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
 
         var dto = await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default);
-        Assert.Contains(dto.PendenciasAprovacao, p => p.Contains("sem GHE: 1.2"));
+        // A IA não agrupou o 1.2: ele não some, fica num GHE a conferir. Se alguém o tirar de lá à mão, trava.
+        var e = dto.Estrutura;
+        Assert.StartsWith("Itens a conferir", e.Ghes.Single(g => g.Atividades.Any(a => a.CodigoEap == "1.2")).Nome);
+        e.Ghes.RemoveAll(g => g.Nome.StartsWith("Itens a conferir"));
+        Assert.Contains(PendenciasGeracaoPgr.Calcular(e, 5, 5), p => p.Contains("sem GHE: 1.2"));
 
         // Edição manual que reintroduz as duplicatas.
-        var e = dto.Estrutura;
         var copia = new GheGerado { Numero = 1, Nome = "ESTRUTURA", Funcoes = e.Ghes[0].Funcoes, Atividades = new() { new AtividadeGerada { CodigoEap = "1.1", Nome = "Concretagem de laje" } } };
         e.Ghes.Add(copia);
         var p = PendenciasGeracaoPgr.Calcular(e, 5, 5);

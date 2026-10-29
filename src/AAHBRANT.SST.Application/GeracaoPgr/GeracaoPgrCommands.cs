@@ -89,10 +89,11 @@ internal static class SerializacaoGeracao
 // O que ainda impede a aprovação. A tela mostra a lista; o botão Aprovar só libera com ela vazia.
 public static class PendenciasGeracaoPgr
 {
-    // Itens da EAP marcados que entram nos GHEs (mesma regra da sugestão de GHEs).
+    // Itens da EAP marcados que entram nos GHEs (mesma regra da sugestão de GHEs). Item incluído à mão entra
+    // mesmo como pacote: não tem atividade abaixo dele que o represente (29/10/2026).
     public static List<ItemEapGerado> AtividadesDaEap(EstruturaGeracaoPgr e)
     {
-        var usadas = e.Itens.Where(i => i.Usar && i.Nivel >= 2).ToList();
+        var usadas = e.Itens.Where(i => i.Usar && (i.Nivel >= 2 || i.Manual)).ToList();
         return usadas.Count > 0 ? usadas : e.Itens.Where(i => i.Usar).ToList();
     }
 
@@ -382,6 +383,35 @@ public class SugerirGhesGeracaoPgrCommandHandler : IRequestHandler<SugerirGhesGe
             var funcoesVistas = new HashSet<string>();
             ghe.Funcoes = ghe.Funcoes.Where(f => funcoesVistas.Add(FuncaoSstClassifier.Normalizar(f.Nome))).ToList();
         }
+
+        // Administrativo fica sempre sozinho no GHE Administrativo, mesmo quando a IA o juntou a uma frente de
+        // obra ou o deixou de fora (item incluído à mão com outro código, 29/10/2026).
+        var administrativas = usadas.Where(ItemAdministrativoEap.EhAdministrativo).Select(i => i.Codigo).ToHashSet();
+        if (administrativas.Count > 0)
+        {
+            // O GHE que a IA já montou só com administrativo, ou um de nome administrativo; senão, um novo.
+            var adm = unicos.FirstOrDefault(x => x.Atividades.Count > 0 && x.Atividades.All(a => administrativas.Contains(a.CodigoEap)))
+                ?? unicos.FirstOrDefault(x => FuncaoSstClassifier.Normalizar(x.Nome).StartsWith("administrativ"));
+            if (adm is null)
+            {
+                adm = new GheGerado { Nome = ItemAdministrativoEap.NomeGhe, Ambiente = "Escritório e almoxarifado da obra" };
+                unicos.Add(adm);
+            }
+            foreach (var ghe in unicos.Where(x => x != adm)) ghe.Atividades.RemoveAll(a => administrativas.Contains(a.CodigoEap));
+            foreach (var codigo in administrativas.Where(c => adm.Atividades.All(a => a.CodigoEap != c)))
+                adm.Atividades.Add(new AtividadeGerada { CodigoEap = codigo, Nome = codigos[codigo] });
+        }
+
+        // Item marcado que a IA não colocou em nenhum GHE não pode sumir: vai para um GHE a conferir, que trava a
+        // aprovação até ganhar funções ou ter as atividades movidas.
+        var agrupadas = unicos.SelectMany(x => x.Atividades.Select(a => a.CodigoEap)).ToHashSet();
+        var soltas = usadas.Where(i => !agrupadas.Contains(i.Codigo)).ToList();
+        if (soltas.Count > 0)
+            unicos.Add(new GheGerado
+            {
+                Nome = "Itens a conferir (a IA não agrupou)",
+                Atividades = soltas.Select(i => new AtividadeGerada { CodigoEap = i.Codigo, Nome = i.Nome }).ToList(),
+            });
 
         var numero = 1;
         foreach (var ghe in unicos) ghe.Numero = numero++;
