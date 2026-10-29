@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Assinatura;
+using AAHBRANT.SST.Application.Cbo;
 using AAHBRANT.SST.Application.MatrizRisco;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
@@ -118,6 +119,10 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
         var expostosPorFuncao = (await _db.Trabalhadores.Where(t => t.ObraId == g.ObraId && t.DataDemissao == null)
                 .Select(t => t.FuncaoId).ToListAsync(ct))
             .GroupBy(id => id).ToDictionary(x => x.Key, x => x.Count());
+        // CBO da tabela oficial escolhido no PGR (29/10/2026), sempre como 0000-00; fora da tabela sai "—". Sem a tabela
+        // carregada, vale o cadastro como antes.
+        var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
+        if (!catalogo.Vazio) await CboFuncoesGeracao.CompletarAsync(_db, estrutura, catalogo, ct);
         var linhasFuncao = new List<LinhaFuncaoPdf>();
         var funcoesDosGhes = new List<(int Ghe, string Nome, Guid Id)>();
         foreach (var ghe in estrutura.Ghes.OrderBy(x => x.Numero))
@@ -127,6 +132,7 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
                 string? cbo = id is { } fid ? funcoesCadastro.FirstOrDefault(c => c.Id == fid)?.CboCodigo : null;
                 if (id is null && porNome.TryGetValue(FuncaoSstClassifier.Normalizar(f.Nome), out var achada))
                     (id, cbo) = (achada.Id, achada.Cbo);
+                if (!catalogo.Vazio) cbo = catalogo.Existe(f.Cbo) ? CodigoCbo.Formatar(CodigoCbo.Normalizar(f.Cbo)!) : null;
                 linhasFuncao.Add(new LinhaFuncaoPdf(ghe.Numero, f.Nome, string.IsNullOrWhiteSpace(cbo) ? null : cbo.Trim(),
                     id is { } i ? expostosPorFuncao.GetValueOrDefault(i) : 0));
                 if (id is { } idFuncao) funcoesDosGhes.Add((ghe.Numero, f.Nome, idFuncao));

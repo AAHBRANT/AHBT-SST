@@ -1893,6 +1893,17 @@ public static class NovidadesSeeder
                     "O PGR mostrava o tipo de risco só como texto cinza no canto da ficha.",
                     "Os riscos seguem a tabela de cores do mapa de riscos: físico verde, químico vermelho, biológico marrom, ergonômico e psicossocial amarelo, acidente azul. O PDF traz a tabela na seção da matriz, o resumo por grupo, selos em cada GHE e a cor em cada ficha. No passo Inventário de riscos do gerador, cada risco também aparece com a cor do grupo."),
             }),
+        new(
+            Versao: "5.109.0",
+            Titulo: "PGR: CBO das funções pela tabela oficial",
+            DataPublicacao: new DateTime(2026, 10, 29, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "CBO escolhido na tabela oficial da CBO",
+                    "Função criada pelo PGR saía sem CBO, e o CBO das outras vinha do RH, às vezes com o nome junto ou fora da tabela.",
+                    "No passo Funções e GHE do gerador, cada função tem o CBO da tabela oficial do Ministério do Trabalho: a IA sugere entre os códigos da tabela, e dá para buscar por código, nome ou sinônimo. Função sem CBO ou com código fora da tabela não pode ser enviada para aprovação. Na aprovação, o CBO vai para o cadastro de funções, e o RH não sobrescreve mais."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

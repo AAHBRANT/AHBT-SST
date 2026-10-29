@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Assinatura.Commands;
+using AAHBRANT.SST.Application.Cbo;
 using AAHBRANT.SST.Application.MatrizRisco;
 using System.Text.Json;
 using AAHBRANT.SST.Application.Common;
@@ -188,6 +189,10 @@ public class ObterGeracaoPgrEapQueryHandler : IRequestHandler<ObterGeracaoPgrEap
         var matriz = await _db.MatrizRiscoConfigs.VigenteMaisRecente().FirstOrDefaultAsync(ct);
         var maxP = matriz?.NumNiveisProbabilidade ?? 5;
         var maxS = matriz?.NumNiveisSeveridade ?? 5;
+        var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
+        await CboFuncoesGeracao.CompletarAsync(_db, estrutura, catalogo, ct);
+        var pendencias = PendenciasGeracaoPgr.Calcular(estrutura, maxP, maxS, await SerializacaoGeracao.CarregarEpisAsync(_db, estrutura, ct));
+        pendencias.AddRange(CboFuncoesGeracao.Pendencias(estrutura, catalogo));
 
         return new GeracaoPgrEapDto
         {
@@ -206,7 +211,7 @@ public class ObterGeracaoPgrEapQueryHandler : IRequestHandler<ObterGeracaoPgrEap
             AprovadoEmUtc = g.AprovadoEmUtc,
             PgrId = g.PgrId,
             Estrutura = estrutura,
-            PendenciasAprovacao = PendenciasGeracaoPgr.Calcular(estrutura, maxP, maxS, await SerializacaoGeracao.CarregarEpisAsync(_db, estrutura, ct)),
+            PendenciasAprovacao = pendencias,
             FuncoesCadastradas = await _db.Funcoes.OrderBy(f => f.Nome).Select(f => new FuncaoCadastroDto(f.Id, f.Nome)).ToListAsync(ct),
             MaxProbabilidade = maxP,
             MaxSeveridade = maxS,
@@ -418,9 +423,52 @@ public class SugerirGhesGeracaoPgrCommandHandler : IRequestHandler<SugerirGhesGe
         ghes = unicos;
 
         e.Ghes = ghes.Where(x => x.Funcoes.Count > 0 || x.Atividades.Count > 0).ToList();
+
+        var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
+        await CboFuncoesGeracao.CompletarAsync(_db, e, catalogo, ct);
+        await SugerirCboAsync(e, catalogo, ct);
+
         g.EstruturaJson = SerializacaoGeracao.Gravar(e);
         g.Passo = 3;
         await _db.SaveChangesAsync(ct);
+    }
+
+    // CBO das funções que ficaram sem código da tabela oficial (29/10/2026): o servidor separa os candidatos da tabela pelo
+    // nome e a IA só escolhe entre eles. Falha da IA não derruba os GHEs: a função fica sem CBO para o técnico escolher.
+    private async Task SugerirCboAsync(EstruturaGeracaoPgr e, CatalogoCbo catalogo, CancellationToken ct)
+    {
+        if (catalogo.Vazio) return;
+        var semCbo = e.Ghes.SelectMany(x => x.Funcoes).Where(f => !catalogo.Existe(f.Cbo)).ToList();
+        var pedidos = semCbo
+            .GroupBy(f => FuncaoSstClassifier.Normalizar(f.Nome))
+            .Select(x => (Chave: x.Key, Funcao: x.First(), Candidatos: catalogo.Candidatos(x.First().Nome)))
+            .Where(x => x.Candidatos.Count > 0)
+            .ToList();
+        if (pedidos.Count == 0) return;
+
+        List<CboSugeridoIa> sugestoes;
+        try
+        {
+            sugestoes = await _ia.SugerirCboAsync(pedidos.Select(p => new FuncaoParaCbo(p.Funcao.Nome, p.Funcao.Descricao,
+                p.Candidatos.Select(c => new CandidatoCbo(c.Codigo, c.Titulo, c.Sinonimo)).ToList())).ToList(), ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return;
+        }
+
+        foreach (var s in sugestoes)
+        {
+            var pedido = pedidos.FirstOrDefault(p => p.Chave == FuncaoSstClassifier.Normalizar(s.Funcao));
+            var codigo = CodigoCbo.Normalizar(s.Codigo);
+            if (pedido.Funcao is null || codigo is null || pedido.Candidatos.All(c => c.Codigo != codigo)) continue;
+            foreach (var f in semCbo.Where(f => FuncaoSstClassifier.Normalizar(f.Nome) == pedido.Chave))
+            {
+                f.Cbo = codigo;
+                f.CboTitulo = catalogo.TituloOficial(codigo);
+                f.CboSugeridoPelaIa = true;
+            }
+        }
     }
 }
 
@@ -505,6 +553,14 @@ public class EnviarGeracaoPgrParaAprovacaoCommandHandler : IRequestHandler<Envia
         if (e.Ghes.Count == 0 || e.Ghes.All(x => x.Atividades.All(a => !a.RiscosGerados)))
             throw new InvalidOperationException("Gere o inventário de riscos antes de enviar para aprovação.");
 
+        // Toda função precisa de CBO da tabela oficial antes do envio (decisão do usuário, 29/10/2026).
+        var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
+        await CboFuncoesGeracao.CompletarAsync(_db, e, catalogo, ct);
+        var semCbo = CboFuncoesGeracao.Pendencias(e, catalogo);
+        if (semCbo.Count > 0)
+            throw new InvalidOperationException("Escolha o CBO da tabela oficial no passo Funções e GHE. " + string.Join(" ", semCbo.Take(5)));
+        g.EstruturaJson = SerializacaoGeracao.Gravar(e);
+
         // Quem assina o PGR precisa estar escolhido antes de enviar; o técnico, se assina no sistema, assina agora.
         var comp = e.Complementares ?? new DadosComplementaresPgr();
         AssinaturaGeracaoPgr.ConferirEscolha(comp.Tecnico, AssinaturaGeracaoPgr.RotuloTecnico);
@@ -586,6 +642,9 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             ?? throw new InvalidOperationException("Nenhuma matriz de risco cadastrada.");
         var pendencias = PendenciasGeracaoPgr.Calcular(e, matriz.NumNiveisProbabilidade, matriz.NumNiveisSeveridade,
             await SerializacaoGeracao.CarregarEpisAsync(_db, e, ct));
+        var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
+        await CboFuncoesGeracao.CompletarAsync(_db, e, catalogo, ct);
+        pendencias.AddRange(CboFuncoesGeracao.Pendencias(e, catalogo));
         if (pendencias.Count > 0)
             throw new InvalidOperationException("Ainda há pendências: " + string.Join(" ", pendencias.Take(5)));
 
@@ -653,12 +712,22 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
         var funcoesPorId = await _db.Funcoes.ToDictionaryAsync(f => f.Id, ct);
         var funcoesPorNome = new Dictionary<string, Funcao>();
         foreach (var f in funcoesPorId.Values) funcoesPorNome.TryAdd(FuncaoSstClassifier.Normalizar(f.Nome), f);
+        // O CBO escolhido no PGR (tabela oficial) vai para o cadastro da função, nova ou existente (29/10/2026).
         Funcao Resolver(FuncaoGerada f)
         {
-            if (f.FuncaoId is { } id && funcoesPorId.TryGetValue(id, out var porId)) return porId;
+            var cbo = catalogo.Existe(f.Cbo) ? CodigoCbo.Formatar(CodigoCbo.Normalizar(f.Cbo)!) : null;
+            if (f.FuncaoId is { } id && funcoesPorId.TryGetValue(id, out var porId))
+            {
+                if (cbo is not null) porId.CboCodigo = cbo;
+                return porId;
+            }
             var chave = FuncaoSstClassifier.Normalizar(f.Nome);
-            if (funcoesPorNome.TryGetValue(chave, out var existente)) return existente;
-            var nova = new Funcao { Nome = f.Nome.Trim() };
+            if (funcoesPorNome.TryGetValue(chave, out var existente))
+            {
+                if (cbo is not null) existente.CboCodigo = cbo;
+                return existente;
+            }
+            var nova = new Funcao { Nome = f.Nome.Trim(), CboCodigo = cbo };
             _db.Funcoes.Add(nova);
             funcoesPorNome[chave] = nova;
             return nova;

@@ -35,6 +35,14 @@ public class GeracaoPgrEapTests
 
         public Task<List<AcompanhamentoSugeridoIa>> SugerirAcompanhamentoAsync(ContextoAcompanhamentoPlano contexto, CancellationToken ct) { ContextoAcompanhamento = contexto; return Task.FromResult(Acompanhamentos); }
 
+        public List<CboSugeridoIa> Cbos { get; set; } = new();
+        public List<FuncaoParaCbo> CboPedidos { get; private set; } = new();
+        public Task<List<CboSugeridoIa>> SugerirCboAsync(IReadOnlyList<FuncaoParaCbo> funcoes, CancellationToken ct)
+        {
+            CboPedidos = funcoes.ToList();
+            return Task.FromResult(Cbos);
+        }
+
 
         public Task<SugestaoEmergenciaIa> SugerirEmergenciaAsync(ContextoEmergenciaIa contexto, CancellationToken ct) =>
             Task.FromResult(new SugestaoEmergenciaIa(new List<RecomendacaoEmergenciaIa>(), new List<string>()));
@@ -645,6 +653,84 @@ public class GeracaoPgrEapTests
         AcoesPlano = new() { new AcaoPlanoGerada { Descricao = acao, ResponsavelNome = "Téc. Ana", Prazo = new DateTime(2026, 12, 15) } },
         Complementares = ComplementaresCompletos(),
     };
+
+    // Recorte da tabela oficial da CBO 2002 para os testes (códigos e títulos reais).
+    private static async Task CarregarTabelaCboAsync(Infrastructure.Persistencia.SstDbContext db)
+    {
+        db.TitulosCbo.AddRange(
+            new TituloCbo { Codigo = "715210", Titulo = "Pedreiro", Oficial = true },
+            new TituloCbo { Codigo = "717020", Titulo = "Servente de obras", Oficial = true },
+            new TituloCbo { Codigo = "715205", Titulo = "Calceteiro", Oficial = true },
+            new TituloCbo { Codigo = "715205", Titulo = "Rasteleiro de asfalto", Oficial = false },
+            new TituloCbo { Codigo = "715315", Titulo = "Armador de estrutura de concreto armado", Oficial = true });
+        await db.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task SugerirGhes_CboDoCadastroValidoEntra_EIaSoEscolheEntreOsCandidatos()
+    {
+        var (db, obra, armador) = await CriarAsync();
+        armador.CboCodigo = "7153-15";
+        await CarregarTabelaCboAsync(db);
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        ia.Ghes = new()
+        {
+            new GheGerado
+            {
+                Nome = "Estrutura", Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" } },
+                Funcoes = new()
+                {
+                    new FuncaoGerada { Nome = "Armador", Descricao = "x" },
+                    new FuncaoGerada { Nome = "Rasteleiro", Descricao = "Espalha asfalto" },
+                    new FuncaoGerada { Nome = "Pedreiro", Descricao = "x" },
+                },
+            },
+        };
+        // A IA tenta um código fora dos candidatos do pedreiro: é ignorado.
+        ia.Cbos = new() { new("Rasteleiro", "715205"), new("Pedreiro", "999999") };
+
+        await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
+
+        Assert.DoesNotContain(ia.CboPedidos, p => p.Nome == "Armador");
+        Assert.Contains(ia.CboPedidos.Single(p => p.Nome == "Rasteleiro").Candidatos, c => c.Codigo == "715205");
+        var dto = await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default);
+        var funcoes = dto.Estrutura.Ghes.Single(g => g.Nome == "Estrutura").Funcoes;
+        var arm = funcoes.Single(f => f.Nome == "Armador");
+        Assert.Equal(("715315", false), (arm.Cbo, arm.CboSugeridoPelaIa));
+        Assert.Equal("Armador de estrutura de concreto armado", arm.CboTitulo);
+        var rast = funcoes.Single(f => f.Nome == "Rasteleiro");
+        Assert.Equal(("715205", true, "Calceteiro"), (rast.Cbo, rast.CboSugeridoPelaIa, rast.CboTitulo));
+        Assert.Null(funcoes.Single(f => f.Nome == "Pedreiro").Cbo);
+        Assert.Contains(dto.PendenciasAprovacao, p => p.Contains("função Pedreiro sem CBO"));
+    }
+
+    [Fact]
+    public async Task Envio_FuncaoSemCboDaTabelaOficial_Trava_EAprovacaoGravaCboNoCadastro()
+    {
+        var (db, obra, _) = await CriarAsync();
+        await CarregarTabelaCboAsync(db);
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        var estrutura = EstruturaSimplesAprovavel("Instalar linha de vida");
+        estrutura.Ghes[0].Funcoes[0].Cbo = "717010 - Operador de martelete"; // valor antigo, fora do recorte da tabela
+        estrutura.Ghes[0].Funcoes.Add(new FuncaoGerada { Nome = "Rasteleiro", Descricao = "Espalha asfalto" });
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
+
+        var erro = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new EnviarGeracaoPgrParaAprovacaoCommandHandler(db).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(id), default));
+        Assert.Contains("não está na tabela oficial", erro.Message);
+        Assert.Contains("função Rasteleiro sem CBO", erro.Message);
+
+        estrutura.Ghes[0].Funcoes[0].Cbo = "7153-15";
+        estrutura.Ghes[0].Funcoes[1].Cbo = "715205";
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
+        await new EnviarGeracaoPgrParaAprovacaoCommandHandler(db).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(id), default);
+        await new AprovarGeracaoPgrCommandHandler(db).Handle(new AprovarGeracaoPgrCommand(id, null, "Eng. Carlos"), default);
+
+        Assert.Equal("7153-15", (await db.Funcoes.SingleAsync(f => f.Nome == "ARMADOR")).CboCodigo);
+        Assert.Equal("7152-05", (await db.Funcoes.SingleAsync(f => f.Nome == "Rasteleiro")).CboCodigo);
+    }
 
     private static async Task<Guid> AprovarAsync(Infrastructure.Persistencia.SstDbContext db, Obra obra, IaFalsa ia, EstruturaGeracaoPgr estrutura)
     {

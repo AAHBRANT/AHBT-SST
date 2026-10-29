@@ -21,6 +21,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Setor> Setores => Set<Setor>();
     public DbSet<Equipe> Equipes => Set<Equipe>();
     public DbSet<Funcao> Funcoes => Set<Funcao>();
+    public DbSet<TituloCbo> TitulosCbo => Set<TituloCbo>();
     public DbSet<Trabalhador> Trabalhadores => Set<Trabalhador>();
 
     public DbSet<PerfilAcesso> PerfisAcesso => Set<PerfilAcesso>();

@@ -1,3 +1,7 @@
+using AAHBRANT.SST.Application.Cbo;
+using AAHBRANT.SST.Application.Common.Interfaces;
+using Microsoft.EntityFrameworkCore;
+
 namespace AAHBRANT.SST.Application.GeracaoPgr;
 
 // Estrutura de trabalho do assistente "Gerar PGR pela EAP" (21/10/2026), guardada como JSON em
@@ -238,6 +242,58 @@ public class FuncaoGerada
     // Descrição das atividades da função — vai na íntegra para a Ordem de Serviço.
     public string? Descricao { get; set; }
     public bool SugeridaPelaIa { get; set; } = true;
+    // CBO da tabela oficial (29/10/2026): 6 dígitos quando válido; o valor antigo do cadastro, como veio, quando não está
+    // na tabela (a tela mostra "fora da tabela oficial"). Vai para o cadastro de funções na aprovação.
+    public string? Cbo { get; set; }
+    // Título oficial do código; o servidor preenche ao abrir. Nulo com Cbo preenchido = código fora da tabela.
+    public string? CboTitulo { get; set; }
+    public bool CboSugeridoPelaIa { get; set; }
+}
+
+// Completa e confere o CBO das funções da geração com a tabela oficial. Função sem CBO que casou com o cadastro herda
+// o CBO dele (se o cadastro tiver um válido ou não); o código válido fica com 6 dígitos e o título oficial.
+public static class CboFuncoesGeracao
+{
+    public static void Completar(EstruturaGeracaoPgr e, IReadOnlyDictionary<Guid, string?> cboCadastroPorId, CatalogoCbo catalogo)
+    {
+        foreach (var f in e.Ghes.SelectMany(g => g.Funcoes))
+        {
+            if (string.IsNullOrWhiteSpace(f.Cbo) && f.FuncaoId is { } id && cboCadastroPorId.GetValueOrDefault(id) is { Length: > 0 } doCadastro)
+            {
+                f.Cbo = doCadastro.Trim();
+                f.CboSugeridoPelaIa = false;
+            }
+            if (string.IsNullOrWhiteSpace(f.Cbo)) { f.Cbo = null; f.CboTitulo = null; continue; }
+            if (catalogo.Existe(f.Cbo))
+            {
+                f.Cbo = CodigoCbo.Normalizar(f.Cbo);
+                f.CboTitulo = catalogo.TituloOficial(f.Cbo);
+            }
+            else f.CboTitulo = null;
+        }
+    }
+
+    public static async Task CompletarAsync(IAppDbContext db, EstruturaGeracaoPgr e, CatalogoCbo catalogo, CancellationToken ct)
+    {
+        var ids = e.Ghes.SelectMany(g => g.Funcoes).Where(f => f.FuncaoId != null).Select(f => f.FuncaoId!.Value).Distinct().ToList();
+        var cadastro = await db.Funcoes.Where(f => ids.Contains(f.Id)).ToDictionaryAsync(f => f.Id, f => f.CboCodigo, ct);
+        Completar(e, cadastro, catalogo);
+    }
+
+    // Funções sem CBO da tabela oficial: travam o envio e a aprovação (decisão do usuário, 29/10/2026). Catálogo vazio
+    // (tabela ainda não carregada) não trava, para não parar o PGR por falta de dado de sistema.
+    public static List<string> Pendencias(EstruturaGeracaoPgr e, CatalogoCbo catalogo)
+    {
+        var p = new List<string>();
+        if (catalogo.Vazio) return p;
+        foreach (var g in e.Ghes)
+            foreach (var f in g.Funcoes)
+            {
+                if (string.IsNullOrWhiteSpace(f.Cbo)) p.Add($"GHE {g.Numero:00}: função {f.Nome} sem CBO.");
+                else if (!catalogo.Existe(f.Cbo)) p.Add($"GHE {g.Numero:00}: CBO \"{f.Cbo}\" da função {f.Nome} não está na tabela oficial.");
+            }
+        return p;
+    }
 }
 
 public class AtividadeGerada

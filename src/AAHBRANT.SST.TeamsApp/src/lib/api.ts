@@ -3008,7 +3008,12 @@ export interface RiscoGerado {
   exposicao: ExposicaoRisco;
 }
 export interface AtividadeGerada { codigoEap: string; nome: string; riscosGerados: boolean; riscos: RiscoGerado[] }
-export interface FuncaoGerada { funcaoId?: string | null; nome: string; descricao?: string | null; sugeridaPelaIa: boolean }
+// CBO da tabela oficial (29/10/2026): cbo com 6 dígitos quando válido; cbo preenchido com cboTitulo nulo = fora da tabela.
+export interface FuncaoGerada {
+  funcaoId?: string | null; nome: string; descricao?: string | null; sugeridaPelaIa: boolean;
+  cbo?: string | null; cboTitulo?: string | null; cboSugeridoPelaIa?: boolean;
+}
+export interface ResultadoBuscaCbo { codigo: string; codigoFormatado: string; titulo: string; sinonimo?: string | null }
 export interface GheGerado { numero: number; nome: string; ambiente?: string | null; jornada?: string | null; funcoes: FuncaoGerada[]; atividades: AtividadeGerada[] }
 export interface AcaoPlanoGerada {
   descricao: string; responsavelUsuarioId?: string | null; responsavelNome?: string | null; inicio?: string | null; prazo?: string | null;
@@ -5784,6 +5789,10 @@ export const api = {
       }),
     limparPorObra: (obraId: string) =>
       request<{ riscosRemovidos: number }>(`/api/riscos/obra/${obraId}`, { method: 'DELETE' }),
+  },
+  // Tabela oficial da CBO 2002: busca por código ou por palavras do título e dos sinônimos.
+  cbo: {
+    buscar: (busca: string) => request<ResultadoBuscaCbo[]>(`/api/cbo?busca=${encodeURIComponent(busca)}`),
   },
   geracoesPgrEap: {
     listar: (obraId?: string) => request<ResumoGeracaoPgrEap[]>(`/api/geracoes-pgr-eap${obraId ? `?obraId=${obraId}` : ''}`),
