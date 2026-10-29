@@ -1871,6 +1871,17 @@ public static class NovidadesSeeder
                     "Na entrega de EPI e de uniforme, a assinatura facial aceitava \"Anexar foto da galeria\", o que permitia assinar com uma foto guardada do funcionário.",
                     "A assinatura facial dessas entregas agora exige a câmera ao vivo, como já acontecia no cadastro facial, no quiosque, no DDS e nos treinamentos. O funcionário precisa estar na frente da câmera na hora da entrega."),
             }),
+        new(
+            Versao: "5.108.2",
+            Titulo: "PGR pela EAP: item incluído à mão não some mais dos GHEs",
+            DataPublicacao: new DateTime(2026, 10, 29, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Item incluído à mão entra nos GHEs",
+                    "Item incluído à mão como Pacote não ia para a IA, e item que a IA deixava de fora sumia dos GHEs sem aviso.",
+                    "Todo item marcado vai para a IA. O que ela não agrupar aparece no GHE \"Itens a conferir\", que precisa de funções antes da aprovação. Item com nome administrativo (escritório, almoxarifado, apontamento) vai sempre para o GHE Administrativo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
