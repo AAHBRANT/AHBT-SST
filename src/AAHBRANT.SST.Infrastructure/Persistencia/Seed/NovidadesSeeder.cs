@@ -1770,6 +1770,29 @@ public static class NovidadesSeeder
                     "Era possível lançar um certificado, uma turma ou uma entrega de EPI com data de amanhã, e o documento saía assinado hoje com a data errada.",
                     "A data de realização do treinamento (certificado, turma e alteração da data da turma) e a data de entrega de EPI não podem ser posteriores a hoje. O campo de data avisa na hora, em vermelho, e o sistema recusa o salvamento. Registros já existentes não mudam."),
             }),
+        new(
+            Versao: "5.105.0",
+            Titulo: "Nova tela Início e botões em verde",
+            DataPublicacao: new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Tela Início reorganizada e alinhada",
+                    "Os cards tinham larguras e alturas diferentes e alguns sobravam sozinhos numa linha.",
+                    "Todos os cards seguem a mesma grade, com a mesma altura em cada linha. O destaque \"Aptos para o campo\" vem primeiro, em verde. Os indicadores do dia agora são \"EPIs entregues hoje\" e \"DDS de hoje\"."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Dias sem acidente e pirâmide de segurança",
+                    "O card de Ocorrências mostrava barras empilhadas por mês e uma lista dos últimos registros.",
+                    "O card mostra os dias sem acidente da obra num calendário que vira a folha a cada dia, com comemoração quando a obra bate o recorde. As ocorrências aparecem na pirâmide de segurança; clique num nível para ver as ocorrências daquele tipo."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Agenda de renovações e itens clicáveis",
+                    "Ao clicar em \"Próximos vencimentos\" ou \"Atividade recente\", abria-se a lista geral do módulo.",
+                    "\"Próximos vencimentos\" virou \"Agenda de renovações\", separada por esta semana e próximas semanas. Nela e em \"Atividade recente\", cada item abre a própria página: a pessoa, o DDS, a inspeção ou a não conformidade."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Botões em verde em todo o sistema",
+                    "Os botões principais eram vinho.",
+                    "Todos os botões, incluindo o de Administração no menu lateral, usam o mesmo verde do botão \"Atalhos\". O ícone do Início virou uma casinha."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

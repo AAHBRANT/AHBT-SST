@@ -45,7 +45,7 @@ export function BloqueadosDialog({ aberto, liberacao, aoFechar, aoAbrirPessoa }:
     <Dialog open={aberto} onOpenChange={(_, dados) => { if (!dados.open) aoFechar(); }}>
       <DialogSurface>
         <DialogBody>
-          <DialogTitle>Quem está bloqueado ({pessoas.length})</DialogTitle>
+          <DialogTitle>Aguardando liberação ({pessoas.length})</DialogTitle>
           <DialogContent>
             <div className={estilos.filtros} role="group" aria-label="Filtrar por motivo">
               <Button size="small" appearance={filtro === 'todos' ? 'primary' : 'outline'} onClick={() => setFiltro('todos')}>
@@ -58,7 +58,7 @@ export function BloqueadosDialog({ aberto, liberacao, aoFechar, aoAbrirPessoa }:
                 Treinamento ({contagem.Treinamento})
               </Button>
             </div>
-            {visiveis.length === 0 && <Legenda>Ninguém bloqueado para este filtro.</Legenda>}
+            {visiveis.length === 0 && <Legenda>Ninguém aguardando liberação neste filtro.</Legenda>}
             <div className={estilos.lista}>
               {visiveis.map((pessoa) => (
                 <button key={pessoa.trabalhadorId} type="button" className={estilos.linha} onClick={() => aoAbrirPessoa(pessoa.trabalhadorId)}>

@@ -14,16 +14,26 @@ export interface ConformidadeObra {
 
 interface ConformidadePorObraCardProps {
   linhas: ConformidadeObra[];
+  /** Clique numa obra (28/10/2026): cada linha é clicável sozinha. */
+  aoAbrirObra?: (obra: ConformidadeObra) => void;
 }
 
 const useStyles = makeStyles({
-  lista: { display: 'flex', flexDirection: 'column', gap: '14px' },
+  lista: { display: 'flex', flexDirection: 'column', gap: '20px' },
   linha: {
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 1fr) 44px',
     columnGap: '12px',
     rowGap: '6px',
     alignItems: 'center',
+    padding: '8px 10px',
+    margin: '-8px -10px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    transitionProperty: 'background-color',
+    transitionDuration: '150ms',
+    ':hover': { backgroundColor: 'color-mix(in srgb, var(--sst-botao-marca) 9%, var(--sst-color-surface))' },
+    ':focus-visible': { outline: 'none', boxShadow: 'inset 0 0 0 2px var(--sst-botao-marca)' },
   },
   nome: {
     fontSize: '13px',
@@ -71,9 +81,10 @@ function indicadoresDaObra(obra: ConformidadeObra) {
   return { pior, demais: todos.filter((i) => i !== pior) };
 }
 
-// Conformidade por obra (pedido do usuário, 04/10): média de EPI, treinamentos e ASO em dia, com as
-// obras mais atrasadas primeiro — o card existe para apontar onde agir, não para premiar a melhor.
-export function ConformidadePorObraCard({ linhas }: ConformidadePorObraCardProps) {
+// "Obras em dia" (28/10/2026, antes "Conformidade por obra"): média de EPI, treinamentos e ASO em dia.
+// Nome positivo e ordem da obra mais em dia para a menos, por decisão do usuário; o pior indicador
+// de cada obra continua aparecendo embaixo dela. Cada obra é clicável.
+export function ConformidadePorObraCard({ linhas, aoAbrirObra }: ConformidadePorObraCardProps) {
   const estilos = useStyles();
   const paleta = usePaletaGraficos();
   const corDaFaixa = (pct: number) => (pct >= 85 ? paleta.ok : pct >= 70 ? paleta.atencao : paleta.alerta);
@@ -82,17 +93,30 @@ export function ConformidadePorObraCard({ linhas }: ConformidadePorObraCardProps
     <Card
       titulo={
         <>
-          Conformidade por obra <RotuloEscopo tipo="hoje" />
+          Obras em dia <RotuloEscopo tipo="hoje" />
         </>
       }
-      subtitulo="Média de EPI, treinamentos e ASO em dia, com o pior indicador de cada obra"
+      subtitulo="Quanto cada obra está em dia com EPI, treinamentos e ASO"
     >
       {linhas.length === 0 ? (
         <Legenda>Sem dados suficientes para calcular a conformidade das obras.</Legenda>
       ) : (
         <div className={estilos.lista}>
           {linhas.map((obra) => (
-            <div key={obra.id} className={estilos.linha}>
+            <div
+              key={obra.id}
+              className={estilos.linha}
+              role="link"
+              tabIndex={0}
+              aria-label={`${obra.nome}: ${obra.geral}% em dia`}
+              onClick={() => aoAbrirObra?.(obra)}
+              onKeyDown={(evento) => {
+                if (evento.key === 'Enter' || evento.key === ' ') {
+                  evento.preventDefault();
+                  aoAbrirObra?.(obra);
+                }
+              }}
+            >
               <div className={estilos.nome} title={obra.nome}>
                 {obra.nome}
               </div>
@@ -103,7 +127,7 @@ export function ConformidadePorObraCard({ linhas }: ConformidadePorObraCardProps
                 <div
                   className={estilos.trilho}
                   role="img"
-                  aria-label={`${obra.nome}: ${obra.geral}% de conformidade`}
+                  aria-label={`${obra.nome}: ${obra.geral}% em dia`}
                 >
                   <div
                     className={estilos.preenchimento}
@@ -117,7 +141,7 @@ export function ConformidadePorObraCard({ linhas }: ConformidadePorObraCardProps
                       <>
                         {pior && (
                           <>
-                            Pior:{' '}
+                            Mais baixo:{' '}
                             <strong style={{ color: paleta.alerta }}>{texto(pior.chave, pior.valor)}</strong>
                             {demais.length > 0 ? ' · ' : ''}
                           </>

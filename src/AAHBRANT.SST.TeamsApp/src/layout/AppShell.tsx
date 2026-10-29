@@ -25,7 +25,7 @@ import {
   useToastController,
 } from '@fluentui/react-components';
 import {
-  Grid24Regular,
+  Home24Regular,
   Add24Regular,
   CalendarLtr24Regular,
   ClipboardTaskListLtr24Regular,
@@ -642,7 +642,7 @@ function CapaceteObra24Regular(props: SVGProps<SVGSVGElement>) {
 // pilar. O Calendário voltou à sidebar como último módulo (pedido do usuário, 04/10): o mini
 // calendário saiu da tela inicial e a página completa /calendario é aberta direto por este item.
 const itensAvulsos: Array<ItemNav & { icone: IconeNav }> = [
-  { rota: '/', rotulo: 'Início', icone: Grid24Regular },
+  { rota: '/', rotulo: 'Início', icone: Home24Regular },
 ];
 
 // Reformulação de navegação (pedido do usuário, 02/09, réplica de mockup dark-mode): a gaveta
