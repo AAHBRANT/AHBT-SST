@@ -554,6 +554,24 @@ public class GeracaoPgrEapTests
     }
 
     [Fact]
+    public async Task SugerirGhes_AjudanteGeral_RecebeServenteDeObrasComoCandidato()
+    {
+        var (db, obra, _) = await CriarAsync();
+        await CarregarTabelaCboAsync(db);
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        ia.Ghes = new() { new GheGerado { Nome = "Estrutura", Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" } },
+            Funcoes = new() { new FuncaoGerada { Nome = "Servente", Descricao = "Auxilia" } } } };
+        ia.Cbos = new() { new("Ajudante Geral", "717020") };
+
+        await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
+
+        Assert.Equal("717020", ia.CboPedidos.Single().Candidatos[0].Codigo);
+        var f = (await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default)).Estrutura.Ghes[0].Funcoes.Single();
+        Assert.Equal(("Ajudante Geral", "717020"), (f.Nome, f.Cbo));
+    }
+
+    [Fact]
     public async Task Aprovacao_RascunhoAntigoComAjudanteServente_CriaUmaFuncaoAjudanteGeral()
     {
         var (db, obra, _) = await CriarAsync();

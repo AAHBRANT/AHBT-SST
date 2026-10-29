@@ -437,13 +437,24 @@ public class SugerirGhesGeracaoPgrCommandHandler : IRequestHandler<SugerirGhesGe
 
     // CBO das funções que ficaram sem código da tabela oficial (29/10/2026): o servidor separa os candidatos da tabela pelo
     // nome e a IA só escolhe entre eles. Falha da IA não derruba os GHEs: a função fica sem CBO para o técnico escolher.
+    // O Ajudante Geral é o servente da obra: o 7170-20 (Servente de obras) entra sempre como primeiro candidato, já que o
+    // nome "Ajudante Geral" sozinho não leva a ele na busca por palavras.
+    private static List<ResultadoBuscaCbo> CandidatosCbo(CatalogoCbo catalogo, string nome)
+    {
+        var candidatos = catalogo.Candidatos(nome);
+        if (AjudanteGeral.EhGenerico(nome) && candidatos.All(c => c.Codigo != AjudanteGeral.CboServenteDeObras)
+            && catalogo.Buscar(AjudanteGeral.CboServenteDeObras).FirstOrDefault() is { } servente)
+            candidatos.Insert(0, servente);
+        return candidatos;
+    }
+
     private async Task SugerirCboAsync(EstruturaGeracaoPgr e, CatalogoCbo catalogo, CancellationToken ct)
     {
         if (catalogo.Vazio) return;
         var semCbo = e.Ghes.SelectMany(x => x.Funcoes).Where(f => !catalogo.Existe(f.Cbo)).ToList();
         var pedidos = semCbo
             .GroupBy(f => FuncaoSstClassifier.Normalizar(f.Nome))
-            .Select(x => (Chave: x.Key, Funcao: x.First(), Candidatos: catalogo.Candidatos(x.First().Nome)))
+            .Select(x => (Chave: x.Key, Funcao: x.First(), Candidatos: CandidatosCbo(catalogo, x.First().Nome)))
             .Where(x => x.Candidatos.Count > 0)
             .ToList();
         if (pedidos.Count == 0) return;

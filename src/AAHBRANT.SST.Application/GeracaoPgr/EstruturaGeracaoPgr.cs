@@ -256,6 +256,8 @@ public class FuncaoGerada
 public static class AjudanteGeral
 {
     public const string Nome = "Ajudante Geral";
+    // Servente de obras na CBO 2002: o candidato natural do Ajudante Geral (a IA ainda confirma).
+    public const string CboServenteDeObras = "717020";
 
     private static readonly HashSet<string> PalavrasGenericas = new()
     {

@@ -73,14 +73,38 @@ public class CatalogoCbo
             .ToList();
     }
 
-    // Códigos candidatos para o nome de uma função, para a IA escolher: os que mais compartilham palavras com o nome.
-    public List<ResultadoBuscaCbo> Candidatos(string nomeFuncao, int maximo = 12)
+    // Jargão de obra que não aparece na CBO com o mesmo nome (29/10/2026): vira as palavras que a tabela usa.
+    private static readonly Dictionary<string, string[]> JargaoObra = new()
     {
-        var palavras = Palavras(FuncaoSstClassifier.Normalizar(nomeFuncao));
+        ["munck"] = new[] { "guindaste", "guincho" },
+        ["guindauto"] = new[] { "guindaste", "guincho" },
+        ["op"] = new[] { "operador" },
+        ["pavimentacao"] = new[] { "pavimentacao", "asfalto", "obras" },
+    };
+
+    // Códigos candidatos para o nome de uma função, para a IA escolher. Palavra rara vale mais que palavra comum
+    // ("munck" pesa mais que "operador"), e ocupação da construção civil e de máquinas/transporte (grupos 71 e 78) tem
+    // preferência: sem isso, "Ajudante Geral" trazia "Cozinheiro geral" e deixava "Servente de obras" de fora.
+    public List<ResultadoBuscaCbo> Candidatos(string nomeFuncao, int maximo = 20)
+    {
+        var palavras = Palavras(FuncaoSstClassifier.Normalizar(nomeFuncao))
+            .SelectMany(p => JargaoObra.TryGetValue(p, out var troca) ? troca : new[] { p })
+            .Distinct().ToArray();
         if (palavras.Length == 0) return new();
+
+        bool Casa(Linha l, string p) => l.Palavras.Any(w => w.StartsWith(p) || p.StartsWith(w) && w.Length >= 5);
+        var total = (double)_linhas.Count;
+        var peso = palavras.ToDictionary(p => p, p => Math.Log(total / (1 + _linhas.Count(l => Casa(l, p)))));
+
         return _linhas
-            .Select(l => (L: l, Nota: palavras.Count(p => l.Palavras.Any(w => w.StartsWith(p) || p.StartsWith(w) && w.Length >= 5))))
-            .Where(x => x.Nota > 0)
+            .Select(l =>
+            {
+                var casadas = palavras.Where(p => Casa(l, p)).ToList();
+                var nota = casadas.Sum(p => peso[p]);
+                if (casadas.Count > 0 && (l.Codigo.StartsWith("71") || l.Codigo.StartsWith("78"))) nota += 1.5;
+                return (L: l, Nota: nota, Casadas: casadas.Count);
+            })
+            .Where(x => x.Casadas > 0)
             .OrderByDescending(x => x.Nota).ThenBy(x => x.L.Palavras.Length).ThenBy(x => x.L.Oficial ? 0 : 1)
             .GroupBy(x => x.L.Codigo).Select(g => g.First().L)
             .Take(maximo)
