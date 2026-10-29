@@ -2353,6 +2353,134 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("ContratoVagasFuncao");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.CronogramaMensalDds", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Ano")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Mes")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NumeroDocumento")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("ObraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ProgramacaoJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ResponsavelUsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Versao")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResponsavelUsuarioId");
+
+                    b.HasIndex("ObraId", "Ano", "Mes")
+                        .IsUnique()
+                        .HasFilter("[Ativo] = 1");
+
+                    b.ToTable("CronogramasMensaisDds");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.CronogramaMensalDdsRevisao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ConteudoJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CronogramaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("DocumentoAssinaturaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("HashPlanejamento")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("Numero")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("VersaoOrigem")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentoAssinaturaId");
+
+                    b.HasIndex("CronogramaId", "HashPlanejamento")
+                        .IsUnique();
+
+                    b.HasIndex("CronogramaId", "Numero")
+                        .IsUnique();
+
+                    b.ToTable("CronogramasMensaisDdsRevisoes");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.CursoObrigatorioFuncaoObra", b =>
                 {
                     b.Property<Guid>("Id")
@@ -10584,6 +10712,43 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Contrato");
 
                     b.Navigation("Funcao");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.CronogramaMensalDds", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Usuario", "ResponsavelUsuario")
+                        .WithMany()
+                        .HasForeignKey("ResponsavelUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Obra");
+
+                    b.Navigation("ResponsavelUsuario");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.CronogramaMensalDdsRevisao", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.CronogramaMensalDds", "Cronograma")
+                        .WithMany()
+                        .HasForeignKey("CronogramaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.DocumentoAssinatura", "DocumentoAssinatura")
+                        .WithMany()
+                        .HasForeignKey("DocumentoAssinaturaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Cronograma");
+
+                    b.Navigation("DocumentoAssinatura");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.CursoObrigatorioFuncaoObra", b =>

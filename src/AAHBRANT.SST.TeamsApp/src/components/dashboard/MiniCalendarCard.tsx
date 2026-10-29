@@ -1,3 +1,4 @@
+import { chaveDia } from '../../lib/datasCalendario';
 import { useMemo } from 'react';
 import { makeStyles, mergeClasses, Text } from '@fluentui/react-components';
 import { designTokens } from '@ui';
@@ -106,7 +107,7 @@ export function MiniCalendarCard({ prazos }: MiniCalendarCardProps) {
   const estilos = useEstilos();
 
   const hoje = new Date();
-  const hojeISO = hoje.toISOString().slice(0, 10);
+  const hojeISO = chaveDia(hoje);
   const ano = hoje.getFullYear();
   const mes = hoje.getMonth();
 
