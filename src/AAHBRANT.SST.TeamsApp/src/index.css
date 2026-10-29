@@ -37,9 +37,10 @@ body,
   --sst-color-rail-ink-muted: #0b0b0f;
   --sst-color-rail-active-background: #16a34a;
   --sst-color-rail-active-ink: #ffffff;
-  --sst-color-admin-button-background: #96110d;
+  /* Botão Administração (rodapé da sidebar) no verde dos botões (28/10/2026). */
+  --sst-color-admin-button-background: #16a34a;
   --sst-color-admin-button-ink: #ffffff;
-  --sst-color-admin-button-background-hover: #7a0d0a;
+  --sst-color-admin-button-background-hover: #15803d;
   --sst-color-card-border: #dedbea;
   --sst-card-shadow: none;
   --sst-color-success-wash: #eaf7ee;
@@ -61,13 +62,14 @@ body,
   --sst-status-alerta-tinta: #dc2626;  --sst-status-alerta-fundo: #fceaea;
   --sst-status-info-tinta: #2563eb;    --sst-status-info-fundo: #eaf1fe;
   --sst-status-neutro-tinta: #6d6d6d;  --sst-status-neutro-fundo: #f0f0f2;
-  /* Botões de ação (BotaoAcao, opção C de 25/09): vinho oficial no claro. */
-  --sst-acao-marca-fundo: #670000;     --sst-acao-marca-fundo-hover: #7a0101;
-  --sst-acao-marca-tinta: #670000;     --sst-acao-marca-wash: rgba(103, 0, 0, 0.08);
+  /* Botões de ação: verde dos botões do sistema (o mesmo do "Atalhos"), decisão do usuário 28/10/2026. */
+  --sst-acao-marca-fundo: #16a34a;     --sst-acao-marca-fundo-hover: #15803d;
+  --sst-acao-marca-tinta: #15803d;     --sst-acao-marca-wash: rgba(22, 163, 74, 0.10);
   /* Padrão de botão (Proposta B · Premium, 21/10/2026 — ver ui/primitivos/Botao/estiloBotao.ts). */
-  --sst-botao-marca: #670000;          --sst-botao-marca-hover: #7a0101;   --sst-botao-marca-pressionado: #590000;
-  --sst-botao-marca-wash-forte: rgba(103, 0, 0, 0.14);
-  --sst-botao-sombra: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 4px 14px -6px rgba(103, 0, 0, 0.55);
+  /* Primário verde (28/10/2026): todos os botões no verde do "Atalhos", no lugar do vinho. */
+  --sst-botao-marca: #16a34a;          --sst-botao-marca-hover: #15803d;   --sst-botao-marca-pressionado: #166534;
+  --sst-botao-marca-wash-forte: rgba(22, 163, 74, 0.16);
+  --sst-botao-sombra: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 4px 14px -6px rgba(22, 163, 74, 0.55);
   --sst-botao-neutro-borda: #c9c3c8;   --sst-botao-neutro-borda-hover: #8f8890;
   --sst-botao-neutro-wash: rgba(22, 18, 26, 0.05);
   --sst-border-soft: #dedbea;
@@ -87,9 +89,9 @@ body,
   --sst-color-rail-ink-muted: #d5d8e2;
   --sst-color-rail-active-background: #16a34a;
   --sst-color-rail-active-ink: #ffffff;
-  --sst-color-admin-button-background: #96110d;
+  --sst-color-admin-button-background: #16a34a;
   --sst-color-admin-button-ink: #ffffff;
-  --sst-color-admin-button-background-hover: #b01814;
+  --sst-color-admin-button-background-hover: #15803d;
   --sst-color-card-border: #303447;
   --sst-card-shadow: none;
   --sst-color-success-wash: rgba(22, 163, 74, 0.16);
@@ -111,11 +113,11 @@ body,
   --sst-status-info-tinta: #3b82f6;    --sst-status-info-fundo: rgba(59, 130, 246, 0.16);
   --sst-status-neutro-tinta: #9ca3af;  --sst-status-neutro-fundo: #28394f;
   /* No escuro #670000 some sobre o fundo: sólido vai para o vinho do menu ativo e o contorno clareia. */
-  --sst-acao-marca-fundo: #96110d;     --sst-acao-marca-fundo-hover: #b03838;
-  --sst-acao-marca-tinta: #ec8484;     --sst-acao-marca-wash: rgba(236, 132, 132, 0.14);
+  --sst-acao-marca-fundo: #16a34a;     --sst-acao-marca-fundo-hover: #15803d;
+  --sst-acao-marca-tinta: #4ade80;     --sst-acao-marca-wash: rgba(74, 222, 128, 0.14);
   /* No escuro o vinho #670000 some sobre o fundo: o primário usa o vinho do menu ativo. */
-  --sst-botao-marca: #96110d;          --sst-botao-marca-hover: #b01814;   --sst-botao-marca-pressionado: #7a0d0a;
-  --sst-botao-marca-wash-forte: rgba(236, 132, 132, 0.22);
+  --sst-botao-marca: #16a34a;          --sst-botao-marca-hover: #15803d;   --sst-botao-marca-pressionado: #166534;
+  --sst-botao-marca-wash-forte: rgba(74, 222, 128, 0.22);
   --sst-botao-sombra: 0 4px 14px -6px rgba(0, 0, 0, 0.7);
   --sst-botao-neutro-borda: #4a5065;   --sst-botao-neutro-borda-hover: #6b728a;
   --sst-botao-neutro-wash: rgba(255, 255, 255, 0.07);

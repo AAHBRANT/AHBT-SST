@@ -59,6 +59,30 @@ const useStyles = makeStyles({
   semAcidenteTexto: { fontSize: '13px', fontWeight: 600, color: designTokens.colorNeutralDark },
   semAcidenteDetalhe: { display: 'block', fontSize: '12px', fontWeight: 500, color: designTokens.colorNeutralMedium },
   grafico: { width: '100%', height: 'auto', display: 'block', marginTop: '4px' },
+  // Explicação em linguagem simples (28/10/2026): é o card mais técnico da tela.
+  ajuda: {
+    alignSelf: 'flex-start',
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    backgroundColor: 'transparent',
+    color: designTokens.colorNeutralMedium,
+    borderRadius: '99px',
+    fontSize: '11.5px',
+    fontWeight: 600,
+    padding: '3px 10px',
+    cursor: 'pointer',
+    marginTop: '10px',
+    ':hover': { color: designTokens.colorNeutralDark, border: '1px solid var(--sst-botao-marca)' },
+  },
+  explicacao: {
+    fontSize: '12px',
+    lineHeight: '18px',
+    color: designTokens.colorNeutralMedium,
+    backgroundColor: designTokens.colorNeutralLight,
+    borderRadius: '8px',
+    padding: '10px 12px',
+    marginTop: '8px',
+  },
+  forte: { color: designTokens.colorNeutralDark },
 });
 
 const CHAVE_META_LOCALSTORAGE = 'sst.tg.metaTaxaGravidade';
@@ -88,6 +112,7 @@ export function TaxaGravidadeCard({ acidentes, registrosHht, escopo, className }
   const [meta, setMeta] = useState<number | null>(null);
   const [editandoMeta, setEditandoMeta] = useState(false);
   const [rascunhoMeta, setRascunhoMeta] = useState('');
+  const [explicando, setExplicando] = useState(false);
 
   useEffect(() => {
     try {
@@ -246,7 +271,7 @@ export function TaxaGravidadeCard({ acidentes, registrosHht, escopo, className }
             {meta === null && <span className={estilos.apoio}>Defina uma meta para comparar a taxa com o limite.</span>}
           </div>
 
-          <Evolucao pontos={evolucao} cor={paleta.marca} />
+          <Evolucao pontos={evolucao} cor={paleta.marca} meta={meta} />
 
           <div className={estilos.linhas}>
             <div className={estilos.linha}>
@@ -264,6 +289,17 @@ export function TaxaGravidadeCard({ acidentes, registrosHht, escopo, className }
           </div>
         </>
       )}
+
+      <button type="button" className={estilos.ajuda} aria-expanded={explicando} onClick={() => setExplicando((v) => !v)}>
+        {explicando ? 'Fechar explicação' : 'O que é isso?'}
+      </button>
+      {explicando && (
+        <div className={estilos.explicacao}>
+          <b className={estilos.forte}>Taxa de gravidade:</b> quantos dias de trabalho foram perdidos por acidentes a cada 1 milhão
+          de horas trabalhadas. <b className={estilos.forte}>Quanto menor, melhor.</b> A linha tracejada no gráfico é a meta
+          definida no botão acima.
+        </div>
+      )}
     </Card>
   );
 }
@@ -271,11 +307,13 @@ export function TaxaGravidadeCard({ acidentes, registrosHht, escopo, className }
 interface EvolucaoProps {
   pontos: Array<{ rotulo: string; valor: number | null }>;
   cor: string;
+  /** Meta da taxa: desenhada como linha tracejada verde (28/10/2026). */
+  meta?: number | null;
 }
 
 // Linha simples dos últimos 6 meses. Meses sem HHT ficam sem ponto; com menos de 2 pontos não há
 // evolução a mostrar e o bloco some.
-function Evolucao({ pontos, cor }: EvolucaoProps) {
+function Evolucao({ pontos, cor, meta }: EvolucaoProps) {
   const estilos = useStyles();
   const validos = pontos
     .map((p, i) => ({ ...p, i }))
@@ -285,8 +323,8 @@ function Evolucao({ pontos, cor }: EvolucaoProps) {
   const largura = 300;
   const base = 76;
   const topo = 12;
-  const minimo = Math.min(...validos.map((p) => p.valor));
-  const maximo = Math.max(...validos.map((p) => p.valor));
+  const minimo = Math.min(...validos.map((p) => p.valor), ...(meta != null ? [meta] : []));
+  const maximo = Math.max(...validos.map((p) => p.valor), ...(meta != null ? [meta] : []));
   const faixa = maximo - minimo || 1;
   const x = (i: number) => 15 + (i * (largura - 30)) / (pontos.length - 1);
   const y = (v: number) => base - ((v - minimo) / faixa) * (base - topo);
@@ -307,6 +345,14 @@ function Evolucao({ pontos, cor }: EvolucaoProps) {
       >
         <line x1="0" x2={largura} y1={base} y2={base} stroke={designTokens.colorCardBorder} />
         <path d={area} fill={cor} opacity="0.1" />
+        {meta != null && (
+          <>
+            <line x1="0" x2={largura} y1={y(meta)} y2={y(meta)} stroke="var(--sst-botao-marca)" strokeWidth="1.5" strokeDasharray="5 4" />
+            <text x={largura - 2} y={y(meta) - 4} fontSize="10" fontWeight="700" textAnchor="end" fill="var(--sst-acao-marca-tinta)">
+              meta {formatar(meta)}
+            </text>
+          </>
+        )}
         <polyline points={linha} fill="none" stroke={cor} strokeWidth="2" />
         <circle cx={x(ultimo.i)} cy={y(ultimo.valor)} r="4" fill={cor} />
         {pontos.map((p, i) => (

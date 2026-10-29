@@ -210,6 +210,74 @@ export const useDashboardStyles = makeStyles({
       gridTemplateColumns: '1fr',
     },
   },
+  // Grade única do Início (proposta A, 28/10/2026): todos os blocos na mesma régua de 12 colunas,
+  // cards da mesma linha com a mesma altura. Faixas de @media mutuamente exclusivas pelo mesmo motivo
+  // da gradeKpis (o Griffel não garante a ordem das @media na folha gerada).
+  gradeInicio: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
+    gap: '16px',
+    marginBottom: '16px',
+    minWidth: 0,
+  },
+  // Célula da grade: o card de dentro ocupa a célula inteira, nas duas direções.
+  celula: {
+    display: 'flex',
+    alignItems: 'stretch',
+    minWidth: 0,
+    '& > *': { flexGrow: 1, flexShrink: 1, flexBasis: 'auto', minWidth: 0, width: '100%' },
+  },
+  // Indicadores menores: 4 lado a lado no largo, 2×2 do médio para baixo.
+  coluna2: {
+    gridColumn: 'span 2',
+    '@media (max-width: 1100px)': { gridColumn: 'span 6' },
+  },
+  coluna4: {
+    gridColumn: 'span 4',
+    '@media (min-width: 621px) and (max-width: 1100px)': { gridColumn: 'span 6' },
+    '@media (max-width: 620px)': { gridColumn: 'span 12' },
+  },
+  // Bloco que, do médio para baixo, ocupa a linha toda (destaque da faixa, ASO e Taxa de gravidade),
+  // para nenhum card sobrar sozinho numa linha.
+  coluna4Larga: {
+    gridColumn: 'span 4',
+    '@media (max-width: 1100px)': { gridColumn: 'span 12' },
+  },
+  coluna6: {
+    gridColumn: 'span 6',
+    '@media (max-width: 900px)': { gridColumn: 'span 12' },
+  },
+  coluna8: {
+    gridColumn: 'span 8',
+    '@media (max-width: 1100px)': { gridColumn: 'span 12' },
+  },
+  // "Atualizado há X min" + botão de atualizar, ao lado dos filtros.
+  atualizado: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '12px',
+    fontWeight: 600,
+    color: designTokens.colorNeutralMedium,
+    whiteSpace: 'nowrap',
+  },
+  // Barra de proporção dentro do card de destaque ("Aptos para o campo").
+  barraDestaque: { height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.22)', overflow: 'hidden', margin: '2px 0 4px', minWidth: '160px' },
+  barraDestaqueValor: { display: 'block', height: '100%', backgroundColor: '#d1fae5', borderRadius: '3px', transitionProperty: 'width', transitionDuration: '1s' },
+  totalDestaque: { fontSize: '16px', fontWeight: 600, opacity: 0.8 },
+  // Link de rodapé das listas (Ver agenda completa, Ver toda a atividade).
+  linkRodape: {
+    border: 'none',
+    backgroundColor: 'transparent',
+    color: 'var(--sst-acao-marca-tinta)',
+    fontWeight: 700,
+    fontSize: '12.5px',
+    cursor: 'pointer',
+    padding: '4px 6px',
+    borderRadius: '6px',
+    ':hover': { backgroundColor: 'var(--sst-acao-marca-wash)' },
+  },
+  chipPrazo: { fontSize: '11.5px', fontWeight: 700, borderRadius: '10px', padding: '2px 9px', whiteSpace: 'nowrap' },
   kpiIcone: {
     width: '34px',
     height: '34px',
@@ -374,9 +442,22 @@ export const useDashboardStyles = makeStyles({
     alignItems: 'stretch',
     cursor: 'pointer',
     borderRadius: tokensUi.raio.lg,
-    '& > *': { flexGrow: 1, flexShrink: 1, flexBasis: 'auto', minWidth: 0, width: '100%' },
+    '& > *': {
+      flexGrow: 1,
+      flexShrink: 1,
+      flexBasis: 'auto',
+      minWidth: 0,
+      width: '100%',
+      transitionProperty: 'border-color, box-shadow',
+      transitionDuration: '150ms',
+    },
+    // Mesmo contorno do KpiCard ao passar o mouse, no verde translúcido dos botões (28/10/2026).
+    ':hover > *': {
+      border: '1px solid var(--sst-botao-marca)',
+      boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--sst-botao-marca) 30%, transparent), 0 4px 16px color-mix(in srgb, var(--sst-botao-marca) 12%, transparent)',
+    },
     ':focus-visible': {
-      outline: `2px solid ${designTokens.colorPrimary}`,
+      outline: '2px solid var(--sst-botao-marca)',
       outlineOffset: '2px',
     },
   },

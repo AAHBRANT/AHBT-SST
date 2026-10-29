@@ -4,12 +4,15 @@ import {
   BuildingBank24Regular,
   People24Regular,
   ShieldCheckmark24Regular,
-  ShieldError24Regular,
-  DocumentError24Regular,
-  Alert24Regular,
   CheckmarkCircle24Regular,
   ClipboardTaskListLtr24Regular,
   PersonAdd24Regular,
+  HatGraduation24Regular,
+  Stethoscope24Regular,
+  DocumentBulletList24Regular,
+  Alert24Regular,
+  ArrowClockwise16Regular,
+  Shield24Regular,
 } from '@fluentui/react-icons';
 import {
   api,
@@ -17,6 +20,8 @@ import {
   StatusObra,
   StatusNaoConformidade,
   StatusAlerta,
+  StatusDds,
+  MotivoEntregaEpi,
   StatusInspecao,
   TipoOcorrencia,
   type Acidente,
@@ -35,11 +40,13 @@ import {
   type Treinamento,
 } from '../lib/api';
 import { asoLiberado, asoVigentePorTrabalhador, situacaoDoVigente } from '../lib/aso';
-import { Button, Card, FeedbackInline, KpiCard, Legenda, Select, StatusChip, StatusDonutChart, usePaletaGraficos, type FatiaDonut, type Tom } from '@ui';
+import { Button, Card, FeedbackInline, KpiCard, Legenda, Select, designTokens, usePaletaGraficos, type Tom } from '@ui';
 import { AptidaoTreinamentosCard } from '../components/dashboard/AptidaoTreinamentosCard';
 import { ConformidadePorObraCard, type ConformidadeObra } from '../components/dashboard/ConformidadePorObraCard';
-import { RotuloEscopo } from '../components/dashboard/RotuloEscopo';
-import { OcorrenciasCard, type PontoOcorrencias, type RegistroRecente, type TipoOcorrenciaResumo } from '../components/dashboard/OcorrenciasCard';
+import { PiramideOcorrenciasCard, type NivelPiramide } from '../components/dashboard/PiramideOcorrenciasCard';
+import { DiasSemAcidente } from '../components/dashboard/DiasSemAcidente';
+import { AsoRoscaCard, type FatiaAso } from '../components/dashboard/AsoRoscaCard';
+import { LinhaClicavel, RodapeLista, TituloGrupo, type VarianteIcone } from '../components/dashboard/LinhaClicavel';
 import { useDashboardStyles } from '../components/dashboard/dashboardStyles';
 import { TaxaGravidadeCard } from '../components/dashboard/TaxaGravidadeCard';
 import { BloqueadosDialog } from '../components/dashboard/BloqueadosDialog';
@@ -59,22 +66,22 @@ interface Kpi {
   destino: string;
   // Quando definido, o clique executa isto em vez de navegar para `destino`.
   aoClicar?: () => void;
+  /** Indicador principal: vem primeiro, mais largo, em vidro esmeralda com brilho. */
+  destaque?: boolean;
+  /** Total ao lado do valor (ex.: "/ 200"). */
+  total?: number;
 }
 
 interface ItemFeed {
   id: string;
   icone: ReactElement;
-  variante: 'bom' | 'info' | 'atencao' | 'alerta';
+  variante: VarianteIcone;
   titulo: string;
   meta: string;
   dataISO: string;
   /** Rota do item de origem (ex.: /prevencao/dds/dia/:id). */
   destino: string;
 }
-
-const NOMES_MESES_ABREVIADOS = [
-  'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
-];
 
 type PeriodoDashboard = 'semana' | 'mes' | 'ano' | 'tudo';
 
@@ -94,16 +101,6 @@ function formatarDataRelativa(dataISO: string): string {
   if (diffDias === 0) return 'Hoje';
   if (diffDias === 1) return 'Ontem';
   return data.toLocaleDateString('pt-BR');
-}
-
-function ultimosSeisMeses(): Array<{ ano: number; mes: number; rotulo: string }> {
-  const agora = new Date();
-  const meses: Array<{ ano: number; mes: number; rotulo: string }> = [];
-  for (let i = 5; i >= 0; i -= 1) {
-    const data = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
-    meses.push({ ano: data.getFullYear(), mes: data.getMonth() + 1, rotulo: NOMES_MESES_ABREVIADOS[data.getMonth()] });
-  }
-  return meses;
 }
 
 // Onda 2 Task 21 (camada ui/, conversão 8): dashboard geral — mesmo formato de AprDashboardTab.tsx/
@@ -134,6 +131,14 @@ export function DashboardPage() {
   const [liberacao, setLiberacao] = useState<LiberacaoTrabalho | null>(null);
   const [bloqueadosAberto, setBloqueadosAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // "Atualizado há X min" (28/10/2026): `recarga` refaz as buscas; `agora` avança a cada minuto.
+  const [recarga, setRecarga] = useState(0);
+  const [atualizadoEm, setAtualizadoEm] = useState(() => Date.now());
+  const [agora, setAgora] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setAgora(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     // obraId filtra no servidor em vez de trazer a empresa inteira e recortar aqui (memória
@@ -210,6 +215,8 @@ export function DashboardPage() {
           setRegistrosHht(registrosHhtResp);
           setDds(ddsResp);
           setInspecoes(inspecoesResp);
+          setAtualizadoEm(Date.now());
+          setAgora(Date.now());
         },
       )
       .catch((e) => {
@@ -219,13 +226,16 @@ export function DashboardPage() {
     return () => {
       cancelado = true;
     };
-  }, [obraSelecionadaId]);
+  }, [obraSelecionadaId, recarga]);
 
   function nomeObra(id: string) {
     return obras.find((o) => o.id === id)?.nome ?? id;
   }
 
   const hojeISO = new Date().toISOString().slice(0, 10);
+  // "Hoje" no fuso do usuário (DDS de hoje, EPIs entregues hoje): à noite, o toISOString já está no
+  // dia seguinte em UTC e zeraria os dois indicadores.
+  const hojeLocal = new Date().toLocaleDateString('sv-SE');
   const inicioPeriodoISO = useMemo(() => {
     if (periodoSelecionado === 'tudo') return null;
     const data = new Date(hojeISO);
@@ -302,11 +312,22 @@ export function DashboardPage() {
   const trabalhadoresAtivos = useMemo(() => trabalhadoresFiltrados.filter((t) => !t.dataDemissao), [trabalhadoresFiltrados]);
   const admitidosNoPeriodo = trabalhadoresAtivos.filter((t) => noPeriodoSelecionado(t.dataAdmissao)).length;
 
-  // EPI vencido: quantos trabalhadores têm ao menos uma entrega ativa (sem devolução) fora da validade.
-  const entregasEpiAtivas = useMemo(() => entregasEpiFiltradas.filter((e) => !e.dataDevolucao), [entregasEpiFiltradas]);
-  const entregasEpiVencidas = entregasEpiAtivas.filter((e) => e.dataValidade && e.dataValidade < hojeISO);
-  const trabalhadoresComEpiVencido = new Set(entregasEpiVencidas.map((e) => e.trabalhadorId)).size;
-  const trabalhadoresComEpi = new Set(entregasEpiAtivas.map((e) => e.trabalhadorId)).size;
+  // EPIs entregues hoje (28/10/2026, no lugar de "Trabalhadores com EPI vencido"): soma das
+  // quantidades entregues hoje. "Entrega" = motivo Inicial (ou sem motivo informado); "troca" = Dano,
+  // Extravio, Vencimento ou Troca de função.
+  const entregasHoje = useMemo(
+    () => entregasEpiFiltradas.filter((e) => e.dataEntrega?.slice(0, 10) === hojeLocal),
+    [entregasEpiFiltradas, hojeLocal],
+  );
+  const epiHoje = useMemo(() => {
+    const ehTroca = (e: EntregaEpi) => e.motivoTipo !== null && e.motivoTipo !== undefined && e.motivoTipo !== MotivoEntregaEpi.Inicial;
+    return {
+      itens: entregasHoje.reduce((soma, e) => soma + (e.quantidade || 1), 0),
+      trabalhadores: new Set(entregasHoje.map((e) => e.trabalhadorId)).size,
+      entregas: entregasHoje.filter((e) => !ehTroca(e)).length,
+      trocas: entregasHoje.filter(ehTroca).length,
+    };
+  }, [entregasHoje]);
 
   // Os 6 tipos de ocorrência, separados (decisão do usuário, 04/10). A cor de cada um é fixa para o
   // chip do resumo e a série do gráfico usarem a mesma.
@@ -322,17 +343,51 @@ export function DashboardPage() {
     [paleta],
   );
 
-  // "Abertas" = qualquer não conformidade que ainda não foi encerrada (mesmo critério usado no
-  // dashboard do módulo Não Conformidades).
-  const naoConformidadesAbertas = naoConformidadesFiltradas.filter((nc) => nc.status !== StatusNaoConformidade.Encerrada);
-  // Em atraso = ainda aberta e com o prazo de tratamento já vencido.
-  const naoConformidadesEmAtraso = naoConformidadesAbertas.filter((nc) => nc.prazo && nc.prazo.slice(0, 10) < hojeISO);
-  const maiorAtrasoDias = naoConformidadesEmAtraso.reduce((maior, nc) => {
-    const dias = Math.round((new Date(hojeISO).getTime() - new Date((nc.prazo as string).slice(0, 10)).getTime()) / 86_400_000);
-    return Math.max(maior, dias);
-  }, 0);
+  // DDS de hoje (28/10/2026, no lugar de "Não conformidades em atraso"): quantas obras ativas já
+  // registraram o DDS do dia. Clique abre a lista de DDS.
+  const ddsHoje = useMemo(() => {
+    const doDia = ddsFiltrados.filter((d) => d.data?.slice(0, 10) === hojeLocal);
+    const obrasComDds = new Set(doDia.map((d) => d.obraId));
+    const concluidas = new Set(doDia.filter((d) => d.status === StatusDds.Concluido).map((d) => d.obraId));
+    const aguardando = obrasAtivas.filter((o) => !obrasComDds.has(o.id));
+    return { feitas: obrasAtivas.filter((o) => obrasComDds.has(o.id)).length, emAndamento: obrasComDds.size - concluidas.size, aguardando };
+  }, [ddsFiltrados, obrasAtivas, hojeLocal]);
 
+  // Chips do "Aptos para o campo" em linguagem positiva (28/10/2026): "a renovar", "aguardando".
+  const chipsLiberacao: KpiDelta[] = liberacao
+    ? [
+        ...(liberacao.asoVencido > 0 ? [{ texto: `ASO a renovar: ${liberacao.asoVencido}`, tom: 'neutro' as const }] : []),
+        ...(liberacao.semAso > 0 ? [{ texto: `ASO a agendar: ${liberacao.semAso}`, tom: 'neutro' as const }] : []),
+        ...(liberacao.asoSemResultado > 0 ? [{ texto: `ASO aguardando aptidão no G-RH: ${liberacao.asoSemResultado}`, tom: 'neutro' as const }] : []),
+        ...(liberacao.asoInapto > 0 ? [{ texto: `Inaptos: ${liberacao.asoInapto}`, tom: 'neutro' as const }] : []),
+        ...(liberacao.treinamentoPendente > 0 ? [{ texto: `Treinamento a regularizar: ${liberacao.treinamentoPendente}`, tom: 'neutro' as const }] : []),
+        ...(liberacao.bloqueados > 0 ? [{ texto: `${liberacao.bloqueados} aguardando liberação · ver quem ›`, tom: 'neutro' as const }] : []),
+      ]
+    : [];
+
+  const nomesAguardandoDds = ddsHoje.aguardando.map((o) => o.nome);
+  const textoAguardandoDds =
+    nomesAguardandoDds.length === 0
+      ? obraSelecionadaId
+        ? 'DDS do dia registrado'
+        : 'todas as obras com DDS hoje'
+      : nomesAguardandoDds.length === 1
+        ? `aguardando: ${nomesAguardandoDds[0]}`
+        : `aguardando ${nomesAguardandoDds.length} obras`;
+
+  // Ordem da faixa: o destaque primeiro (4 colunas), depois os outros 4 (2 colunas cada).
   const kpis: Kpi[] = [
+    {
+      rotulo: 'Aptos para o campo',
+      valor: liberacao ? String(liberacao.liberados) : '—',
+      total: liberacao?.ativos,
+      icone: <CheckmarkCircle24Regular />,
+      tom: 'ok',
+      deltas: chipsLiberacao,
+      destino: '/pessoas?aba=trabalhadores',
+      aoClicar: liberacao && liberacao.bloqueados > 0 ? () => setBloqueadosAberto(true) : undefined,
+      destaque: true,
+    },
     {
       rotulo: 'Obras ativas',
       valor: String(obrasAtivas.length),
@@ -350,50 +405,31 @@ export function DashboardPage() {
       destino: '/pessoas?aba=trabalhadores',
     },
     {
-      rotulo: 'Podem trabalhar hoje',
-      valor: liberacao ? String(liberacao.liberados) : '—',
-      icone: <CheckmarkCircle24Regular />,
-      tom: liberacao && liberacao.bloqueados > 0 ? 'alerta' : 'ok',
-      deltas: liberacao
-        ? [
-            { texto: `de ${liberacao.ativos} · ${liberacao.bloqueados} bloqueados`, tom: liberacao.bloqueados > 0 ? 'alerta' : 'ok' },
-            ...(liberacao.asoSemResultado > 0 ? [{ texto: `${liberacao.asoSemResultado} ASO sem aptidão no G-RH`, tom: 'info' as const }] : []),
-            ...(liberacao.asoVencido > 0 ? [{ texto: `${liberacao.asoVencido} ASO vencido`, tom: 'alerta' as const }] : []),
-            ...(liberacao.asoInapto > 0 ? [{ texto: `${liberacao.asoInapto} inaptos`, tom: 'alerta' as const }] : []),
-            ...(liberacao.semAso > 0 ? [{ texto: `${liberacao.semAso} sem ASO`, tom: 'neutro' as const }] : []),
-            ...(liberacao.treinamentoPendente > 0 ? [{ texto: `${liberacao.treinamentoPendente} com treinamento pendente`, tom: 'atencao' as const }] : []),
-            ...(liberacao.bloqueados > 0 ? [{ texto: 'Ver quem está bloqueado ›', tom: 'neutro' as const }] : []),
-          ]
-        : [],
-      destino: '/pessoas?aba=trabalhadores',
-      aoClicar: liberacao && liberacao.bloqueados > 0 ? () => setBloqueadosAberto(true) : undefined,
-    },
-    {
-      rotulo: 'Trabalhadores com EPI vencido',
-      valor: String(trabalhadoresComEpiVencido),
-      icone: <ShieldError24Regular />,
-      tom: trabalhadoresComEpiVencido > 0 ? 'alerta' : 'ok',
+      rotulo: 'EPIs entregues hoje',
+      valor: String(epiHoje.itens),
+      icone: <Shield24Regular />,
+      tom: 'ok',
       deltas:
-        entregasEpiAtivas.length > 0
+        entregasHoje.length > 0
           ? [
-              {
-                texto: `${entregasEpiVencidas.length} entregas vencidas · de ${trabalhadoresComEpi} com EPI`,
-                tom: trabalhadoresComEpiVencido > 0 ? 'alerta' : 'neutro',
-              },
+              { texto: `${epiHoje.trabalhadores} trabalhadores atendidos`, tom: 'info' },
+              ...(epiHoje.entregas > 0 ? [{ texto: `${epiHoje.entregas} entregas`, tom: 'ok' as const }] : []),
+              ...(epiHoje.trocas > 0 ? [{ texto: `${epiHoje.trocas} trocas`, tom: 'neutro' as const }] : []),
             ]
-          : [],
+          : [{ texto: 'nenhuma entrega registrada hoje', tom: 'neutro' }],
       destino: '/operacao?secao=epi&aba=entregas',
     },
     {
-      rotulo: 'Não conformidades em atraso',
-      valor: String(naoConformidadesEmAtraso.length),
-      icone: <DocumentError24Regular />,
-      tom: naoConformidadesEmAtraso.length > 0 ? 'alerta' : 'ok',
+      rotulo: 'DDS de hoje',
+      valor: String(ddsHoje.feitas),
+      total: obrasAtivas.length,
+      icone: <ClipboardTaskListLtr24Regular />,
+      tom: ddsHoje.aguardando.length === 0 ? 'ok' : 'atencao',
       deltas: [
-        { texto: `${naoConformidadesAbertas.length} abertas`, tom: 'neutro' },
-        ...(naoConformidadesEmAtraso.length > 0 ? [{ texto: `maior atraso: ${maiorAtrasoDias} dias`, tom: 'alerta' as const }] : []),
+        { texto: textoAguardandoDds, tom: 'neutro' },
+        ...(ddsHoje.emAndamento > 0 ? [{ texto: `${ddsHoje.emAndamento} em andamento`, tom: 'info' as const }] : []),
       ],
-      destino: '/ocorrencias?secao=nao-conformidades&aba=registros',
+      destino: '/operacao?secao=dds',
     },
   ];
 
@@ -420,14 +456,16 @@ export function DashboardPage() {
     return contagem;
   }, [trabalhadoresAtivos, asoMaisRecentePorTrabalhador, hojeISO]);
 
-  const statusAsoDados: FatiaDonut[] = [
-    { rotulo: 'Aptos e válidos', valor: statusAsoGeral.aptos, cor: paleta.ok },
-    { rotulo: 'Vencem em 30 dias', valor: statusAsoGeral.vencem, cor: paleta.atencao },
-    { rotulo: 'Vencidos', valor: statusAsoGeral.vencidos, cor: paleta.alerta },
-    { rotulo: 'Inaptos', valor: statusAsoGeral.inaptos, cor: paleta.marca },
-    { rotulo: 'Restrição temporária', valor: statusAsoGeral.restricao, cor: paleta.info },
-    { rotulo: 'Sem ASO ou pendente', valor: statusAsoGeral.pendentes, cor: paleta.neutro },
+  // Rosca do ASO (28/10/2026): lista do mais urgente para o menos, em linguagem positiva.
+  const fatiasAso: FatiaAso[] = [
+    { chave: 'vencidos', rotulo: 'Renovação pendente', valor: statusAsoGeral.vencidos, cor: paleta.alerta },
+    { chave: 'inaptos', rotulo: 'Inaptos', valor: statusAsoGeral.inaptos, cor: paleta.marca },
+    { chave: 'vencem', rotulo: 'Renovar em até 30 dias', valor: statusAsoGeral.vencem, cor: paleta.atencao },
+    { chave: 'pendentes', rotulo: 'Sem ASO ou pendente', valor: statusAsoGeral.pendentes, cor: paleta.neutro },
+    { chave: 'restricao', rotulo: 'Restrição temporária', valor: statusAsoGeral.restricao, cor: paleta.info },
+    { chave: 'aptos', rotulo: 'Aptos e válidos', valor: statusAsoGeral.aptos, cor: paleta.ok },
   ];
+  const ordemAsoNaRosca = ['aptos', 'restricao', 'vencem', 'pendentes', 'inaptos', 'vencidos'];
 
   // ---------- Conformidade por obra ----------
   // Só faz sentido comparando obras, então some quando uma obra está filtrada. Usa as mesmas fórmulas
@@ -458,50 +496,29 @@ export function DashboardPage() {
         aso: asoPct,
       });
     }
-    return linhas.sort((a, b) => a.geral - b.geral);
+    // Da obra mais em dia para a menos ("Obras em dia", decisão do usuário em 28/10/2026).
+    return linhas.sort((a, b) => b.geral - a.geral);
   }, [obraSelecionadaId, obrasAtivas, trabalhadores, entregasEpi, treinamentos, asos, hojeISO]);
 
   // ---------- Ocorrências: totais do período por tipo e evolução em 6 meses ----------
 
-  const resumoOcorrencias: TipoOcorrenciaResumo[] = tiposOcorrencia.map((t) => ({
-    chave: t.chave,
-    rotulo: t.rotulo,
-    cor: t.cor,
-    total: acidentesFiltrados.filter((a) => a.tipo === t.tipo && noPeriodoSelecionado(a.data)).length,
-  }));
+  // Pirâmide de segurança (28/10/2026): Acidentes no topo, Condições inseguras na base. Doença
+  // ocupacional não é degrau da pirâmide e vai na nota de rodapé do card.
+  const totalNoPeriodo = (tipo: number) => acidentesFiltrados.filter((a) => a.tipo === tipo && noPeriodoSelecionado(a.data)).length;
+  const nivel = (tipo: number): NivelPiramide => {
+    const t = tiposOcorrencia.find((x) => x.tipo === tipo)!;
+    return { tipo, rotulo: t.rotulo, cor: t.cor, total: totalNoPeriodo(tipo) };
+  };
+  const niveisPiramide: NivelPiramide[] = [
+    TipoOcorrencia.Acidente,
+    TipoOcorrencia.Incidente,
+    TipoOcorrencia.QuaseAcidente,
+    TipoOcorrencia.AtoInseguro,
+    TipoOcorrencia.CondicaoInsegura,
+  ].map(nivel);
+  const foraDaPiramide: NivelPiramide[] = [nivel(TipoOcorrencia.DoencaOcupacional)];
 
-  const recentesOcorrencias: RegistroRecente[] = useMemo(
-    () =>
-      [...acidentesFiltrados]
-        .sort((a, b) => b.data.localeCompare(a.data))
-        .slice(0, 30)
-        .map((a) => ({
-          id: a.id,
-          chave: tiposOcorrencia.find((t) => t.tipo === a.tipo)?.chave ?? '',
-          titulo: a.descricao,
-          meta: a.obraNome ?? nomeObra(a.obraId),
-          quando: formatarDataRelativa(a.data),
-          destino: `/acidentes/${a.id}`,
-        })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [acidentesFiltrados, tiposOcorrencia, obras],
-  );
-
-  const serieOcorrencias: PontoOcorrencias[] = useMemo(
-    () =>
-      ultimosSeisMeses().map(({ ano, mes, rotulo }) => {
-        const doMes = acidentesFiltrados.filter((a) => {
-          const data = new Date(a.data);
-          return data.getFullYear() === ano && data.getMonth() + 1 === mes;
-        });
-        const ponto: PontoOcorrencias = { rotulo };
-        for (const t of tiposOcorrencia) ponto[t.chave] = doMes.filter((a) => a.tipo === t.tipo).length;
-        return ponto;
-      }),
-    [acidentesFiltrados, tiposOcorrencia],
-  );
-
-  // ---------- Próximos vencimentos (alertas em aberto) ----------
+  // ---------- Agenda de renovações (alertas em aberto, antes "Próximos vencimentos") ----------
 
   const proximosVencimentos = useMemo(
     () =>
@@ -510,6 +527,49 @@ export function DashboardPage() {
         .slice(0, 6),
     [alertasAbertosFiltrados],
   );
+
+  // Cada alerta abre a página de onde ele veio (28/10/2026): a pessoa, quando o alerta é de alguém
+  // (ASO, treinamento, EPI); senão o documento de origem; sem mapeamento, a lista de alertas.
+  function destinoDoAlerta(alerta: Alerta): string {
+    const id = alerta.entidadeOrigemId;
+    switch (alerta.entidadeOrigemTipo) {
+      case 'NaoConformidade':
+        return `/nao-conformidades/${id}`;
+      case 'Pcmso':
+        return `/operacao/saude-ocupacional/pcmso/${id}`;
+      case 'PgrRevisao':
+      case 'PgrTermino':
+        return `/prevencao/pgr/${id}`;
+      case 'EntregaEpi':
+        return alerta.trabalhadorId ? `/pessoas/${alerta.trabalhadorId}` : '/operacao?secao=epi&aba=entregas';
+      default:
+        return alerta.trabalhadorId ? `/pessoas/${alerta.trabalhadorId}` : '/alertas?aba=lista';
+    }
+  }
+
+  function iconeDoAlerta(alerta: Alerta): { icone: ReactElement; variante: VarianteIcone } {
+    switch (alerta.entidadeOrigemTipo) {
+      case 'Aso':
+      case 'Pcmso':
+        return { icone: <Stethoscope24Regular />, variante: 'info' };
+      case 'Treinamento':
+        return { icone: <HatGraduation24Regular />, variante: 'marca' };
+      case 'EntregaEpi':
+        return { icone: <Shield24Regular />, variante: 'bom' };
+      case 'PgrRevisao':
+      case 'PgrTermino':
+      case 'Contrato':
+        return { icone: <DocumentBulletList24Regular />, variante: 'info' };
+      default:
+        return { icone: <Alert24Regular />, variante: 'atencao' };
+    }
+  }
+
+  /** Dias até o prazo (negativo = já passou); null quando o alerta não tem prazo. */
+  function diasAtePrazo(alerta: Alerta): number | null {
+    if (!alerta.dataLimiteTratamento) return null;
+    return Math.round((Date.parse(alerta.dataLimiteTratamento.slice(0, 10)) - Date.parse(hojeLocal)) / 86_400_000);
+  }
 
   // ---------- Atividade recente (montada a partir dos módulos existentes) ----------
 
@@ -569,24 +629,27 @@ export function DashboardPage() {
       .slice(0, 6);
   }, [ddsFiltrados, inspecoesFiltradas, naoConformidadesFiltradas, trabalhadoresAtivos, obras, inicioPeriodoISO]);
 
-  const classeIconeFeed: Record<ItemFeed['variante'], string> = {
-    bom: dashEstilos.feedIconeBom,
-    info: dashEstilos.feedIconeInfo,
-    atencao: dashEstilos.feedIconeAtencao,
-    alerta: dashEstilos.feedIconeAlerta,
-  };
 
-  function statusChipAlerta(alerta: Alerta) {
-    if (!alerta.dataLimiteTratamento) return null;
-    const vencido = alerta.dataLimiteTratamento < hojeISO;
-    if (vencido) {
-      return <StatusChip tom="alerta">Vencido</StatusChip>;
-    }
-    const dias = Math.round(
-      (new Date(alerta.dataLimiteTratamento).getTime() - new Date(hojeISO).getTime()) / 86_400_000,
+  // Prazo em linguagem simples e positiva: "hoje", "em 5 dias", "renovar já" (sem "vencido").
+  function chipPrazo(alerta: Alerta) {
+    const dias = diasAtePrazo(alerta);
+    if (dias === null) return null;
+    const [texto, cor, fundo] =
+      dias < 0
+        ? ['renovar já', designTokens.colorAlert, designTokens.colorAlertWash]
+        : dias === 0
+          ? ['hoje', designTokens.colorWarning, designTokens.colorWarningWash]
+          : [`em ${dias} ${dias === 1 ? 'dia' : 'dias'}`, dias <= 7 ? designTokens.colorWarning : designTokens.colorInfo, dias <= 7 ? designTokens.colorWarningWash : designTokens.colorInfoWash];
+    return (
+      <span className={dashEstilos.chipPrazo} style={{ color: cor, backgroundColor: fundo }}>
+        {texto}
+      </span>
     );
-    return <StatusChip tom="atencao">{dias} dia(s)</StatusChip>;
   }
+
+  const agendaSemana = proximosVencimentos.filter((a) => (diasAtePrazo(a) ?? 99) <= 7);
+  const agendaDepois = proximosVencimentos.filter((a) => (diasAtePrazo(a) ?? 99) > 7);
+  const minutosDesdeAtualizacao = Math.max(0, Math.floor((agora - atualizadoEm) / 60_000));
 
   function abrirComTeclado(evento: KeyboardEvent<HTMLDivElement>, destino: string) {
     if (evento.key === 'Enter' || evento.key === ' ') {
@@ -607,6 +670,18 @@ export function DashboardPage() {
       <div className={dashEstilos.barraFiltrosDashboard}>
         <h1 className={dashEstilos.tituloPagina}>Início</h1>
         <div className={dashEstilos.filtrosDireita}>
+          <span className={dashEstilos.atualizado} aria-live="polite">
+            {minutosDesdeAtualizacao === 0 ? 'Atualizado agora' : `Atualizado há ${minutosDesdeAtualizacao} min`}
+            <Button
+              appearance="subtle"
+              size="small"
+              icon={<ArrowClockwise16Regular />}
+              onClick={() => setRecarga((n) => n + 1)}
+              aria-label="Atualizar os números da tela"
+            >
+              Atualizar
+            </Button>
+          </span>
           <div className={dashEstilos.grupoPeriodos} role="group" aria-label="Filtrar indicadores por período">
             {PERIODOS_DASHBOARD.map((periodo) => (
               <Button
@@ -639,22 +714,43 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div className={dashEstilos.linhaKpisCalendario}>
-        <div className={dashEstilos.faixaKpis}>
-          {kpis.map((kpi, indice) => (
+      {/* Grade única de 12 colunas (proposta A, 28/10/2026). Linha 1: o destaque "Aptos para o campo"
+          em 4 colunas e os outros 4 indicadores em 2 cada. */}
+      <div className={dashEstilos.gradeInicio}>
+        {kpis.map((kpi, indice) => (
+          <div key={kpi.rotulo} className={`${dashEstilos.celula} ${kpi.destaque ? dashEstilos.coluna4Larga : dashEstilos.coluna2}`}>
             <KpiCard
-              key={kpi.rotulo}
               rotulo={kpi.rotulo}
-              valor={kpi.valor}
+              valor={
+                kpi.total !== undefined ? (
+                  <>
+                    {kpi.valor}
+                    <span className={dashEstilos.totalDestaque}> / {kpi.total}</span>
+                  </>
+                ) : (
+                  kpi.valor
+                )
+              }
               tom={kpi.tom}
               icone={kpi.icone}
               deltas={kpi.deltas}
               indice={indice}
+              destaque={kpi.destaque}
+              extra={
+                kpi.destaque && liberacao && liberacao.ativos > 0 ? (
+                  <span className={dashEstilos.barraDestaque} aria-hidden="true">
+                    <span
+                      className={dashEstilos.barraDestaqueValor}
+                      style={{ width: `${(liberacao.liberados / liberacao.ativos) * 100}%` }}
+                    />
+                  </span>
+                ) : undefined
+              }
               onClick={kpi.aoClicar ?? (() => navigate(kpi.destino))}
               ariaLabel={`Abrir ${kpi.rotulo}`}
             />
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
       <BloqueadosDialog
         aberto={bloqueadosAberto}
@@ -663,34 +759,32 @@ export function DashboardPage() {
         aoAbrirPessoa={(id) => navigate(`/pessoas/${id}`)}
       />
 
-      <div className={dashEstilos.gradeDoisParaUm}>
-        <OcorrenciasCard
-          tipos={resumoOcorrencias}
-          serie={serieOcorrencias}
-          recentes={recentesOcorrencias}
-          subtitulo={`Totais por tipo no período selecionado e evolução mensal, ${escopoIndicadores}`}
-          aoAbrirOcorrencias={() => navigate('/ocorrencias?secao=acidentes')}
-          aoAbrirRegistro={(destino) => navigate(destino)}
-        />
-        <div className={dashEstilos.colunaDireita}>
-          <div
-            className={dashEstilos.cardAcionavel}
-            role="button"
-            tabIndex={0}
-            onClick={() => navigate('/operacao/saude-ocupacional?aba=aso')}
-            onKeyDown={(evento) => abrirComTeclado(evento, '/operacao/saude-ocupacional?aba=aso')}
-          >
-            <Card
-              titulo={
-                <>
-                  Status de aptidão ocupacional (ASO) <RotuloEscopo tipo="hoje" />
-                </>
-              }
-              subtitulo="Situação do ASO mais recente de cada funcionário, já considerando a validade"
-            >
-              <StatusDonutChart dados={statusAsoDados} legendaCentral="funcionários" />
-            </Card>
-          </div>
+      {/* Linha 2: Ocorrências (8) + ASO (4). Linha 3: Taxa de gravidade, Treinamentos e Obras em dia
+          (4 cada; 6 + 6 quando uma obra está filtrada e "Obras em dia" some). Linha 4: Agenda de
+          renovações e Atividade recente (6 cada) — nessas duas, quem é clicável é cada linha. */}
+      <div className={dashEstilos.gradeInicio}>
+        <div className={`${dashEstilos.celula} ${dashEstilos.coluna8}`}>
+          <PiramideOcorrenciasCard
+            niveis={niveisPiramide}
+            foraDaPiramide={foraDaPiramide}
+            subtitulo={`Ocorrências no período selecionado, ${escopoIndicadores}`}
+            topo={<DiasSemAcidente acidentes={acidentes} obras={obrasAtivas} obraFiltrada={!!obraSelecionadaId} />}
+            aoAbrirTipo={(tipo) => navigate(`/ocorrencias?secao=acidentes&tipo=${tipo}`)}
+            aoAbrirOcorrencias={() => navigate('/ocorrencias?secao=acidentes')}
+          />
+        </div>
+        <div
+          className={`${dashEstilos.cardAcionavel} ${dashEstilos.coluna4Larga}`}
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate('/operacao/saude-ocupacional?aba=aso')}
+          onKeyDown={(evento) => abrirComTeclado(evento, '/operacao/saude-ocupacional?aba=aso')}
+          aria-label="Abrir os ASOs"
+        >
+          <AsoRoscaCard fatias={fatiasAso} ordemNaRosca={ordemAsoNaRosca} />
+        </div>
+
+        <div className={`${dashEstilos.celula} ${obraSelecionadaId ? dashEstilos.coluna6 : dashEstilos.coluna4Larga}`}>
           <TaxaGravidadeCard
             className={dashEstilos.cardEsticado}
             acidentes={acidentesFiltrados}
@@ -698,93 +792,85 @@ export function DashboardPage() {
             escopo={escopoIndicadores}
           />
         </div>
-      </div>
-
-      <div className={dashEstilos.gradeDoisColunas}>
-        <AptidaoTreinamentosCard cursos={aptidaoCursos} escopo={escopoIndicadores} />
+        <div className={`${dashEstilos.celula} ${obraSelecionadaId ? dashEstilos.coluna6 : dashEstilos.coluna4}`}>
+          <AptidaoTreinamentosCard cursos={aptidaoCursos} escopo={escopoIndicadores} />
+        </div>
         {!obraSelecionadaId && (
-          <div
-            className={dashEstilos.cardAcionavel}
-            role="button"
-            tabIndex={0}
-            onClick={() => navigate('/administracao?aba=obras')}
-            onKeyDown={(evento) => abrirComTeclado(evento, '/administracao?aba=obras')}
-          >
-            <ConformidadePorObraCard linhas={conformidadePorObra} />
+          <div className={`${dashEstilos.celula} ${dashEstilos.coluna4}`}>
+            <ConformidadePorObraCard linhas={conformidadePorObra} aoAbrirObra={(obra) => setObraSelecionadaId(obra.id)} />
           </div>
         )}
-        <div
-          className={dashEstilos.cardAcionavel}
-          role="button"
-          tabIndex={0}
-          onClick={() => navigate('/alertas?aba=lista')}
-          onKeyDown={(evento) => abrirComTeclado(evento, '/alertas?aba=lista')}
-        >
-        <Card titulo="Próximos vencimentos" subtitulo="Alertas em aberto, ordenados por prazo">
-          <div className={dashEstilos.feed}>
-            {proximosVencimentos.map((alerta) => (
-              <div key={alerta.id} className={dashEstilos.feedItem}>
-                <div
-                  className={`${dashEstilos.feedIcone} ${
-                    alerta.dataLimiteTratamento && alerta.dataLimiteTratamento < hojeISO
-                      ? dashEstilos.feedIconeAlerta
-                      : dashEstilos.feedIconeAtencao
-                  }`}
-                >
-                  <Alert24Regular />
-                </div>
-                <div className={dashEstilos.feedCorpo}>
-                  <div className={dashEstilos.feedTitulo}>{alerta.titulo}</div>
-                  {alerta.obraNome && <div className={dashEstilos.feedMeta}>{alerta.obraNome}</div>}
-                </div>
-                {statusChipAlerta(alerta)}
-              </div>
-            ))}
-            {proximosVencimentos.length === 0 && <Legenda>Nenhum alerta em aberto.</Legenda>}
-          </div>
-        </Card>
+
+        <div className={`${dashEstilos.celula} ${dashEstilos.coluna6}`}>
+          <Card titulo="Agenda de renovações" subtitulo="O que precisa ser renovado, do prazo mais próximo ao mais distante">
+            {proximosVencimentos.length === 0 ? (
+              <Legenda>Tudo em dia por aqui. Nenhuma renovação pendente.</Legenda>
+            ) : (
+              <>
+                {agendaSemana.length > 0 && <TituloGrupo>Esta semana</TituloGrupo>}
+                {agendaSemana.map((alerta) => {
+                  const { icone, variante } = iconeDoAlerta(alerta);
+                  return (
+                    <LinhaClicavel
+                      key={alerta.id}
+                      icone={icone}
+                      variante={variante}
+                      titulo={alerta.titulo}
+                      meta={[alerta.trabalhadorNome, alerta.obraNome].filter(Boolean).join(' · ')}
+                      direita={chipPrazo(alerta)}
+                      aoAbrir={() => navigate(destinoDoAlerta(alerta))}
+                    />
+                  );
+                })}
+                {agendaDepois.length > 0 && <TituloGrupo>Próximas semanas</TituloGrupo>}
+                {agendaDepois.map((alerta) => {
+                  const { icone, variante } = iconeDoAlerta(alerta);
+                  return (
+                    <LinhaClicavel
+                      key={alerta.id}
+                      icone={icone}
+                      variante={variante}
+                      titulo={alerta.titulo}
+                      meta={[alerta.trabalhadorNome, alerta.obraNome].filter(Boolean).join(' · ')}
+                      direita={chipPrazo(alerta)}
+                      aoAbrir={() => navigate(destinoDoAlerta(alerta))}
+                    />
+                  );
+                })}
+              </>
+            )}
+            <RodapeLista>
+              <button type="button" className={dashEstilos.linkRodape} onClick={() => navigate('/alertas?aba=lista')}>
+                Ver agenda completa →
+              </button>
+            </RodapeLista>
+          </Card>
         </div>
 
-        <div
-          className={dashEstilos.cardAcionavel}
-          role="button"
-          tabIndex={0}
-          onClick={() => navigate('/operacao')}
-          onKeyDown={(evento) => abrirComTeclado(evento, '/operacao')}
-        >
-        <Card titulo="Atividade recente" subtitulo="Últimos registros nos módulos de campo">
-          <div className={dashEstilos.feed}>
-            {atividadeRecente.map((item) => (
-              <div
-                key={item.id}
-                className={`${dashEstilos.feedItem} ${dashEstilos.feedItemAcionavel}`}
-                role="button"
-                tabIndex={0}
-                onClick={(evento) => {
-                  // Sem stopPropagation o clique sobe até o cartão pai e abre /operacao em vez do item.
-                  evento.stopPropagation();
-                  navigate(item.destino);
-                }}
-                onKeyDown={(evento) => {
-                  evento.stopPropagation();
-                  abrirComTeclado(evento, item.destino);
-                }}
-              >
-                <div className={`${dashEstilos.feedIcone} ${classeIconeFeed[item.variante]}`}>
-                  {item.icone}
-                </div>
-                <div className={dashEstilos.feedCorpo}>
-                  <div className={dashEstilos.feedTitulo}>{item.titulo}</div>
-                  <div className={dashEstilos.feedMeta}>{item.meta}</div>
-                </div>
-                <span className={dashEstilos.feedHora}>{formatarDataRelativa(item.dataISO)}</span>
-              </div>
-            ))}
-            {atividadeRecente.length === 0 && <Legenda>Nenhuma atividade recente.</Legenda>}
-          </div>
-        </Card>
+        <div className={`${dashEstilos.celula} ${dashEstilos.coluna6}`}>
+          <Card titulo="Atividade recente" subtitulo="Últimos registros nos módulos de campo">
+            {atividadeRecente.length === 0 ? (
+              <Legenda>Nenhuma atividade recente.</Legenda>
+            ) : (
+              atividadeRecente.map((item) => (
+                <LinhaClicavel
+                  key={item.id}
+                  icone={item.icone}
+                  variante={item.variante}
+                  titulo={item.titulo}
+                  meta={item.meta}
+                  direita={<span className={dashEstilos.feedHora}>{formatarDataRelativa(item.dataISO)}</span>}
+                  aoAbrir={() => navigate(item.destino)}
+                />
+              ))
+            )}
+            <RodapeLista>
+              <button type="button" className={dashEstilos.linkRodape} onClick={() => navigate('/operacao')}>
+                Ver toda a atividade →
+              </button>
+            </RodapeLista>
+          </Card>
         </div>
-
       </div>
     </div>
   );
