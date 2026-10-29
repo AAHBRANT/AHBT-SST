@@ -100,7 +100,11 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
           Nunca atribua a ele atividade que exige habilitação ou treinamento próprio: dirigir veículo, operar máquina
           ou equipamento, serviço elétrico, solda, montagem de andaime, trabalho em altura como executante. Isso
           evita caracterizar desvio de função.
-        - Encarregado é por serviço: descreva a coordenação só do serviço daquele GHE.
+        - Encarregado é por serviço: nomeie "Encarregado de <serviço>" (ex.: "Encarregado de Terraplenagem",
+          "Encarregado de Obra de Arte") e descreva a coordenação só do serviço daquele GHE. O nome genérico
+          "Encarregado de Obras" fica só para quem coordena a obra toda.
+        - A mesma função tem EXATAMENTE o mesmo nome em todos os GHEs (ex.: não use "Greidista" num GHE e
+          "Greidista / Nivelador" em outro). Escreva o nome com iniciais maiúsculas, nunca tudo em caixa alta.
         - Atividade de código ADM, ou de nome administrativo (administrativo, escritório, almoxarifado,
           apontamento), fica SEMPRE sozinha num GHE de nome "Administrativo", com as funções de apoio (ex.: auxiliar administrativo, almoxarife,
           apontador), nunca junto com frentes de obra.
@@ -338,6 +342,10 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
         Você classifica funções de obra da AAHBRANT Engenharia na CBO 2002 (Classificação Brasileira de Ocupações).
         Para cada função, escolha UM código entre os candidatos listados abaixo dela: o que corresponde à ocupação que a
         pessoa exerce, considerando o nome e a descrição das atividades. Os sinônimos ajudam (ex.: "Rasteleiro de asfalto").
+        O CBO é da ATIVIDADE exercida, não do nome do cargo: confira o que a descrição diz que a pessoa faz (ex.:
+        motorista de veículos leves não é motorista de caminhão; quem registra presença e horas é apontador, não servente).
+        Quando a função vier com "CBO atual", devolva o mesmo código se ele corresponder às atividades; troque só se outro
+        candidato corresponder claramente melhor.
         Use o código EXATAMENTE como veio na lista. Se nenhum candidato corresponder com segurança, devolva codigo null:
         é melhor deixar em branco para o técnico escolher do que errar. Responda só com o JSON, um item por função.
         """;
@@ -374,6 +382,7 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
         {
             sb.AppendLine($"Função: {f.Nome}");
             if (!string.IsNullOrWhiteSpace(f.Descricao)) sb.AppendLine($"Atividades: {f.Descricao}");
+            if (!string.IsNullOrWhiteSpace(f.CboAtual)) sb.AppendLine($"CBO atual: {f.CboAtual}");
             sb.AppendLine("Candidatos:");
             foreach (var c in f.Candidatos)
                 sb.AppendLine($"- {c.Codigo} | {c.Titulo}{(c.Sinonimo is null ? "" : $" (sinônimo: {c.Sinonimo})")}");

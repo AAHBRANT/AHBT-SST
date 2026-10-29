@@ -264,6 +264,19 @@ public static class AjudanteGeral
         "ajudante", "auxiliar", "geral", "gerais", "de", "da", "do", "obra", "obras", "servico", "servicos", "construcao", "civil",
     };
 
+    private static readonly string[] Execucao = { "opera ", "operar ", "dirige", "dirigir", "conduz", "pilota", "solda ", "soldar" };
+
+    // O Ajudante Geral só auxilia (orientação do técnico, 29/10/2026, contra desvio de função): a descrição começa com
+    // "Auxilia" e não traz atividade que exige habilitação. Nulo quando está certo; senão o motivo, para a pendência.
+    public static string? ProblemaDescricao(string? descricao)
+    {
+        var d = Common.FuncaoSstClassifier.Normalizar(descricao ?? string.Empty);
+        if (d.Length == 0) return null;
+        if (!d.StartsWith("auxilia")) return "com descrição que não começa com \"Auxilia\" (ele só auxilia, não executa).";
+        var termo = Execucao.FirstOrDefault(x => $" {d} ".Contains($" {x}"));
+        return termo is null ? null : $"com atividade que exige habilitação na descrição (\"{termo.Trim()}\").";
+    }
+
     public static bool EhGenerico(string? nome)
     {
         var palavras = Common.FuncaoSstClassifier.Normalizar(nome ?? string.Empty)
@@ -309,10 +322,63 @@ public static class AjudanteGeral
         (await db.Funcoes.Select(f => new { f.Id, f.Nome }).ToListAsync(ct))
             .FirstOrDefault(f => Common.FuncaoSstClassifier.Normalizar(f.Nome) == Common.FuncaoSstClassifier.Normalizar(Nome))?.Id;
 
+    // Também padroniza os nomes das demais funções (NomesFuncoes), para valer nos mesmos pontos: sugestão, tela, envio,
+    // aprovação e prévia.
     public static async Task UnificarAsync(IAppDbContext db, EstruturaGeracaoPgr e, CancellationToken ct)
     {
+        NomesFuncoes.Padronizar(e);
         if (e.Ghes.SelectMany(g => g.Funcoes).Any(f => EhGenerico(f.Nome)))
             Unificar(e, await IdNoCadastroAsync(db, ct));
+    }
+}
+
+// Nomes padronizados das funções do PGR (orientação do técnico, 29/10/2026), aplicados depois da IA e a cada abertura:
+// - caixa alta vira iniciais maiúsculas ("AUXILIAR DE ALMOXARIFE" → "Auxiliar de Almoxarife");
+// - "Encarregado" sozinho vira "Encarregado de <GHE>", porque o encarregado é do serviço daquele GHE;
+// - a mesma função tem o mesmo nome em todos os GHEs ("Greidista" e "Greidista / Nivelador" viram o nome mais usado).
+public static class NomesFuncoes
+{
+    private static readonly HashSet<string> Minusculas = new() { "de", "da", "do", "das", "dos", "e", "em", "a", "o", "para", "com" };
+
+    public static string Capitalizar(string nome)
+    {
+        var limpo = string.Join(' ', nome.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        var letras = limpo.Where(char.IsLetter).ToList();
+        if (letras.Count == 0 || letras.Any(char.IsLower)) return limpo;
+        var cultura = System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
+        var palavras = limpo.ToLower(cultura).Split(' ');
+        for (var i = 0; i < palavras.Length; i++)
+            if (i == 0 || !Minusculas.Contains(palavras[i]))
+                palavras[i] = char.ToUpper(palavras[i][0], cultura) + palavras[i][1..];
+        return string.Join(' ', palavras);
+    }
+
+    // Chave da "mesma função": o nome sem o complemento depois da barra ("Greidista / Nivelador" → "greidista").
+    private static string Chave(string nome)
+    {
+        var barra = nome.IndexOf(" / ", StringComparison.Ordinal);
+        return Common.FuncaoSstClassifier.Normalizar(barra > 0 ? nome[..barra] : nome);
+    }
+
+    public static void Padronizar(EstruturaGeracaoPgr e)
+    {
+        foreach (var g in e.Ghes)
+            foreach (var f in g.Funcoes)
+            {
+                f.Nome = Capitalizar(f.Nome);
+                if (Common.FuncaoSstClassifier.Normalizar(f.Nome) == "encarregado" && !string.IsNullOrWhiteSpace(g.Nome))
+                {
+                    f.Nome = $"Encarregado de {Capitalizar(g.Nome.Trim())}";
+                    f.FuncaoId = null;
+                }
+            }
+
+        foreach (var grupo in e.Ghes.SelectMany(g => g.Funcoes).GroupBy(f => Chave(f.Nome)).Where(x => x.Select(f => f.Nome).Distinct().Count() > 1))
+        {
+            var nome = grupo.GroupBy(f => f.Nome).OrderByDescending(x => x.Count()).ThenBy(x => x.Key.Length).First().Key;
+            var id = grupo.FirstOrDefault(f => f.Nome == nome && f.FuncaoId != null)?.FuncaoId;
+            foreach (var f in grupo) { f.Nome = nome; f.FuncaoId = id; }
+        }
     }
 }
 

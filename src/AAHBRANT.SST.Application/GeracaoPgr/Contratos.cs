@@ -29,7 +29,9 @@ public interface IGeradorPgrIa
 
 public record CandidatoCbo(string Codigo, string Titulo, string? Sinonimo);
 
-public record FuncaoParaCbo(string Nome, string? Descricao, IReadOnlyList<CandidatoCbo> Candidatos);
+// CboAtual: código que a função já tem (do cadastro ou escolhido antes). A IA mantém, salvo se outro candidato
+// corresponder claramente melhor às atividades descritas.
+public record FuncaoParaCbo(string Nome, string? Descricao, IReadOnlyList<CandidatoCbo> Candidatos, string? CboAtual = null);
 
 // Codigo nulo = nenhum candidato serve; quem aplica só aceita código que estava entre os candidatos da função.
 public record CboSugeridoIa(string Funcao, string? Codigo);
