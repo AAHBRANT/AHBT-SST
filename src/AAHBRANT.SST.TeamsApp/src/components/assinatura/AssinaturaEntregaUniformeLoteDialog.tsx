@@ -351,6 +351,7 @@ export function AssinaturaEntregaUniformeLoteDialog({
                   tamanho="medium"
                   variante="facialAzure"
                   modoCamera="user"
+                  exigirCamera
                 />
               </div>
             )}

@@ -348,6 +348,7 @@ export function AssinaturaEntregaEpiLoteDialog({
                   tamanho="medium"
                   variante="facialAzure"
                   modoCamera="user"
+                  exigirCamera
                 />
               </div>
             )}
