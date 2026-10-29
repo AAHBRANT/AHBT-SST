@@ -189,6 +189,7 @@ public class ObterGeracaoPgrEapQueryHandler : IRequestHandler<ObterGeracaoPgrEap
         var matriz = await _db.MatrizRiscoConfigs.VigenteMaisRecente().FirstOrDefaultAsync(ct);
         var maxP = matriz?.NumNiveisProbabilidade ?? 5;
         var maxS = matriz?.NumNiveisSeveridade ?? 5;
+        await AjudanteGeral.UnificarAsync(_db, estrutura, ct);
         var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
         await CboFuncoesGeracao.CompletarAsync(_db, estrutura, catalogo, ct);
         var pendencias = PendenciasGeracaoPgr.Calcular(estrutura, maxP, maxS, await SerializacaoGeracao.CarregarEpisAsync(_db, estrutura, ct));
@@ -424,6 +425,7 @@ public class SugerirGhesGeracaoPgrCommandHandler : IRequestHandler<SugerirGhesGe
 
         e.Ghes = ghes.Where(x => x.Funcoes.Count > 0 || x.Atividades.Count > 0).ToList();
 
+        await AjudanteGeral.UnificarAsync(_db, e, ct);
         var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
         await CboFuncoesGeracao.CompletarAsync(_db, e, catalogo, ct);
         await SugerirCboAsync(e, catalogo, ct);
@@ -554,6 +556,7 @@ public class EnviarGeracaoPgrParaAprovacaoCommandHandler : IRequestHandler<Envia
             throw new InvalidOperationException("Gere o inventário de riscos antes de enviar para aprovação.");
 
         // Toda função precisa de CBO da tabela oficial antes do envio (decisão do usuário, 29/10/2026).
+        await AjudanteGeral.UnificarAsync(_db, e, ct);
         var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
         await CboFuncoesGeracao.CompletarAsync(_db, e, catalogo, ct);
         var semCbo = CboFuncoesGeracao.Pendencias(e, catalogo);
@@ -642,6 +645,7 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             ?? throw new InvalidOperationException("Nenhuma matriz de risco cadastrada.");
         var pendencias = PendenciasGeracaoPgr.Calcular(e, matriz.NumNiveisProbabilidade, matriz.NumNiveisSeveridade,
             await SerializacaoGeracao.CarregarEpisAsync(_db, e, ct));
+        await AjudanteGeral.UnificarAsync(_db, e, ct);
         var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
         await CboFuncoesGeracao.CompletarAsync(_db, e, catalogo, ct);
         pendencias.AddRange(CboFuncoesGeracao.Pendencias(e, catalogo));
@@ -817,6 +821,8 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             });
 
         g.Status = StatusGeracaoPgrEap.Aprovado;
+        // Guarda a estrutura como foi aprovada (ajudante unificado e CBO conferido), para o PDF sair igual ao PGR criado.
+        g.EstruturaJson = SerializacaoGeracao.Gravar(e);
         g.AprovadoEmUtc = agora;
         g.AprovadoPorUsuarioId = request.UsuarioId;
         g.AprovadoPorNome = aprovador;

@@ -1904,6 +1904,17 @@ public static class NovidadesSeeder
                     "Função criada pelo PGR saía sem CBO, e o CBO das outras vinha do RH, às vezes com o nome junto ou fora da tabela.",
                     "No passo Funções e GHE do gerador, cada função tem o CBO da tabela oficial do Ministério do Trabalho: a IA sugere entre os códigos da tabela, e dá para buscar por código, nome ou sinônimo. Função sem CBO ou com código fora da tabela não pode ser enviada para aprovação. Na aprovação, o CBO vai para o cadastro de funções, e o RH não sobrescreve mais."),
             }),
+        new(
+            Versao: "5.109.1",
+            Titulo: "PGR: um só ajudante, o Ajudante Geral",
+            DataPublicacao: new DateTime(2026, 10, 29, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Ajudante Geral em todos os GHEs",
+                    "Cada GHE ganhava um nome diferente para o ajudante: Ajudante/Servente, Servente, Ajudante de obras.",
+                    "O ajudante genérico se chama sempre Ajudante Geral, em todos os GHEs, e só a descrição das atividades muda de um GHE para outro. Ajudantes de ofício, como Ajudante de Eletricista e Auxiliar de Topógrafo, continuam com o nome próprio."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

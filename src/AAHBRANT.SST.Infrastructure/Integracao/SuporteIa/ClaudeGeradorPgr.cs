@@ -92,6 +92,9 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
           equivalente; só proponha função nova quando nenhuma cadastrada servir.
         - descricao (por função): o que a função faz nestas atividades, em linguagem clara para o
           trabalhador, até 600 caracteres. Não amplie além das atividades do GHE.
+        - O ajudante genérico (servente, ajudante de obras, ajudante/servente) se chama SEMPRE "Ajudante Geral",
+          em qualquer GHE; só a descrição muda conforme as atividades do GHE. Ajudante de um ofício (ex.: ajudante
+          de eletricista, auxiliar de topógrafo) continua com o nome próprio.
         - Atividade de código ADM, ou de nome administrativo (administrativo, escritório, almoxarifado,
           apontamento), fica SEMPRE sozinha num GHE de nome "Administrativo", com as funções de apoio (ex.: auxiliar administrativo, almoxarife,
           apontador), nunca junto com frentes de obra.

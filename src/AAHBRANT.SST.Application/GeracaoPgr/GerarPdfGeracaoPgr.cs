@@ -121,6 +121,7 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
             .GroupBy(id => id).ToDictionary(x => x.Key, x => x.Count());
         // CBO da tabela oficial escolhido no PGR (29/10/2026), sempre como 0000-00; fora da tabela sai "—". Sem a tabela
         // carregada, vale o cadastro como antes.
+        if (g.Status != StatusGeracaoPgrEap.Aprovado) await AjudanteGeral.UnificarAsync(_db, estrutura, ct);
         var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
         if (!catalogo.Vazio) await CboFuncoesGeracao.CompletarAsync(_db, estrutura, catalogo, ct);
         var linhasFuncao = new List<LinhaFuncaoPdf>();
