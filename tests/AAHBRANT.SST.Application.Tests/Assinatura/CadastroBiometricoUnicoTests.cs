@@ -110,7 +110,7 @@ public class CadastroBiometricoUnicoTests
         var erro = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             handler.Handle(new CadastrarTemplateBiometricoCommand(trabalhador.Id, new byte[] { 2 }, Dedo: DedoBiometria.PolegarEsquerdo), CancellationToken.None));
 
-        Assert.Contains("polegar esquerdo", erro.Message);
+        Assert.Contains("indicador esquerdo", erro.Message);
         Assert.Equal(1, await db.TemplatesBiometricoFutronic.CountAsync(tb => tb.TrabalhadorId == trabalhador.Id));
     }
 
