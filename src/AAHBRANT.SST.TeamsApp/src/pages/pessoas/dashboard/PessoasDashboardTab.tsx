@@ -28,6 +28,7 @@ import { asoVigentePorTrabalhador, situacaoDoVigente } from '../../../lib/aso';
 import { AptitudeEnginePanel } from './AptitudeEnginePanel';
 import { NR_POR_FUNCAO_NOME, normalizarNomeFuncao } from './nrPorFuncao';
 import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
+import { useFiltroObra } from '../../../lib/ObraAtivaContext';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -63,7 +64,8 @@ export function PessoasDashboardTab() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  const [obraId, setObraId] = useState('');
+  // Ligado à obra ativa do cabeçalho: vale para o sistema todo (28/10/2026).
+  const [obraId, setObraId] = useFiltroObra();
   const [funcaoId, setFuncaoId] = useState('');
 
   useEffect(() => {

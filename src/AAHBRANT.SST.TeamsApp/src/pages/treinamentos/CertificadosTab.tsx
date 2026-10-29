@@ -46,6 +46,7 @@ import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
 
 // Sub-aba "Certificados" (pedido do usuário, 22/09). As obras já estavam em andamento quando o
 // sistema entrou, então os trabalhadores chegaram com treinamentos feitos antes — muitos por
@@ -118,7 +119,8 @@ export function CertificadosTab() {
   const sucessoToast = useSucessoToast();
   const { confirmar, dialogElement } = useConfirmar();
 
-  const [filtroObraId, setFiltroObraId] = useState('');
+  // Ligado à obra ativa do cabeçalho: vale para o sistema todo (28/10/2026).
+  const [filtroObraId, setFiltroObraId] = useFiltroObra();
   const [filtroCursoId, setFiltroCursoId] = useState('');
   const [filtroSituacao, setFiltroSituacao] = useState<FiltroSituacao>('todas');
   const [busca, setBusca] = useState('');

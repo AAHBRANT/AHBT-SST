@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactElement, type ReactNode } from 'react';
 import { Button, Card, KpiCard, Legenda, Select, type Tom } from '@ui';
 import type { Obra } from '../../lib/api';
 import { useDashboardStyles } from './dashboardStyles';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
 
 // Estrutura da tela Início aplicada ao dashboard de um módulo (pedido do usuário, 05/10): barra de
 // filtros (período + obra) → faixa de indicadores → grade 2 para 1 (card largo + cards laterais) →
@@ -23,7 +24,8 @@ export function hojeIsoPainel(): string {
 // Mesmo critério de corte do Início (DashboardPage): período em relação a hoje, em datas ISO.
 export function usePainelFiltros() {
   const [periodo, setPeriodo] = useState<PeriodoPainel>('tudo');
-  const [obraId, setObraId] = useState('');
+  // Ligado à obra ativa do cabeçalho: vale para o sistema todo (28/10/2026).
+  const [obraId, setObraId] = useFiltroObra();
   const inicioPeriodoISO = useMemo(() => {
     if (periodo === 'tudo') return null;
     const data = new Date(hojeIsoPainel());

@@ -1793,6 +1793,7 @@ public static class NovidadesSeeder
                     "Os botões principais eram vinho.",
                     "Todos os botões, incluindo o de Administração no menu lateral, usam o mesmo verde do botão \"Atalhos\". O ícone do Início virou uma casinha."),
             }),
+<<<<<<< ours
         new(
             Versao: "5.106.0",
             Titulo: "Uniforme: entrega em carrinho com assinatura única",
@@ -1808,6 +1809,20 @@ public static class NovidadesSeeder
                     "Cada peça pedia uma assinatura própria do funcionário, e o quiosque era o único caminho.",
                     "Depois de confirmar o carrinho, o entregador assina uma vez e o funcionário assina com um toque no leitor de digital ou com uma foto (facial). Essa assinatura vale para todas as peças do carrinho. Na lista de entregas, o botão de assinatura de cada linha reabre a janela para assinar o que ficou pendente."),
             }),
+||||||| base
+=======
+        new(
+            Versao: "5.106.0",
+            Titulo: "Obra escolhida no topo vale para o sistema todo",
+            DataPublicacao: new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Você sempre sabe em qual obra está",
+                    "Cada tela tinha o próprio filtro de obra, que voltava para \"Todas as obras\" a cada troca de página.",
+                    "O seletor \"Obra\" fica no topo, ao lado de \"Atalhos\", em todas as páginas. A obra escolhida vale para o Início e para os painéis de todos os módulos, aparece numa faixa verde no alto da página e fica lembrada no próximo acesso. Para voltar a ver tudo, use \"Ver todas as obras\"."),
+            }),
+>>>>>>> theirs
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

@@ -1,3 +1,4 @@
+import { FaixaObraAtiva, SeletorObraAtiva } from './SeletorObraAtiva';
 import type { ComponentType, ReactElement, ReactNode, SVGProps } from 'react';
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -502,7 +503,9 @@ const useStyles = makeStyles({
     padding: '4px',
     borderRadius: '12px',
     backgroundColor: 'color-mix(in srgb, var(--sst-color-page-background) 92%, #ffffff)',
-    '@media (max-width: 1180px)': {
+    // Com o seletor de obra no grupo (28/10/2026), centralizado ele encostava nos itens da direita
+    // em telas até ~1500px e cortava o selo "Sincronizado": abaixo disso, o grupo segue o fluxo.
+    '@media (max-width: 1500px)': {
       position: 'static',
       transform: 'none',
       marginLeft: 'auto',
@@ -979,11 +982,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Button>
             }
           />
+          <SeletorObraAtiva />
           <SyncStatusBadge />
         </div>
 
         <div className={estilos.topoDireita}>
           <div className={estilos.acoesTopoCompactas} aria-label="Ações globais (compacto)">
+            <SeletorObraAtiva />
             <SyncStatusBadge />
             <MenuAtalhos
               botao={
@@ -1192,7 +1197,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         <FuncionarioNovoModal planos={planosIntegracao} aoFechar={fecharPlanosIntegracao} />
       )}
 
-      <main className={estilos.content}>{children}</main>
+      <main className={estilos.content}>
+        <FaixaObraAtiva />
+        {children}
+      </main>
       <Toaster toasterId={ID_TOASTER_GLOBAL} />
     </div>
   );

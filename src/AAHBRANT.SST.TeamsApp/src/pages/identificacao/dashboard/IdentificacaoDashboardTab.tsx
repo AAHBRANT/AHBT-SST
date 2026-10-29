@@ -28,6 +28,7 @@ import {
 import { AreasBloqueadasPanel, type AreaComContexto } from './AreasBloqueadasPanel';
 import { TagsPerdidasPanel } from './TagsPerdidasPanel';
 import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
+import { useFiltroObra } from '../../../lib/ObraAtivaContext';
 
 // Onda 2 Task 9 (camada ui/): dashboard de Identificação — KpiCard + gráficos com cores lidas de
 // usePaletaGraficos (paleta.ts, spec §1.6), grade CSS Grid simples (spec §4.4, sem componente de
@@ -42,7 +43,8 @@ export function IdentificacaoDashboardTab() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  const [obraId, setObraId] = useState('');
+  // Ligado à obra ativa do cabeçalho: vale para o sistema todo (28/10/2026).
+  const [obraId, setObraId] = useFiltroObra();
   const [statusAreaFiltro, setStatusAreaFiltro] = useState('');
   const [statusTagFiltro, setStatusTagFiltro] = useState('');
 
