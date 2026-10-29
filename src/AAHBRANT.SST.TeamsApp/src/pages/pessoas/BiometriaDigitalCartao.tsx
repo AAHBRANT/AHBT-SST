@@ -8,13 +8,16 @@ function dataBr(iso?: string | null): string {
   return iso ? iso.slice(0, 10).split('-').reverse().join('/') : '';
 }
 
-const POLEGARES: Array<{ dedo: DedoBiometria; rotulo: string }> = [
-  { dedo: DedoBiometria.PolegarDireito, rotulo: 'Polegar direito' },
-  { dedo: DedoBiometria.PolegarEsquerdo, rotulo: 'Polegar esquerdo' },
+// 29/10: o dedo cadastrado passou a ser o indicador (pedido do usuário). Só o nome mudou — o enum
+// mantém PolegarEsquerdo/PolegarDireito porque o valor gravado no banco é o número. Ordem: esquerdo na
+// coluna da esquerda, direito na da direita, como as mãos do funcionário.
+const INDICADORES: Array<{ dedo: DedoBiometria; rotulo: string }> = [
+  { dedo: DedoBiometria.PolegarEsquerdo, rotulo: 'Indicador esquerdo' },
+  { dedo: DedoBiometria.PolegarDireito, rotulo: 'Indicador direito' },
 ];
 
-// Cadastro da digital na ficha do trabalhador (pedido do usuário, 21/10): um botão por polegar, logo
-// abaixo da identificação. Cada polegar é cadastrado uma vez (a trava vale por dedo no backend, ver
+// Cadastro da digital na ficha do trabalhador (pedido do usuário, 21/10): um botão por indicador, logo
+// abaixo da identificação. Cada indicador é cadastrado uma vez (a trava vale por dedo no backend, ver
 // CadastrarTemplateBiometricoCommand); depois do cadastro o botão vira só a confirmação com a data.
 // A leitura em si é o mesmo fluxo do CadastroDigitalDialog (duas leituras do mesmo dedo no Futronic).
 export function BiometriaDigitalCartao({
@@ -50,9 +53,9 @@ export function BiometriaDigitalCartao({
   const termosRegistrados = !!status?.consentimentoBiometriaEm && !consentimentoRevogado;
 
   return (
-    <Card titulo="Biometria digital" subtitulo="Leitor de digital · cada polegar é cadastrado uma vez">
+    <Card titulo="Biometria digital" subtitulo="Leitor de digital · cada indicador é cadastrado uma vez">
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: tokensUi.espaco.sm }}>
-        {POLEGARES.map(({ dedo, rotulo }) => {
+        {INDICADORES.map(({ dedo, rotulo }) => {
           const cadastro = digitais.find((d) => d.dedo === dedo);
           const tom: Tom = cadastro ? 'ok' : 'atencao';
           const bloqueado = !status || !!cadastro || consentimentoRevogado;
@@ -134,7 +137,7 @@ export function BiometriaDigitalCartao({
       {legado && (
         <div style={{ marginTop: tokensUi.espaco.sm }}>
           <Legenda>
-            Há uma digital cadastrada em {dataBr(legado.cadastradaEm)}, antes da separação por polegar. Ela continua
+            Há uma digital cadastrada em {dataBr(legado.cadastradaEm)}, antes da separação por dedo. Ela continua
             valendo para assinar.
           </Legenda>
         </div>

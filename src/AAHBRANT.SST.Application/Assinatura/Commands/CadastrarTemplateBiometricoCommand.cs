@@ -58,7 +58,7 @@ public class CadastrarTemplateBiometricoCommandHandler : IRequestHandler<Cadastr
         }
 
         // Regra do usuário (30/09): a digital é cadastrada uma única vez. Desde 21/10 a regra vale por
-        // dedo: a ficha cadastra polegar direito e esquerdo separados, cada um uma vez só. O fluxo sem
+        // dedo: a ficha cadastra indicador esquerdo e direito separados, cada um uma vez só. O fluxo sem
         // dedo informado (pós-criação do funcionário) mantém a regra original de um cadastro por
         // trabalhador. A tela já esconde o botão depois do sucesso; a trava aqui cobre aba antiga
         // aberta, duplo clique e chamada direta.
@@ -72,7 +72,7 @@ public class CadastrarTemplateBiometricoCommandHandler : IRequestHandler<Cadastr
         else if (await _db.TemplatesBiometricoFutronic.AnyAsync(
                      tb => tb.TrabalhadorId == request.TrabalhadorId && tb.Dedo == request.Dedo, ct))
         {
-            var dedo = request.Dedo == DedoBiometria.PolegarDireito ? "polegar direito" : "polegar esquerdo";
+            var dedo = request.Dedo == DedoBiometria.PolegarDireito ? "indicador direito" : "indicador esquerdo";
             throw new InvalidOperationException($"A digital do {dedo} deste trabalhador já está cadastrada.");
         }
 

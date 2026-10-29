@@ -1142,7 +1142,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <div className={estilos.perfilCardCorpo}>
                     <Text size={200} className={estilos.biometriaTexto}>
                       Cada usuário assina documentos com a própria biometria cadastrada: reconhecimento facial
-                      ou digital do polegar.
+                      ou digital do indicador.
                     </Text>
                     <div className={estilos.biometriaGrade}>
                       <div className={estilos.biometriaMetodo}>
@@ -1156,7 +1156,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                       <div className={estilos.biometriaMetodo}>
                         <div className={estilos.biometriaMetodoTopo}>
                           <Fingerprint24Regular />
-                          <span>Polegar</span>
+                          <span>Indicador</span>
                         </div>
                         <div className={estilos.biometriaStatus}>Vinculada ao usuário logado.</div>
                         <Button appearance="secondary" disabled>Gerenciar digital</Button>
