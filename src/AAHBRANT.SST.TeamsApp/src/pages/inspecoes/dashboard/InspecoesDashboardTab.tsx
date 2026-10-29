@@ -23,6 +23,7 @@ import {
 } from '../../../lib/api';
 import { InspecoesNaoConformesPanel } from './InspecoesNaoConformesPanel';
 import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
+import { useFiltroObra } from '../../../lib/ObraAtivaContext';
 
 // Onda 2 Task 10 (camada ui/): dashboard de Inspeções — KpiCard + gráficos com cores lidas de
 // usePaletaGraficos (paleta.ts, spec §1.6), grade CSS Grid simples (spec §4.4). A lógica de
@@ -35,7 +36,8 @@ export function InspecoesDashboardTab() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  const [obraId, setObraId] = useState('');
+  // Ligado à obra ativa do cabeçalho: vale para o sistema todo (28/10/2026).
+  const [obraId, setObraId] = useFiltroObra();
   const [tipoFiltro, setTipoFiltro] = useState('');
   const [statusFiltro, setStatusFiltro] = useState('');
 

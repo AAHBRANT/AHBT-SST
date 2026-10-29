@@ -36,6 +36,7 @@ import {
 } from '../../../lib/api';
 import { TaxaGravidadeKpiCard } from '../../../components/dashboard/TaxaGravidadeKpiCard';
 import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
+import { useFiltroObra } from '../../../lib/ObraAtivaContext';
 
 const NOMES_MESES_ABREVIADOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -67,7 +68,8 @@ export function OcorrenciasDashboardTab() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  const [obraId, setObraId] = useState('');
+  // Ligado à obra ativa do cabeçalho: vale para o sistema todo (28/10/2026).
+  const [obraId, setObraId] = useFiltroObra();
 
   useEffect(() => {
     (async () => {

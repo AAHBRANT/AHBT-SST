@@ -43,6 +43,7 @@ import { CamposPeriodicidadeInspecao, payloadPeriodicidade, pendenciaPeriodicida
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
 
 const tomStatus: Record<ItemInspecionavelResumo['statusUltimaInspecao'], Tom> = {
   inspecionado: 'ok',
@@ -94,7 +95,8 @@ export function TemaInspecaoView({
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [itens, setItens] = useState<ItemInspecionavelResumo[]>([]);
-  const [obraFiltro, setObraFiltro] = useState('');
+  // Ligado à obra ativa do cabeçalho: vale para o sistema todo (28/10/2026).
+  const [obraFiltro, setObraFiltro] = useFiltroObra();
   const [erro, setErro] = useState<string | null>(null);
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);

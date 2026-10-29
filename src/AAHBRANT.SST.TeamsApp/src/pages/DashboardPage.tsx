@@ -50,6 +50,7 @@ import { LinhaClicavel, RodapeLista, TituloGrupo, type VarianteIcone } from '../
 import { useDashboardStyles } from '../components/dashboard/dashboardStyles';
 import { TaxaGravidadeCard } from '../components/dashboard/TaxaGravidadeCard';
 import { BloqueadosDialog } from '../components/dashboard/BloqueadosDialog';
+import { useFiltroObra } from '../lib/ObraAtivaContext';
 
 interface KpiDelta {
   texto: string;
@@ -114,7 +115,8 @@ export function DashboardPage() {
   const navigate = useNavigate();
 
   const [obras, setObras] = useState<Obra[]>([]);
-  const [obraSelecionadaId, setObraSelecionadaId] = useState('');
+  // Ligado à obra ativa do cabeçalho: vale para o sistema todo (28/10/2026).
+  const [obraSelecionadaId, setObraSelecionadaId] = useFiltroObra();
   const [periodoSelecionado, setPeriodoSelecionado] = useState<PeriodoDashboard>('tudo');
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
