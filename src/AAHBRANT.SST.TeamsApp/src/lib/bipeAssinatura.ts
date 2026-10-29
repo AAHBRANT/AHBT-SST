@@ -35,6 +35,12 @@ export function tocarBipeAssinaturaAceita(): void {
   tocarTons([{ frequencia: 880, atraso: 0 }, { frequencia: 1320, atraso: 0.14 }], 0.18);
 }
 
+// Bipe de "negado": dois tons descendo e graves, bem diferente do de aceita. Usado na fila facial quando
+// o rosto não é reconhecido ou a presença é recusada.
+export function tocarBipeNegado(): void {
+  tocarTons([{ frequencia: 440, atraso: 0 }, { frequencia: 300, atraso: 0.2 }], 0.26);
+}
+
 // Bipe de "leitura da digital concluída, pode retirar o dedo": um tom curto e mais grave, diferente do
 // de assinatura aceita. No cadastro, avisa quem está no leitor quando tirar o dedo para a 2ª leitura.
 export function tocarBipeLeituraDigital(): void {
