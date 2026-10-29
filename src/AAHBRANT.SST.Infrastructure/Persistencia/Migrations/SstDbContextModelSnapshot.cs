@@ -3187,6 +3187,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<Guid?>("ObraId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("Origem")
                         .HasColumnType("int");
 
@@ -3215,6 +3218,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ObraId");
 
                     b.HasIndex("TokenValidacaoPublica")
                         .IsUnique()
