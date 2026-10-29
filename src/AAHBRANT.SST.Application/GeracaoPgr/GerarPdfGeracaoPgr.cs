@@ -124,10 +124,12 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
         if (g.Status != StatusGeracaoPgrEap.Aprovado) await AjudanteGeral.UnificarAsync(_db, estrutura, ct);
         var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
         if (!catalogo.Vazio) await CboFuncoesGeracao.CompletarAsync(_db, estrutura, catalogo, ct);
-        // Ajudante Geral conta também quem está no cadastro com outro nome de ajudante genérico ("Ajudante/Servente",
+        // Ajudante Geral e Encarregado de Obras contam também quem está no cadastro com outro nome da mesma função ("Ajudante/Servente",
         // "Servente"...), enquanto o RH não renomeia o cargo.
         var idsAjudantes = funcoesCadastro.Where(f => AjudanteGeral.EhGenerico(f.Nome)).Select(f => f.Id).ToHashSet();
         var expostosAjudanteGeral = expostosPorFuncao.Where(x => idsAjudantes.Contains(x.Key)).Sum(x => x.Value);
+        var idsEncarregados = funcoesCadastro.Where(f => EncarregadoDeObras.EhEncarregado(f.Nome)).Select(f => f.Id).ToHashSet();
+        var expostosEncarregado = expostosPorFuncao.Where(x => idsEncarregados.Contains(x.Key)).Sum(x => x.Value);
         var linhasFuncao = new List<LinhaFuncaoPdf>();
         var funcoesDosGhes = new List<(int Ghe, string Nome, Guid Id)>();
         foreach (var ghe in estrutura.Ghes.OrderBy(x => x.Numero))
@@ -139,7 +141,7 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
                     (id, cbo) = (achada.Id, achada.Cbo);
                 if (!catalogo.Vazio) cbo = catalogo.Existe(f.Cbo) ? CodigoCbo.Formatar(CodigoCbo.Normalizar(f.Cbo)!) : null;
                 linhasFuncao.Add(new LinhaFuncaoPdf(ghe.Numero, f.Nome, string.IsNullOrWhiteSpace(cbo) ? null : cbo.Trim(),
-                    f.Nome == AjudanteGeral.Nome ? expostosAjudanteGeral : id is { } i ? expostosPorFuncao.GetValueOrDefault(i) : 0));
+                    f.Nome == AjudanteGeral.Nome ? expostosAjudanteGeral : f.Nome == EncarregadoDeObras.Nome ? expostosEncarregado : id is { } i ? expostosPorFuncao.GetValueOrDefault(i) : 0));
                 if (id is { } idFuncao) funcoesDosGhes.Add((ghe.Numero, f.Nome, idFuncao));
             }
         var treinamentos = await CronogramaTreinamentosPgr.MontarAsync(_db, g.ObraId, funcoesDosGhes, ct);

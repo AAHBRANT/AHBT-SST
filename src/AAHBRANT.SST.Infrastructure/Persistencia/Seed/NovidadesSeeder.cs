@@ -1951,7 +1951,18 @@ public static class NovidadesSeeder
                 Titulo = novidade.Titulo,
                 Versao = novidade.Versao,
                 DataPublicacao = novidade.DataPublicacao,
-            };
+                new(
+            Versao: "5.109.3",
+            Titulo: "PGR: um só encarregado, o Encarregado de Obras",
+            DataPublicacao: new DateTime(2026, 10, 29, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Encarregado de Obras em todos os GHEs",
+                    "Cada GHE ganhava um encarregado com nome diferente, como Encarregado de Serviços Preliminares e Demolições ou Encarregado de Pavimentação.",
+                    "O encarregado se chama sempre Encarregado de Obras, com o mesmo CBO (7102-05) em todos os GHEs, e só a descrição muda, focada no serviço de cada GHE. Encarregado de área administrativa, como o de almoxarifado, continua separado."),
+            }),
+    };
 
             var ordem = 0;
             foreach (var item in novidade.Itens)

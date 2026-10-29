@@ -447,6 +447,9 @@ public class SugerirGhesGeracaoPgrCommandHandler : IRequestHandler<SugerirGhesGe
         if (AjudanteGeral.EhGenerico(f.Nome) && candidatos.All(c => c.Codigo != AjudanteGeral.CboServenteDeObras)
             && catalogo.PorCodigo(AjudanteGeral.CboServenteDeObras) is { } servente)
             candidatos.Insert(0, servente);
+        if (EncarregadoDeObras.EhEncarregado(f.Nome) && candidatos.All(c => c.Codigo != EncarregadoDeObras.Cbo)
+            && catalogo.PorCodigo(EncarregadoDeObras.Cbo) is { } mestre)
+            candidatos.Insert(0, mestre);
         // O código atual sempre entra, para a IA poder mantê-lo.
         if (catalogo.PorCodigo(f.Cbo) is { } atual && candidatos.All(c => c.Codigo != atual.Codigo))
             candidatos.Insert(0, atual);

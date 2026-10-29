@@ -286,55 +286,80 @@ public static class AjudanteGeral
         return palavras.Any(p => p is "ajudante" or "auxiliar") && palavras.All(PalavrasGenericas.Contains);
     }
 
-    // Renomeia o ajudante genérico de cada GHE, liga ao "Ajudante Geral" do cadastro (quando existe) e deixa um só por
-    // GHE, com a primeira descrição preenchida.
-    public static void Unificar(EstruturaGeracaoPgr e, Guid? idCadastro)
-    {
-        foreach (var g in e.Ghes)
-        {
-            var ajudantes = g.Funcoes.Where(f => EhGenerico(f.Nome)).ToList();
-            if (ajudantes.Count == 0) continue;
-            var fica = ajudantes[0];
-            if (string.IsNullOrWhiteSpace(fica.Descricao))
-                fica.Descricao = ajudantes.Select(f => f.Descricao).FirstOrDefault(d => !string.IsNullOrWhiteSpace(d));
-            fica.Cbo ??= ajudantes.Select(f => f.Cbo).FirstOrDefault(c => !string.IsNullOrWhiteSpace(c));
-            fica.Nome = Nome;
-            fica.FuncaoId = idCadastro;
-            foreach (var outro in ajudantes.Skip(1)) g.Funcoes.Remove(outro);
-        }
+    public static void Unificar(EstruturaGeracaoPgr e, Guid? idCadastro) => FuncaoUnica.Unificar(e, Nome, EhGenerico, idCadastro);
 
-        // Um só CBO para o Ajudante Geral em todos os GHEs (orientação do técnico, 29/10/2026): vale o mais usado entre os
-        // GHEs; no empate, o do primeiro GHE.
-        var todos = e.Ghes.SelectMany(g => g.Funcoes).Where(f => f.Nome == Nome).ToList();
-        var escolhido = todos.Where(f => !string.IsNullOrWhiteSpace(f.Cbo))
-            .GroupBy(f => CodigoCbo.Normalizar(f.Cbo) ?? f.Cbo!.Trim())
-            .OrderByDescending(x => x.Count()).Select(x => x.First()).FirstOrDefault();
-        if (escolhido is null) return;
-        foreach (var f in todos)
-        {
-            f.Cbo = escolhido.Cbo;
-            f.CboTitulo = escolhido.CboTitulo;
-            f.CboSugeridoPelaIa = escolhido.CboSugeridoPelaIa;
-        }
-    }
-
-    public static async Task<Guid?> IdNoCadastroAsync(IAppDbContext db, CancellationToken ct) =>
-        (await db.Funcoes.Select(f => new { f.Id, f.Nome }).ToListAsync(ct))
-            .FirstOrDefault(f => Common.FuncaoSstClassifier.Normalizar(f.Nome) == Common.FuncaoSstClassifier.Normalizar(Nome))?.Id;
-
-    // Também padroniza os nomes das demais funções (NomesFuncoes), para valer nos mesmos pontos: sugestão, tela, envio,
-    // aprovação e prévia.
+    // Padroniza todos os nomes (NomesFuncoes) e unifica as funções únicas (Ajudante Geral e Encarregado de Obras), nos
+    // mesmos pontos: sugestão, tela, envio, aprovação e prévia.
     public static async Task UnificarAsync(IAppDbContext db, EstruturaGeracaoPgr e, CancellationToken ct)
     {
         NomesFuncoes.Padronizar(e);
-        if (e.Ghes.SelectMany(g => g.Funcoes).Any(f => EhGenerico(f.Nome)))
-            Unificar(e, await IdNoCadastroAsync(db, ct));
+        var funcoes = e.Ghes.SelectMany(g => g.Funcoes).ToList();
+        if (!funcoes.Any(f => EhGenerico(f.Nome) || EncarregadoDeObras.EhEncarregado(f.Nome))) return;
+        var cadastro = await db.Funcoes.Select(f => new { f.Id, f.Nome }).ToListAsync(ct);
+        Guid? Id(string nome) => cadastro.FirstOrDefault(f => Common.FuncaoSstClassifier.Normalizar(f.Nome) == Common.FuncaoSstClassifier.Normalizar(nome))?.Id;
+        Unificar(e, Id(Nome));
+        EncarregadoDeObras.Unificar(e, Id(EncarregadoDeObras.Nome));
+    }
+}
+
+// O encarregado também é um só (decisão do usuário, 29/10/2026, mesma regra do Ajudante Geral): "Encarregado de Obras"
+// em todo GHE, com o mesmo CBO, e só a descrição muda, focada no serviço daquele GHE. Encarregado de área administrativa
+// (almoxarifado, escritório, compras...) continua função própria.
+public static class EncarregadoDeObras
+{
+    public const string Nome = "Encarregado de Obras";
+    // Mestre (construção civil), que tem o sinônimo "Encarregado de obras" na CBO 2002.
+    public const string Cbo = "710205";
+
+    private static readonly string[] Administrativos =
+        { "administrativ", "almoxarif", "escritorio", "compra", "pessoal", "departamento", "rh", "financeir", "patrimonio", "cozinha", "limpeza" };
+
+    public static bool EhEncarregado(string? nome)
+    {
+        var n = Common.FuncaoSstClassifier.Normalizar(nome ?? string.Empty);
+        if (!n.StartsWith("encarregad")) return false;
+        var palavras = n.Split(new[] { ' ', '/', '-', '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
+        return !palavras.Any(p => Administrativos.Any(a => p.StartsWith(a)));
+    }
+
+    public static void Unificar(EstruturaGeracaoPgr e, Guid? idCadastro) => FuncaoUnica.Unificar(e, Nome, EhEncarregado, idCadastro);
+}
+
+// Função com um nome e um CBO só no PGR inteiro: as variações de cada GHE viram uma (com a primeira descrição
+// preenchida), ligada ao cadastro quando existe, e o CBO mais usado entre os GHEs vale para todos.
+public static class FuncaoUnica
+{
+    public static void Unificar(EstruturaGeracaoPgr e, string nome, Func<string, bool> pertence, Guid? idCadastro)
+    {
+        foreach (var g in e.Ghes)
+        {
+            var variacoes = g.Funcoes.Where(f => pertence(f.Nome)).ToList();
+            if (variacoes.Count == 0) continue;
+            var fica = variacoes[0];
+            if (string.IsNullOrWhiteSpace(fica.Descricao))
+                fica.Descricao = variacoes.Select(f => f.Descricao).FirstOrDefault(d => !string.IsNullOrWhiteSpace(d));
+            fica.Cbo ??= variacoes.Select(f => f.Cbo).FirstOrDefault(c => !string.IsNullOrWhiteSpace(c));
+            fica.Nome = nome;
+            fica.FuncaoId = idCadastro;
+            foreach (var outra in variacoes.Skip(1)) g.Funcoes.Remove(outra);
+        }
+
+        var todas = e.Ghes.SelectMany(g => g.Funcoes).Where(f => f.Nome == nome).ToList();
+        var escolhida = todas.Where(f => !string.IsNullOrWhiteSpace(f.Cbo))
+            .GroupBy(f => CodigoCbo.Normalizar(f.Cbo) ?? f.Cbo!.Trim())
+            .OrderByDescending(x => x.Count()).Select(x => x.First()).FirstOrDefault();
+        if (escolhida is null) return;
+        foreach (var f in todas)
+        {
+            f.Cbo = escolhida.Cbo;
+            f.CboTitulo = escolhida.CboTitulo;
+            f.CboSugeridoPelaIa = escolhida.CboSugeridoPelaIa;
+        }
     }
 }
 
 // Nomes padronizados das funções do PGR (orientação do técnico, 29/10/2026), aplicados depois da IA e a cada abertura:
 // - caixa alta vira iniciais maiúsculas ("AUXILIAR DE ALMOXARIFE" → "Auxiliar de Almoxarife");
-// - "Encarregado" sozinho vira "Encarregado de <GHE>", porque o encarregado é do serviço daquele GHE;
 // - a mesma função tem o mesmo nome em todos os GHEs ("Greidista" e "Greidista / Nivelador" viram o nome mais usado).
 public static class NomesFuncoes
 {
@@ -366,11 +391,6 @@ public static class NomesFuncoes
             foreach (var f in g.Funcoes)
             {
                 f.Nome = Capitalizar(f.Nome);
-                if (Common.FuncaoSstClassifier.Normalizar(f.Nome) == "encarregado" && !string.IsNullOrWhiteSpace(g.Nome))
-                {
-                    f.Nome = $"Encarregado de {Capitalizar(g.Nome.Trim())}";
-                    f.FuncaoId = null;
-                }
             }
 
         foreach (var grupo in e.Ghes.SelectMany(g => g.Funcoes).GroupBy(f => Chave(f.Nome)).Where(x => x.Select(f => f.Nome).Distinct().Count() > 1))

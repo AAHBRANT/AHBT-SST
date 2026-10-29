@@ -100,9 +100,9 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
           Nunca atribua a ele atividade que exige habilitação ou treinamento próprio: dirigir veículo, operar máquina
           ou equipamento, serviço elétrico, solda, montagem de andaime, trabalho em altura como executante. Isso
           evita caracterizar desvio de função.
-        - Encarregado é por serviço: nomeie "Encarregado de <serviço>" (ex.: "Encarregado de Terraplenagem",
-          "Encarregado de Obra de Arte") e descreva a coordenação só do serviço daquele GHE. O nome genérico
-          "Encarregado de Obras" fica só para quem coordena a obra toda.
+        - O encarregado se chama SEMPRE "Encarregado de Obras", em qualquer GHE (não use "Encarregado de
+          Terraplenagem", "Encarregado de Pavimentação" etc.); a descrição foca na coordenação só do serviço daquele GHE.
+          Encarregado de área administrativa (almoxarifado, escritório) continua com o nome próprio.
         - A mesma função tem EXATAMENTE o mesmo nome em todos os GHEs (ex.: não use "Greidista" num GHE e
           "Greidista / Nivelador" em outro). Escreva o nome com iniciais maiúsculas, nunca tudo em caixa alta.
         - Atividade de código ADM, ou de nome administrativo (administrativo, escritório, almoxarifado,
