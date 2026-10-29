@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.EntregasEpi.Commands;
 using AAHBRANT.SST.Domain.Enums;
 
@@ -6,9 +7,9 @@ namespace AAHBRANT.SST.Application.Tests.EntregasEpi;
 public class CriarEntregaEpiCommandValidatorTests
 {
     private static CriarEntregaEpiCommand ComandoValido(MotivoEntregaEpi motivo = MotivoEntregaEpi.Inicial) =>
-        // Ontem, e não hoje: a regra "não futura" usa a data de Brasília e o runner do CI roda em UTC,
-        // então entre 21h e meia-noite (BRT) o "hoje" do runner já seria uma data futura.
-        new(Guid.NewGuid(), Guid.NewGuid(), DateTime.Today.AddDays(-1), null, null, 1, null, null, null, motivo, null, null);
+        // "Hoje" de Brasília, o mesmo da regra NaoFutura: DateTime.Today no runner do CI (UTC) já é o
+        // dia seguinte entre 21h e meia-noite de Brasília e o comando válido virava "data futura".
+        new(Guid.NewGuid(), Guid.NewGuid(), DataNaoFuturaExtensions.HojeBrasilia(), null, null, 1, null, null, null, motivo, null, null);
 
     [Fact]
     public void Validate_ComandoValido_NaoRetornaErros()

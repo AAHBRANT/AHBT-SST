@@ -22,11 +22,12 @@ const useStyles = makeStyles({
     cursor: 'pointer',
     ':hover': { border: `1px solid ${designTokens.colorNeutralMedium}` },
   },
+  // Botão selecionado no verde dos botões do sistema (28/10/2026).
   botaoAtivo: {
-    backgroundColor: designTokens.colorPrimary,
-    border: `1px solid ${designTokens.colorPrimary}`,
+    backgroundColor: 'var(--sst-botao-marca)',
+    border: '1px solid var(--sst-botao-marca)',
     color: '#ffffff',
-    ':hover': { border: `1px solid ${designTokens.colorPrimary}` },
+    ':hover': { border: '1px solid var(--sst-botao-marca-hover)' },
   },
   destaque: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' },
   numero: {
