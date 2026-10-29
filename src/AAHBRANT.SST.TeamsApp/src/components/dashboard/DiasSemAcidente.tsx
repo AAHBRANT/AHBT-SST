@@ -11,6 +11,11 @@ import { RotuloEscopo } from './RotuloEscopo';
 
 const DIA_MS = 86_400_000;
 
+// Início da contagem (decisão do usuário, 28/10/2026): a contagem de dias sem acidente começa no
+// dia em que o contador entrou no sistema, para todas as obras. Acidentes anteriores a esta data
+// não entram (nem no recorde); um acidente depois dela recomeça a contagem a partir dele.
+const INICIO_CONTAGEM = '2026-10-28';
+
 const useStyles = makeStyles({
   caixa: {
     position: 'relative',
@@ -159,6 +164,8 @@ interface Contagem {
   /** Maior intervalo ANTES da sequência atual (para saber se ela já é um recorde novo). */
   recordeAnterior: number;
   ultimo: string | null;
+  /** Houve Acidente hoje: só nesse caso o calendário fica vermelho. */
+  acidenteHoje: boolean;
 }
 
 /** Dia (YYYY-MM-DD) em milissegundos UTC, para contar dias corridos sem erro de fuso. */
@@ -169,27 +176,27 @@ function hojeMs() {
   return Date.UTC(h.getFullYear(), h.getMonth(), h.getDate());
 }
 
-// Dias desde o último Acidente da obra e o recorde (maior intervalo entre dois acidentes, contando
-// desde o início da obra e incluindo a sequência atual). Obra sem acidente e sem data de início não
-// entra: sem um ponto de partida não dá para contar dias sem inventar um número.
+// Dias desde o último Acidente da obra (ou desde o início da contagem) e o recorde: maior intervalo
+// entre dois acidentes desde o início da contagem, incluindo a sequência atual.
 function contarDiasSemAcidente(acidentes: Acidente[], obras: Obra[]): Contagem[] {
   const hoje = hojeMs();
+  const inicio = diaMs(INICIO_CONTAGEM);
   const resultado: Contagem[] = [];
   for (const obra of obras) {
     const datas = acidentes
       .filter((a) => a.obraId === obra.id && a.tipo === TipoOcorrencia.Acidente)
       .map((a) => diaMs(a.data))
+      .filter((d) => d >= inicio)
       .sort((a, b) => a - b);
-    const inicio = obra.dataInicio ? diaMs(obra.dataInicio) : null;
-    const pontos = inicio !== null && (datas.length === 0 || inicio <= datas[0]) ? [inicio, ...datas] : datas;
-    if (pontos.length === 0) continue;
+    const pontos = [inicio, ...datas];
     const ultimoPonto = pontos[pontos.length - 1];
     const dias = Math.max(0, Math.round((hoje - ultimoPonto) / DIA_MS));
     let recordeAnterior = 0;
     for (let i = 1; i < pontos.length; i += 1) recordeAnterior = Math.max(recordeAnterior, Math.round((pontos[i] - pontos[i - 1]) / DIA_MS));
     const recorde = Math.max(dias, recordeAnterior);
     const ultimo = datas.length > 0 ? new Date(datas[datas.length - 1]).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : null;
-    resultado.push({ obraId: obra.id, obraNome: obra.nome, dias, recorde, recordeAnterior, ultimo });
+    const acidenteHoje = datas.length > 0 && datas[datas.length - 1] === hoje;
+    resultado.push({ obraId: obra.id, obraNome: obra.nome, dias, recorde, recordeAnterior, ultimo, acidenteHoje });
   }
   return resultado;
 }
@@ -228,11 +235,12 @@ export function DiasSemAcidente({ acidentes, obras, obraFiltrada }: DiasSemAcide
     );
   }
 
-  const zero = dias === 0;
+  // Vermelho só no dia de um acidente; o 0 do primeiro dia da contagem fica verde.
+  const zero = principal.acidenteHoje;
   // Recorde novo só quando já houve acidente antes (há uma marca a bater) e a sequência atual passou dela.
   const novoRecorde = principal.ultimo !== null && principal.recordeAnterior > 0 && dias > principal.recordeAnterior;
   const marco = novoRecorde ? 'Novo recorde da obra! 🎉' : dias > 0 && dias % 30 === 0 ? `${dias} dias sem acidente! 🎉` : null;
-  const pct = principal.recorde > 0 ? Math.min(100, (dias / principal.recorde) * 100) : 100;
+  const pct = principal.recorde > 0 ? Math.min(100, (dias / principal.recorde) * 100) : 0;
   const outras = obraFiltrada ? [] : contagens.filter((c) => c.obraId !== principal.obraId);
   const folha = (n: number, classe: string, chave?: number) => (
     <div key={chave} className={mergeClasses(e.folha, classe)}>
@@ -266,8 +274,10 @@ export function DiasSemAcidente({ acidentes, obras, obraFiltrada }: DiasSemAcide
       <div>
         <div className={e.meta}>
           Conta só ocorrências do tipo Acidente
-          {principal.ultimo ? ` · último em ${principal.ultimo}` : ' · nenhum acidente desde o início da obra'}
-          {` · recorde da obra: ${principal.recorde} dias`}
+          {principal.ultimo
+            ? ` · último em ${principal.ultimo}`
+            : ` · contagem iniciada em ${new Date(diaMs(INICIO_CONTAGEM)).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}`}
+          {principal.recorde > 0 ? ` · recorde da obra: ${principal.recorde} dias` : ''}
         </div>
         <div className={e.trilho} title={`${Math.round(pct)}% do recorde`}>
           <div className={e.trilhoBarra} style={{ width: `${pct}%` }} />
