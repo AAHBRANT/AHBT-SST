@@ -1882,6 +1882,17 @@ public static class NovidadesSeeder
                     "Item incluído à mão como Pacote não ia para a IA, e item que a IA deixava de fora sumia dos GHEs sem aviso.",
                     "Todo item marcado vai para a IA. O que ela não agrupar aparece no GHE \"Itens a conferir\", que precisa de funções antes da aprovação. Item com nome administrativo (escritório, almoxarifado, apontamento) vai sempre para o GHE Administrativo."),
             }),
+        new(
+            Versao: "5.108.3",
+            Titulo: "PGR: riscos classificados pela tabela de cores",
+            DataPublicacao: new DateTime(2026, 10, 29, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Cor do grupo de risco no PGR",
+                    "O PGR mostrava o tipo de risco só como texto cinza no canto da ficha.",
+                    "Os riscos seguem a tabela de cores do mapa de riscos: físico verde, químico vermelho, biológico marrom, ergonômico e psicossocial amarelo, acidente azul. O PDF traz a tabela na seção da matriz, o resumo por grupo, selos em cada GHE e a cor em cada ficha. No passo Inventário de riscos do gerador, cada risco também aparece com a cor do grupo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

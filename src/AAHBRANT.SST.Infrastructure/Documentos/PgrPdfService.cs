@@ -195,6 +195,9 @@ public class PgrPdfService : IPgrPdfService
                     new[] { "Alto", "Implementar novos controles." },
                     new[] { "Crítico", "Paralisar a atividade." },
                 }, "");
+                Subtitulo(c, "Classificação dos riscos por grupo e cor");
+                Paragrafo(c, "Cada risco do inventário é classificado no grupo e na cor abaixo, a mesma convenção do mapa de riscos, para que o trabalhador identifique o tipo de risco pela cor.");
+                LegendaGrupos(c);
 
                 // 6. GHE
                 Titulo(c, Secoes[5]);
@@ -213,6 +216,10 @@ public class PgrPdfService : IPgrPdfService
                     }),
                     "Nenhum GHE definido.");
 
+                var riscosPorGhe = ghes.ToDictionary(g => g.Numero,
+                    g => g.Atividades.SelectMany(a => a.Riscos).Where(r => !r.Excluido).ToList());
+                ResumoPorGrupo(c, riscosPorGhe.Values.SelectMany(x => x).ToList());
+
                 foreach (var ghe in ghes)
                 {
                     c.Item().PaddingTop(10).Row(r =>
@@ -227,6 +234,7 @@ public class PgrPdfService : IPgrPdfService
                         .Select(a => a.Nome).ToList();
                     if (criticas.Count > 0)
                         c.Item().Text($"Atividades críticas: {string.Join("; ", criticas)}").FontSize(8.5f).FontColor(Secundario);
+                    SelosPorGrupo(c, riscosPorGhe[ghe.Numero]);
 
                     foreach (var f in ghe.Funcoes)
                     {
@@ -743,12 +751,17 @@ public class PgrPdfService : IPgrPdfService
             .OrderBy(x => x.Fase)
             .ToList();
 
-        c.Item().ShowEntire().PaddingTop(8).Border(0.5f).BorderColor(Linha).Column(f =>
+        var grupo = GruposRisco.DoTipo(r.Tipo);
+        // Faixa lateral e selo na cor do grupo (tabela de cores, 29/10/2026); tipo fora da tabela sai em cinza, como antes.
+        // PaddingLeft(0) separa as duas bordas: sem ele, a borda fina sobrescreveria a faixa.
+        c.Item().ShowEntire().PaddingTop(8).BorderLeft(4).BorderColor(grupo?.CorHex ?? Linha).PaddingLeft(0)
+            .Border(0.5f).BorderColor(Linha).Column(f =>
         {
             f.Item().Background(Fundo).Padding(7).Row(h =>
             {
                 h.RelativeItem().Text(r.Perigo).SemiBold();
-                h.ConstantItem(110).AlignRight().Text(r.Tipo).FontSize(8.5f).FontColor(Secundario);
+                if (grupo is null) h.ConstantItem(110).AlignRight().Text(r.Tipo).FontSize(8.5f).FontColor(Secundario);
+                else h.ConstantItem(150).AlignRight().AlignMiddle().Element(e => Selo(e, grupo, $"Grupo {grupo.Numero} · {r.Tipo}"));
             });
             f.Item().Padding(7).Column(b =>
             {
@@ -806,6 +819,79 @@ public class PgrPdfService : IPgrPdfService
                     Metrica(a, "Conduta", nivel is null ? "—" : Conduta(nivel.Value));
                 });
             });
+        });
+    }
+
+    // ───────────────────────────── Grupos e cores de risco ─────────────────────────────
+
+    private static string TextoSobre(GrupoRisco g) => g.Numero == 4 ? "#3a2a00" : "#ffffff";
+
+    private static void Selo(IContainer e, GrupoRisco g, string texto) =>
+        e.Background(g.CorHex).PaddingHorizontal(5).PaddingVertical(1.5f).Text(texto).FontSize(8).SemiBold().FontColor(TextoSobre(g));
+
+    private static void LegendaGrupos(ColumnDescriptor c) =>
+        c.Item().Table(t =>
+        {
+            t.ColumnsDefinition(cd => { cd.ConstantColumn(44); cd.ConstantColumn(80); cd.RelativeColumn(1.6f); cd.RelativeColumn(3f); });
+            t.Header(h =>
+            {
+                foreach (var titulo in new[] { "Grupo", "Cor", "Riscos", "Exemplos" })
+                    h.Cell().BorderBottom(1).BorderColor(Texto).PaddingVertical(4).PaddingRight(6)
+                        .Text(titulo.ToUpperInvariant()).FontSize(7.5f).SemiBold().FontColor(Secundario);
+            });
+            foreach (var g in GruposRisco.Todos)
+            {
+                t.Cell().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(5).Text(g.Numero.ToString()).FontSize(9);
+                t.Cell().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(5).Row(r =>
+                {
+                    r.ConstantItem(22).Height(10).Background(g.CorHex);
+                    r.RelativeItem().PaddingLeft(5).Text(g.Cor).FontSize(9);
+                });
+                t.Cell().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(5).PaddingRight(6).Text(g.Nome).FontSize(9).SemiBold();
+                t.Cell().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(5).Text(g.Exemplos).FontSize(9);
+            }
+        });
+
+    // Total de riscos do PGR por grupo, no início da seção de GHE.
+    private static void ResumoPorGrupo(ColumnDescriptor c, IReadOnlyList<RiscoGerado> riscos)
+    {
+        if (riscos.Count == 0) return;
+        var contagem = GruposRisco.Todos.Select(g => (Grupo: g, Qtde: riscos.Count(r => GruposRisco.DoTipo(r.Tipo) == g)))
+            .Where(x => x.Qtde > 0).OrderByDescending(x => x.Qtde).ToList();
+        var semGrupo = riscos.Count(r => GruposRisco.DoTipo(r.Tipo) is null);
+        Subtitulo(c, "Resumo do inventário por grupo de risco");
+        c.Item().Table(t =>
+        {
+            t.ColumnsDefinition(cd => { cd.ConstantColumn(30); cd.RelativeColumn(3f); cd.ConstantColumn(50); });
+            foreach (var (g, qtde) in contagem)
+            {
+                t.Cell().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(4).AlignMiddle().Width(20).Height(9).Background(g.CorHex);
+                t.Cell().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(4).Text($"Grupo {g.Numero} · {g.Nome}").FontSize(9);
+                t.Cell().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(4).AlignRight().Text(qtde.ToString()).FontSize(9);
+            }
+            if (semGrupo > 0)
+            {
+                t.Cell().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(4).Text("");
+                t.Cell().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(4).Text("Sem grupo").FontSize(9).FontColor(Secundario);
+                t.Cell().BorderBottom(0.5f).BorderColor(Linha).PaddingVertical(4).AlignRight().Text(semGrupo.ToString()).FontSize(9);
+            }
+            t.Cell().PaddingVertical(4).Text("");
+            t.Cell().PaddingVertical(4).Text("Total").FontSize(9).SemiBold();
+            t.Cell().PaddingVertical(4).AlignRight().Text(riscos.Count.ToString()).FontSize(9).SemiBold();
+        });
+    }
+
+    // Selos com a quantidade de riscos do GHE em cada grupo.
+    private static void SelosPorGrupo(ColumnDescriptor c, IReadOnlyList<RiscoGerado> riscos)
+    {
+        var contagem = GruposRisco.Todos.Select(g => (Grupo: g, Qtde: riscos.Count(r => GruposRisco.DoTipo(r.Tipo) == g)))
+            .Where(x => x.Qtde > 0).OrderByDescending(x => x.Qtde).ToList();
+        if (contagem.Count == 0) return;
+        c.Item().PaddingTop(3).Inlined(i =>
+        {
+            i.Spacing(4);
+            foreach (var (g, qtde) in contagem)
+                i.Item().Element(e => Selo(e, g, $"{g.Nome} · {qtde}"));
         });
     }
 
