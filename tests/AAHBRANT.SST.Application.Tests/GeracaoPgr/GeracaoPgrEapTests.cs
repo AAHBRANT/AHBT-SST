@@ -554,6 +554,45 @@ public class GeracaoPgrEapTests
     }
 
     [Fact]
+    public void AjudanteGeral_UmSoCboEmTodosOsGhes_ValeOMaisUsado()
+    {
+        var e = new EstruturaGeracaoPgr
+        {
+            Ghes = new()
+            {
+                new GheGerado { Numero = 1, Funcoes = new() { new FuncaoGerada { Nome = "Servente", Descricao = "Auxilia na demolição", Cbo = "715210" } } },
+                new GheGerado { Numero = 2, Funcoes = new() { new FuncaoGerada { Nome = "Ajudante Geral", Descricao = "Auxilia na limpeza", Cbo = "717020" } } },
+                new GheGerado { Numero = 3, Funcoes = new() { new FuncaoGerada { Nome = "Ajudante de obras", Descricao = "Auxilia no transporte", Cbo = "717020" } } },
+                new GheGerado { Numero = 4, Funcoes = new() { new FuncaoGerada { Nome = "Ajudante de Eletricista", Cbo = "715615" } } },
+            },
+        };
+
+        AjudanteGeral.Unificar(e, null);
+
+        Assert.All(e.Ghes.Take(3).Select(g => g.Funcoes.Single()), f => Assert.Equal(("Ajudante Geral", "717020"), (f.Nome, f.Cbo)));
+        Assert.Equal("Auxilia na demolição", e.Ghes[0].Funcoes[0].Descricao); // a descrição continua a de cada GHE
+        Assert.Equal("715615", e.Ghes[3].Funcoes[0].Cbo);
+    }
+
+    [Fact]
+    public async Task SugerirGhes_AjudanteGeral_RecebeServenteDeObrasComoCandidato()
+    {
+        var (db, obra, _) = await CriarAsync();
+        await CarregarTabelaCboAsync(db);
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        ia.Ghes = new() { new GheGerado { Nome = "Estrutura", Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" } },
+            Funcoes = new() { new FuncaoGerada { Nome = "Servente", Descricao = "Auxilia" } } } };
+        ia.Cbos = new() { new("Ajudante Geral", "717020") };
+
+        await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
+
+        Assert.Equal("717020", ia.CboPedidos.Single().Candidatos[0].Codigo);
+        var f = (await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default)).Estrutura.Ghes[0].Funcoes.Single();
+        Assert.Equal(("Ajudante Geral", "717020"), (f.Nome, f.Cbo));
+    }
+
+    [Fact]
     public async Task Aprovacao_RascunhoAntigoComAjudanteServente_CriaUmaFuncaoAjudanteGeral()
     {
         var (db, obra, _) = await CriarAsync();

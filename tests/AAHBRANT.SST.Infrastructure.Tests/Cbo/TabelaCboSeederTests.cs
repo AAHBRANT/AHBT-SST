@@ -27,4 +27,19 @@ public class TabelaCboSeederTests
         Assert.Contains(catalogo.Candidatos("Servente"), r => r.Codigo == "717020");
         Assert.Equal("Pedreiro", catalogo.TituloOficial("7152-10"));
     }
+
+    // Funções reais do rascunho do Beira Rio que ficavam sem CBO porque o código certo não entrava nos candidatos.
+    [Theory]
+    [InlineData("Motorista Operador de Munck", "782515")]
+    [InlineData("Encarregado de Pavimentação / Pleno", "710205")]
+    [InlineData("Encarregado de Obras", "710205")]
+    [InlineData("Eletricista", "715615")]
+    [InlineData("Operador de Retroescavadeira", "715115")]
+    [InlineData("Operador de Rolo Compactador", "715110")]
+    public void Candidatos_FuncoesDeObra_TrazemOCodigoCertoEntreOsPrimeiros(string funcao, string codigo)
+    {
+        var catalogo = new CatalogoCbo(TabelaCboSeeder.LerTitulos().Select(t => (t.Codigo, t.Titulo, t.Oficial)));
+
+        Assert.Contains(catalogo.Candidatos(funcao).Take(6), r => r.Codigo == codigo);
+    }
 }
