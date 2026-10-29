@@ -11,6 +11,12 @@ public class FutronicFingerprintReader : IFingerprintReader
     private const uint OpcaoDetectarDedoFalso = 1;  // FTR_OPTIONS_DETECT_FAKE_FINGER
     private static readonly TimeSpan IntervaloPolling = TimeSpan.FromMilliseconds(100);
 
+    // Captura direta (29/10, Beira Rio): com digital seca ou gasta o sensor de presença do FS80H nunca
+    // dispara, mas a foto com luz 4 sai nítida e casa 100 com ela mesma e com a leitura normal. Vidro
+    // vazio na luz 4 tem média ~9; com dedo, ~100 — 40 separa os dois com folga.
+    private const int DoseCapturaDireta = 4;
+    private const double MediaMinimaComDedo = 40;
+
     private readonly TimeSpan _timeoutDedo;
     private readonly bool _detectarDedoFalso;
     private readonly SemaphoreSlim _acessoExclusivo = new(1, 1);
@@ -73,10 +79,11 @@ public class FutronicFingerprintReader : IFingerprintReader
             var limite = DateTime.UtcNow + _timeoutDedo;
             var dedoDetectado = false;
             var quadrosVazios = 0;
+            var capturasDiretasSeguidas = 0;
 
             // Segunda leitura do cadastro: o dedo da leitura anterior ainda pode estar no vidro. Espera sair
             // (dentro do mesmo tempo limite) para que a confirmação seja uma nova apoiada de verdade.
-            while (exigirNovoToque && NativeMethods.ftrScanIsFingerPresent(handle, IntPtr.Zero))
+            while (exigirNovoToque && (NativeMethods.ftrScanIsFingerPresent(handle, IntPtr.Zero) || DedoNaCapturaDireta(handle, new byte[buffer.Length])))
             {
                 ct.ThrowIfCancellationRequested();
                 if (DateTime.UtcNow > limite)
@@ -101,8 +108,28 @@ public class FutronicFingerprintReader : IFingerprintReader
                             : "Nenhum dedo detectado no leitor dentro do tempo limite.");
                 }
 
+                // Sem LFD ligado, quando o sensor não vê o dedo (ou só devolve quadro vazio) tenta a foto direta.
+                // Duas seguidas com dedo = dedo já assentado; usa a segunda. Com LFD ligado não: a foto direta
+                // pularia a checagem de dedo vivo.
+                byte[]? TentarCapturaDireta()
+                {
+                    var direta = new byte[buffer.Length];
+                    if (_detectarDedoFalso || !DedoNaCapturaDireta(handle, direta))
+                    {
+                        capturasDiretasSeguidas = 0;
+                        return null;
+                    }
+
+                    return capturasDiretasSeguidas++ > 0 ? direta : null;
+                }
+
                 if (!NativeMethods.ftrScanIsFingerPresent(handle, IntPtr.Zero))
                 {
+                    if (TentarCapturaDireta() is { } semPresenca)
+                    {
+                        return semPresenca;
+                    }
+
                     Thread.Sleep(IntervaloPolling);
                     continue;
                 }
@@ -120,6 +147,11 @@ public class FutronicFingerprintReader : IFingerprintReader
                 }
 
                 quadrosVazios++;
+                if (TentarCapturaDireta() is { } aposQuadroVazio)
+                {
+                    return aposQuadroVazio;
+                }
+
                 Thread.Sleep(IntervaloPolling);
             }
 
@@ -129,6 +161,22 @@ public class FutronicFingerprintReader : IFingerprintReader
         {
             NativeMethods.ftrScanCloseDevice(handle);
         }
+    }
+
+    private static bool DedoNaCapturaDireta(IntPtr handle, byte[] destino)
+    {
+        if (!NativeMethods.ftrScanGetImage(handle, DoseCapturaDireta, destino))
+        {
+            return false;
+        }
+
+        long soma = 0;
+        foreach (var pixel in destino)
+        {
+            soma += pixel;
+        }
+
+        return soma >= MediaMinimaComDedo * destino.Length;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -171,5 +219,10 @@ public class FutronicFingerprintReader : IFingerprintReader
         [DllImport(Dll, CallingConvention = CallingConvention.StdCall)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool ftrScanGetFrame(IntPtr handle, [Out] byte[] buffer, IntPtr frameParameters);
+
+        // Foto direta com intensidade de luz (dose) escolhida, sem depender do sensor de presença.
+        [DllImport(Dll, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool ftrScanGetImage(IntPtr handle, int dose, [Out] byte[] buffer);
     }
 }
