@@ -12,6 +12,9 @@ public class DocumentoAssinatura : AuditableEntity
 {
     public string EntidadeTipo { get; set; } = string.Empty; // ex.: "Dds"
     public Guid EntidadeId { get; set; }
+    // Obra na emissão; preserva o escopo histórico mesmo após transferências/inativação.
+    // Nulo somente para documentos legados cuja origem não pôde ser recuperada.
+    public Guid? ObraId { get; set; }
 
     public StatusDocumentoAssinatura Status { get; set; } = StatusDocumentoAssinatura.EmAndamento;
 

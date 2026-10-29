@@ -15,6 +15,7 @@ public class DocumentoAssinaturaConfiguracao : IEntityTypeConfiguration<Document
         builder.Property(d => d.TokenValidacaoPublica).HasMaxLength(64);
 
         builder.HasIndex(d => new { d.EntidadeTipo, d.EntidadeId });
+        builder.HasIndex(d => d.ObraId);
         // Filtrado: só documentos finalizados têm token — evita colisão de múltiplos NULL sob índice
         // único (SQL Server trata cada NULL como distinto, mas o filtro deixa a intenção explícita).
         builder.HasIndex(d => d.TokenValidacaoPublica).IsUnique().HasFilter("[TokenValidacaoPublica] IS NOT NULL");
