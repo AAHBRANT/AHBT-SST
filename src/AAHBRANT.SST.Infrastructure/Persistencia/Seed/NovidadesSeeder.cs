@@ -1990,6 +1990,17 @@ public static class NovidadesSeeder
                     "GHE sem jornada recebe \"44 horas semanais\". Onde for diferente, como na vigilância em 12x36, é só trocar no passo Funções e GHE."),
             }),
         new(
+            Versao: "5.109.8",
+            Titulo: "PGR: relação de EPIs com um EPI por linha",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Relação de EPIs por função sem frases repetidas",
+                    "A relação copiava a frase inteira de cada medida de EPI, repetindo o mesmo capacete ou luva várias vezes, com \"sem CA\" em quase todas as linhas.",
+                    "Cada função lista cada EPI uma vez, com a especificação técnica e os riscos que o exigem. A relação sai só do PGR, sem depender do catálogo nem da matriz do cadastro. O CA não aparece no PGR: ele é do produto entregue e fica registrado na ficha de entrega."),
+            }),
+        new(
             Versao: "5.110.0",
             Titulo: "Treinamento: fila facial de volta e detector de rosto na câmera",
             DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
@@ -2004,6 +2015,7 @@ public static class NovidadesSeeder
                     "A câmera facial era só \"clica e captura\", sem ajuda para posicionar o rosto.",
                     "A câmera facial volta a mostrar a guia oval e o quadrado que acompanha o rosto, com a mensagem do que ajustar (aproximar, centralizar, luz). No DDS e no treinamento dá para ligar a captura automática quando o rosto fica verde. O botão Capturar continua sempre liberado."),
             }),
+||||||| f5cf7053
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

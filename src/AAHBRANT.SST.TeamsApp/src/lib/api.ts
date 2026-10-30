@@ -1247,13 +1247,15 @@ export interface RegistrarRemocaoEpc {
 }
 
 export interface CatalogoUniforme {
+  referenciaVisual?: string | null;
+  funcoesAtribuidas?: string[] | null;
   id: string;
   nome: string;
   categoria?: string | null;
   temFoto: boolean;
 }
 
-export type NovoCatalogoUniforme = Omit<CatalogoUniforme, 'id' | 'temFoto'>;
+export type NovoCatalogoUniforme = Omit<CatalogoUniforme, 'id' | 'temFoto' | 'funcoesAtribuidas'>;
 export type AtualizarCatalogoUniforme = Omit<CatalogoUniforme, 'temFoto'>;
 
 export const MotivoEntregaUniforme = {
@@ -1281,7 +1283,7 @@ export interface EntregaUniforme {
   observacoes?: string | null;
 }
 
-export type NovaEntregaUniforme = Omit<EntregaUniforme, 'id' | 'tamanho'>;
+export type NovaEntregaUniforme = Omit<EntregaUniforme, 'id' | 'tamanho'> & { tamanho?: string };
 
 export const TipoMovimentacaoEstoqueUniforme = {
   EntradaManual: 0,
@@ -3296,6 +3298,26 @@ export interface CatalogoTemaDds {
   id: string;
   nome: string;
   descricao?: string | null;
+}
+
+export interface TemaCronogramaDds {
+  catalogoTemaDdsId: string;
+  nome: string;
+  descricao?: string | null;
+}
+export interface DiaCronogramaDds {
+  data: string;
+  temas: TemaCronogramaDds[];
+}
+export interface CronogramaMensalDds {
+  id: string | null;
+  obraId: string;
+  ano: number;
+  mes: number;
+  versao: number;
+  numeroDocumento: string | null;
+  dias: DiaCronogramaDds[];
+  revisoes: { id: string; numero: number; versaoOrigem: number; emitidoEmUtc: string }[];
 }
 
 // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §3/§5, etapa 6) — genérico,
@@ -5609,6 +5631,8 @@ export const api = {
     },
   },
   entregasUniforme: {
+    criarLote: (dados: { trabalhadorId: string; dataEntrega: string; motivoTipo: number; observacoes?: string | null; itens: { catalogoUniformeId: string; tamanho: string; quantidade: number }[] }, chave: string) =>
+      request<{ ids: string[] }>('/api/entregasuniforme/lote', { method: 'POST', headers: { 'Idempotency-Key': chave }, body: JSON.stringify({ ...dados, operacaoId: chave }) }),
     listar: (trabalhadorId?: string) =>
       request<EntregaUniforme[]>(`/api/entregasuniforme${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
     obterPorId: (id: string) => request<EntregaUniforme>(`/api/entregasuniforme/${id}`),
@@ -6506,6 +6530,28 @@ export const api = {
     atualizar: (id: string, nome: string, descricao?: string | null) =>
       request<void>(`/api/catalogotemasdds/${id}`, { method: 'PUT', body: JSON.stringify({ nome, descricao }) }),
     excluir: (id: string) => request<void>(`/api/catalogotemasdds/${id}`, { method: 'DELETE' }),
+  },
+  cronogramasMensaisDds: {
+    obter: (obraId: string, ano: number, mes: number) =>
+      request<CronogramaMensalDds>(`/api/cronogramasmensaisdds/${obraId}/${ano}/${mes}`),
+    salvar: (obraId: string, ano: number, mes: number, versao: number, dias: DiaCronogramaDds[]) =>
+      request<CronogramaMensalDds>(`/api/cronogramasmensaisdds/${obraId}/${ano}/${mes}`, {
+        method: 'PUT', body: JSON.stringify({ versao, dias: dias.map(d => ({ data: d.data, temasIds: d.temas.map(t => t.catalogoTemaDdsId) })) }),
+      }),
+    pdf: async (id: string, versao: number, semanaCompleta: boolean, emitir: boolean) => {
+      const response = await fetch(`${API_BASE_URL}/api/cronogramasmensaisdds/${id}/pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...await montarHeadersAuth() },
+        body: JSON.stringify({ versao, semanaCompleta, emitir }),
+      });
+      if (!response.ok) throw new Error(extrairMensagemErro(await response.text(), response.status, response.statusText));
+      return response.blob();
+    },
+    revisaoPdf: async (id: string, revisaoId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/cronogramasmensaisdds/${id}/revisoes/${revisaoId}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) throw new Error(extrairMensagemErro(await response.text(), response.status, response.statusText));
+      return response.blob();
+    },
   },
   assinatura: {
     // Dos ids da lista, quais já estão travados pela assinatura (editar/excluir somem da tela). Mesma regra

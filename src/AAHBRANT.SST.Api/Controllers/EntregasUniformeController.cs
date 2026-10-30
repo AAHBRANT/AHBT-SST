@@ -35,6 +35,12 @@ public class EntregasUniformeController : ControllerBase
         return CreatedAtAction(nameof(ObterPorId), new { id }, new { id });
     }
 
+    // Confirma o kit inteiro antes de iniciar a assinatura.
+    [Authorize(Policy = "uniforme:criar")]
+    [HttpPost("lote")]
+    public async Task<IActionResult> CriarLote(CriarLoteEntregaUniformeCommand command, CancellationToken ct)
+        => Ok(new { ids = await _mediator.Send(command, ct) });
+
     // Exclusao definitiva e privilegio de Administrador (pedido do usuario, 23/09): quem tem
     // permissao de editar corrige o registro, mas nao o apaga. Ver PoliticasAutorizacao.
     [Authorize(Policy = PoliticasAutorizacao.SomenteAdministrador)]

@@ -4,7 +4,7 @@ using MediatR;
 
 namespace AAHBRANT.SST.Application.CatalogosUniforme.Commands;
 
-public record CriarCatalogoUniformeCommand(string Nome, string? Categoria) : IRequest<Guid>;
+public record CriarCatalogoUniformeCommand(string Nome, string? Categoria, string? ReferenciaVisual = null) : IRequest<Guid>;
 
 public class CriarCatalogoUniformeCommandValidator : AbstractValidator<CriarCatalogoUniformeCommand>
 {
@@ -12,6 +12,7 @@ public class CriarCatalogoUniformeCommandValidator : AbstractValidator<CriarCata
     {
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(150);
         RuleFor(x => x.Categoria).MaximumLength(100);
+        RuleFor(x => x.ReferenciaVisual).Must(ReferenciasUniforme.Valida).WithMessage("Modelo visual de uniforme inválido.");
     }
 }
 
@@ -22,7 +23,7 @@ public class CriarCatalogoUniformeCommandHandler : IRequestHandler<CriarCatalogo
 
     public async Task<Guid> Handle(CriarCatalogoUniformeCommand request, CancellationToken ct)
     {
-        var item = new Domain.Entidades.CatalogoUniforme { Nome = request.Nome, Categoria = request.Categoria };
+        var item = new Domain.Entidades.CatalogoUniforme { Nome = NomeUniforme.Padronizar(request.Nome), Categoria = request.Categoria, ReferenciaVisual = request.ReferenciaVisual };
         _db.CatalogoUniformes.Add(item);
         await _db.SaveChangesAsync(ct);
         return item.Id;

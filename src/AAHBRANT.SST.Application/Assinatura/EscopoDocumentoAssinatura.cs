@@ -83,6 +83,9 @@ public static class EscopoDocumentoAssinatura
                 .Where(x => ids.Contains(x.Id) && (todasAsObras || obras.Contains(x.ObraId))).Select(x => x.Id),
             "ddssemanal" => db.DdsSemanais.IgnoreQueryFilters()
                 .Where(x => ids.Contains(x.Id) && (todasAsObras || obras.Contains(x.ObraId))).Select(x => x.Id),
+            "cronogramamensalddsrevisao" => db.CronogramasMensaisDdsRevisoes.IgnoreQueryFilters()
+                .Where(x => ids.Contains(x.Id) && db.CronogramasMensaisDds.IgnoreQueryFilters()
+                    .Any(c => c.Id == x.CronogramaId && (todasAsObras || obras.Contains(c.ObraId)))).Select(x => x.Id),
             "geracaopgreap" => db.GeracoesPgrEap.IgnoreQueryFilters()
                 .Where(x => ids.Contains(x.Id) && (todasAsObras || obras.Contains(x.ObraId))).Select(x => x.Id),
             "inspecao" => db.Inspecoes.IgnoreQueryFilters()

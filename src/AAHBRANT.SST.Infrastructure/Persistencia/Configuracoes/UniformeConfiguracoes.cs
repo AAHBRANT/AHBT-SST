@@ -10,6 +10,7 @@ public class CatalogoUniformeConfiguracao : IEntityTypeConfiguration<CatalogoUni
     {
         builder.Property(c => c.Nome).IsRequired().HasMaxLength(150);
         builder.Property(c => c.Categoria).HasMaxLength(100);
+        builder.Property(c => c.ReferenciaVisual).HasMaxLength(60);
         builder.HasQueryFilter(c => c.Ativo);
         builder.Property(c => c.RowVersion).IsRowVersion();
     }

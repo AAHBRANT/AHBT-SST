@@ -14,6 +14,6 @@ public class ListarCatalogosUniformeQueryHandler : IRequestHandler<ListarCatalog
     public async Task<List<CatalogoUniformeDto>> Handle(ListarCatalogosUniformeQuery request, CancellationToken ct)
         => await _db.CatalogoUniformes
             .OrderBy(x => x.Nome)
-            .Select(x => new CatalogoUniformeDto(x.Id, x.Nome, x.Categoria, x.FotoConteudo != null))
+            .Select(x => new CatalogoUniformeDto(x.Id, x.Nome, x.Categoria, x.FotoConteudo != null || x.ReferenciaVisual != null, x.ReferenciaVisual, _db.MatrizUniformeFuncoes.Where(m => m.CatalogoUniformeId == x.Id).Select(m => m.Funcao!.Nome).OrderBy(n => n).ToList()))
             .ToListAsync(ct);
 }

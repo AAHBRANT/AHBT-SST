@@ -52,12 +52,12 @@ public record DadosPgrPdf(
     bool Minuta = false,
     // Prévia do técnico antes de enviar para aprovação (29/10/2026): a minuta sai carimbada como RASCUNHO.
     bool Rascunho = false,
-    // Relação de EPIs por função (NR-06 e NR-18, 30/10/2026): matriz de EPI da função no cadastro + EPIs do catálogo citados
-    // nas medidas dos riscos do GHE.
+    // Relação de EPIs por função (NR-06 e NR-18, 30/10/2026): EPIs citados nas medidas dos riscos dos GHEs da função,
+    // um por linha, com a especificação técnica. Não usa catálogo nem matriz do cadastro: o PGR manda.
     IReadOnlyList<LinhaEpiFuncaoPdf>? EpisPorFuncao = null);
 
-// Um EPI de uma função: em quais GHEs ela está, o item do catálogo, o CA e a validade, e de onde veio (matriz ou medida).
-public record LinhaEpiFuncaoPdf(string Funcao, string Ghes, string Epi, string? Ca, DateTime? CaValidade, bool DaMatriz);
+// Um EPI de uma função: em quais GHEs ela está, o EPI, a especificação técnica e os perigos que o exigem.
+public record LinhaEpiFuncaoPdf(string Funcao, string Ghes, string Epi, string Especificacao, string Riscos);
 
 // Uma linha de assinatura. AssinadoEmUtc preenchido = carimbo de assinatura eletrônica; AMao = a linha sai em branco, para
 // assinatura fora do sistema; sem as duas coisas, ainda não assinou.
@@ -151,7 +151,7 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
                 if (id is { } idFuncao) funcoesDosGhes.Add((ghe.Numero, f.Nome, idFuncao));
             }
         var treinamentos = await CronogramaTreinamentosPgr.MontarAsync(_db, g.ObraId, funcoesDosGhes, ct);
-        var episPorFuncao = await RelacaoEpisPorFuncao.MontarAsync(_db, estrutura, funcoesDosGhes, ct);
+        var episPorFuncao = RelacaoEpisPorFuncao.Montar(estrutura);
 
         // Controle de revisões: as registradas no PGR aprovado; sem nenhuma, a emissão inicial (revisão 00).
         var revisoesDb = g.PgrId is { } pgrId
@@ -243,54 +243,55 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
     }
 }
 
-// Relação de EPIs por função do PGR. Consultas por tabela e junção em memória (soft delete não some com a linha).
+// Relação de EPIs por função do PGR. Sai só da estrutura do PGR (pedido do usuário, 30/10/2026): as medidas de EPI dos
+// riscos dos GHEs em que a função atua, agrupadas pelo tipo de EPI reconhecido no texto. Sem catálogo, matriz do cadastro
+// nem CA. Medida de EPI que não cita tipo conhecido entra pelo próprio texto, para o técnico conferir.
 internal static class RelacaoEpisPorFuncao
 {
-    // Toda função do PGR entra, cadastrada ou não (pedido do usuário, 30/10/2026): os cargos que o PGR cria ainda não estão
-    // no cadastro. EPIs = matriz da função no cadastro (quando ela existe) + EPIs citados nas medidas dos riscos dos GHEs em
-    // que a função atua; medida de EPI sem item do catálogo entra pelo texto, sem CA.
-    public static async Task<List<LinhaEpiFuncaoPdf>> MontarAsync(IAppDbContext db, EstruturaGeracaoPgr e,
-        IReadOnlyList<(int Ghe, string Nome, Guid Id)> funcoesDosGhes, CancellationToken ct)
+    private const int MaxRiscosNaLinha = 3;
+
+    public static List<LinhaEpiFuncaoPdf> Montar(EstruturaGeracaoPgr e)
     {
-        var idsFuncao = funcoesDosGhes.Select(f => f.Id).Distinct().ToList();
-        var matriz = await db.MatrizEpiFuncoes.Where(m => idsFuncao.Contains(m.FuncaoId))
-            .Select(m => new { m.FuncaoId, m.CatalogoEpiId }).ToListAsync(ct);
+        // Por GHE: tipo de EPI -> perigos que o exigem (na ordem em que aparecem).
+        var episDoGhe = e.Ghes.ToDictionary(g => g.Numero, g =>
+        {
+            var porEpi = new Dictionary<(string Nome, string Especificacao), List<string>>();
+            foreach (var r in g.Atividades.SelectMany(a => a.Riscos).Where(r => !r.Excluido))
+                foreach (var m in r.Medidas.Where(m => m.EntraNoPgr() && (m.CatalogoEpiId is not null || m.Categoria == CategoriasMedida.Epi)
+                             && !string.IsNullOrWhiteSpace(m.Texto)))
+                {
+                    var tipos = EpisDoPgr.Reconhecer(m.Texto);
+                    var chaves = tipos.Count > 0
+                        ? tipos.Select(t => (t.Nome, t.Especificacao))
+                        : new[] { (m.Texto.Trim(), "Conferir o EPI e a especificação") };
+                    foreach (var chave in chaves)
+                    {
+                        if (!porEpi.TryGetValue(chave, out var perigos)) porEpi[chave] = perigos = new List<string>();
+                        var perigo = r.Perigo.Trim();
+                        if (perigo.Length > 0 && !perigos.Contains(perigo, StringComparer.OrdinalIgnoreCase)) perigos.Add(perigo);
+                    }
+                }
+            return porEpi;
+        });
 
-        var medidasEpiDoGhe = e.Ghes.ToDictionary(g => g.Numero, g => g.Atividades.SelectMany(a => a.Riscos).Where(r => !r.Excluido)
-            .SelectMany(r => r.Medidas)
-            .Where(m => m.EntraNoPgr() && (m.CatalogoEpiId is not null || m.Categoria == CategoriasMedida.Epi) && !string.IsNullOrWhiteSpace(m.Texto))
-            .ToList());
-
-        var idsEpi = matriz.Select(m => m.CatalogoEpiId)
-            .Concat(medidasEpiDoGhe.Values.SelectMany(x => x).Where(m => m.CatalogoEpiId is not null).Select(m => m.CatalogoEpiId!.Value))
-            .Distinct().ToList();
-        var catalogo = await db.CatalogoEpis.Where(c => idsEpi.Contains(c.Id))
-            .Select(c => new { c.Id, c.Nome, c.CertificadoAprovacaoNumero, c.CertificadoAprovacaoValidade }).ToDictionaryAsync(c => c.Id, ct);
-
-        var funcoes = e.Ghes.SelectMany(g => g.Funcoes.Select(f => (Ghe: g.Numero, f.Nome)))
-            .GroupBy(f => f.Nome).OrderBy(x => x.Key);
         var linhas = new List<LinhaEpiFuncaoPdf>();
-        foreach (var funcao in funcoes)
+        foreach (var funcao in e.Ghes.SelectMany(g => g.Funcoes.Select(f => (Ghe: g.Numero, f.Nome))).GroupBy(f => f.Nome).OrderBy(x => x.Key))
         {
             var numeros = funcao.Select(f => f.Ghe).Distinct().OrderBy(n => n).ToList();
             var ghes = string.Join(", ", numeros.Select(n => n.ToString("00")));
-            var ids = funcoesDosGhes.Where(f => f.Nome == funcao.Key).Select(f => f.Id).ToHashSet();
-            var vistos = new HashSet<string>();
-            void Adicionar(string nome, string? ca, DateTime? validade, bool daMatriz)
+            var episDaFuncao = new Dictionary<(string Nome, string Especificacao), List<string>>();
+            foreach (var (chave, perigos) in numeros.SelectMany(n => episDoGhe.GetValueOrDefault(n) ?? new()))
             {
-                if (vistos.Add(FuncaoSstClassifier.Normalizar(nome))) linhas.Add(new LinhaEpiFuncaoPdf(funcao.Key, ghes, nome, ca, validade, daMatriz));
+                if (!episDaFuncao.TryGetValue(chave, out var todos)) episDaFuncao[chave] = todos = new List<string>();
+                todos.AddRange(perigos.Where(p => !todos.Contains(p, StringComparer.OrdinalIgnoreCase)));
             }
-
-            foreach (var m in matriz.Where(m => ids.Contains(m.FuncaoId)))
-                if (catalogo.TryGetValue(m.CatalogoEpiId, out var epi)) Adicionar(epi.Nome, epi.CertificadoAprovacaoNumero, epi.CertificadoAprovacaoValidade, true);
-            foreach (var m in numeros.SelectMany(n => medidasEpiDoGhe.GetValueOrDefault(n) ?? new List<MedidaGerada>()))
-            {
-                if (m.CatalogoEpiId is { } idEpi && catalogo.TryGetValue(idEpi, out var epi))
-                    Adicionar(epi.Nome, epi.CertificadoAprovacaoNumero, epi.CertificadoAprovacaoValidade, false);
-                else if (m.CatalogoEpiId is null)
-                    Adicionar(m.Texto.Trim(), null, null, false);
-            }
+            foreach (var (chave, perigos) in episDaFuncao.OrderBy(x => EpisDoPgr.Ordem(x.Key.Nome)))
+                linhas.Add(new LinhaEpiFuncaoPdf(funcao.Key, ghes, chave.Nome, chave.Especificacao, Resumir(perigos)));
         }
         return linhas;
     }
+
+    private static string Resumir(List<string> perigos) => perigos.Count <= MaxRiscosNaLinha
+        ? string.Join("; ", perigos)
+        : string.Join("; ", perigos.Take(MaxRiscosNaLinha)) + $" e mais {perigos.Count - MaxRiscosNaLinha}";
 }

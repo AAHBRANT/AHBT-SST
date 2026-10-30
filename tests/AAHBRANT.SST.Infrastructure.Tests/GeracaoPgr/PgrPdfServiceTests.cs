@@ -174,9 +174,9 @@ public class PgrPdfServiceTests
         {
             EpisPorFuncao = new List<LinhaEpiFuncaoPdf>
             {
-                new("Ajudante Geral", "01, 02", "Capacete de segurança classe B", "31469", new DateTime(2028, 3, 1), true),
-                new("Ajudante Geral", "01, 02", "Luva de vaqueta", "37010", new DateTime(2025, 1, 10), true),
-                new("Armador", "01", "Cinto paraquedista", null, null, false),
+                new("Ajudante Geral", "01, 02", "Capacete de segurança", "Classe B, com jugular · ABNT NBR 8221", "Queda de materiais"),
+                new("Ajudante Geral", "01, 02", "Luva de segurança", "Proteção contra agentes mecânicos", "Corte; Abrasão"),
+                new("Armador", "01", "Cinturão paraquedista", "Tipo paraquedista", "Queda de altura"),
             },
         };
         var riscos = dados.Estrutura.Ghes[0].Atividades[0].Riscos;

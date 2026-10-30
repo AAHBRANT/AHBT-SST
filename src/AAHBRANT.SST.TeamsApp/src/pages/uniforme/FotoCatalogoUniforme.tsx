@@ -2,22 +2,26 @@ import { useEffect, useState } from 'react';
 import { ImageAdd24Regular } from '@fluentui/react-icons';
 import { api } from '../../lib/api';
 import { designTokens } from '@ui';
+import { referenciaUniforme } from './referenciasUniforme';
 
 interface FotoCatalogoUniformeProps {
   catalogoUniformeId: string;
   temFoto: boolean;
   tamanho?: number;
+  referenciaVisual?: string | null;
+  destaque?: boolean;
 }
 
 // Miniatura da foto da peça de uniforme — mesmo padrão de FotoCatalogoEpi.tsx (decisão do usuário,
 // 2026-09-07: adicionar foto também no catálogo de uniforme). O binário nunca vem embutido no
 // CatalogoUniformeDto (só o flag temFoto); baixa sob demanda via api.catalogosUniforme.baixarFoto e
 // mostra um placeholder (sem quebrar layout) quando não há foto ainda.
-export function FotoCatalogoUniforme({ catalogoUniformeId, temFoto, tamanho = 48 }: FotoCatalogoUniformeProps) {
+export function FotoCatalogoUniforme({ catalogoUniformeId, temFoto, tamanho = 48, referenciaVisual, destaque = false }: FotoCatalogoUniformeProps) {
+  const referencia = referenciaUniforme(referenciaVisual);
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!temFoto || !catalogoUniformeId) {
+    if (referencia || !temFoto || !catalogoUniformeId) {
       setUrl(null);
       return;
     }
@@ -37,11 +41,14 @@ export function FotoCatalogoUniforme({ catalogoUniformeId, temFoto, tamanho = 48
       cancelado = true;
       if (urlCriada) URL.revokeObjectURL(urlCriada);
     };
-  }, [catalogoUniformeId, temFoto]);
+  }, [catalogoUniformeId, temFoto, referencia]);
 
+  if (referencia) return <div role="img" aria-label={`Foto de uniforme · ${referencia.cor}`}
+    className={destaque ? 'uniforme-foto-destaque' : undefined}
+    style={{ ...(destaque ? {} : { width: tamanho, height: tamanho, backgroundSize: '280% auto', backgroundPosition: '3% 31%', borderRadius: 8, flexShrink: 0 }), backgroundImage: `url(${referencia.arquivo})` }} />;
   const estiloBase = {
-    width: tamanho,
-    height: tamanho,
+    width: destaque ? '100%' : tamanho,
+    height: destaque ? 200 : tamanho,
     borderRadius: 8,
     flexShrink: 0,
   };

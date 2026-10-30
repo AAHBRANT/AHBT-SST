@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   BotaoAcao,
   Button,
@@ -34,7 +33,7 @@ import {
   MotivoEntregaUniforme,
   type CatalogoUniforme,
   type EntregaUniforme,
-  type NovaEntregaUniforme,
+  type EstoqueUniformePorObra,
   type Obra,
   type TamanhoUniformeTrabalhador,
   type Trabalhador,
@@ -46,7 +45,8 @@ import {
   type ItemLoteAssinaturaUniforme,
 } from '../../components/assinatura/AssinaturaEntregaUniformeLoteDialog';
 import { FotoCatalogoUniforme } from './FotoCatalogoUniforme';
-import { SeletorItensUniforme, type ItemCarrinhoUniforme } from './SeletorItensUniforme';
+import type { ItemCarrinhoUniforme } from './SeletorItensUniforme';
+import { VitrineUniforme } from './VitrineUniforme';
 import { CarrinhoEntregaUniforme } from './CarrinhoEntregaUniforme';
 
 // Campos aplicados a todas as entregas do carrinho de uma vez; o que varia por item é só
@@ -83,11 +83,10 @@ interface EntregaUniformeTabProps {
 
 // Entrega de Uniforme em carrinho (mesmo desenho de EntregasTab.tsx do EPI): vários itens para o
 // mesmo funcionário, confirmados de uma vez e assinados numa única interação (digital ou facial).
-// Sem mudar o banco: cada item vira uma EntregaUniforme individual via o endpoint existente
-// (CriarEntregaUniformeCommand, que revalida matriz, tamanho e estoque); o erro do servidor é
-// exibido como veio. Ver AssinaturaEntregaUniformeLoteDialog para a assinatura em lote.
+// Cada item mantém seu registro individual; o endpoint em lote confirma todas as baixas
+// em uma transação. Ver AssinaturaEntregaUniformeLoteDialog para a assinatura existente.
 export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabProps) {
-  const navigate = useNavigate();
+
   const [entregas, setEntregas] = useState<EntregaUniforme[]>([]);
   const [itensCatalogo, setItensCatalogo] = useState<CatalogoUniforme[]>([]);
   const [itensPermitidos, setItensPermitidos] = useState<CatalogoUniforme[]>([]);
@@ -95,6 +94,14 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [dadosComuns, setDadosComuns] = useState<CamposComunsEntrega>(camposComunsVazios());
+  const [saldos, setSaldos] = useState<EstoqueUniformePorObra[]>([]);
+  const [estoqueCarregando, setEstoqueCarregando] = useState(false);
+  const [matrizErro, setMatrizErro] = useState<string | null>(null);
+  const [matrizCarregando, setMatrizCarregando] = useState(false);
+  const [estoqueErro, setEstoqueErro] = useState<string | null>(null);
+  const [estoqueVersao, setEstoqueVersao] = useState(0);
+  const [obraConsultaId, setObraConsultaId] = useState('');
+  const pedidoRef = useRef<{ json: string; chave: string } | null>(null);
   const [carrinho, setCarrinho] = useState<ItemCarrinhoUniforme[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   // Erro do painel separado do erro da lista: estados independentes.
@@ -106,7 +113,7 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
   const { confirmar, dialogElement } = useConfirmar();
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const [painelAberto, setPainelAberto] = useState(false);
+  const [painelAberto, setPainelAberto] = useState(true);
   const [loteParaAssinar, setLoteParaAssinar] = useState<LoteParaAssinar | null>(null);
   // O Teams bloqueia window.open: o canhoto abre num iframe dentro de um diálogo da própria tela.
   const [canhotoAberto, setCanhotoAberto] = useState(false);
@@ -147,27 +154,40 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
         setTamanhosTrabalhador([]);
         return;
       }
+      setMatrizErro(null); setMatrizCarregando(true);
       try {
-        const [permitidos, tamanhos] = await Promise.all([
+        const [permitidos, tamanhos] = await Promise.allSettled([
           api.funcoes.listarUniformes(trabalhador.funcaoId),
           api.trabalhadores.listarTamanhosUniforme(trabalhador.id),
         ]);
         if (!cancelado) {
-          setItensPermitidos(permitidos);
-          setTamanhosTrabalhador(tamanhos);
+          if (permitidos.status === 'rejected') throw permitidos.reason;
+          setItensPermitidos(permitidos.value);
+          setTamanhosTrabalhador(tamanhos.status === 'fulfilled' ? tamanhos.value : []);
         }
-      } catch {
-        if (!cancelado) {
-          setItensPermitidos([]);
-          setTamanhosTrabalhador([]);
-        }
-      }
+      } catch (e) {
+        if (!cancelado) { setItensPermitidos([]); setTamanhosTrabalhador([]);
+          setMatrizErro(e instanceof Error ? e.message : 'Não foi possível consultar a matriz de funções.'); }
+      } finally { if (!cancelado) setMatrizCarregando(false); }
     }
     carregarItensPermitidosETamanhos();
     return () => {
       cancelado = true;
     };
   }, [dadosComuns.trabalhadorId, trabalhadores]);
+
+  const trabalhadorAtual = trabalhadores.find(t => t.id === dadosComuns.trabalhadorId);
+  const obraEntregaId = trabalhadorAtual?.obraId || obraConsultaId || obras[0]?.id || '';
+  useEffect(() => {
+    let cancelado = false;
+    setSaldos([]); setEstoqueErro(null);
+    if (!obraEntregaId) return;
+    setEstoqueCarregando(true);
+    api.estoquesUniforme.listarPorObra(obraEntregaId).then(lista => { if (!cancelado) setSaldos(lista); })
+      .catch(e => { if (!cancelado) setEstoqueErro(e instanceof Error ? e.message : 'Falha ao carregar estoque.'); })
+      .finally(() => { if (!cancelado) setEstoqueCarregando(false); });
+    return () => { cancelado = true; };
+  }, [obraEntregaId, estoqueVersao]);
 
   const opcoesTrabalhadores = useMemo(
     () => trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome, descricao: t.matricula ?? undefined })),
@@ -209,6 +229,7 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
 
   function trocarTrabalhador(id: string) {
     // As peças permitidas e os tamanhos mudam com o funcionário: o carrinho anterior perde o sentido.
+    setItensPermitidos([]); setTamanhosTrabalhador([]);
     setDadosComuns({ ...dadosComuns, trabalhadorId: id });
     setCarrinho([]);
   }
@@ -229,60 +250,28 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
     setDadosComuns(camposComunsVazios());
   }
 
-  // Cria uma EntregaUniforme por item, em sequência (não existe endpoint em lote). Se um item falhar
-  // no meio, os anteriores já foram gravados e debitaram estoque; o carrinho passa a mostrar só o
-  // que falta, com aviso de quantos entraram antes do erro.
+  // O lote é persistido em uma única transação e segue para o fluxo já existente de assinatura.
   async function confirmarCarrinho() {
-    if (!dadosComuns.trabalhadorId || !dadosComuns.dataEntrega) {
-      setErroPainel('Selecione o funcionário e a data de entrega.');
-      return;
+    if (!dadosComuns.trabalhadorId || !dadosComuns.dataEntrega || carrinho.length === 0) {
+      setErroPainel('Selecione o funcionário, a data e ao menos uma peça.'); return;
     }
-    if (carrinho.length === 0) {
-      setErroPainel('Adicione ao menos uma peça ao carrinho antes de confirmar.');
-      return;
-    }
-    setCarregando(true);
-    setErroPainel(null);
-    const criados: { item: ItemCarrinhoUniforme; entrega: EntregaUniforme }[] = [];
+    if (estoqueCarregando || estoqueErro) { setErroPainel('Aguarde a consulta do estoque antes de confirmar.'); return; }
+    const payload = { ...dadosComuns, observacoes: dadosComuns.observacoes || null, itens: carrinho };
+    const json = JSON.stringify(payload);
+    if (!pedidoRef.current || pedidoRef.current.json !== json) pedidoRef.current = { json, chave: crypto.randomUUID() };
+    setCarregando(true); setErroPainel(null);
     try {
-      for (const item of carrinho) {
-        const payload: NovaEntregaUniforme = {
-          trabalhadorId: dadosComuns.trabalhadorId,
-          catalogoUniformeId: item.catalogoUniformeId,
-          dataEntrega: dadosComuns.dataEntrega,
-          quantidade: item.quantidade,
-          motivoTipo: dadosComuns.motivoTipo,
-          observacoes: dadosComuns.observacoes || null,
-        };
-        const { id } = await api.entregasUniforme.criar(payload);
-        criados.push({ item, entrega: await api.entregasUniforme.obterPorId(id) });
-      }
-
-      const loteConfirmado: LoteParaAssinar = {
-        trabalhadorId: dadosComuns.trabalhadorId,
-        dataEntrega: dadosComuns.dataEntrega,
-        itens: criados.map(({ entrega }) => itemLote(entrega)),
-      };
-      fecharPainel();
+      const { ids } = await api.entregasUniforme.criarLote(payload, pedidoRef.current.chave);
+      const lote: LoteParaAssinar = { trabalhadorId: dadosComuns.trabalhadorId, dataEntrega: dadosComuns.dataEntrega,
+        itens: ids.map((id, i) => ({ entregaId: id, catalogoUniformeId: carrinho[i].catalogoUniformeId,
+          pecaNome: nomeItem(carrinho[i].catalogoUniformeId), pecaTemFoto: itemTemFoto(carrinho[i].catalogoUniformeId),
+          tamanho: carrinho[i].tamanho, quantidade: carrinho[i].quantidade })) };
+      fecharPainel(); pedidoRef.current = null;
+      setEstoqueVersao(v => v + 1);
+      setLoteParaAssinar(lote);
       await carregar();
-      setLoteParaAssinar(loteConfirmado);
-    } catch (e) {
-      const itemFalho = carrinho[criados.length];
-      const mensagem = e instanceof Error ? e.message : 'Falha ao registrar entrega.';
-      if (criados.length > 0) {
-        setErroPainel(
-          `${criados.length} de ${carrinho.length} peças foram registradas antes do erro em "${nomeItem(itemFalho?.catalogoUniformeId ?? '')}": ${mensagem} ` +
-            'As peças já registradas permanecem no sistema — o carrinho foi ajustado para mostrar só o que falta.',
-        );
-        const idsCriados = new Set(criados.map((c) => c.item.catalogoUniformeId));
-        setCarrinho((atual) => atual.filter((i) => !idsCriados.has(i.catalogoUniformeId)));
-        await carregar();
-      } else {
-        setErroPainel(`Falha ao registrar "${nomeItem(itemFalho?.catalogoUniformeId ?? '')}": ${mensagem}`);
-      }
-    } finally {
-      setCarregando(false);
-    }
+    } catch (e) { setErroPainel(e instanceof Error ? e.message : 'Não foi possível confirmar o kit.'); }
+    finally { setCarregando(false); }
   }
 
   // Recibo de conferência gerado no navegador, antes de confirmar. Não substitui a ficha oficial.
@@ -474,8 +463,7 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
 
       <div id="painel-nova-entrega-uniforme">
         <PainelCriacaoInline aberto={painelAberto} titulo="Nova entrega de uniforme">
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: 20, alignItems: 'start' }}>
-            <div>
+          <div className="uniforme-entrega-layout"><fieldset disabled={carregando} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
               <FormSection titulo="Quem recebe" numero={1} primeira>
                 {erroPainel && (
                   <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
@@ -505,31 +493,18 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
               </FormSection>
 
               <FormSection titulo="O que é entregue" numero={2}>
-                {!dadosComuns.trabalhadorId ? (
-                  <FeedbackInline tom="info">Selecione o funcionário para ver as peças vinculadas à função dele.</FeedbackInline>
-                ) : itensPermitidos.length === 0 ? (
-                  <FeedbackInline
-                    tom="aviso"
-                    acao={{
-                      rotulo: 'Cadastrar em Matriz por Função',
-                      aoClicar: () => {
-                        fecharPainel();
-                        aoNavegarParaMatriz();
-                      },
-                    }}
-                  >
-                    Esta função não tem peças cadastradas na matriz.
-                  </FeedbackInline>
-                ) : (
-                  <SeletorItensUniforme
-                    pecasPermitidas={itensPermitidos}
-                    tamanhos={tamanhosTrabalhador}
-                    carrinho={carrinho}
-                    aoAdicionar={adicionarAoCarrinho}
-                    aoRemover={removerDoCarrinho}
-                    aoCadastrarTamanho={() => navigate(`/pessoas/${dadosComuns.trabalhadorId}`)}
-                  />
-                )}
+                {!trabalhadorAtual && <Field label="Consultar estoque da obra"><Select value={obraEntregaId} onChange={(_, d) => setObraConsultaId(d.value)}>{obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}</Select></Field>}
+                <div className="uniforme-obra-info">Obra: {nomeObra(obraEntregaId)}{trabalhadorAtual ? ` · ${trabalhadorAtual.nome}` : ' · selecione um trabalhador para montar o kit'}</div>
+                {estoqueErro && <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar novamente', aoClicar: () => setEstoqueVersao(v => v + 1) }}>{estoqueErro}</FeedbackInline>}
+                {estoqueCarregando ? <Spinner label="Consultando estoque por tamanho" /> : <VitrineUniforme
+                  key={dadosComuns.trabalhadorId || obraEntregaId}
+                  pecasPermitidas={trabalhadorAtual ? itensPermitidos.map(p => itensCatalogo.find(c => c.id === p.id) ?? p) : itensCatalogo}
+                  tamanhos={tamanhosTrabalhador} carrinho={carrinho} saldos={saldos}
+                  habilitado={!!trabalhadorAtual && !estoqueErro && !matrizErro && !matrizCarregando}
+                  aoAdicionar={adicionarAoCarrinho} aoRemover={removerDoCarrinho} />}
+                {matrizErro && <FeedbackInline tom="erro">{matrizErro}</FeedbackInline>}
+                {trabalhadorAtual && !matrizCarregando && !matrizErro && itensPermitidos.length === 0 && <FeedbackInline tom="aviso" acao={{ rotulo: 'Matriz por Função', aoClicar: aoNavegarParaMatriz }}>Esta função não possui peças vinculadas na matriz.</FeedbackInline>}
+
 
                 <FormGrid>
                   <Campo span={6}>
@@ -559,12 +534,13 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
                   <Button onClick={fecharPainel}>Cancelar</Button>
                 </FormRodape>
               </FormSection>
-            </div>
+            </fieldset>
 
             <CarrinhoEntregaUniforme
               carrinho={carrinho}
               pecas={itensCatalogo}
-              carregando={carregando}
+              carregando={carregando || estoqueCarregando || !!estoqueErro}
+              saldos={saldos}
               aoRemover={removerDoCarrinho}
               aoImprimirRascunho={imprimirRascunhoCarrinho}
               aoConfirmar={confirmarCarrinho}

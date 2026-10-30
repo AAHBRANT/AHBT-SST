@@ -824,25 +824,24 @@ public class PgrPdfService : IPgrPdfService
         });
     }
 
-    // Relação de EPIs por função (NR-06; conteúdo do PGR de obra na NR-18), com CA e validade do catálogo.
+    // Relação de EPIs por função (NR-06; conteúdo do PGR de obra na NR-18). O PGR define o EPI e a especificação; o CA é do
+    // produto entregue e fica na ficha de entrega, por isso não há coluna de CA.
     private static void RelacaoEpis(ColumnDescriptor c, IReadOnlyList<LinhaEpiFuncaoPdf>? linhas)
     {
         c.Item().PaddingTop(12).Text("Relação de EPIs por função").FontSize(12).SemiBold();
-        c.Item().PaddingBottom(4).Text("EPIs da matriz de cada função no cadastro e os citados nas medidas de prevenção dos riscos dos GHEs em que a função atua. "
-            + "Fornecimento gratuito, com CA válido e registro da entrega em ficha (NR-06).").FontSize(8.5f).FontColor(Secundario).Justify();
+        c.Item().PaddingBottom(4).Text("EPIs exigidos pelas medidas de prevenção dos riscos dos GHEs em que cada função atua, com a especificação técnica mínima.")
+            .FontSize(8.5f).FontColor(Secundario).Justify();
         if (linhas is not { Count: > 0 })
         {
-            c.Item().Text("Nenhum EPI do catálogo ligado às funções deste PGR. Cadastre a matriz de EPI das funções ou ligue as medidas de EPI ao catálogo.")
-                .FontSize(8.5f).Italic().FontColor(Secundario);
+            c.Item().Text("Nenhuma medida de EPI nos riscos dos GHEs deste PGR.").FontSize(8.5f).Italic().FontColor(Secundario);
             return;
         }
-        var hoje = DateTime.UtcNow.Date;
         c.Item().Table(t =>
         {
-            t.ColumnsDefinition(cd => { cd.RelativeColumn(1.5f); cd.ConstantColumn(44); cd.RelativeColumn(2.6f); cd.ConstantColumn(56); cd.ConstantColumn(62); });
+            t.ColumnsDefinition(cd => { cd.RelativeColumn(1.4f); cd.ConstantColumn(44); cd.RelativeColumn(1.5f); cd.RelativeColumn(2.2f); cd.RelativeColumn(1.8f); });
             t.Header(h =>
             {
-                foreach (var titulo in new[] { "Função", "GHE", "EPI", "CA", "Validade CA" })
+                foreach (var titulo in new[] { "Função", "GHE", "EPI", "Especificação técnica", "Risco que motiva" })
                     h.Cell().Border(0.5f).BorderColor(Linha).Background(Fundo).Padding(4)
                         .Text(titulo.ToUpperInvariant()).FontSize(6.5f).SemiBold().FontColor(Secundario);
             });
@@ -854,14 +853,13 @@ public class PgrPdfService : IPgrPdfService
                 foreach (var l in itens)
                 {
                     t.Cell().Border(0.5f).BorderColor(Linha).Padding(4).Text(l.Epi).FontSize(8.5f);
-                    t.Cell().Border(0.5f).BorderColor(Linha).Padding(4).Text(string.IsNullOrWhiteSpace(l.Ca) ? "sem CA" : l.Ca!).FontSize(8.5f)
-                        .FontColor(string.IsNullOrWhiteSpace(l.Ca) ? Marca : Texto);
-                    var vencido = l.CaValidade is { } v && v.Date < hoje;
-                    t.Cell().Border(0.5f).BorderColor(Linha).Padding(4).Text(l.CaValidade?.ToString("dd/MM/yyyy") ?? "—").FontSize(8.5f)
-                        .FontColor(vencido ? Marca : Texto);
+                    t.Cell().Border(0.5f).BorderColor(Linha).Padding(4).Text(l.Especificacao).FontSize(8).FontColor(Secundario);
+                    t.Cell().Border(0.5f).BorderColor(Linha).Padding(4).Text(l.Riscos).FontSize(8);
                 }
             }
         });
+        c.Item().PaddingTop(4).Text("Os EPIs são fornecidos gratuitamente, com Certificado de Aprovação (CA) válido emitido pelo Ministério do Trabalho e Emprego, "
+            + "verificado na entrega e registrado na ficha de EPI do trabalhador (NR-06).").FontSize(8).FontColor(Secundario).Justify();
     }
 
     private static void TituloBloco(ColumnDescriptor b, string titulo) =>
