@@ -11,6 +11,8 @@ public enum MotivoRejeicaoFacial
     RostoNaoReconhecido,
     // Fila 1:N: o segundo colocado ficou perto demais do primeiro para confirmar com segurança.
     RostoAmbiguo,
+    // O Azure reconheceu o rosto, mas nenhum funcionário da obra está ligado a essa pessoa (vínculo quebrado).
+    CadastroSemVinculo,
 }
 
 public record ResultadoIdentificacaoFacial(bool Aceito, ResultadoAutenticacaoAssinatura? Resultado, MotivoRejeicaoFacial? Motivo, double? Confianca,
@@ -21,8 +23,30 @@ public record ResultadoIdentificacaoFacial(bool Aceito, ResultadoAutenticacaoAss
 // refeito (o cadastro único volta a valer depois da nova captura).
 public record ResultadoMigracaoModeloFacial(int Migrados, IReadOnlyList<string> SemCadastroAposMigracao);
 
+// Conferência entre o banco e o grupo facial da obra no Azure (30/10, caso Cuiá). Só leitura.
+// - VinculosQuebrados: funcionário com cadastro no banco apontando para uma pessoa que não existe no grupo
+//   (nunca é reconhecido). Precisa refazer o cadastro facial.
+// - PessoasSemVinculo: pessoa no grupo do Azure que nenhum funcionário da obra aponta (cadastro solto,
+//   normalmente duplicado). Pode ser reconhecida no lugar do cadastro certo; não é apagada aqui.
+// - DuplicadosNoBanco: dois ou mais funcionários apontando para a mesma pessoa do Azure.
+public record VinculoFacialQuebradoDto(Guid TrabalhadorId, string Nome, string? Matricula, string PersonIdAzure, bool TemFotoCadastro);
+public record PessoaFacialSemVinculoDto(string PersonIdAzure, string NomeNoAzure, int Faces);
+public record DiagnosticoVinculosFacialDto(
+    Guid ObraId,
+    string ObraNome,
+    string? GrupoAzure,
+    bool GrupoExisteNoAzure,
+    int CadastrosNoBanco,
+    int PessoasNoAzure,
+    IReadOnlyList<VinculoFacialQuebradoDto> VinculosQuebrados,
+    IReadOnlyList<PessoaFacialSemVinculoDto> PessoasSemVinculo,
+    IReadOnlyList<VinculoFacialQuebradoDto> DuplicadosNoBanco);
+
 public interface IAutenticacaoFacialService
 {
+    // Compara os cadastros faciais do banco com o grupo da obra no Azure, sem alterar nada.
+    Task<DiagnosticoVinculosFacialDto> DiagnosticarVinculosAsync(Guid obraId, CancellationToken ct);
+
     // Cadastra (ou atualiza) a face do trabalhador no Azure — cria o PersonGroup da obra se ainda não
     // existir, cria o Person se ainda não existir, adiciona a foto e dispara o treino, aguardando a
     // conclusão (síncrono — ação administrativa pontual, não precisa ser assíncrona).

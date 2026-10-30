@@ -10,6 +10,8 @@ public enum MotivoFalhaFacial
     RostoNaoReconhecido = 2,
     // Dois candidatos muito próximos na fila: recusado para não confirmar a pessoa errada.
     RostoAmbiguo = 3,
+    // Rosto reconhecido pelo Azure, mas sem funcionário ligado à pessoa: o cadastro precisa ser refeito.
+    CadastroSemVinculo = 4,
 }
 
 // Cada tentativa de reconhecimento facial que o Azure não aceitou. Guarda só o necessário para achar
@@ -28,6 +30,10 @@ public class FalhaReconhecimentoFacial : AuditableEntity
 
     // Confiança devolvida pelo Azure (0 a 1), quando houve candidato.
     public double? Confianca { get; set; }
+
+    // Pessoa do Azure apontada como primeiro candidato, quando houve. É só o id técnico do grupo, não dado
+    // do funcionário: serve para achar qual cadastro do Azure está sem vínculo ou duplicado.
+    public string? PersonIdAzure { get; set; }
 
     public DateTime OcorridaEm { get; set; }
 }

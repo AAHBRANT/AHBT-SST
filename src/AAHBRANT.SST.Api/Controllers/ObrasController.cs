@@ -136,6 +136,14 @@ public class ObrasController : ControllerBase
         return Accepted();
     }
 
+    // Confere os cadastros faciais da obra contra o grupo no Azure (só leitura): funcionários com vínculo
+    // quebrado (refazer o cadastro facial), pessoas soltas no Azure e vínculos duplicados no banco. Mesma
+    // policy de recriar o grupo: é diagnóstico do Administrador.
+    [Authorize(Policy = "organizacional:excluir")]
+    [HttpGet("{id:guid}/facial/diagnostico-vinculos")]
+    public async Task<IActionResult> DiagnosticarVinculosFaciais(Guid id, [FromServices] IAutenticacaoFacialService facial, CancellationToken ct)
+        => Ok(await facial.DiagnosticarVinculosAsync(id, ct));
+
     [Authorize(Policy = "organizacional:ver")]
     [HttpGet("{id:guid}/logo")]
     public async Task<IActionResult> ObterLogo(Guid id, CancellationToken ct)
