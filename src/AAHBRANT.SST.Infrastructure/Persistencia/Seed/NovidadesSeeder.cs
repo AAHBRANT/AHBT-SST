@@ -2012,6 +2012,21 @@ public static class NovidadesSeeder
                     "Toda foto tirada pela câmera no G-SST sai com o carimbo no canto superior direito: data e hora, endereço, latitude e longitude, altitude, obra e local. Fotos da galeria e do reconhecimento facial não recebem carimbo."),
             }),
         new(
+            Versao: "5.111.0",
+            Titulo: "Treinamento: fila facial de volta e detector de rosto na câmera",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Abrir fila facial na turma de treinamento",
+                    "Na turma, a presença pelo rosto era confirmada só pelo botão de cada participante.",
+                    "O botão \"Abrir fila facial\" volta à turma, igual ao DDS. A fila agora abre num pop-up nas cores da AAHBRANT: câmera com guia oval, contador de confirmados e, ao lado, a lista de quem já passou. Cada participante que olha para a câmera é identificado e tem a presença confirmada, com cartão verde e bipe quando dá certo e cartão marsala quando o rosto não é reconhecido."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Detector de rosto na câmera facial",
+                    "A câmera facial era só \"clica e captura\", sem ajuda para posicionar o rosto.",
+                    "A câmera facial volta a mostrar a guia oval e o quadrado que acompanha o rosto, com a mensagem do que ajustar (aproximar, centralizar, luz). No DDS e no treinamento dá para ligar a captura automática quando o rosto fica verde. O botão Capturar continua sempre liberado."),
+            }),
+        new(
             Versao: "5.112.0",
             Titulo: "Reconhecimento facial: cadastro sem vínculo identificado",
             DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
