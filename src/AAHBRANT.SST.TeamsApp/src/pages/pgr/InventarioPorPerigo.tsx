@@ -1,13 +1,14 @@
 import { useState, type ReactNode } from 'react';
 import { Button, StatusChip, Text } from '@ui';
 import type { AtividadeGerada, EstruturaGeracaoPgr, GheGerado, RiscoGerado } from '../../lib/api';
-import { agruparPorPerigo, compararComPadrao, nivelDe, type DiferencaDoPadrao, type GrupoPerigo, type RefRisco } from './agruparPorPerigo';
+import { agruparPorPerigo, compararComPadrao, nivelDe, nivelMatriz, type CelulaMatriz, type DiferencaDoPadrao, type GrupoPerigo, type RefRisco } from './agruparPorPerigo';
 
 const FASES: Record<number, string> = { 1: 'Antes', 2: 'Durante', 3: 'Após' };
 const linha = { borderTop: '1px solid var(--colorNeutralStroke2)' } as const;
 
-export function InventarioPorPerigo({ gh, gi, editavel, ocupado, alterar, gerarAtividade, renderRisco }: {
+export function InventarioPorPerigo({ gh, gi, editavel, ocupado, matriz, alterar, gerarAtividade, renderRisco }: {
   gh: GheGerado;
+  matriz?: CelulaMatriz[];
   gi: number;
   editavel: boolean;
   ocupado: boolean;
@@ -47,7 +48,9 @@ export function InventarioPorPerigo({ gh, gi, editavel, ocupado, alterar, gerarA
         const difs = new Map(gr.itens.map((i) => [i, compararComPadrao(gr.padrao.r, i.r)] as const));
         const nDif = [...difs.values()].filter((d) => !d.igual).length;
         const pendentes = gr.itens.some((i) => !i.r.revisado || i.r.medidas.some((m) => m.decisao === 'Pendente'));
-        const tom = max >= 20 ? 'alerta' : max >= 10 ? 'atencao' : 'info';
+        // Cor e piscar pelo nível da matriz do pior caso do grupo: só o Crítico pisca.
+        const pior = gr.itens.map((i) => nivelMatriz(matriz, i.r)).reduce((a, b) => (b.ordem > a.ordem ? b : a));
+        const tom = pior.tom;
         const medidasPadrao = gr.padrao.r.medidas.filter((m) => m.decisao !== 'Descartada');
         return (
           <div key={gr.chave} style={{
@@ -60,7 +63,7 @@ export function InventarioPorPerigo({ gh, gi, editavel, ocupado, alterar, gerarA
                 <StatusChip tom="neutro">{gr.tipo}</StatusChip>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
                   <Text size={200}>em {gr.itens.length} atividade(s)</Text>
-                  <StatusChip tom={tom}>P × S = {min === max ? max : `${min}–${max}`}</StatusChip>
+                  <StatusChip tom={tom}>P × S = {min === max ? max : `${min}–${max}`}{pior.rotulo ? ` · ${pior.rotulo}` : ''}</StatusChip>
                   {nDif > 0 && <StatusChip tom="atencao">{nDif} fora do padrão</StatusChip>}
                   {nDif === 0 && gr.itens.length > 1 && <StatusChip tom="ok">todas iguais ao padrão</StatusChip>}
                   {!pendentes && <StatusChip tom="ok">Revisado</StatusChip>}

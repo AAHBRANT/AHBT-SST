@@ -15,6 +15,7 @@ import { InventarioPorPerigo } from './InventarioPorPerigo';
 import { CronogramaTreinamentosCard } from './CronogramaTreinamentosCard';
 import { BotaoRascunhoPcmso } from '../saude-ocupacional/BotaoRascunhoPcmso';
 import { CampoCbo, ChipCbo, situacaoCbo } from './CampoCbo';
+import { nivelMatriz, type CelulaMatriz } from './agruparPorPerigo';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const PASSOS = ['Enviar a EAP', 'Conferir a leitura', 'Funções e GHE', 'Inventário de riscos', 'Aprovar'];
@@ -496,7 +497,8 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
         <Card key={gh.numero} titulo={`GHE ${String(gh.numero).padStart(2, '0')} · ${gh.nome}`}>
           {modo === 'perigo' && (
             <InventarioPorPerigo gh={gh} gi={gi} editavel={editavel} ocupado={ocupado} alterar={alterar} gerarAtividade={gerarAtividade}
-              renderRisco={(r, alt) => <RiscoEditor r={r} maxP={g.maxProbabilidade} maxS={g.maxSeveridade} editavel={editavel} epis={epis} alterar={alt} />} />
+              matriz={g.matriz}
+              renderRisco={(r, alt) => <RiscoEditor r={r} maxP={g.maxProbabilidade} maxS={g.maxSeveridade} matriz={g.matriz} editavel={editavel} epis={epis} alterar={alt} />} />
           )}
           {modo === 'atividade' && gh.atividades.map((a, ai) => (
             <div key={a.codigoEap} style={{ marginBottom: 16 }}>
@@ -515,7 +517,7 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
               </div>
               {!a.riscosGerados && <Text size={200}>Riscos ainda não gerados.</Text>}
               {a.riscos.map((r, ri) => !r.excluido && (
-                <RiscoEditor key={r.id} r={r} maxP={g.maxProbabilidade} maxS={g.maxSeveridade} editavel={editavel} epis={epis}
+                <RiscoEditor key={r.id} r={r} maxP={g.maxProbabilidade} maxS={g.maxSeveridade} matriz={g.matriz} editavel={editavel} epis={epis}
                   alterar={(f) => alterar((x) => f(x.ghes[gi].atividades[ai].riscos[ri]))} />
               ))}
             </div>
@@ -571,16 +573,17 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
   );
 }
 
-function RiscoEditor({ r, maxP, maxS, editavel, epis, alterar }: {
+function RiscoEditor({ r, maxP, maxS, matriz, editavel, epis, alterar }: {
   r: RiscoGerado;
   maxP: number;
   maxS: number;
+  matriz?: CelulaMatriz[];
   editavel: boolean;
   epis: CatalogoEpi[];
   alterar: (f: (r: RiscoGerado) => void) => void;
 }) {
   const nivel = r.probabilidade * r.severidade;
-  const tom = nivel >= 20 ? 'alerta' : nivel >= 10 ? 'atencao' : 'info';
+  const { rotulo, tom } = nivelMatriz(matriz, r);
   const grupo = GRUPO_RISCO[r.tipo];
   return (
     <div style={{
@@ -608,7 +611,7 @@ function RiscoEditor({ r, maxP, maxS, editavel, epis, alterar }: {
         </Field>
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
-        <StatusChip tom={tom}>P × S = {nivel}</StatusChip>
+        <StatusChip tom={tom}>P × S = {nivel}{rotulo ? ` · ${rotulo}` : ''}</StatusChip>
         {r.base.map((b) => <StatusChip key={b} tom="neutro">{b}</StatusChip>)}
         {editavel && <Checkbox label="Revisado" checked={r.revisado} onChange={(_, d) => alterar((x) => { x.revisado = !!d.checked; })} />}
         {editavel && <Button size="small" onClick={() => alterar((x) => { x.excluido = true; })}>Excluir risco</Button>}

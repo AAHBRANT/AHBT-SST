@@ -39,7 +39,12 @@ public class GeracaoPgrEapDto
     public List<FuncaoCadastroDto> FuncoesCadastradas { get; set; } = new();
     public int MaxProbabilidade { get; set; }
     public int MaxSeveridade { get; set; }
+    // Células da matriz vigente (30/10/2026): a tela mostra o nível de cada risco pela matriz, como o PDF, e não pelo
+    // produto P × S. Só o Crítico pisca.
+    public List<CelulaMatrizDto> Matriz { get; set; } = new();
 }
+
+public record CelulaMatrizDto(int Probabilidade, int Severidade, NivelRisco Nivel);
 
 public record FuncaoCadastroDto(Guid Id, string Nome);
 
@@ -188,7 +193,7 @@ public class ObterGeracaoPgrEapQueryHandler : IRequestHandler<ObterGeracaoPgrEap
     {
         var g = await SerializacaoGeracao.CarregarAsync(_db, request.Id, ct);
         var estrutura = SerializacaoGeracao.Ler(g.EstruturaJson);
-        var matriz = await _db.MatrizRiscoConfigs.VigenteMaisRecente().FirstOrDefaultAsync(ct);
+        var matriz = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).VigenteMaisRecente().FirstOrDefaultAsync(ct);
         var maxP = matriz?.NumNiveisProbabilidade ?? 5;
         var maxS = matriz?.NumNiveisSeveridade ?? 5;
         await AjudanteGeral.UnificarAsync(_db, estrutura, ct);
@@ -218,6 +223,7 @@ public class ObterGeracaoPgrEapQueryHandler : IRequestHandler<ObterGeracaoPgrEap
             FuncoesCadastradas = await _db.Funcoes.OrderBy(f => f.Nome).Select(f => new FuncaoCadastroDto(f.Id, f.Nome)).ToListAsync(ct),
             MaxProbabilidade = maxP,
             MaxSeveridade = maxS,
+            Matriz = matriz?.Celulas.Select(c => new CelulaMatrizDto(c.Probabilidade, c.Severidade, c.NivelRisco)).ToList() ?? new(),
         };
     }
 }

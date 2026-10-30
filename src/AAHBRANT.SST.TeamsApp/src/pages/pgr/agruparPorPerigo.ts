@@ -2,6 +2,22 @@ import type { AtividadeGerada, GheGerado, RiscoGerado } from '../../lib/api';
 
 const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 export const nivelDe = (r: RiscoGerado) => r.probabilidade * r.severidade;
+
+// Nível do risco pela matriz vigente (30/10/2026), o mesmo do PDF: só o Crítico usa o tom de alerta (que pisca).
+// Sem a célula na matriz, mostra só a conta, em tom neutro.
+export type CelulaMatriz = { probabilidade: number; severidade: number; nivel: number };
+const ROTULO_NIVEL: Record<number, { rotulo: string; tom: 'alerta' | 'atencao' | 'info' | 'ok' }> = {
+  5: { rotulo: 'Crítico', tom: 'alerta' },
+  4: { rotulo: 'Alto', tom: 'atencao' },
+  3: { rotulo: 'Moderado', tom: 'info' },
+  2: { rotulo: 'Baixo', tom: 'ok' },
+  1: { rotulo: 'Trivial', tom: 'ok' },
+};
+export function nivelMatriz(matriz: CelulaMatriz[] | undefined, r: RiscoGerado) {
+  const c = matriz?.find((x) => x.probabilidade === r.probabilidade && x.severidade === r.severidade);
+  const info = c ? ROTULO_NIVEL[c.nivel] : undefined;
+  return { ordem: c?.nivel ?? 0, rotulo: info?.rotulo, tom: info?.tom ?? ('neutro' as const) };
+}
 type Medida = RiscoGerado['medidas'][number];
 const medidasAtivas = (r: RiscoGerado) => r.medidas.filter((m) => m.decisao !== 'Descartada');
 const palavras = (t: string) => new Set(normalizar(t).replace(/[^a-z0-9 ]/g, ' ').split(' ').filter((p) => p.length > 3 && !/^\d+$/.test(p)));
