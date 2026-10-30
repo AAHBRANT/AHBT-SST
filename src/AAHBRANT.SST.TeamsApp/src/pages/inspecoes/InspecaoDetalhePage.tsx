@@ -25,7 +25,6 @@ import {
   ArrowDownload24Regular,
   Eye24Regular,
   Open24Regular,
-  Save24Regular,
   Signature24Regular,
   Warning24Regular,
 } from '@fluentui/react-icons';
@@ -123,6 +122,7 @@ export function InspecaoDetalhePage() {
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [fotoDepoisUrls, setFotoDepoisUrls] = useState<Record<string, string>>({});
+  const [fotoAdicionalUrls, setFotoAdicionalUrls] = useState<Record<string, string>>({});
   const [sync, setSync] = useState({ pendentes: 0, conflitos: 0, criacaoPendente: false, finalizacaoPendente: false, itensPendentes: [] as string[] });
   const [rascunhos, setRascunhos] = useState<string[]>([]);
   const [salvandoRascunho, setSalvandoRascunho] = useState(false);
@@ -179,6 +179,16 @@ export function InspecaoDetalhePage() {
             // Falha ao carregar miniatura não impede o uso da página; o slot fica vazio.
           }
         }
+        for (const extra of resposta.fotosAdicionais ?? []) {
+          if (fotoAdicionalUrls[extra.id]) continue;
+          try {
+            const blob = await api.inspecoes.baixarFotoAdicional(extra.id);
+            if (cancelado) return;
+            setFotoAdicionalUrls((atual) => ({ ...atual, [extra.id]: criarUrl(blob) }));
+          } catch {
+            // Falha ao carregar miniatura não impede o uso da página; o slot fica vazio.
+          }
+        }
         if (resposta.temFotoDepois && !fotoDepoisUrls[resposta.id]) {
           try {
             const blob = await baixarFotoInspecaoLocal(detalhe.inspecao.id, resposta.id, true);
@@ -205,12 +215,40 @@ export function InspecaoDetalhePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Salvamento automático (30/10/2026): sem botão "Salvar item" — cada alteração vai para o rascunho
+  // na hora e, 1,2 s depois da última, é salva como resposta (precisa do status escolhido).
+  const temporizadoresAutoSalvar = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const edicoesAtuais = useRef<Record<string, EdicaoResposta>>({});
+  edicoesAtuais.current = edicoes;
+
+  function agendarAutoSalvar(respostaId: string) {
+    clearTimeout(temporizadoresAutoSalvar.current[respostaId]);
+    temporizadoresAutoSalvar.current[respostaId] = setTimeout(() => {
+      const edicao = edicoesAtuais.current[respostaId];
+      if (edicao?.statusItem) void autoSalvar(respostaId, edicao);
+    }, 1200);
+  }
+
+  // Não usa `processando` (que deixa a tela só leitura): os campos seguem editáveis durante o envio.
+  async function autoSalvar(respostaId: string, edicao: EdicaoResposta) {
+    if (!id) return;
+    try {
+      await escritaRascunhos.current;
+      await salvarRespostaInspecao(id, respostaId, edicao);
+      // Recarrega só se nada mudou desde o agendamento — senão o texto digitado nesse meio-tempo voltaria.
+      if (edicoesAtuais.current[respostaId] === edicao) await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao salvar o item automaticamente.');
+    }
+  }
+
   function atualizarEdicao(respostaId: string, campos: Partial<EdicaoResposta>) {
     versaoEdicao.current += 1;
     setEdicoes((atual) => ({
       ...atual,
       [respostaId]: { ...(atual[respostaId] ?? edicaoInicial()), ...campos },
     }));
+    agendarAutoSalvar(respostaId);
     if (!id) return;
     gravacoes.current += 1;
     setSalvandoRascunho(true);
@@ -223,24 +261,13 @@ export function InspecaoDetalhePage() {
     });
   }
 
-  async function salvarResposta(respostaId: string) {
+  // Tirar a foto já salva o item (30/10/2026): se o status já foi escolhido e há alteração em
+  // rascunho, a resposta vai junto — sem precisar clicar em "Salvar item" depois da foto.
+  async function salvarItemJuntoComFoto(respostaId: string) {
     const edicao = edicoes[respostaId];
-    if (!edicao?.statusItem) {
-      setErro('Selecione o status do ponto verificado antes de salvar.');
-      return;
-    }
-    try {
-      setProcessando(true);
-      setErro(null);
-      if (!id) return;
-      await escritaRascunhos.current;
-      await salvarRespostaInspecao(id, respostaId, edicao);
-      await carregar();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao salvar o ponto verificado.');
-    } finally {
-      setProcessando(false);
-    }
+    if (!id || !edicao?.statusItem || !rascunhos.includes(respostaId)) return;
+    await escritaRascunhos.current;
+    await salvarRespostaInspecao(id, respostaId, edicao);
   }
 
   async function enviarFoto(respostaId: string, arquivo: File) {
@@ -249,9 +276,31 @@ export function InspecaoDetalhePage() {
       if (!id) return;
       await salvarFotoInspecao(id, respostaId, arquivo);
       setFotoUrls(atual => ({ ...atual, [respostaId]: criarUrl(arquivo) }));
+      await salvarItemJuntoComFoto(respostaId);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar a evidência anterior.');
+    }
+  }
+
+  async function enviarFotoAdicional(respostaId: string, arquivo: File) {
+    try {
+      setErro(null);
+      await api.inspecoes.anexarFotoAdicional(respostaId, arquivo);
+      await salvarItemJuntoComFoto(respostaId);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao enviar a 2ª foto do item.');
+    }
+  }
+
+  async function removerFotoAdicional(fotoId: string) {
+    try {
+      setErro(null);
+      await api.inspecoes.removerFotoAdicional(fotoId);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao remover a 2ª foto do item.');
     }
   }
 
@@ -401,7 +450,7 @@ export function InspecaoDetalhePage() {
       chave: 'encerrar',
       rotulo: 'Finalizar inspeção',
       finalizacao: true,
-      pendencias: [...(rascunhos.length ? ['Salve os itens em rascunho antes de finalizar.'] : []), ...detalhe.respostas.flatMap(r => {
+      pendencias: [...(rascunhos.length ? ['Aguarde o salvamento automático dos itens (escolha o status de cada um).'] : []), ...detalhe.respostas.flatMap(r => {
         const p: string[] = [];
         if (r.statusItem == null) p.push('resposta do checklist');
         if (r.exigeFotografia && !r.temFoto) p.push('foto anterior obrigatória');
@@ -549,7 +598,7 @@ export function InspecaoDetalhePage() {
         <FeedbackInline tom="aviso">Há envios recusados desta inspeção. Abra o indicador de sincronização para conferir o motivo e tentar novamente ou descartar. A finalização aguarda a resolução dessas pendências.</FeedbackInline>
       )}
       {rascunhos.length > 0 && (
-        <FeedbackInline tom="info">{salvandoRascunho ? 'Salvando rascunho no tablet…' : 'Rascunho salvo no tablet. Use Salvar item para incluir as respostas na sincronização.'}</FeedbackInline>
+        <FeedbackInline tom="info">{salvandoRascunho ? 'Salvando rascunho no tablet…' : 'Salvando automaticamente… Escolha o status do item para que ele seja salvo.'}</FeedbackInline>
       )}
 
       <Text weight="semibold">Pontos verificados</Text>
@@ -602,8 +651,9 @@ export function InspecaoDetalhePage() {
                     </Field>
 
                     {(ehInspecaoTema || edicao.statusItem === String(StatusItemChecklist.NaoConforme)) && (
-                      <Field label={ehInspecaoTema ? 'Foto do item (obrigatória)' : 'Foto da não conformidade (obrigatória)'}>
-                        <div style={{ maxWidth: 180 }}>
+                      <Field label={ehInspecaoTema ? 'Fotos do item (1ª obrigatória, até 2)' : 'Fotos da não conformidade (1ª obrigatória, até 2)'}>
+                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                        <div style={{ width: 180 }}>
                           <SlotFoto
                             rotulo={ehInspecaoTema ? 'Foto do item' : 'Foto da não conformidade'}
                             contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: inspecao.veiculoPlacaPrefixo }}
@@ -615,22 +665,32 @@ export function InspecaoDetalhePage() {
                             aoErroValidacao={setErro}
                           />
                         </div>
+                        {(() => {
+                          // 2ª foto (opcional): liberada depois da 1ª; online só.
+                          const extra = resposta.fotosAdicionais?.find((f) => f.ordem === 2);
+                          if (!extra && (!resposta.temFoto || somenteLeitura)) return null;
+                          return (
+                            <div style={{ width: 180 }}>
+                              <SlotFoto
+                                rotulo="2ª foto"
+                                contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: inspecao.veiculoPlacaPrefixo }}
+                                dadosFoto={extra?.dadosFoto}
+                                url={extra ? fotoAdicionalUrls[extra.id] : null}
+                                carregandoMiniatura={!!extra && !fotoAdicionalUrls[extra.id]}
+                                somenteLeitura={somenteLeitura}
+                                modo="remover"
+                                aoRemover={extra ? () => removerFotoAdicional(extra.id) : undefined}
+                                aoSelecionarArquivo={(arquivo) => enviarFotoAdicional(resposta.id, arquivo)}
+                                aoErroValidacao={setErro}
+                              />
+                            </div>
+                          );
+                        })()}
+                        </div>
                       </Field>
                     )}
                   </div>
 
-                  {!somenteLeitura && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-                      <Button
-                        appearance="primary"
-                        icon={<Save24Regular />}
-                        onClick={() => salvarResposta(resposta.id)}
-                        disabled={processando || salvandoRascunho}
-                      >
-                        Salvar item
-                      </Button>
-                    </div>
-                  )}
                 </>
               ) : ehInspecaoAlojamento ? (
                 <>
@@ -687,18 +747,6 @@ export function InspecaoDetalhePage() {
                     )}
                   </div>
 
-                  {!somenteLeitura && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-                      <Button
-                        appearance="primary"
-                        icon={<Save24Regular />}
-                        onClick={() => salvarResposta(resposta.id)}
-                        disabled={processando || salvandoRascunho}
-                      >
-                        Salvar item
-                      </Button>
-                    </div>
-                  )}
                 </>
               ) : (
                 <>
@@ -857,16 +905,6 @@ export function InspecaoDetalhePage() {
                     )
                   )}
                 </div>
-                {!somenteLeitura && (
-                  <Button
-                    appearance="primary"
-                    icon={<Save24Regular />}
-                    onClick={() => salvarResposta(resposta.id)}
-                    disabled={processando || salvandoRascunho}
-                  >
-                    Salvar ponto verificado
-                  </Button>
-                )}
               </div>
               </>
               )}

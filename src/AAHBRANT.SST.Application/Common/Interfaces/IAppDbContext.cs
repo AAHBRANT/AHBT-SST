@@ -106,6 +106,7 @@ public interface IAppDbContext
     DbSet<ChecklistModeloItem> ChecklistModeloItens { get; }
     DbSet<Inspecao> Inspecoes { get; }
     DbSet<InspecaoItemResposta> InspecaoItemRespostas { get; }
+    DbSet<InspecaoItemFotoAdicional> InspecaoItemFotosAdicionais { get; }
 
     DbSet<Alojamento> Alojamentos { get; }
     DbSet<AlojamentoMorador> AlojamentoMoradores { get; }

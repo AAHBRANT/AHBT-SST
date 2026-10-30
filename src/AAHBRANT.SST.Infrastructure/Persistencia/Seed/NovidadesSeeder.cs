@@ -2067,6 +2067,25 @@ public static class NovidadesSeeder
                     "Quando o cadastro facial de um funcionário ficava sem ligação com ele, o rosto era reconhecido e mesmo assim recusado, aparecendo só como \"rosto não reconhecido\".",
                     "A falha agora aparece como \"Cadastro facial sem vínculo com o funcionário\": basta refazer o cadastro facial dessa pessoa. O sistema também deixou de criar cadastros soltos quando uma foto de cadastro, a troca de obra ou a atualização do modelo de reconhecimento falham no meio."),
             }),
+        new(
+            Versao: "5.112.1",
+            Titulo: "Inspeções: 2 fotos por item e relatório sem item cortado",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Até 2 fotos por item",
+                    "Cada item da inspeção por tema ou de veículo aceitava uma foto só.",
+                    "Depois da primeira foto, aparece o quadro da 2ª foto, que é opcional. No PDF, as duas saem lado a lado."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Item inteiro na mesma página do PDF",
+                    "No relatório, o título do item podia ficar numa página e a foto na seguinte.",
+                    "Cada item sai inteiro na mesma página, com título, observação e fotos juntos."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Itens salvos automaticamente",
+                    "Depois de responder ou tirar a foto, era preciso clicar em Salvar item.",
+                    "O botão Salvar item saiu. Ao escolher o status, escrever a observação ou tirar a foto, o item é salvo sozinho."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

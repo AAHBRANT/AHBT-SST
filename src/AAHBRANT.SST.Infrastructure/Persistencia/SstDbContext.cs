@@ -119,6 +119,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<ChecklistModeloItem> ChecklistModeloItens => Set<ChecklistModeloItem>();
     public DbSet<Inspecao> Inspecoes => Set<Inspecao>();
     public DbSet<InspecaoItemResposta> InspecaoItemRespostas => Set<InspecaoItemResposta>();
+    public DbSet<InspecaoItemFotoAdicional> InspecaoItemFotosAdicionais => Set<InspecaoItemFotoAdicional>();
 
     public DbSet<Alojamento> Alojamentos => Set<Alojamento>();
     public DbSet<AlojamentoMorador> AlojamentoMoradores => Set<AlojamentoMorador>();

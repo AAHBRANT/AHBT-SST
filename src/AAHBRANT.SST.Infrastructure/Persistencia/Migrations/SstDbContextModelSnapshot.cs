@@ -5360,6 +5360,60 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("InspecoesCipa");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.InspecaoItemFotoAdicional", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FotoContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte[]>("FotoConteudo")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("FotoMetadadosJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("InspecaoItemRespostaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InspecaoItemRespostaId");
+
+                    b.ToTable("InspecaoItemFotosAdicionais");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.InspecaoItemResposta", b =>
                 {
                     b.Property<Guid>("Id")
@@ -11460,6 +11514,17 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Obra");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.InspecaoItemFotoAdicional", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.InspecaoItemResposta", "InspecaoItemResposta")
+                        .WithMany("FotosAdicionais")
+                        .HasForeignKey("InspecaoItemRespostaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InspecaoItemResposta");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.InspecaoItemResposta", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.ChecklistModeloItem", "ChecklistModeloItem")
@@ -12804,6 +12869,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Inspecao", b =>
                 {
                     b.Navigation("Respostas");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.InspecaoItemResposta", b =>
+                {
+                    b.Navigation("FotosAdicionais");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MatrizRiscoConfig", b =>

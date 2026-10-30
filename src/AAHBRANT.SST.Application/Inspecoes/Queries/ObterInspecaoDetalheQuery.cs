@@ -59,6 +59,13 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
             .Where(n => n.InspecaoItemRespostaId != null && idsRespostas.Contains(n.InspecaoItemRespostaId!.Value))
             .ToDictionaryAsync(n => n.InspecaoItemRespostaId!.Value, n => (Guid?)n.Id, ct);
 
+        // Só metadados — os bytes das fotos extras são baixados um a um pelo endpoint próprio.
+        var fotosAdicionais = (await _db.InspecaoItemFotosAdicionais
+                .Where(f => idsRespostas.Contains(f.InspecaoItemRespostaId))
+                .Select(f => new { f.Id, f.InspecaoItemRespostaId, f.Ordem, f.FotoMetadadosJson })
+                .ToListAsync(ct))
+            .ToLookup(f => f.InspecaoItemRespostaId);
+
         return new InspecaoDetalheDto
         {
             Inspecao = new InspecaoDto
@@ -113,7 +120,13 @@ public class ObterInspecaoDetalheQueryHandler : IRequestHandler<ObterInspecaoDet
                 DadosFotoDepois = AAHBRANT.SST.Application.Common.DadosCapturaFoto.Ler(r.FotoDepoisMetadadosJson),
                 TemFoto = r.FotoConteudo.Length > 0,
                 TemFotoDepois = r.FotoDepoisConteudo != null && r.FotoDepoisConteudo.Length > 0,
-                NaoConformidadeId = ncPorResposta.GetValueOrDefault(r.Id)
+                NaoConformidadeId = ncPorResposta.GetValueOrDefault(r.Id),
+                FotosAdicionais = fotosAdicionais[r.Id].OrderBy(f => f.Ordem).Select(f => new InspecaoFotoAdicionalDto
+                {
+                    Id = f.Id,
+                    Ordem = f.Ordem,
+                    DadosFoto = AAHBRANT.SST.Application.Common.DadosCapturaFoto.Ler(f.FotoMetadadosJson)
+                }).ToList()
             }).ToList()
         };
     }

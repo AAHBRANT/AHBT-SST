@@ -35,6 +35,11 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             .Where(r => r.InspecaoId == request.Id)
             .Select(r => new { r.Id, r.FotoConteudo, r.FotoDepoisConteudo })
             .ToDictionaryAsync(r => r.Id, ct);
+        var idsRespostas = fotosPorResposta.Keys.ToList();
+        var fotoAdicionalPorResposta = await _db.InspecaoItemFotosAdicionais
+            .Where(f => idsRespostas.Contains(f.InspecaoItemRespostaId) && f.Ordem == 2)
+            .Select(f => new { f.InspecaoItemRespostaId, f.FotoConteudo })
+            .ToDictionaryAsync(f => f.InspecaoItemRespostaId, f => f.FotoConteudo, ct);
 
         var obraLogoConteudo = await _db.Obras
             .Where(o => o.Id == detalhe.Inspecao.ObraId)
@@ -55,7 +60,8 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
                 r.ResponsavelUsuarioNome,
                 r.Prazo,
                 fotos?.FotoConteudo is { Length: > 0 } antes ? antes : null,
-                fotos?.FotoDepoisConteudo is { Length: > 0 } depois ? depois : null);
+                fotos?.FotoDepoisConteudo is { Length: > 0 } depois ? depois : null,
+                fotoAdicionalPorResposta.GetValueOrDefault(r.Id) is { Length: > 0 } adicional ? adicional : null);
         }).ToList();
 
         var inspecao = await _db.Inspecoes.FirstAsync(i => i.Id == request.Id, ct);

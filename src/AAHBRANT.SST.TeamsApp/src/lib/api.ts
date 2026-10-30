@@ -2801,6 +2801,8 @@ export interface InspecaoItemResposta {
   temFoto: boolean;
   temFotoDepois: boolean;
   naoConformidadeId?: string | null;
+  // 2ª foto do item (máximo 2 por item, 30/10/2026).
+  fotosAdicionais?: { id: string; ordem: number; dadosFoto?: DadosFoto | null }[];
 }
 
 export interface InspecaoDetalhe {
@@ -6274,6 +6276,32 @@ export const api = {
       }
       return response.blob();
     },
+    // 2ª foto do item (30/10/2026) — só online.
+    anexarFotoAdicional: async (respostaId: string, foto: File) => {
+      const formData = new FormData();
+      formData.append('foto', foto);
+      anexarDadosFoto(formData, foto);
+      const response = await fetch(`${API_BASE_URL}/api/inspecoes/respostas/${respostaId}/fotos-adicionais/2`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+    },
+    baixarFotoAdicional: async (fotoId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/inspecoes/fotos-adicionais/${fotoId}`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
+    removerFotoAdicional: (fotoId: string) => request<void>(`/api/inspecoes/fotos-adicionais/${fotoId}`, { method: 'DELETE' }),
     encerrar: (id: string) => request<void>(`/api/inspecoes/${id}/encerrar`, { method: 'POST' }),
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/inspecoes/${id}/pdf`, { headers: await montarHeadersAuth() });
