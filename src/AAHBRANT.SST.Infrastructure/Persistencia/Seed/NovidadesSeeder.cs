@@ -2098,6 +2098,17 @@ public static class NovidadesSeeder
                     "O posto tenta buscar as digitais de novo antes de pedir o dedo. Se não conseguir, a tela diz o motivo (por exemplo, chave de criptografia diferente da do servidor) ou pede para cadastrar a digital. Vale a partir do agente 1.1.3."),
             }),
         new(
+            Versao: "5.113.1",
+            Titulo: "Técnico com função abreviada pode assinar inspeção",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Função \"Tec. Segurança do Trabalho\" reconhecida",
+                    "Técnicos cadastrados no RH com a função abreviada recebiam \"Apenas Técnico de Segurança ou Engenheiro de Segurança podem assinar inspeções\".",
+                    "O sistema entende \"Tec.\" como Técnico e \"Eng.\" como Engenheiro em todas as regras de técnico de segurança."),
+            }),
+        new(
             Versao: "5.114.0",
             Titulo: "Selo de assinatura digital em todos os documentos",
             DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
