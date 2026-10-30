@@ -2002,6 +2002,17 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.110.0",
+            Titulo: "Fotos com data, hora e local gravados na imagem",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Carimbo na foto igual ao do G-QUALI",
+                    "A data, a hora e a posição da foto ficavam só nos dados do sistema; a imagem baixada ou impressa não mostrava nada.",
+                    "Toda foto tirada pela câmera no G-SST sai com o carimbo no canto superior direito: data e hora, endereço, latitude e longitude, altitude, obra e local. Fotos da galeria e do reconhecimento facial não recebem carimbo."),
+            }),
+        new(
+            Versao: "5.111.0",
             Titulo: "Treinamento: fila facial de volta e detector de rosto na câmera",
             DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]

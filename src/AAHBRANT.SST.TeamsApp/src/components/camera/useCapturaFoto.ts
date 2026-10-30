@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'reac
 import { comprimirImagem } from '../../lib/imagem';
 import { leituraParaLocalizacao, pendenciasFoto, vincularDadosFoto, type ContextoFoto, type DadosFoto, type LocalizacaoFoto } from '../../lib/dadosFoto';
 import { criarRastreadorFoto } from '../../lib/fontesLocalizacao';
+import { desenharCarimbo, enderecoDaPosicao, linhasCarimbo, observarEndereco, type ObservadorEndereco } from '../../lib/carimboFoto';
 import type { EstadoRastreio, Rastreador } from '../../lib/rastreadorLocalizacao';
 
 // Quanto o clique em "capturar" espera pela posição quando ela ainda não está boa. O quadro já foi
@@ -89,9 +90,15 @@ export function useCapturaFoto({
     setLocalFoto(contextoFoto?.local ?? '');
   }, [contextoFoto?.local]);
   const [fotoPendente, setFotoPendente] = useState<{ arquivo: File; dados: DadosFoto } | null>(null);
+  // Carimbo na foto igual ao do G-QUALI: só foto de evidência (câmera traseira) com contexto de obra. A foto do
+  // reconhecimento facial (câmera frontal) nunca é carimbada — o texto atrapalharia a comparação do rosto.
+  const carimbar = !!contextoFoto && modoCamera === 'environment';
+  const endereco = useRef<ObservadorEndereco | null>(null);
   function pararLocalizacao() {
     rastreador.current?.parar();
     rastreador.current = null;
+    endereco.current?.parar();
+    endereco.current = null;
   }
   useEffect(() => () => pararLocalizacao(), []);
   // Reavalia a idade da posição mesmo sem leitura nova (ela "vence" após 30 s).
@@ -105,7 +112,13 @@ export function useCapturaFoto({
     pararLocalizacao();
     const r = criarRastreadorFoto();
     rastreador.current = r;
-    r.assinar(e => { if (rastreador.current === r) setEstadoLocalizacao(e); });
+    const obs = carimbar ? observarEndereco() : null;
+    endereco.current = obs;
+    r.assinar(e => {
+      if (rastreador.current !== r) return;
+      setEstadoLocalizacao(e);
+      if (obs && e.leitura) obs.atualizar(e.leitura.latitude, e.leitura.longitude);
+    });
   }
   function montarDados(origem: 'camera' | 'arquivo', loc: LocalizacaoFoto = localizacao, capturadaEm = new Date()): DadosFoto {
     return { ...(origem === 'camera' ? loc : {}), origem,
@@ -305,6 +318,22 @@ export function useCapturaFoto({
       }
       loc = e.leitura ? leituraParaLocalizacao(e.leitura)
         : { motivoLocalizacao: e.motivo ?? 'A localização não chegou a tempo. Tente novamente no local.' };
+      if (carimbar) {
+        const ctx = canvas.getContext('2d');
+        const l = e.leitura;
+        let linhasEndereco: string[] = [];
+        if (l) {
+          linhasEndereco = endereco.current?.linhas(l.latitude, l.longitude) ?? [];
+          if (linhasEndereco.length === 0) {
+            setProcessando(true);
+            try { linhasEndereco = await enderecoDaPosicao(l.latitude, l.longitude); } finally { setProcessando(false); }
+          }
+        }
+        const nota = [contextoFoto.obraNome, localFoto.trim()].filter(Boolean).join(' · ');
+        if (ctx) desenharCarimbo(ctx, canvas.width, canvas.height, linhasCarimbo(capturadaEm.toISOString(),
+          { latitude: l?.latitude, longitude: l?.longitude, altitudeMetros: l?.altitudeMetros, precisaoMetros: l?.precisaoMetros, motivo: loc.motivoLocalizacao },
+          nota, linhasEndereco));
+      }
     }
     const dados = montarDados('camera', loc, capturadaEm);
     fecharCamera();
