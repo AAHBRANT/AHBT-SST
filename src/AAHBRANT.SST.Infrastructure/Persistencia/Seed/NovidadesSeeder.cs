@@ -2088,7 +2088,7 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.114.0",
-            Titulo: "Inspeção com a assinatura do técnico responsável",
+            Titulo: "Selo de assinatura digital em todos os documentos",
             DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
             {
@@ -2096,6 +2096,10 @@ public static class NovidadesSeeder
                     "Selo de assinatura do técnico no PDF da inspeção",
                     "A assinatura da inspeção só aparecia numa página separada no fim, e só depois de assinada.",
                     "O fim do relatório mostra o técnico responsável com o mesmo selo do certificado: \"Assinado digitalmente\", nome, data, método e hash. Antes da assinatura, o selo aparece como \"Aguardando assinatura\"."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Mesmo selo em APR, PT, DDS, ficha de EPI, ata e reposição de EPI",
+                    "Cada assinatura nesses PDFs era só o nome sobre uma linha e uma legenda miúda.",
+                    "Todos passam a usar o selo vinho do certificado acima da linha, com nome e cargo embaixo. As listas de presença continuam com a legenda curta em cada linha."),
             }),
     };
 

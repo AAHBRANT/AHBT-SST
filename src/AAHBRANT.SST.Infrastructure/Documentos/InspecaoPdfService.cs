@@ -189,43 +189,10 @@ public class InspecaoPdfService : IInspecaoPdfService
         container.ShowEntire().PaddingTop(8).Column(coluna =>
         {
             coluna.Item().Text("Responsável técnico").FontSize(11).Bold().FontColor(CorMarca);
-            coluna.Item().PaddingTop(8).AlignCenter().Width(260).Column(bloco =>
-            {
-                bloco.Item().PaddingHorizontal(8).MinHeight(44).Element(selo =>
-                {
-                    if (assinatura is null)
-                    {
-                        selo.MinHeight(44).Border(0.6f).BorderColor(Colors.Grey.Lighten1).CornerRadius(4).AlignCenter().AlignMiddle()
-                            .Text("Aguardando assinatura").FontSize(7.5f).Italic().FontColor(Colors.Grey.Darken1);
-                        return;
-                    }
-
-                    selo.Border(0.8f).BorderColor(CorMarca).CornerRadius(4).Background("#ffffff").Row(linha =>
-                    {
-                        linha.ConstantItem(5).Background(CorMarca);
-                        linha.RelativeItem().PaddingVertical(4).PaddingHorizontal(8).Column(texto =>
-                        {
-                            texto.Item().Text("ASSINADO DIGITALMENTE").FontSize(6.5f).Bold().FontColor(CorMarca).LetterSpacing(0.08f);
-                            texto.Item().PaddingTop(1).Text(nome).FontSize(8).SemiBold().ClampLines(1);
-                            texto.Item().Text(DescricaoMetodoAssinatura.Legenda(HorarioBrasilia.De(assinatura.AssinadoEm), assinatura.MetodoAutenticacao))
-                                .FontSize(6).FontColor(Colors.Grey.Darken2).ClampLines(1);
-                            texto.Item().Text($"Hash SHA-256: {HashCurto(modelo.Assinatura!.ConteudoHash)}").FontSize(5.5f).FontColor(Colors.Grey.Darken2).ClampLines(1);
-                        });
-                    });
-                });
-                bloco.Item().PaddingTop(4).LineHorizontal(0.75f).LineColor(Colors.Black);
-                bloco.Item().PaddingTop(3).AlignCenter().Text(nome).FontSize(9).SemiBold();
-                bloco.Item().AlignCenter().Text($"{cargo} · Responsável pela inspeção").FontSize(7.5f);
-            });
+            coluna.Item().PaddingTop(8).AlignCenter().Width(260).Element(c => AssinaturaPdfPadrao.Bloco(
+                c, null, nome, $"{cargo} · Responsável pela inspeção", assinatura?.AssinadoEm, assinatura?.MetodoAutenticacao,
+                modelo.Assinatura?.ConteudoHash));
         });
-    }
-
-    // 16 primeiros caracteres em blocos de 4 (ex.: 3F9A-12C4-88B0-7D1E), como no certificado.
-    private static string HashCurto(string hash)
-    {
-        var h = hash.ToUpperInvariant();
-        var n = Math.Min(16, h.Length);
-        return string.Join('-', Enumerable.Range(0, (n + 3) / 4).Select(i => h.Substring(i * 4, Math.Min(4, n - i * 4))));
     }
 
     private static void SecaoAssinaturas(IContainer container, InspecaoPdfAssinaturaModelo assinatura)
@@ -240,7 +207,7 @@ public class InspecaoPdfService : IInspecaoPdfService
             foreach (var signatario in assinatura.Signatarios)
             {
                 // Padrão único de assinatura: nome, linha, cargo e a legenda miúda (pedido de 02/10).
-                coluna.Item().Element(c => AssinaturaPdfPadrao.Bloco(
+                coluna.Item().AlignLeft().Width(260).Element(c => AssinaturaPdfPadrao.Bloco(
                     c, null, signatario.Nome, signatario.Funcao, signatario.AssinadoEm, signatario.MetodoAutenticacao));
             }
 
