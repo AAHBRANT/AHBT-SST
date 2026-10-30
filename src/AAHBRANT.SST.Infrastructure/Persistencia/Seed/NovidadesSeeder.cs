@@ -2021,6 +2021,10 @@ public static class NovidadesSeeder
                     "Alojamento no padrão do checklist",
                     "A inspeção de alojamento pedia duas fotos em cada item, uma antes e outra depois.",
                     "Cada item pede uma foto obrigatória, igual às demais inspeções. As fotos posteriores já registradas continuam no histórico e no PDF."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Foto da inspeção no iPhone",
+                    "No iPhone, ao tirar a foto de um item, aparecia o erro \"Error preparing Blob/File data to be stored in object store\" e a foto não era salva.",
+                    "A foto é salva normalmente no iPhone, no navegador e dentro do Teams."),
             }),
     };
 
