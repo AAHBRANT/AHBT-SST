@@ -2057,7 +2057,18 @@ public static class NovidadesSeeder
                     "No resumo da inspeção, o campo Responsável agora permite escolher a pessoa certa, até a inspeção ser assinada."),
             }),
         new(
-            Versao: "5.111.3",
+            Versao: "5.112.0",
+            Titulo: "Reconhecimento facial: cadastro sem vínculo identificado",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Rosto reconhecido, mas presença recusada",
+                    "Quando o cadastro facial de um funcionário ficava sem ligação com ele, o rosto era reconhecido e mesmo assim recusado, aparecendo só como \"rosto não reconhecido\".",
+                    "A falha agora aparece como \"Cadastro facial sem vínculo com o funcionário\": basta refazer o cadastro facial dessa pessoa. O sistema também deixou de criar cadastros soltos quando uma foto de cadastro, a troca de obra ou a atualização do modelo de reconhecimento falham no meio."),
+            }),
+        new(
+            Versao: "5.112.1",
             Titulo: "Inspeções: 2 fotos por item e relatório sem item cortado",
             DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]

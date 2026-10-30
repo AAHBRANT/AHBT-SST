@@ -32,6 +32,7 @@ public class ListarCadastrosFaciaisFracosQueryHandler : IRequestHandler<ListarCa
     {
         MotivoFalhaFacial.ConfiancaBaixa => "Baixa confiança",
         MotivoFalhaFacial.RostoAmbiguo => "Rosto parecido com outra pessoa",
+        MotivoFalhaFacial.CadastroSemVinculo => "Cadastro facial sem vínculo com o funcionário",
         _ => "Rosto não reconhecido",
     };
 
