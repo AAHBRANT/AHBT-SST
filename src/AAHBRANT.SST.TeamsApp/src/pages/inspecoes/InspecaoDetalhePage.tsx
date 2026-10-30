@@ -267,6 +267,19 @@ export function InspecaoDetalhePage() {
     }
   }
 
+  // Quem abre a inspeção nem sempre é o responsável (30/10/2026): troca liberada até a assinatura,
+  // mesmo depois de concluída — o servidor recusa se o documento já estiver assinado.
+  async function alterarResponsavel(responsavelUsuarioId: string) {
+    if (!id || !responsavelUsuarioId) return;
+    try {
+      setErro(null);
+      await api.inspecoes.alterarResponsavel(id, responsavelUsuarioId);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao alterar o responsável da inspeção.');
+    }
+  }
+
   async function gerarOcorrencia(respostaId: string) {
     if (!navigator.onLine || !estaOnline()) {
       setErro('Gerar ocorrência exige conexão. As não conformidades também serão geradas pelo servidor ao finalizar a inspeção.');
@@ -362,6 +375,26 @@ export function InspecaoDetalhePage() {
         ? `/operacao?secao=inspecoes&cartao=tema:${inspecao.temaInspecaoId}`
         : '/prevencao/inspecoes';
 
+  const campoResponsavel = (
+    <Field label="Responsável">
+      <Select
+        value={inspecao.responsavelUsuarioId}
+        onChange={(_, d) => void alterarResponsavel(d.value)}
+        disabled={inspecaoAssinada || processando || sync.criacaoPendente}
+        style={{ width: '100%' }}
+      >
+        {!usuarios.some((u) => u.id === inspecao.responsavelUsuarioId) && (
+          <option value={inspecao.responsavelUsuarioId}>{inspecao.responsavelUsuarioNome}</option>
+        )}
+        {usuarios.map((usuario) => (
+          <option key={usuario.id} value={usuario.id}>
+            {usuario.nome}
+          </option>
+        ))}
+      </Select>
+    </Field>
+  );
+
   const acoes: AcaoWorkflow[] = [];
   if (inspecao.status === StatusInspecao.EmAndamento && !sync.finalizacaoPendente) {
     acoes.push({
@@ -429,7 +462,7 @@ export function InspecaoDetalhePage() {
                 <DadoResumo rotulo="Item" valor={inspecao.itemInspecionavelIdentificacao ?? '—'} />
                 <DadoResumo rotulo="Obra" valor={inspecao.obraNome} />
                 <DadoResumo rotulo="Data do preenchimento" valor={formatarDataIso(inspecao.data)} />
-                <DadoResumo rotulo="Responsável" valor={inspecao.responsavelUsuarioNome} />
+                {campoResponsavel}
                 <DadoResumo rotulo="Itens respondidos" valor={`${inspecao.itensRespondidos}/${inspecao.totalItens}`} />
               </div>
             ) : ehInspecaoVeiculo ? (
@@ -440,14 +473,14 @@ export function InspecaoDetalhePage() {
                 {inspecao.veiculoEmpresa && <DadoResumo rotulo="Subcontratada" valor={inspecao.veiculoEmpresa} />}
                 <DadoResumo rotulo="Obra" valor={inspecao.obraNome} />
                 <DadoResumo rotulo="Data do preenchimento" valor={formatarDataIso(inspecao.data)} />
-                <DadoResumo rotulo="Responsável" valor={inspecao.responsavelUsuarioNome} />
+                {campoResponsavel}
                 <DadoResumo rotulo="Itens respondidos" valor={`${inspecao.itensRespondidos}/${inspecao.totalItens}`} />
               </div>
             ) : ehInspecaoAlojamento ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <DadoResumo rotulo="Obra vinculada ao alojamento" valor={inspecao.obraNome} />
                 <DadoResumo rotulo="Data do preenchimento" valor={formatarDataIso(inspecao.data)} />
-                <DadoResumo rotulo="Responsável" valor={inspecao.responsavelUsuarioNome} />
+                {campoResponsavel}
                 <DadoResumo rotulo="Itens respondidos" valor={`${inspecao.itensRespondidos}/${inspecao.totalItens}`} />
               </div>
             ) : (
@@ -470,9 +503,7 @@ export function InspecaoDetalhePage() {
                   </Field>
                 </Campo>
                 <Campo span={12}>
-                  <Field label="Responsável">
-                    <Input value={inspecao.responsavelUsuarioNome} readOnly />
-                  </Field>
+                  {campoResponsavel}
                 </Campo>
                 <Campo span={12}>
                   <Field label="Pontos verificados respondidos">

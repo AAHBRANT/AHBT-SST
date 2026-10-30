@@ -2042,6 +2042,21 @@ public static class NovidadesSeeder
                     "A foto é salva normalmente no iPhone, no navegador e dentro do Teams."),
             }),
         new(
+            Versao: "5.111.2",
+            Titulo: "Inspeções: fotos no relatório e troca do responsável",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Fotos das inspeções por tema no PDF",
+                    "Nas inspeções por tema, o PDF só mostrava a foto dos itens Não Conforme.",
+                    "A foto de cada item agora sai no relatório sempre que foi registrada, em qualquer resultado."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Responsável da inspeção pode ser trocado",
+                    "O responsável era sempre quem abriu a inspeção.",
+                    "No resumo da inspeção, o campo Responsável agora permite escolher a pessoa certa, até a inspeção ser assinada."),
+            }),
+        new(
             Versao: "5.112.0",
             Titulo: "Reconhecimento facial: cadastro sem vínculo identificado",
             DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),

@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Api.Autorizacao;
+﻿using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.Inspecoes.Commands;
 using AAHBRANT.SST.Application.Inspecoes.Queries;
 using AAHBRANT.SST.Application.NaoConformidades.Commands;
@@ -37,6 +37,14 @@ public class InspecoesController : ControllerBase
         var criada = await _mediator.Send(command, ct);
         return CreatedAtAction(nameof(ObterDetalhe), new { id = criada.Id },
             new { id = criada.Id, numeroDocumento = criada.NumeroDocumento, versoesRespostas = criada.VersoesRespostas });
+    }
+
+    [Authorize(Policy = "inspecao:responder")]
+    [HttpPut("{id:guid}/responsavel")]
+    public async Task<IActionResult> AlterarResponsavel(Guid id, AlterarResponsavelInspecaoRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new AlterarResponsavelInspecaoCommand(id, body.ResponsavelUsuarioId), ct);
+        return NoContent();
     }
 
     [Authorize(Policy = "inspecao:responder")]
@@ -130,6 +138,8 @@ public class InspecoesController : ControllerBase
         return NoContent();
     }
 }
+
+public record AlterarResponsavelInspecaoRequestBody(Guid ResponsavelUsuarioId);
 
 public record ResponderItemInspecaoRequestBody(
     StatusItemChecklist StatusItem,

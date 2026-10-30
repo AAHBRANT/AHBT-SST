@@ -6195,6 +6195,8 @@ export const api = {
   inspecoes: {
     listar: (obraId?: string) => request<Inspecao[]>(`/api/inspecoes${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<InspecaoDetalhe>(`/api/inspecoes/${id}`),
+    alterarResponsavel: (id: string, responsavelUsuarioId: string) =>
+      request<void>(`/api/inspecoes/${id}/responsavel`, { method: 'PUT', body: JSON.stringify({ responsavelUsuarioId }) }),
     criar: (inspecao: NovaInspecao) =>
       request<{ id: string }>('/api/inspecoes', { method: 'POST', body: JSON.stringify(inspecao) }),
     // Só Administrador. Recusada quando a inspeção já gerou não conformidade — a mensagem do
