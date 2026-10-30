@@ -172,6 +172,7 @@ await RegraAlertaSeeder.ExecutarAsync(app.Services);
 await DocumentoExigidoEmpresaSeeder.ExecutarAsync(app.Services);
 await ChecklistAlojamentoSeeder.ExecutarAsync(app.Services);
 await ChecklistVeiculoSeeder.ExecutarAsync(app.Services);
+await TemasInspecaoPadraoSeeder.ExecutarAsync(app.Services);
 await ConfiguracaoAlojamentoSeeder.ExecutarAsync(app.Services);
 await MateriaisApoioSeeder.ExecutarAsync(app.Services);
 await RequisitosLegaisNrSeeder.ExecutarAsync(app.Services);
