@@ -4,6 +4,7 @@ using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace AAHBRANT.SST.Application.Inspecoes.Queries;
 
@@ -15,9 +16,12 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
     private readonly IAppDbContext _db;
     private readonly IInspecaoPdfService _pdf;
     private readonly IRegistradorRastreabilidadeService _rastreabilidade;
+    private readonly ILogger<ExportarInspecaoPdfQueryHandler> _logger;
 
-    public ExportarInspecaoPdfQueryHandler(IMediator mediator, IAppDbContext db, IInspecaoPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
+    public ExportarInspecaoPdfQueryHandler(IMediator mediator, IAppDbContext db, IInspecaoPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade,
+        ILogger<ExportarInspecaoPdfQueryHandler> logger)
     {
+        _logger = logger;
         _mediator = mediator;
         _db = db;
         _pdf = pdf;
@@ -28,6 +32,11 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
     {
         var detalhe = await _mediator.Send(new ObterInspecaoDetalheQuery(request.Id), ct);
         if (detalhe is null) return null;
+
+        // Inspeção assinada cujo documento não fechou (finalização falhava até 30/10): fecha agora, para o PDF
+        // sair com o selo e a validação. A própria finalização chama esta query de novo com o documento já
+        // finalizado, então não entra em laço.
+        await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, nameof(Inspecao), request.Id, ct);
 
         // O DTO de detalhe só carrega TemFoto/TemFotoDepois (booleans) — os bytes das fotos são
         // buscados à parte aqui, só para o PDF, mesmo raciocínio de ExportarFichaEpiTrabalhadorQuery.
