@@ -157,7 +157,9 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
         sb.AppendLine("Funções cadastradas:");
         foreach (var f in funcoesCadastradas) sb.AppendLine($"- {f}");
 
-        var r = await _chat.ObterAsync<RespostaGhe>(InstrucoesGhe, sb.ToString(), "ghes_pgr", SchemaGhe, ct, maxTokens: 10000, timeoutSegundos: 150);
+        // 32000 tokens (30/10/2026): a EAP do Parque Roger gera 14+ GHEs e a resposta com 10000 era cortada
+        // no meio do JSON. 220 s fica abaixo do limite de 240 s da entrada do Container Apps.
+        var r = await _chat.ObterAsync<RespostaGhe>(InstrucoesGhe, sb.ToString(), "ghes_pgr", SchemaGhe, ct, maxTokens: 32000, timeoutSegundos: 220);
         return (r.Ghes ?? new()).Select(g => new GheGerado
         {
             Nome = (g.Nome ?? "").Trim(),
