@@ -11,6 +11,7 @@ import {
   FormRodape,
   FormSection,
   Input,
+  Select,
   Legenda,
   PageHeader,
   PainelCriacaoInline,
@@ -22,6 +23,9 @@ import { api, type CatalogoUniforme, type NovoCatalogoUniforme } from '../../lib
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { SlotFotoRemota } from '../../components/camera/SlotFotoRemota';
+
+import { referenciasUniforme, referenciaUniforme } from './referenciasUniforme';
+import { FotoCatalogoUniforme } from './FotoCatalogoUniforme';
 
 const itemVazio: NovoCatalogoUniforme = { nome: '', categoria: '' };
 
@@ -134,19 +138,29 @@ export function CatalogoUniformeTab() {
     }
   }
 
+  function modeloSelect(valor: string | null | undefined, aoMudar: (chave: string) => void) {
+    return <Select value={valor ?? ''} onChange={(_, d) => aoMudar(d.value)} aria-label="Modelo visual do uniforme">
+      <option value="">Foto própria / sem modelo visual</option>
+      {referenciasUniforme.map(r => <option key={r.chave} value={r.chave}>{r.nome} · {r.cor}</option>)}
+    </Select>;
+  }
   const colunas: Coluna<CatalogoUniforme>[] = [
+    { chave: 'modelo', rotulo: 'Modelo / cor', render: item => edicaoId === item.id && edicao
+      ? modeloSelect(edicao.referenciaVisual, chave => setEdicao({ ...edicao, referenciaVisual: chave || null }))
+      : <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><FotoCatalogoUniforme catalogoUniformeId={item.id} temFoto={item.temFoto} referenciaVisual={item.referenciaVisual} />{referenciaUniforme(item.referenciaVisual)?.cor ?? 'Foto própria'}</div> },
     {
       chave: 'foto',
       rotulo: 'Foto',
       render: (item) => (
         <div onClick={(ev) => ev.stopPropagation()}>
           <SlotFotoRemota
+            key={`${item.id}-${item.referenciaVisual ?? "propria"}`}
             rotulo="Foto da peça"
             id={item.id}
             temFoto={item.temFoto}
             baixarFoto={api.catalogosUniforme.baixarFoto}
             tamanho="compacta"
-            somenteLeitura={!(edicaoId === item.id && edicao)}
+            somenteLeitura={!(edicaoId === item.id && edicao) || !!edicao?.referenciaVisual}
             aoSelecionarArquivo={(arquivo) => trocarFoto(item.id, arquivo)}
             aoErroValidacao={setErro}
           />
@@ -158,7 +172,7 @@ export function CatalogoUniformeTab() {
       rotulo: 'Nome',
       render: (item) =>
         edicaoId === item.id && edicao ? (
-          <Input value={edicao.nome} onChange={(_, d) => setEdicao({ ...edicao, nome: d.value })} />
+          <Input value={edicao.nome} onChange={(_, d) => setEdicao({ ...edicao, nome: d.value.toUpperCase() })} />
         ) : (
           item.nome
         ),
@@ -207,9 +221,12 @@ export function CatalogoUniformeTab() {
               </FeedbackInline>
             )}
             <FormGrid>
+              <Campo span={12}><Field label="Modelo visual AAHBRANT">{modeloSelect(novoItem.referenciaVisual, chave => {
+                const ref = referenciaUniforme(chave); setNovoItem({ ...novoItem, referenciaVisual: chave || null, ...(ref ? { nome: ref.nome, categoria: ref.categoria } : {}) }); setFotoNovoItem(null);
+              })}</Field></Campo>
               <Campo span={6}>
                 <Field label="Nome (ex.: Camisa, Calça, Bota)">
-                  <Input value={novoItem.nome} onChange={(_, d) => setNovoItem({ ...novoItem, nome: d.value })} />
+                  <Input value={novoItem.nome} onChange={(_, d) => setNovoItem({ ...novoItem, nome: d.value.toUpperCase() })} />
                 </Field>
               </Campo>
               <Campo span={6}>

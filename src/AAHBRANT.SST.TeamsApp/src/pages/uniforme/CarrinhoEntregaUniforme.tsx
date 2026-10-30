@@ -1,6 +1,6 @@
 import { Button, StatusChip, designTokens, tokensUi } from '@ui';
 import { Cart24Regular, Delete24Regular, Print24Regular, CheckmarkCircle24Filled } from '@fluentui/react-icons';
-import { type CatalogoUniforme } from '../../lib/api';
+import { type CatalogoUniforme, type EstoqueUniformePorObra } from '../../lib/api';
 import { FotoCatalogoUniforme } from './FotoCatalogoUniforme';
 import { type ItemCarrinhoUniforme } from './SeletorItensUniforme';
 
@@ -8,13 +8,14 @@ interface CarrinhoEntregaUniformeProps {
   carrinho: ItemCarrinhoUniforme[];
   pecas: CatalogoUniforme[];
   carregando: boolean;
+  saldos: EstoqueUniformePorObra[];
   aoRemover: (catalogoUniformeId: string) => void;
   aoImprimirRascunho: () => void;
   aoConfirmar: () => void;
 }
 
 // Carrinho lateral idêntico ao de CarrinhoEntregaEpi.tsx, trocando CA/validade por tamanho.
-export function CarrinhoEntregaUniforme({ carrinho, pecas, carregando, aoRemover, aoImprimirRascunho, aoConfirmar }: CarrinhoEntregaUniformeProps) {
+export function CarrinhoEntregaUniforme({ carrinho, pecas, carregando, saldos, aoRemover, aoImprimirRascunho, aoConfirmar }: CarrinhoEntregaUniformeProps) {
   function peca(id: string) {
     return pecas.find((p) => p.id === id);
   }
@@ -62,11 +63,11 @@ export function CarrinhoEntregaUniforme({ carrinho, pecas, carregando, aoRemover
                   position: 'relative',
                 }}
               >
-                <FotoCatalogoUniforme catalogoUniformeId={item.catalogoUniformeId} temFoto={p?.temFoto ?? false} tamanho={48} />
+                <FotoCatalogoUniforme catalogoUniformeId={item.catalogoUniformeId} temFoto={p?.temFoto ?? false} referenciaVisual={p?.referenciaVisual} tamanho={48} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 13 }}>{p?.nome ?? item.catalogoUniformeId}</div>
                   <div style={{ fontSize: 11, color: designTokens.colorNeutralMedium }}>Tamanho: {item.tamanho}</div>
-                  <div style={{ fontSize: 12, color: designTokens.colorPrimary, fontWeight: 600 }}>Qtd: {item.quantidade}</div>
+                  <div style={{ fontSize: 12, color: designTokens.colorPrimary, fontWeight: 600 }}>Qtd: {item.quantidade} de {saldos.find(s => s.catalogoUniformeId === item.catalogoUniformeId && s.tamanho === item.tamanho)?.saldo ?? 0} disponíveis</div>
                 </div>
                 <Button
                   appearance="subtle"
@@ -86,8 +87,8 @@ export function CarrinhoEntregaUniforme({ carrinho, pecas, carregando, aoRemover
         <Button appearance="secondary" icon={<Print24Regular />} onClick={aoImprimirRascunho} disabled={carrinho.length === 0}>
           Imprimir canhoto de recibo
         </Button>
-        <Button appearance="primary" icon={<CheckmarkCircle24Filled />} onClick={aoConfirmar} disabled={carrinho.length === 0 || carregando}>
-          Confirmar entrega
+        <Button appearance="primary" icon={<CheckmarkCircle24Filled />} onClick={aoConfirmar} disabled={carrinho.length === 0 || carregando || carrinho.some(i => i.quantidade > (saldos.find(s => s.catalogoUniformeId === i.catalogoUniformeId && s.tamanho === i.tamanho)?.saldo ?? 0))}>
+          Confirmar e assinar entrega
         </Button>
       </div>
     </div>

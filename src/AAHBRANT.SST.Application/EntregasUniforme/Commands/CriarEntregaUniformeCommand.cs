@@ -13,7 +13,8 @@ public record CriarEntregaUniformeCommand(
     int Quantidade,
     DateTime DataEntrega,
     MotivoEntregaUniforme MotivoTipo,
-    string? Observacoes) : IRequest<Guid>;
+    string? Observacoes,
+    string? Tamanho = null) : IRequest<Guid>;
 
 public class CriarEntregaUniformeCommandValidator : AbstractValidator<CriarEntregaUniformeCommand>
 {
@@ -25,6 +26,7 @@ public class CriarEntregaUniformeCommandValidator : AbstractValidator<CriarEntre
         RuleFor(x => x.DataEntrega).NotEmpty();
         RuleFor(x => x.MotivoTipo).IsInEnum();
         RuleFor(x => x.Observacoes).MaximumLength(300);
+        RuleFor(x => x.Tamanho).MaximumLength(20).Must(t => t is null || !string.IsNullOrWhiteSpace(t));
     }
 }
 
@@ -33,7 +35,9 @@ public class CriarEntregaUniformeCommandHandler : IRequestHandler<CriarEntregaUn
     private readonly IAppDbContext _db;
     public CriarEntregaUniformeCommandHandler(IAppDbContext db) => _db = db;
 
-    public async Task<Guid> Handle(CriarEntregaUniformeCommand request, CancellationToken ct)
+    public Task<Guid> Handle(CriarEntregaUniformeCommand request, CancellationToken ct) => PrepararAsync(request, ct, salvar: true);
+
+    internal async Task<Guid> PrepararAsync(CriarEntregaUniformeCommand request, CancellationToken ct, bool salvar, Guid? entregaId = null)
     {
         var trabalhador = await _db.Trabalhadores.FirstOrDefaultAsync(x => x.Id == request.TrabalhadorId, ct)
             ?? throw new KeyNotFoundException("Trabalhador não encontrado.");
@@ -49,9 +53,9 @@ public class CriarEntregaUniformeCommandHandler : IRequestHandler<CriarEntregaUn
         if (!itensDaMatriz.Contains(request.CatalogoUniformeId))
             throw new InvalidOperationException("Esta peça não faz parte da matriz de uniforme da função deste trabalhador — ajuste a matriz da função se esta peça deveria estar nela.");
 
-        // Trava 2: o trabalhador precisa ter um tamanho cadastrado para esta peça — o tamanho
-        // nunca é escolhido manualmente na entrega, só resolvido a partir do cadastro.
-        var tamanho = await _db.TrabalhadorTamanhosUniforme
+        // O tamanho escolhido vale só para esta entrega. Clientes antigos continuam usando
+        // o tamanho do perfil; os históricos e as preferências do trabalhador não são alterados.
+        var tamanho = request.Tamanho?.Trim().ToUpperInvariant() ?? await _db.TrabalhadorTamanhosUniforme
             .Where(t => t.TrabalhadorId == request.TrabalhadorId && t.CatalogoUniformeId == request.CatalogoUniformeId)
             .Select(t => t.Tamanho)
             .FirstOrDefaultAsync(ct);
@@ -70,6 +74,7 @@ public class CriarEntregaUniformeCommandHandler : IRequestHandler<CriarEntregaUn
 
         var entrega = new EntregaUniforme
         {
+            Id = entregaId ?? Guid.NewGuid(),
             TrabalhadorId = request.TrabalhadorId,
             CatalogoUniformeId = request.CatalogoUniformeId,
             Tamanho = tamanho,
@@ -90,7 +95,7 @@ public class CriarEntregaUniformeCommandHandler : IRequestHandler<CriarEntregaUn
             EntregaUniformeId = entrega.Id,
         });
 
-        await _db.SaveChangesAsync(ct);
+        if (salvar) await _db.SaveChangesAsync(ct);
         return entrega.Id;
     }
 }
