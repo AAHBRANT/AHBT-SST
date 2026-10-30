@@ -2000,6 +2000,17 @@ public static class NovidadesSeeder
                     "A relação copiava a frase inteira de cada medida de EPI, repetindo o mesmo capacete ou luva várias vezes, com \"sem CA\" em quase todas as linhas.",
                     "Cada função lista cada EPI uma vez, com a especificação técnica e os riscos que o exigem. A relação sai só do PGR, sem depender do catálogo nem da matriz do cadastro. O CA não aparece no PGR: ele é do produto entregue e fica registrado na ficha de entrega."),
             }),
+        new(
+            Versao: "5.110.0",
+            Titulo: "Fotos com data, hora e local gravados na imagem",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Carimbo na foto igual ao do G-QUALI",
+                    "A data, a hora e a posição da foto ficavam só nos dados do sistema; a imagem baixada ou impressa não mostrava nada.",
+                    "Toda foto tirada pela câmera no G-SST sai com o carimbo no canto superior direito: data e hora, endereço, latitude e longitude, altitude, obra e local. Fotos da galeria e do reconhecimento facial não recebem carimbo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

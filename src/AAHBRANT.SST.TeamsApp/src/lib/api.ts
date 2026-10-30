@@ -4990,6 +4990,11 @@ export interface PlanoIntegracao {
 }
 
 export const api = {
+  fotos: {
+    // Endereço por extenso do carimbo da foto (Azure Maps). Lista vazia quando o serviço está desligado.
+    endereco: (latitude: number, longitude: number) =>
+      request<{ linhas: string[] }>(`/api/fotos/endereco?latitude=${latitude}&longitude=${longitude}`),
+  },
   catalogo: {
     atividades: (obraId?: string) =>
       request<CatalogoAtividade[]>(`/api/catalogo/atividades${obraId ? `?obraId=${obraId}` : ''}`),
