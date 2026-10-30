@@ -2081,6 +2081,10 @@ public static class NovidadesSeeder
                     "Item inteiro na mesma página do PDF",
                     "No relatório, o título do item podia ficar numa página e a foto na seguinte.",
                     "Cada item sai inteiro na mesma página, com título, observação e fotos juntos."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Foto já salva o item",
+                    "Depois de tirar a foto, era preciso clicar em Salvar item.",
+                    "Ao tirar a foto, o item é salvo junto com o status e a observação já preenchidos."),
             }),
     };
 

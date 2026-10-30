@@ -254,12 +254,22 @@ export function InspecaoDetalhePage() {
     }
   }
 
+  // Tirar a foto já salva o item (30/10/2026): se o status já foi escolhido e há alteração em
+  // rascunho, a resposta vai junto — sem precisar clicar em "Salvar item" depois da foto.
+  async function salvarItemJuntoComFoto(respostaId: string) {
+    const edicao = edicoes[respostaId];
+    if (!id || !edicao?.statusItem || !rascunhos.includes(respostaId)) return;
+    await escritaRascunhos.current;
+    await salvarRespostaInspecao(id, respostaId, edicao);
+  }
+
   async function enviarFoto(respostaId: string, arquivo: File) {
     try {
       setErro(null);
       if (!id) return;
       await salvarFotoInspecao(id, respostaId, arquivo);
       setFotoUrls(atual => ({ ...atual, [respostaId]: criarUrl(arquivo) }));
+      await salvarItemJuntoComFoto(respostaId);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar a evidência anterior.');
@@ -270,6 +280,7 @@ export function InspecaoDetalhePage() {
     try {
       setErro(null);
       await api.inspecoes.anexarFotoAdicional(respostaId, arquivo);
+      await salvarItemJuntoComFoto(respostaId);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar a 2ª foto do item.');
