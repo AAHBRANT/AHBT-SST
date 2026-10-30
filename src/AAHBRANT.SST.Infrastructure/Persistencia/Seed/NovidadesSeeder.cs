@@ -1941,6 +1941,17 @@ public static class NovidadesSeeder
                     "Cada GHE ganhava um encarregado com nome diferente, como Encarregado de Serviços Preliminares e Demolições ou Encarregado de Pavimentação.",
                     "O encarregado se chama sempre Encarregado de Obras, com o mesmo CBO (7102-05) em todos os GHEs, e só a descrição muda, focada no serviço de cada GHE. Encarregado de área administrativa, como o de almoxarifado, continua separado."),
             }),
+        new(
+            Versao: "5.109.4",
+            Titulo: "PGR: alerta do risco pelo nível da matriz",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Só o risco Crítico pisca no inventário",
+                    "No passo Inventário de riscos, a tag P × S piscava em vermelho a partir de 20, mesmo quando a matriz classificava o risco como Alto.",
+                    "A tag segue a matriz do PGR, a mesma do PDF, e mostra o nível junto, como \"P × S = 20 · Alto\". Só o Crítico fica vermelho e pisca; Alto aparece em laranja."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

@@ -137,6 +137,19 @@ public class GeracaoPgrEapTests
     }
 
     [Fact]
+    public async Task Obter_DevolveAsCelulasDaMatrizParaATelaMostrarONivel()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var id = await CriarGeracaoAsync(db, obra, new IaFalsa());
+
+        var dto = await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default);
+
+        Assert.Equal(25, dto.Matriz.Count);
+        Assert.Equal(NivelRisco.Alto, dto.Matriz.Single(c => c.Probabilidade == 2 && c.Severidade == 5).Nivel);
+        Assert.Equal(NivelRisco.Critico, dto.Matriz.Single(c => c.Probabilidade == 5 && c.Severidade == 5).Nivel);
+    }
+
+    [Fact]
     public async Task GerarRiscos_LimitaPSNaMatriz_ESoAceitaNormaValidada()
     {
         var (db, obra, _) = await CriarAsync();

@@ -3059,6 +3059,8 @@ export interface GeracaoPgrEap {
   elaboradoPorNome?: string | null; nomeArquivoEap: string; status: 1 | 2 | 3 | 4; passo: number; motivoDevolucao?: string | null;
   aprovadoPorNome?: string | null; aprovadoEmUtc?: string | null; pgrId?: string | null; estrutura: EstruturaGeracaoPgr;
   pendenciasAprovacao: string[]; funcoesCadastradas: { id: string; nome: string }[]; maxProbabilidade: number; maxSeveridade: number;
+  // Células da matriz vigente: nível (NivelRisco, 1 a 5) de cada combinação de probabilidade e severidade.
+  matriz?: { probabilidade: number; severidade: number; nivel: number }[];
 }
 // Cursos obrigatórios por função de cada GHE (cronograma de treinamentos do PGR aprovado, NR-01 item 1.7).
 export interface LinhaTreinamentoPgr {
