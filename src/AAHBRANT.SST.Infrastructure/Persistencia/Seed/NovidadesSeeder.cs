@@ -2026,6 +2026,21 @@ public static class NovidadesSeeder
                     "A câmera facial era só \"clica e captura\", sem ajuda para posicionar o rosto.",
                     "A câmera facial volta a mostrar a guia oval e o quadrado que acompanha o rosto, com a mensagem do que ajustar (aproximar, centralizar, luz). No DDS e no treinamento dá para ligar a captura automática quando o rosto fica verde. O botão Capturar continua sempre liberado."),
             }),
+        new(
+            Versao: "5.111.1",
+            Titulo: "Inspeção de alojamento com uma foto por item",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Alojamento no padrão do checklist",
+                    "A inspeção de alojamento pedia duas fotos em cada item, uma antes e outra depois.",
+                    "Cada item pede uma foto obrigatória, igual às demais inspeções. As fotos posteriores já registradas continuam no histórico e no PDF."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Foto da inspeção no iPhone",
+                    "No iPhone, ao tirar a foto de um item, aparecia o erro \"Error preparing Blob/File data to be stored in object store\" e a foto não era salva.",
+                    "A foto é salva normalmente no iPhone, no navegador e dentro do Teams."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

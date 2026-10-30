@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../apiBase';
 import { montarHeadersAuth } from '../authHeaders';
-import { offlineDb, type ItemFilaSaida } from './db';
+import { offlineDb, blobParaGravar, type ItemFilaSaida } from './db';
 import { contaOffline } from './conta';
 import { aplicarAcaoInspecao, ehEncerramentoInspecao, ehCriacaoInspecao } from './inspecaoEstado';
 
@@ -397,13 +397,15 @@ export async function syncMutateMultipart<T>(
 
   const camposFormData: Record<string, string> = {};
   const arquivosFormData: Record<string, Blob> = {};
+  const arquivos: [string, Blob][] = [];
   formData.forEach((valor, chave) => {
     if (valor instanceof Blob) {
-      arquivosFormData[chave] = valor;
+      arquivos.push([chave, valor]);
     } else {
       camposFormData[chave] = valor;
     }
   });
+  for (const [chave, arquivo] of arquivos) arquivosFormData[chave] = await blobParaGravar(arquivo);
 
   await offlineDb.filaSaida.add({
     conta: await contaAtual(authHeaders),

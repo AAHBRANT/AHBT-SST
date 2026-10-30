@@ -372,7 +372,6 @@ export function InspecaoDetalhePage() {
         const p: string[] = [];
         if (r.statusItem == null) p.push('resposta do checklist');
         if (r.exigeFotografia && !r.temFoto) p.push('foto anterior obrigatória');
-        if (ehInspecaoAlojamento && r.exigeFotografia && !r.temFotoDepois) p.push('foto posterior obrigatória');
         if (ehInspecaoTema && !r.temFoto) p.push('foto do item obrigatória');
         else if (ehInspecaoVeiculo && r.statusItem === StatusItemChecklist.NaoConforme && !r.temFoto) p.push('foto da não conformidade obrigatória');
         if (r.temFoto && r.dadosFoto) p.push(...pendenciasFoto(r.dadosFoto).map(d => 'foto anterior: ' + d));
@@ -623,10 +622,10 @@ export function InspecaoDetalhePage() {
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginTop: 16 }}>
-                    <Field label="Evidência anterior obrigatória">
+                    <Field label="Foto do item (obrigatória)">
                       <div style={{ maxWidth: 180 }}>
                         <SlotFoto
-                          rotulo="Evidência anterior"
+                          rotulo="Foto do item"
                           contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
                           dadosFoto={resposta.dadosFoto}
                           url={fotoUrls[resposta.id]}
@@ -638,7 +637,9 @@ export function InspecaoDetalhePage() {
                       </div>
                     </Field>
 
-                    <Field label="Evidência posterior obrigatória">
+{/* Alojamento: 1 foto por item (30/10). A posterior só aparece em inspeções antigas que já a têm. */}
+                    {resposta.temFotoDepois && (
+                    <Field label="Evidência posterior (registro antigo)">
                       <div style={{ maxWidth: 180 }}>
                         <SlotFoto
                           rotulo="Evidência posterior"
@@ -652,6 +653,7 @@ export function InspecaoDetalhePage() {
                         />
                       </div>
                     </Field>
+                    )}
                   </div>
 
                   {!somenteLeitura && (
