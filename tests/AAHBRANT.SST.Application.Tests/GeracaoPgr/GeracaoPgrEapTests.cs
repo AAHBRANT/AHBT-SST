@@ -345,7 +345,7 @@ public class GeracaoPgrEapTests
         Assert.Contains(pendencias, p => p.Contains("grau de risco"));
         Assert.Contains(pendencias, p => p.Contains("CREA"));
         Assert.Contains(pendencias, p => p.Contains("implantação"));
-        Assert.Contains(pendencias, p => p.Contains("hospital"));
+        Assert.DoesNotContain(pendencias, p => p.Contains("hospital")); // emergência fica no PAE (30/10/2026)
 
         estrutura.Complementares = ComplementaresCompletos();
         estrutura.DataTermino = new DateTime(2027, 1, 1);

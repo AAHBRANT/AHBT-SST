@@ -539,7 +539,7 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
         </Text>
       </Card>
 
-      <DadosComplementaresPgr geracaoId={g.id} e={e} editavel={editavel} alterar={alterar} />
+      <DadosComplementaresPgr e={e} editavel={editavel} alterar={alterar} />
 
       <QuemAssinaPgr geracaoId={g.id} e={e} editavel={editavel} alterar={alterar} />
 

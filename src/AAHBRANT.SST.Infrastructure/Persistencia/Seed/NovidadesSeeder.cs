@@ -1963,6 +1963,32 @@ public static class NovidadesSeeder
                     "Na ficha de risco do PDF, rótulos e textos ficavam soltos lado a lado, a avaliação vinha no fim e a fase da medida aparecia entre parênteses no fim da frase.",
                     "A ficha mostra o perigo, o GHE, o grupo e o nível no topo, logo seguidos da avaliação (severidade, probabilidade, nível e conduta). A identificação vem numa tabela de rótulo e conteúdo, e as medidas numa tabela com o tipo de medida, o que fazer e quando, na ordem da NR-01."),
             }),
+        new(
+            Versao: "5.109.6",
+            Titulo: "PGR: emergência fica no PAE",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Contatos e rotas de emergência saíram do PGR",
+                    "O PGR trazia contatos de hospital, SAMU, bombeiros e polícia, rotas a partir da obra e cenários de emergência, e exigia o telefone do hospital para aprovar.",
+                    "Essas informações ficam no Plano de Atendimento a Emergências (PAE) da obra. O PGR traz só a seção Resposta a emergências, que remete ao PAE, e o cartão Plano de emergência saiu do gerador."),
+            }),
+        new(
+            Versao: "5.109.7",
+            Titulo: "PGR: relação de EPIs por função e jornada padrão",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Relação de EPIs por função no PDF",
+                    "O PGR citava EPIs só dentro das medidas de cada risco, sem uma relação por função.",
+                    "No fim da seção de GHEs, o PDF traz a relação de EPIs de cada função, com os GHEs em que ela atua, o CA e a validade. Entram todas as funções do PGR, inclusive as que ainda não estão no cadastro. A lista junta a matriz de EPI da função no cadastro e os EPIs citados nas medidas dos riscos dos GHEs em que ela atua. CA ausente ou vencido aparece em destaque."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Jornada padrão de 44 horas semanais",
+                    "A jornada de cada GHE ficava em branco até alguém preencher, e o PDF mostrava \"—\".",
+                    "GHE sem jornada recebe \"44 horas semanais\". Onde for diferente, como na vigilância em 12x36, é só trocar no passo Funções e GHE."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

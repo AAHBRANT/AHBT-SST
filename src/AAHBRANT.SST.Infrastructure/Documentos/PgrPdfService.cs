@@ -40,7 +40,7 @@ public class PgrPdfService : IPgrPdfService
         new("s7", "7", "Plano de ação"),
         new("s8", "8", "Acompanhamento e monitoramento"),
         new("s9", "9", "Prioridades e avaliação do PGR"),
-        new("s10", "10", "Plano de emergência"),
+        new("s10", "10", "Resposta a emergências"),
         new("s11", "11", "Considerações finais"),
     };
 
@@ -257,6 +257,8 @@ public class PgrPdfService : IPgrPdfService
                             FichaRisco(c, d.Matriz, ghe, atividade, risco, d.Epis);
                 }
 
+                RelacaoEpis(c, d.EpisPorFuncao);
+
                 // 7. Plano de ação
                 Titulo(c, Secoes[6]);
                 var acoes = d.Estrutura.AcoesPlano
@@ -337,45 +339,10 @@ public class PgrPdfService : IPgrPdfService
                 });
                 Paragrafo(c, "Este PGR será avaliado e revisado anualmente e a qualquer momento em que fatos justifiquem a revisão.");
 
-                // 10. Plano de emergência
-                TituloComPrimeiro(c, Secoes[9], b => Paragrafo(b, "A organização manterá um Plano de Emergência que oriente os trabalhadores sobre como agir em acidentes e anormalidades. Trabalhadores devem ser treinados periodicamente e visitantes devem receber instruções gerais. Cenários a contemplar:"));
-                Lista(c, comp.CenariosEmergencia.Count > 0 ? comp.CenariosEmergencia : CenariosEmergenciaPgr.Padrao);
-                Subtitulo(c, "Contatos de emergência");
-                Tabela(c, new[] { ("Local / setor", 2.6f), ("Endereço", 3f), ("Telefone", 1.5f), ("Distância e tempo", 1.8f) },
-                    comp.ContatosEmergencia.Select(x => new[]
-                    {
-                        x.Recomendado ? $"{x.Local} (recomendado)" : x.Local,
-                        string.IsNullOrWhiteSpace(x.Endereco) ? "—" : x.Endereco!,
-                        string.IsNullOrWhiteSpace(x.Telefone) ? "—" : x.Telefone!,
-                        x.TempoMinutos is { } min ? $"{(x.DistanciaKm ?? 0).ToString("0.0", CultureInfo.InvariantCulture).Replace('.', ',')} km · {min} min" : "—",
-                    }),
-                    "Nenhum contato de emergência informado.");
-
-                var comRota = comp.ContatosEmergencia.Where(x => !string.IsNullOrWhiteSpace(x.Rota)).ToList();
-                if (comRota.Count > 0)
-                {
-                    var primeiraRota = true;
-                    foreach (var x in comRota)
-                    {
-                        var abrir = primeiraRota; // o subtítulo vai junto da primeira rota, para não ficar sozinho no fim da página
-                        primeiraRota = false;
-                        c.Item().ShowEntire().Column(rc =>
-                        {
-                            if (abrir) Subtitulo(rc, "Como chegar a partir da obra");
-                            rc.Item().PaddingTop(2).Text(x.Local).SemiBold();
-                            var passos = x.Rota!.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                            for (var i = 0; i < passos.Length; i++)
-                                rc.Item().PaddingLeft(6).Row(pr =>
-                                {
-                                    pr.ConstantItem(18).Text($"{i + 1}.").FontSize(8.5f).FontColor(Secundario);
-                                    pr.RelativeItem().Text(passos[i]).FontSize(8.5f);
-                                });
-                        });
-                    }
-                    var calculadoEm = comp.RotasCalculadasEmUtc is { } quando ? $" em {HorarioBrasilia.De(quando):dd/MM/yyyy}" : string.Empty;
-                    c.Item().PaddingTop(2).Text($"Rotas de carro calculadas com {comp.RotasFonte ?? "mapa online"}{calculadoEm}. Confirme o trajeto e os telefones no local antes de usar; trânsito e obras na via podem alterar o caminho.")
-                        .FontSize(8).FontColor(Secundario).Italic();
-                }
+                // 10. Resposta a emergências: a obra tem PAE próprio (decisão do usuário, 30/10/2026). O PGR só faz a referência,
+                // sem contatos, rotas nem cenários.
+                TituloComPrimeiro(c, Secoes[9], b => Paragrafo(b, "Os procedimentos de resposta aos cenários de emergência da obra (NR-01, item 1.5.6) estão no Plano de Atendimento a Emergências (PAE), documento próprio da obra. O PAE define os cenários, os recursos, a organização da resposta, os contatos e o encaminhamento ao atendimento externo, além dos treinamentos e simulados."));
+                Paragrafo(c, "O PAE deve ser mantido coerente com o inventário de riscos deste PGR e revisado sempre que o PGR for revisado.");
 
                 // 11. Considerações finais
                 // Data, aprovação e assinaturas ficam sempre juntos, na mesma página do título.
@@ -854,6 +821,46 @@ public class PgrPdfService : IPgrPdfService
                     }
                 });
             });
+        });
+    }
+
+    // Relação de EPIs por função (NR-06; conteúdo do PGR de obra na NR-18), com CA e validade do catálogo.
+    private static void RelacaoEpis(ColumnDescriptor c, IReadOnlyList<LinhaEpiFuncaoPdf>? linhas)
+    {
+        c.Item().PaddingTop(12).Text("Relação de EPIs por função").FontSize(12).SemiBold();
+        c.Item().PaddingBottom(4).Text("EPIs da matriz de cada função no cadastro e os citados nas medidas de prevenção dos riscos dos GHEs em que a função atua. "
+            + "Fornecimento gratuito, com CA válido e registro da entrega em ficha (NR-06).").FontSize(8.5f).FontColor(Secundario).Justify();
+        if (linhas is not { Count: > 0 })
+        {
+            c.Item().Text("Nenhum EPI do catálogo ligado às funções deste PGR. Cadastre a matriz de EPI das funções ou ligue as medidas de EPI ao catálogo.")
+                .FontSize(8.5f).Italic().FontColor(Secundario);
+            return;
+        }
+        var hoje = DateTime.UtcNow.Date;
+        c.Item().Table(t =>
+        {
+            t.ColumnsDefinition(cd => { cd.RelativeColumn(1.5f); cd.ConstantColumn(44); cd.RelativeColumn(2.6f); cd.ConstantColumn(56); cd.ConstantColumn(62); });
+            t.Header(h =>
+            {
+                foreach (var titulo in new[] { "Função", "GHE", "EPI", "CA", "Validade CA" })
+                    h.Cell().Border(0.5f).BorderColor(Linha).Background(Fundo).Padding(4)
+                        .Text(titulo.ToUpperInvariant()).FontSize(6.5f).SemiBold().FontColor(Secundario);
+            });
+            foreach (var funcao in linhas.GroupBy(l => (l.Funcao, l.Ghes)))
+            {
+                var itens = funcao.ToList();
+                t.Cell().RowSpan((uint)itens.Count).Border(0.5f).BorderColor(Linha).Background(Fundo).Padding(4).Text(funcao.Key.Funcao).FontSize(8).SemiBold();
+                t.Cell().RowSpan((uint)itens.Count).Border(0.5f).BorderColor(Linha).Padding(4).Text(funcao.Key.Ghes).FontSize(8).FontColor(Secundario);
+                foreach (var l in itens)
+                {
+                    t.Cell().Border(0.5f).BorderColor(Linha).Padding(4).Text(l.Epi).FontSize(8.5f);
+                    t.Cell().Border(0.5f).BorderColor(Linha).Padding(4).Text(string.IsNullOrWhiteSpace(l.Ca) ? "sem CA" : l.Ca!).FontSize(8.5f)
+                        .FontColor(string.IsNullOrWhiteSpace(l.Ca) ? Marca : Texto);
+                    var vencido = l.CaValidade is { } v && v.Date < hoje;
+                    t.Cell().Border(0.5f).BorderColor(Linha).Padding(4).Text(l.CaValidade?.ToString("dd/MM/yyyy") ?? "—").FontSize(8.5f)
+                        .FontColor(vencido ? Marca : Texto);
+                }
+            }
         });
     }
 
