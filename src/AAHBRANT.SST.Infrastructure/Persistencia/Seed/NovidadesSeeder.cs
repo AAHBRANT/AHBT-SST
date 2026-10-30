@@ -2134,6 +2134,17 @@ public static class NovidadesSeeder
                     "Cada tema de inspeção precisava ser criado à mão, com os itens digitados um a um.",
                     "Inspeções já traz 14 temas prontos, com até 20 itens cada, baseados nas NRs: Extintores, Andaimes, Escadas, Trabalho em Altura, Instalações Elétricas, Máquinas e Equipamentos, Ferramentas, Proteções Coletivas, EPI, Escavações, Içamento de Cargas, Espaço Confinado, Trabalho a Quente e Produtos Químicos. Valem para todas as obras e pedem foto em cada item, igual ao Canteiro."),
             }),
+        new(
+            Versao: "5.115.1",
+            Titulo: "Documentos assinados passam a ser finalizados",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Inspeção assinada sai com o selo no PDF",
+                    "A finalização dos documentos de assinatura falhava sem aviso; a inspeção assinada continuava mostrando \"Aguardando assinatura\" no PDF.",
+                    "A finalização volta a funcionar. Inspeções já assinadas são finalizadas na próxima vez que o PDF for gerado e saem com o selo, o hash e o QR de validação."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

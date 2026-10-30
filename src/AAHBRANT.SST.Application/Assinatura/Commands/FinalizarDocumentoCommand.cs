@@ -57,17 +57,24 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
 
         // IgnoreQueryFilters nos trabalhadores: quem assinou e depois foi desligado ou transferido de obra
         // continua sendo signatário — sem isso ele sumia do comprovante e do hash.
+        // Ordena antes de projetar: OrderBy sobre o construtor do DTO não vira SQL ("The LINQ expression ...
+        // could not be translated") e fazia toda finalização falhar — em hml nenhum documento tinha sido
+        // finalizado até 30/10 (inspeção do Gilton ficou "Aguardando assinatura" no PDF).
         var signatarios = await _db.DocumentoSignatarios
             .Where(s => s.DocumentoAssinaturaId == documento.Id)
-            .Join(_db.Trabalhadores.IgnoreQueryFilters(), s => s.TrabalhadorId, t => t.Id,
-                (s, t) => new DocumentoSignatarioDto(t.Id, t.Nome, s.MetodoAutenticacao, s.AssinadoEm, s.IpAddress))
             .OrderBy(s => s.AssinadoEm)
+            .Join(_db.Trabalhadores.IgnoreQueryFilters(), s => s.TrabalhadorId, t => t.Id,
+                (s, t) => new { t.Id, t.Nome, s.MetodoAutenticacao, s.AssinadoEm, s.IpAddress })
             .ToListAsync(ct);
+        var signatariosDto = signatarios
+            .OrderBy(s => s.AssinadoEm)
+            .Select(s => new DocumentoSignatarioDto(s.Id, s.Nome, s.MetodoAutenticacao, s.AssinadoEm, s.IpAddress))
+            .ToList();
 
         if (signatarios.Count == 0)
             throw new InvalidOperationException("Documento sem nenhuma assinatura não pode ser finalizado.");
 
-        var hash = HashConteudoDocumentoCalculador.Calcular(documento.EntidadeTipo, documento.EntidadeId, signatarios);
+        var hash = HashConteudoDocumentoCalculador.Calcular(documento.EntidadeTipo, documento.EntidadeId, signatariosDto);
         // Mantém o token se o documento já tinha sido exportado (rodapé com QR): trocar invalidaria o QR já
         // impresso nos PDFs anteriores.
         var token = documento.TokenValidacaoPublica ?? TokenValidacaoPublicaGerador.Gerar();
@@ -95,7 +102,7 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
         {
             documento.PdfConteudo = _pdf.Gerar(new DocumentoAssinaturaPdfModelo(
                 documento.Id, documento.EntidadeTipo, documento.EntidadeId, documento.FinalizadoEm.Value, hash,
-                signatarios.Select(s => new DocumentoAssinaturaPdfSignatarioModelo(s.TrabalhadorNome, s.MetodoAutenticacao, s.AssinadoEm)).ToList(),
+                signatariosDto.Select(s => new DocumentoAssinaturaPdfSignatarioModelo(s.TrabalhadorNome, s.MetodoAutenticacao, s.AssinadoEm)).ToList(),
                 qrCode.Png, qrCode.UrlValidacao));
         }
         documento.HashPdf = HashArquivoCalculador.Calcular(documento.PdfConteudo);
@@ -117,7 +124,7 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
         await _db.SaveChangesAsync(ct);
 
         return new DocumentoAssinaturaDto(
-            documento.Id, documento.EntidadeTipo, documento.EntidadeId, documento.Status, signatarios,
+            documento.Id, documento.EntidadeTipo, documento.EntidadeId, documento.Status, signatariosDto,
             documento.ConteudoHash, documento.FinalizadoEm, TemPdf: true, TokenValidacaoPublica: token);
     }
 }
