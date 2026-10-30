@@ -219,12 +219,6 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
     // como "Técnico de Segurança do Trabalho" ou "Engenheiro de Segurança Sênior", sem depender de
     // um nome cadastrado byte a byte igual. Lista fechada às duas funções indicadas pelo usuário
     // (01/09); qualquer outra função (mesmo "de segurança") fica de fora até ele pedir para incluir.
-    private static readonly string[] FuncoesHabilitadasAssinarInspecao =
-    {
-        "tecnico de seguranca",
-        "engenheiro de seguranca",
-    };
-
     // Confere se quem a biometria identificou é mesmo a pessoa de quem o documento trata.
     //
     // Sem isto, o registro aceitava qualquer trabalhador identificado: se o reconhecimento facial
@@ -288,9 +282,8 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
 
     private static bool FuncaoPodeAssinarInspecao(string? nomeFuncao)
     {
-        if (string.IsNullOrWhiteSpace(nomeFuncao)) return false;
-        var normalizado = RemoverAcentos(nomeFuncao.Trim().ToLowerInvariant());
-        return FuncoesHabilitadasAssinarInspecao.Any(f => normalizado.StartsWith(f, StringComparison.Ordinal));
+        // Mesmo critério do resto do sistema, que aceita função abreviada ("Tec. Segurança Do Trabalho").
+        return FuncaoSstClassifier.EhTecnicoSeguranca(nomeFuncao) || FuncaoSstClassifier.EhEngenheiroSeguranca(nomeFuncao);
     }
 
     private static bool MesmoPapelDeAssinatura(MetodoAutenticacaoAssinatura existente, MetodoAutenticacaoAssinatura novo)
@@ -305,16 +298,4 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
 
     private static string? Truncar(string? texto, int max) =>
         string.IsNullOrWhiteSpace(texto) ? null : texto.Length <= max ? texto : texto[..max];
-
-    private static string RemoverAcentos(string texto)
-    {
-        var decomposto = texto.Normalize(NormalizationForm.FormD);
-        var semAcento = new StringBuilder();
-        foreach (var c in decomposto)
-        {
-            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
-                semAcento.Append(c);
-        }
-        return semAcento.ToString().Normalize(NormalizationForm.FormC);
-    }
 }
