@@ -103,3 +103,10 @@ class SstOfflineDb extends Dexie {
 }
 
 export const offlineDb = new SstOfflineDb();
+
+// Safari/WebKit (iPhone, inclusive o Teams no iOS) recusa gravar no IndexedDB o File vindo da câmera
+// ("Error preparing Blob/File data to be stored in object store"). Copiar os bytes para um Blob novo
+// em memória antes de gravar evita o erro; nos demais navegadores é só uma cópia.
+export async function blobParaGravar(arquivo: Blob): Promise<Blob> {
+  return new Blob([await arquivo.arrayBuffer()], { type: arquivo.type || 'image/jpeg' });
+}

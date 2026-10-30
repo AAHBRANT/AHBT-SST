@@ -83,17 +83,8 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
                     $"Não é possível encerrar: os itens Não Conforme a seguir exigem foto e ainda não têm: {string.Join("; ", ncSemFoto)}");
         }
 
-        if (inspecao.TipoInspecao == TipoInspecao.Alojamento)
-        {
-            var itensSemFotoPosteriorObrigatoria = inspecao.Respostas
-                .Where(r => r.Ativo && (r.ChecklistModeloItem?.ExigeFotografia ?? false) && (r.FotoDepoisConteudo?.Length ?? 0) == 0)
-                .Select(r => r.DescricaoPersonalizada ?? r.ChecklistModeloItem!.Descricao)
-                .ToList();
-
-            if (itensSemFotoPosteriorObrigatoria.Count > 0)
-                throw new InvalidOperationException(
-                    $"Não é possível encerrar: os seguintes itens de Alojamento exigem evidência posterior e ainda não têm: {string.Join("; ", itensSemFotoPosteriorObrigatoria)}");
-        }
+        // Alojamento: 1 foto obrigatória por item, igual ao checklist padrão (decisão do usuário,
+        // 30/10/2026). A evidência posterior deixou de ser exigida; as já registradas continuam no histórico.
 
         foreach (var resposta in inspecao.Respostas.Where(r => r.Ativo))
         {

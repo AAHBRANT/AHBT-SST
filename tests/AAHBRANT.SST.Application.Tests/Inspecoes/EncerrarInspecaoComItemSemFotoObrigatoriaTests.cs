@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Application.Common.Interfaces;
+﻿using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Inspecoes.Commands;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -64,9 +64,9 @@ public class EncerrarInspecaoComItemSemFotoObrigatoriaTests
     }
 
     [Fact]
-    public async Task Handle_AlojamentoItemExigeFotoSemFotoPosterior_LancaInvalidOperationException()
+    public async Task Handle_AlojamentoItemExigeFotoSoComFotoDoItem_EncerraSemErro()
     {
-        var db = CriarDb(nameof(Handle_AlojamentoItemExigeFotoSemFotoPosterior_LancaInvalidOperationException));
+        var db = CriarDb(nameof(Handle_AlojamentoItemExigeFotoSoComFotoDoItem_EncerraSemErro));
         var obra = new Obra { Codigo = "OB2", Nome = "Obra Teste 2" };
         var usuario = new Usuario { Email = "responsavel2@aahbrant.com", Nome = "Responsável Teste 2" };
         var checklist = new ChecklistModelo { Nome = "Checklist Alojamento", TipoInspecao = TipoInspecao.Alojamento };
@@ -102,11 +102,11 @@ public class EncerrarInspecaoComItemSemFotoObrigatoriaTests
 
         var handler = new EncerrarInspecaoCommandHandler(db);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => handler.Handle(new EncerrarInspecaoCommand(inspecao.Id), default));
+        // Alojamento: 1 foto por item basta (30/10/2026); a evidência posterior não é mais exigida.
+        await handler.Handle(new EncerrarInspecaoCommand(inspecao.Id), default);
 
-        Assert.Contains("evidência posterior", ex.Message);
-        Assert.Contains(item.Descricao, ex.Message);
+        var atualizada = await db.Inspecoes.FirstAsync(i => i.Id == inspecao.Id);
+        Assert.Equal(StatusInspecao.Concluida, atualizada.Status);
     }
 
     [Fact]
