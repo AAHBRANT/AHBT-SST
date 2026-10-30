@@ -2086,6 +2086,17 @@ public static class NovidadesSeeder
                     "Depois de responder ou tirar a foto, era preciso clicar em Salvar item.",
                     "O botão Salvar item saiu. Ao escolher o status, escrever a observação ou tirar a foto, o item é salvo sozinho."),
             }),
+        new(
+            Versao: "5.114.0",
+            Titulo: "Inspeção com a assinatura do técnico responsável",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Selo de assinatura do técnico no PDF da inspeção",
+                    "A assinatura da inspeção só aparecia numa página separada no fim, e só depois de assinada.",
+                    "O fim do relatório mostra o técnico responsável com o mesmo selo do certificado: \"Assinado digitalmente\", nome, data, método e hash. Antes da assinatura, o selo aparece como \"Aguardando assinatura\"."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
