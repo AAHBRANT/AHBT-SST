@@ -1989,6 +1989,21 @@ public static class NovidadesSeeder
                     "A jornada de cada GHE ficava em branco até alguém preencher, e o PDF mostrava \"—\".",
                     "GHE sem jornada recebe \"44 horas semanais\". Onde for diferente, como na vigilância em 12x36, é só trocar no passo Funções e GHE."),
             }),
+        new(
+            Versao: "5.110.0",
+            Titulo: "Treinamento: fila facial de volta e detector de rosto na câmera",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Abrir fila facial na turma de treinamento",
+                    "Na turma, a presença pelo rosto era confirmada só pelo botão de cada participante.",
+                    "O botão \"Abrir fila facial\" volta à turma, igual ao DDS. A fila agora abre num pop-up nas cores da AAHBRANT: câmera com guia oval, contador de confirmados e, ao lado, a lista de quem já passou. Cada participante que olha para a câmera é identificado e tem a presença confirmada, com cartão verde e bipe quando dá certo e cartão marsala quando o rosto não é reconhecido."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Detector de rosto na câmera facial",
+                    "A câmera facial era só \"clica e captura\", sem ajuda para posicionar o rosto.",
+                    "A câmera facial volta a mostrar a guia oval e o quadrado que acompanha o rosto, com a mensagem do que ajustar (aproximar, centralizar, luz). No DDS e no treinamento dá para ligar a captura automática quando o rosto fica verde. O botão Capturar continua sempre liberado."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

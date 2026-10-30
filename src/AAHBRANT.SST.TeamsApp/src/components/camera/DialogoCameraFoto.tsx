@@ -8,11 +8,15 @@ import {
   DialogTitle,
   Field,
   Select,
+  Switch,
   Text,
 } from '@fluentui/react-components';
 import { Camera24Regular } from '@fluentui/react-icons';
 import type { UseCapturaFoto } from './useCapturaFoto';
 import { ResumoDadosFoto } from './ResumoDadosFoto';
+import { useDetectorRosto } from './useDetectorRosto';
+import { DURACAO_CAPTURA_AUTOMATICA_MS, useCapturaAutomatica } from './useCapturaAutomatica';
+import { QuadradoRosto, CORES_DETECTOR } from './QuadradoRosto';
 import { pendenciasFoto } from '../../lib/dadosFoto';
 import { FeedbackInline } from '@ui';
 
@@ -25,6 +29,7 @@ interface DialogoCameraFotoProps {
 export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   const {
     stream,
+    videoRef,
     aoMontarVideo,
     modoCamera,
     dispositivosVideo,
@@ -34,11 +39,28 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
     trocarDispositivo,
   } = captura;
 
-  // Câmera simples (23/10): o usuário pediu para voltar ao "clica e captura". Saíram a guia oval, o
-  // detector de rosto ao vivo (quadrado verde e mensagens de luz/posição), a captura automática e a
-  // fila facial do DDS/Treinamento. useDetectorRosto, useCapturaAutomatica, QuadradoRosto e
-  // FilaFacialDds continuam no projeto, só sem uso, caso se queira religar. A validação real segue
-  // sendo a do Azure Face API depois da foto.
+  // Reconhecimento facial (câmera frontal) ganha uma guia oval sobreposta ao vídeo — pedido do
+  // usuário (22/09): ajuda a pessoa a centralizar o rosto no quadro antes de capturar.
+  // Desde 07/10 há também um detector de rosto ao vivo (useDetectorRosto, roda no aparelho): um
+  // quadrado acompanha o rosto e a mensagem diz o que ajustar (aproximar, centralizar, luz). É só ajuda
+  // ao operador: a validação real continua sendo a do Azure Face API.
+  // Correção (11/10): o detector NÃO bloqueia mais o botão Capturar. Com o bloqueio, quem tinha webcam
+  // de baixa resolução, pouca luz no canteiro ou o rosto um pouco fora do centro nunca chegava ao verde
+  // e não conseguia assinar — e, como a foto nem saía do aparelho, essas tentativas não apareciam no
+  // registro de falhas do servidor. Agora a pessoa sempre pode capturar; se a foto não servir, o Azure
+  // recusa com a mensagem do motivo e ela tenta de novo.
+  const mostrarGuiaRosto = modoCamera === 'user';
+  const detector = useDetectorRosto(videoRef, mostrarGuiaRosto && !!stream);
+  const avaliacao = detector.situacao === 'ativo' ? detector.avaliacao : null;
+  const corQuadrado = avaliacao ? CORES_DETECTOR[avaliacao.tom] : CORES_DETECTOR.ok;
+  // Captura sozinha depois de 1,5 s com o rosto aprovado (verde) e estável. Só onde a tela permite
+  // (treinamento e DDS) e só quando o detector está ativo; começa desligada a cada abertura.
+  const oferecerAutomatica = mostrarGuiaRosto && captura.permitirCapturaAutomatica;
+  const automatica = useCapturaAutomatica(
+    stream,
+    oferecerAutomatica && !!avaliacao?.liberaCaptura && !captura.processando,
+    () => void capturarFoto(),
+  );
 
   return (
     <>
@@ -84,7 +106,67 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                   transform: modoCamera === 'user' ? 'scaleX(-1)' : undefined,
                 }}
               />
+              {mostrarGuiaRosto && (
+                <div
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: 8,
+                    pointerEvents: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '55%',
+                      aspectRatio: '3 / 4',
+                      borderRadius: '50%',
+                      border: '3px solid rgba(255, 255, 255, 0.85)',
+                      boxShadow: '0 0 0 2000px rgba(0, 0, 0, 0.35)',
+                    }}
+                  />
+                </div>
+              )}
+              {mostrarGuiaRosto && <QuadradoRosto caixa={detector.caixa} cor={corQuadrado} />}
+              {automatica.contando && (
+                <svg
+                  aria-hidden
+                  viewBox="0 0 90 90"
+                  style={{ position: 'absolute', left: '50%', top: '50%', width: 88, height: 88, marginLeft: -44, marginTop: -44, transform: 'rotate(-90deg)', pointerEvents: 'none' }}
+                >
+                  <circle cx="45" cy="45" r="40" fill="rgba(0,0,0,0.35)" stroke="rgba(255,255,255,0.35)" strokeWidth="8" />
+                  <circle cx="45" cy="45" r="40" fill="none" stroke={CORES_DETECTOR.ok} strokeWidth="8" strokeLinecap="round" strokeDasharray="251" strokeDashoffset="251">
+                    <animate attributeName="stroke-dashoffset" from="251" to="0" dur={`${DURACAO_CAPTURA_AUTOMATICA_MS}ms`} fill="freeze" />
+                  </circle>
+                </svg>
+              )}
             </div>
+            {mostrarGuiaRosto && (
+              <div role="status" aria-live="polite" style={{ marginTop: 8, textAlign: 'center' }}>
+                {avaliacao ? (
+                  <Text size={300} weight="semibold" style={{ color: corQuadrado }}>
+                    {automatica.contando ? 'Fique parado… capturando' : avaliacao.mensagem}
+                  </Text>
+                ) : (
+                  <Text size={200}>
+                    {detector.situacao === 'carregando'
+                      ? 'Preparando o detector de rosto… Centralize o rosto dentro do círculo.'
+                      : 'Centralize o rosto dentro do círculo antes de capturar.'}
+                  </Text>
+                )}
+              </div>
+            )}
+            {oferecerAutomatica && detector.situacao === 'ativo' && (
+              <Switch
+                style={{ marginTop: 4 }}
+                checked={automatica.ligada}
+                onChange={(_, d) => automatica.alternar(d.checked)}
+                label="Captura automática"
+              />
+            )}
 
           </DialogContent>
           <DialogActions>
