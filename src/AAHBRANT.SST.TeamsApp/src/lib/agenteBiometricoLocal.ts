@@ -31,7 +31,14 @@ async function requisitarAgenteLocal<T>(caminho: string, init?: RequestInit): Pr
   const resposta = await fetch(`${AGENTE_LOCAL_URL}${caminho}`, init);
   if (!resposta.ok) {
     const corpo = await resposta.text().catch(() => '');
-    throw new Error(`${resposta.status} ${resposta.statusText}: ${corpo}`);
+    // O agente responde { erro: "..." } com o motivo em português: mostra só ele, sem o status HTTP.
+    let erro: string | undefined;
+    try {
+      erro = (JSON.parse(corpo) as { erro?: string }).erro;
+    } catch {
+      erro = undefined;
+    }
+    throw new Error(erro || `${resposta.status} ${resposta.statusText}: ${corpo}`);
   }
   return (await resposta.json()) as T;
 }

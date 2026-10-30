@@ -23,14 +23,55 @@ public class TemplateCacheService
 
     public IReadOnlyList<TemplateCacheado> Templates => _cache;
 
+    // Motivo da última sincronização que falhou (null quando a última deu certo). Antes a falha só ia para o
+    // log do agente e a tela mostrava "Rode /api/sincronizar" — caso Beira Rio (30/10): o posto buscava as
+    // digitais, não conseguia abrir e ficava com o cache vazio sem ninguém saber por quê.
+    public string? UltimoErroSincronizacao { get; private set; }
+
     public async Task SincronizarAsync(CancellationToken ct)
     {
-        var templates = await _backendClient.SincronizarTemplatesAsync(ct);
-        var chave = Convert.FromBase64String(_options.ChaveCriptografiaBiometriaBase64);
+        try
+        {
+            var templates = await _backendClient.SincronizarTemplatesAsync(ct);
+            var chave = LerChave();
 
-        _cache = templates
-            .Select(t => new TemplateCacheado(t.TrabalhadorId, t.TrabalhadorNome, DescriptografarTemplate(t.TemplateCriptografado, chave)))
-            .ToList();
+            _cache = templates
+                .Select(t => new TemplateCacheado(t.TrabalhadorId, t.TrabalhadorNome, DescriptografarComMotivo(t.TemplateCriptografado, chave)))
+                .ToList();
+            UltimoErroSincronizacao = null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            UltimoErroSincronizacao = ex is InvalidOperationException ? ex.Message
+                : "não foi possível buscar as digitais no servidor (verifique a internet e o cadastro do posto).";
+            throw;
+        }
+    }
+
+    private byte[] LerChave()
+    {
+        try
+        {
+            var chave = Convert.FromBase64String(_options.ChaveCriptografiaBiometriaBase64);
+            if (chave.Length == 32)
+                return chave;
+        }
+        catch (FormatException)
+        {
+        }
+        throw new InvalidOperationException("a chave de criptografia da biometria deste posto está vazia ou inválida. Reinstale o agente com a chave do servidor.");
+    }
+
+    private static byte[] DescriptografarComMotivo(string cifradoBase64, byte[] chave)
+    {
+        try
+        {
+            return DescriptografarTemplate(cifradoBase64, chave);
+        }
+        catch (CryptographicException)
+        {
+            throw new InvalidOperationException("a chave de criptografia da biometria deste posto é diferente da do servidor. Reinstale o agente com a chave certa.");
+        }
     }
 
     // Duplica deliberadamente o layout nonce|cifrado|tag de TemplateBiometricoCriptografiaConversor

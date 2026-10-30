@@ -7,7 +7,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <OutputType>WinExe</OutputType>
     <!-- Versão do agente: o atualizador compara com o manifesto. publicar.ps1 sobrescreve com -Versao. -->
-    <Version>1.1.2</Version>
+    <Version>1.1.3</Version>
   </PropertyGroup>
 
   <!-- Chave pública da atualização automática (gerada por publicar.ps1 -GerarChave). Sem o arquivo, o
