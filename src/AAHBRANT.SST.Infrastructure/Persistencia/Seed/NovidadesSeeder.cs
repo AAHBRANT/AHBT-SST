@@ -2123,6 +2123,17 @@ public static class NovidadesSeeder
                     "Cada assinatura nesses PDFs era só o nome sobre uma linha e uma legenda miúda.",
                     "Todos passam a usar o selo vinho do certificado acima da linha, com nome e cargo embaixo. As listas de presença continuam com a legenda curta em cada linha."),
             }),
+        new(
+            Versao: "5.115.0",
+            Titulo: "14 temas de inspeção prontos, conforme as NRs",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Checklists padrão para todas as obras",
+                    "Cada tema de inspeção precisava ser criado à mão, com os itens digitados um a um.",
+                    "Inspeções já traz 14 temas prontos, com até 20 itens cada, baseados nas NRs: Extintores, Andaimes, Escadas, Trabalho em Altura, Instalações Elétricas, Máquinas e Equipamentos, Ferramentas, Proteções Coletivas, EPI, Escavações, Içamento de Cargas, Espaço Confinado, Trabalho a Quente e Produtos Químicos. Valem para todas as obras e pedem foto em cada item, igual ao Canteiro."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
