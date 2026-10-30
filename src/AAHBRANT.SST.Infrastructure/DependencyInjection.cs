@@ -26,6 +26,7 @@ using Azure.Messaging.ServiceBus;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace AAHBRANT.SST.Infrastructure;
@@ -225,6 +226,19 @@ public static class DependencyInjection
             // travar dev local/CI, e evita fingir uma entrega que não aconteceu.
             services.AddSingleton<IPublicadorAcidenteGrh, NoOpPublicadorAcidenteGrh>();
         }
+
+        // Endereço por extenso no carimbo da foto (mesmo padrão do G-QUALI): Azure Maps com a identidade gerenciada
+        // (AzureMaps:ClientId). Sem o ClientId o recurso fica desligado e a foto sai só com as coordenadas.
+        services.AddMemoryCache();
+        var secaoMapas = configuration.GetSection(Geocodificacao.OpcoesAzureMaps.Secao);
+        services.AddOptions<Geocodificacao.OpcoesAzureMaps>().Bind(secaoMapas);
+        if (!string.IsNullOrWhiteSpace(secaoMapas[nameof(Geocodificacao.OpcoesAzureMaps.ClientId)]))
+        {
+            services.AddHttpClient(Geocodificacao.AzureMapsGeocodificador.NomeCliente);
+            services.TryAddSingleton<Azure.Core.TokenCredential>(_ => new Azure.Identity.DefaultAzureCredential());
+            services.AddSingleton<IGeocodificadorReverso, Geocodificacao.AzureMapsGeocodificador>();
+        }
+        else services.AddSingleton<IGeocodificadorReverso, Geocodificacao.GeocodificadorDesligado>();
 
         return services;
     }

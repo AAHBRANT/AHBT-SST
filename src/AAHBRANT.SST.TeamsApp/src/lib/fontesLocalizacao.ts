@@ -35,7 +35,7 @@ export const fonteNavegador: FonteLocalizacao = {
   iniciar(aoLer, aoFalhar) {
     if (!navigator.geolocation) { aoFalhar('Localização indisponível neste aparelho.'); return () => {}; }
     const id = navigator.geolocation.watchPosition(
-      p => aoLer({ latitude: p.coords.latitude, longitude: p.coords.longitude, precisaoMetros: p.coords.accuracy ?? null,
+      p => aoLer({ latitude: p.coords.latitude, longitude: p.coords.longitude, precisaoMetros: p.coords.accuracy ?? null, altitudeMetros: p.coords.altitude ?? null,
         obtidaEm: normalizarMomento(p.timestamp, Date.now()), fonte: 'navegador' }),
       e => aoFalhar(e.code === 1 ? motivoPermissao() : motivoIndisponivel()),
       { enableHighAccuracy: true, maximumAge: 10_000 },
