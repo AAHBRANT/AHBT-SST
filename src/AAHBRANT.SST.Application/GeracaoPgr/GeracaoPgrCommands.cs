@@ -114,8 +114,6 @@ public static class PendenciasGeracaoPgr
         if (comp.GrauRisco is not (>= 1 and <= 4)) p.Add("Informe o grau de risco da obra (1 a 4, NR-04).");
         if (string.IsNullOrWhiteSpace(comp.ResponsavelTecnicoRegistro)) p.Add("Informe o registro profissional (CREA) do responsável técnico.");
         if (string.IsNullOrWhiteSpace(comp.ResponsavelImplantacaoNome)) p.Add("Informe o responsável pela implantação do PGR.");
-        if (string.IsNullOrWhiteSpace(comp.ContatosEmergencia.FirstOrDefault(x => x.Chave == "hospital")?.Telefone))
-            p.Add("Informe o telefone do hospital de referência no plano de emergência.");
         foreach (var a in e.AcoesPlano.Where(a => !string.IsNullOrWhiteSpace(a.Descricao)))
         {
             var resumo = a.Descricao.Length <= 40 ? a.Descricao : a.Descricao[..40] + "…";

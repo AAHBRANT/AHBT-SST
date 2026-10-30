@@ -40,7 +40,7 @@ public class PgrPdfService : IPgrPdfService
         new("s7", "7", "Plano de ação"),
         new("s8", "8", "Acompanhamento e monitoramento"),
         new("s9", "9", "Prioridades e avaliação do PGR"),
-        new("s10", "10", "Plano de emergência"),
+        new("s10", "10", "Resposta a emergências"),
         new("s11", "11", "Considerações finais"),
     };
 
@@ -337,45 +337,10 @@ public class PgrPdfService : IPgrPdfService
                 });
                 Paragrafo(c, "Este PGR será avaliado e revisado anualmente e a qualquer momento em que fatos justifiquem a revisão.");
 
-                // 10. Plano de emergência
-                TituloComPrimeiro(c, Secoes[9], b => Paragrafo(b, "A organização manterá um Plano de Emergência que oriente os trabalhadores sobre como agir em acidentes e anormalidades. Trabalhadores devem ser treinados periodicamente e visitantes devem receber instruções gerais. Cenários a contemplar:"));
-                Lista(c, comp.CenariosEmergencia.Count > 0 ? comp.CenariosEmergencia : CenariosEmergenciaPgr.Padrao);
-                Subtitulo(c, "Contatos de emergência");
-                Tabela(c, new[] { ("Local / setor", 2.6f), ("Endereço", 3f), ("Telefone", 1.5f), ("Distância e tempo", 1.8f) },
-                    comp.ContatosEmergencia.Select(x => new[]
-                    {
-                        x.Recomendado ? $"{x.Local} (recomendado)" : x.Local,
-                        string.IsNullOrWhiteSpace(x.Endereco) ? "—" : x.Endereco!,
-                        string.IsNullOrWhiteSpace(x.Telefone) ? "—" : x.Telefone!,
-                        x.TempoMinutos is { } min ? $"{(x.DistanciaKm ?? 0).ToString("0.0", CultureInfo.InvariantCulture).Replace('.', ',')} km · {min} min" : "—",
-                    }),
-                    "Nenhum contato de emergência informado.");
-
-                var comRota = comp.ContatosEmergencia.Where(x => !string.IsNullOrWhiteSpace(x.Rota)).ToList();
-                if (comRota.Count > 0)
-                {
-                    var primeiraRota = true;
-                    foreach (var x in comRota)
-                    {
-                        var abrir = primeiraRota; // o subtítulo vai junto da primeira rota, para não ficar sozinho no fim da página
-                        primeiraRota = false;
-                        c.Item().ShowEntire().Column(rc =>
-                        {
-                            if (abrir) Subtitulo(rc, "Como chegar a partir da obra");
-                            rc.Item().PaddingTop(2).Text(x.Local).SemiBold();
-                            var passos = x.Rota!.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                            for (var i = 0; i < passos.Length; i++)
-                                rc.Item().PaddingLeft(6).Row(pr =>
-                                {
-                                    pr.ConstantItem(18).Text($"{i + 1}.").FontSize(8.5f).FontColor(Secundario);
-                                    pr.RelativeItem().Text(passos[i]).FontSize(8.5f);
-                                });
-                        });
-                    }
-                    var calculadoEm = comp.RotasCalculadasEmUtc is { } quando ? $" em {HorarioBrasilia.De(quando):dd/MM/yyyy}" : string.Empty;
-                    c.Item().PaddingTop(2).Text($"Rotas de carro calculadas com {comp.RotasFonte ?? "mapa online"}{calculadoEm}. Confirme o trajeto e os telefones no local antes de usar; trânsito e obras na via podem alterar o caminho.")
-                        .FontSize(8).FontColor(Secundario).Italic();
-                }
+                // 10. Resposta a emergências: a obra tem PAE próprio (decisão do usuário, 30/10/2026). O PGR só faz a referência,
+                // sem contatos, rotas nem cenários.
+                TituloComPrimeiro(c, Secoes[9], b => Paragrafo(b, "Os procedimentos de resposta aos cenários de emergência da obra (NR-01, item 1.5.6) estão no Plano de Atendimento a Emergências (PAE), documento próprio da obra. O PAE define os cenários, os recursos, a organização da resposta, os contatos e o encaminhamento ao atendimento externo, além dos treinamentos e simulados."));
+                Paragrafo(c, "O PAE deve ser mantido coerente com o inventário de riscos deste PGR e revisado sempre que o PGR for revisado.");
 
                 // 11. Considerações finais
                 // Data, aprovação e assinaturas ficam sempre juntos, na mesma página do título.
