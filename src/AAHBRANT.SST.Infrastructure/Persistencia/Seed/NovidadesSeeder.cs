@@ -2086,6 +2086,17 @@ public static class NovidadesSeeder
                     "Depois de responder ou tirar a foto, era preciso clicar em Salvar item.",
                     "O botão Salvar item saiu. Ao escolher o status, escrever a observação ou tirar a foto, o item é salvo sozinho."),
             }),
+        new(
+            Versao: "5.113.0",
+            Titulo: "Leitor de digital explica quando o posto não tem digitais",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Mensagem clara quando o posto não reconhece ninguém",
+                    "Quando o posto não tinha digitais carregadas, a assinatura mostrava a mensagem técnica \"Rode /api/sincronizar primeiro\".",
+                    "O posto tenta buscar as digitais de novo antes de pedir o dedo. Se não conseguir, a tela diz o motivo (por exemplo, chave de criptografia diferente da do servidor) ou pede para cadastrar a digital. Vale a partir do agente 1.1.3."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
