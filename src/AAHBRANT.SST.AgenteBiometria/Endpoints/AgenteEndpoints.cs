@@ -9,7 +9,10 @@ namespace AAHBRANT.SST.AgenteBiometria.Endpoints;
 // O segredo do dispositivo não sai mais para o navegador (11/10): com ele, quem tivesse acesso ao navegador
 // conseguia "assinar" por qualquer trabalhador. LeituraAssinada avisa a tela que este agente assina as leituras.
 // Versao: versão do agente instalado no posto (para conferir quem ainda não atualizou).
-public record DispositivoResponse(Guid DispositivoId, bool LeituraAssinada = true, string? Versao = null);
+// DigitaisCarregadas/ErroSincronizacao: quantas digitais da obra o posto tem para comparar e, se a última
+// sincronização falhou, o motivo (ver TemplateCacheService.UltimoErroSincronizacao).
+public record DispositivoResponse(Guid DispositivoId, bool LeituraAssinada = true, string? Versao = null,
+    int DigitaisCarregadas = 0, string? ErroSincronizacao = null);
 public record SincronizarResponse(int Total);
 // ImagemPng: imagem da leitura, guardada (criptografada) como referência do cadastro no log de assinaturas.
 public record CapturaBrutaResponse(byte[] TemplateBruto, byte[]? ImagemPng = null);
@@ -34,9 +37,10 @@ public static class AgenteEndpoints
         app.MapPost("/api/capturar", Capturar).RequireCors(politicaCors);
     }
 
-    public static Ok<DispositivoResponse> ObterDispositivo(IOptions<AgenteOptions> options) =>
+    public static Ok<DispositivoResponse> ObterDispositivo(IOptions<AgenteOptions> options, TemplateCacheService cache) =>
         TypedResults.Ok(new DispositivoResponse(options.Value.DispositivoId,
-            Versao: Atualizacao.VerificadorAtualizacao.VersaoAtual().ToString(3)));
+            Versao: Atualizacao.VerificadorAtualizacao.VersaoAtual().ToString(3),
+            DigitaisCarregadas: cache.Templates.Count, ErroSincronizacao: cache.UltimoErroSincronizacao));
 
     public static async Task<Ok<SincronizarResponse>> Sincronizar(TemplateCacheService cache, CancellationToken ct)
     {
@@ -78,6 +82,10 @@ public static class AgenteEndpoints
         }
     }
 
+    public static string MensagemSemDigitais(string? erroSincronizacao) => erroSincronizacao is null
+        ? "Nenhuma digital cadastrada na obra deste posto. Cadastre a digital do trabalhador antes de assinar."
+        : $"Este posto não conseguiu carregar as digitais da obra: {erroSincronizacao}";
+
     // Texto assinado de cada leitura. Precisa ser idêntico a LeituraBiometricaAssinada.Conteudo no servidor.
     public static string ConteudoAssinado(string desafio, Guid trabalhadorId, double score) =>
         string.Join('|', desafio, trabalhadorId.ToString("D"), score.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
@@ -109,6 +117,21 @@ public static class AgenteEndpoints
         IFingerprintReader leitor, IFingerprintMatcher matcher, TemplateCacheService cache, ChaveAssinaturaAgente chave,
         CapturarRequest? corpo, CancellationToken ct)
     {
+        // Sem digital nenhuma para comparar não adianta pedir o dedo: tenta buscar de novo e, se continuar
+        // vazio, explica o motivo em vez de ler e responder "nenhum template".
+        if (cache.Templates.Count == 0)
+        {
+            try
+            {
+                await cache.SincronizarAsync(ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+            }
+            if (cache.Templates.Count == 0)
+                return TypedResults.NotFound(new ErroResponse(MensagemSemDigitais(cache.UltimoErroSincronizacao)));
+        }
+
         // Cada foto do leitor já é comparada com o cache: a primeira que alcança o limiar do servidor encerra a
         // leitura (dedo seco ou fino que o sensor de presença não percebe ainda assina).
         (Guid TrabalhadorId, double Score)? melhor = null;
@@ -128,7 +151,7 @@ public static class AgenteEndpoints
 
         if (melhor is null)
         {
-            return TypedResults.NotFound(new ErroResponse("Nenhum template cadastrado no cache local. Rode /api/sincronizar primeiro."));
+            return TypedResults.NotFound(new ErroResponse("Não foi possível ler a digital. Limpe o dedo e o leitor e tente de novo."));
         }
 
         var (trabalhadorId, melhorScore) = melhor.Value;

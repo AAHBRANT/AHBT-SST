@@ -16,11 +16,13 @@ public class AgenteEndpointsTests
         var dispositivoId = Guid.NewGuid();
         var options = Options.Create(new AgenteOptions { DispositivoId = dispositivoId, SegredoDispositivo = "segredo-x" });
 
-        var resultado = AgenteEndpoints.ObterDispositivo(options);
+        var cache = new TemplateCacheService(new BackendClient(new HttpClient(), options), options);
+        var resultado = AgenteEndpoints.ObterDispositivo(options, cache);
 
         var ok = Assert.IsType<Ok<DispositivoResponse>>(resultado);
         Assert.Equal(dispositivoId, ok.Value!.DispositivoId);
         Assert.True(ok.Value.LeituraAssinada);
+        Assert.Equal(0, ok.Value.DigitaisCarregadas);
         Assert.DoesNotContain("segredo-x", System.Text.Json.JsonSerializer.Serialize(ok.Value));
     }
 
