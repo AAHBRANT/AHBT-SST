@@ -575,7 +575,7 @@ public class GeracaoPgrEapTests
     }
 
     [Fact]
-    public void NomesFuncoes_CaixaAlta_EncarregadoPorServico_EMesmoNomeEmTodosOsGhes()
+    public void NomesFuncoes_CaixaAlta_EMesmoNomeEmTodosOsGhes()
     {
         var e = new EstruturaGeracaoPgr
         {
@@ -583,24 +583,55 @@ public class GeracaoPgrEapTests
             {
                 new GheGerado { Numero = 1, Nome = "Terraplenagem", Funcoes = new()
                 {
-                    new FuncaoGerada { Nome = "Encarregado" }, new FuncaoGerada { Nome = "Greidista / Nivelador" },
-                    new FuncaoGerada { Nome = "OPERADOR DE MÁQUINAS" },
+                    new FuncaoGerada { Nome = "Greidista / Nivelador" }, new FuncaoGerada { Nome = "OPERADOR DE MÁQUINAS" },
                 } },
-                new GheGerado { Numero = 2, Nome = "Pavimentação", Funcoes = new()
-                {
-                    new FuncaoGerada { Nome = "Encarregado" }, new FuncaoGerada { Nome = "Greidista" },
-                    new FuncaoGerada { Nome = "Encarregado de Obras" },
-                } },
+                new GheGerado { Numero = 2, Nome = "Pavimentação", Funcoes = new() { new FuncaoGerada { Nome = "Greidista" } } },
                 new GheGerado { Numero = 3, Nome = "Topografia", Funcoes = new() { new FuncaoGerada { Nome = "Greidista" } } },
             },
         };
 
         NomesFuncoes.Padronizar(e);
 
-        var nomes = e.Ghes.Select(g => g.Funcoes.Select(f => f.Nome).ToArray()).ToArray();
-        Assert.Equal(new[] { "Encarregado de Terraplenagem", "Greidista", "Operador de Máquinas" }, nomes[0]);
-        Assert.Equal(new[] { "Encarregado de Pavimentação", "Greidista", "Encarregado de Obras" }, nomes[1]);
-        Assert.Equal(new[] { "Greidista" }, nomes[2]);
+        Assert.Equal(new[] { "Greidista", "Operador de Máquinas" }, e.Ghes[0].Funcoes.Select(f => f.Nome).ToArray());
+        Assert.Equal("Greidista", e.Ghes[1].Funcoes.Single().Nome);
+    }
+
+    [Theory]
+    [InlineData("Encarregado", true)]
+    [InlineData("Encarregado de Obras", true)]
+    [InlineData("Encarregado de Pavimentação / Pleno", true)]
+    [InlineData("ENCARREGADO DE TERRAPLENAGEM", true)]
+    [InlineData("Encarregado de Almoxarifado", false)]
+    [InlineData("Encarregado Administrativo", false)]
+    [InlineData("Engenheiro Civil", false)]
+    public void EncarregadoDeObras_SoOEncarregadoDeProducao(string nome, bool encarregado) =>
+        Assert.Equal(encarregado, EncarregadoDeObras.EhEncarregado(nome));
+
+    [Fact]
+    public void EncarregadoDeObras_UmSoNomeECboEmTodosOsGhes_ComADescricaoDeCada()
+    {
+        var e = new EstruturaGeracaoPgr
+        {
+            Ghes = new()
+            {
+                new GheGerado { Numero = 1, Nome = "Demolição", Funcoes = new() { new FuncaoGerada { Nome = "Encarregado", Descricao = "Coordena a demolição", Cbo = "710205" } } },
+                new GheGerado { Numero = 2, Nome = "Pavimentação", Funcoes = new() { new FuncaoGerada { Nome = "Encarregado de Pavimentação / Pleno", Descricao = "Coordena a pavimentação", Cbo = "710205" } } },
+                new GheGerado { Numero = 3, Nome = "Gestão", Funcoes = new()
+                {
+                    new FuncaoGerada { Nome = "Encarregado de Obras", Descricao = "Coordena as frentes", Cbo = "710215" },
+                    new FuncaoGerada { Nome = "Encarregado de Almoxarifado", Cbo = "410205" },
+                } },
+            },
+        };
+        var id = Guid.NewGuid();
+
+        EncarregadoDeObras.Unificar(e, id);
+
+        var enc = e.Ghes.SelectMany(g => g.Funcoes).Where(f => f.Nome == "Encarregado de Obras").ToList();
+        Assert.Equal(3, enc.Count);
+        Assert.All(enc, f => Assert.Equal(("710205", id), (f.Cbo, f.FuncaoId)));
+        Assert.Equal(new[] { "Coordena a demolição", "Coordena a pavimentação", "Coordena as frentes" }, enc.Select(f => f.Descricao).ToArray());
+        Assert.Contains(e.Ghes[2].Funcoes, f => f.Nome == "Encarregado de Almoxarifado");
     }
 
     [Theory]
