@@ -82,9 +82,10 @@ public class GerarPdfGeracaoPgrEapTests
             new MatrizEpiFuncao { Funcao = armador, CatalogoEpi = luva });
         await db.SaveChangesAsync();
         geracao.EstruturaJson = $$"""
-            {"ghes":[{"numero":1,"nome":"Estrutura","funcoes":[{"funcaoId":"{{armador.Id}}","nome":"ARMADOR","descricao":"x"}],
+            {"ghes":[{"numero":1,"nome":"Estrutura","funcoes":[{"funcaoId":"{{armador.Id}}","nome":"ARMADOR","descricao":"x"},{"nome":"Soldador","descricao":"y"}],
               "atividades":[{"codigoEap":"1.1","nome":"Laje","riscosGerados":true,"riscos":[{"tipo":"Acidente","perigo":"Queda de altura",
-                "probabilidade":3,"severidade":5,"medidas":[{"fase":2,"texto":"Use cinto","categoria":"EPI","catalogoEpiId":"{{cinto.Id}}","decisao":"Aceita"}]}]}]}]}
+                "probabilidade":3,"severidade":5,"medidas":[{"fase":2,"texto":"Use cinto","categoria":"EPI","catalogoEpiId":"{{cinto.Id}}","decisao":"Aceita"},
+                {"fase":2,"texto":"Use colete refletivo","categoria":"EPI","decisao":"Aceita"}]}]}]}]}
             """;
         await db.SaveChangesAsync();
         var pdf = new PdfFalso();
@@ -92,9 +93,13 @@ public class GerarPdfGeracaoPgrEapTests
         await new GerarPdfGeracaoPgrEapQueryHandler(db, pdf).Handle(new GerarPdfGeracaoPgrEapQuery(geracao.Id, Minuta: true), default);
 
         var epis = pdf.Dados!.EpisPorFuncao!;
-        Assert.Equal(new[] { "Capacete classe B", "Cinto paraquedista", "Luva de vaqueta" }, epis.Select(x => x.Epi).ToArray());
-        Assert.All(epis, x => Assert.Equal(("Armador", "01"), (x.Funcao, x.Ghes)));
-        Assert.False(epis.Single(x => x.Epi == "Cinto paraquedista").DaMatriz);
+        var armadorEpis = epis.Where(x => x.Funcao == "Armador").ToList();
+        Assert.Equal(new[] { "Capacete classe B", "Luva de vaqueta", "Cinto paraquedista", "Use colete refletivo" }, armadorEpis.Select(x => x.Epi).ToArray());
+        Assert.False(armadorEpis.Single(x => x.Epi == "Cinto paraquedista").DaMatriz);
+        // Função que o PGR cria e ainda não está no cadastro também entra, com os EPIs das medidas do GHE.
+        var soldador = epis.Where(x => x.Funcao == "Soldador").ToList();
+        Assert.Equal(new[] { "Cinto paraquedista", "Use colete refletivo" }, soldador.Select(x => x.Epi).ToArray());
+        Assert.Null(soldador.Single(x => x.Epi == "Use colete refletivo").Ca);
         Assert.Equal(JornadaPadrao.Texto, pdf.Dados.Estrutura.Ghes[0].Jornada);
     }
 

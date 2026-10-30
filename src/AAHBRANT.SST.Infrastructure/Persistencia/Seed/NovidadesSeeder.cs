@@ -1983,7 +1983,7 @@ public static class NovidadesSeeder
                 new NovidadeSeedItem(CategoriaNovidade.Novidade,
                     "Relação de EPIs por função no PDF",
                     "O PGR citava EPIs só dentro das medidas de cada risco, sem uma relação por função.",
-                    "No fim da seção de GHEs, o PDF traz a relação de EPIs de cada função, com os GHEs em que ela atua, o CA e a validade. A lista junta a matriz de EPI da função no cadastro e os EPIs do catálogo citados nas medidas. CA ausente ou vencido aparece em destaque."),
+                    "No fim da seção de GHEs, o PDF traz a relação de EPIs de cada função, com os GHEs em que ela atua, o CA e a validade. Entram todas as funções do PGR, inclusive as que ainda não estão no cadastro. A lista junta a matriz de EPI da função no cadastro e os EPIs citados nas medidas dos riscos dos GHEs em que ela atua. CA ausente ou vencido aparece em destaque."),
                 new NovidadeSeedItem(CategoriaNovidade.Melhoria,
                     "Jornada padrão de 44 horas semanais",
                     "A jornada de cada GHE ficava em branco até alguém preencher, e o PDF mostrava \"—\".",

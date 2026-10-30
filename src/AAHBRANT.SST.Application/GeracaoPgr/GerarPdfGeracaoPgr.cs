@@ -246,6 +246,9 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
 // Relação de EPIs por função do PGR. Consultas por tabela e junção em memória (soft delete não some com a linha).
 internal static class RelacaoEpisPorFuncao
 {
+    // Toda função do PGR entra, cadastrada ou não (pedido do usuário, 30/10/2026): os cargos que o PGR cria ainda não estão
+    // no cadastro. EPIs = matriz da função no cadastro (quando ela existe) + EPIs citados nas medidas dos riscos dos GHEs em
+    // que a função atua; medida de EPI sem item do catálogo entra pelo texto, sem CA.
     public static async Task<List<LinhaEpiFuncaoPdf>> MontarAsync(IAppDbContext db, EstruturaGeracaoPgr e,
         IReadOnlyList<(int Ghe, string Nome, Guid Id)> funcoesDosGhes, CancellationToken ct)
     {
@@ -253,28 +256,41 @@ internal static class RelacaoEpisPorFuncao
         var matriz = await db.MatrizEpiFuncoes.Where(m => idsFuncao.Contains(m.FuncaoId))
             .Select(m => new { m.FuncaoId, m.CatalogoEpiId }).ToListAsync(ct);
 
-        // EPIs do catálogo citados nas medidas de cada GHE (valem para as funções daquele GHE).
-        var episDoGhe = e.Ghes.ToDictionary(g => g.Numero, g => g.Atividades.SelectMany(a => a.Riscos).Where(r => !r.Excluido)
-            .SelectMany(r => r.Medidas).Where(m => m.EntraNoPgr() && m.CatalogoEpiId is not null)
-            .Select(m => m.CatalogoEpiId!.Value).ToHashSet());
+        var medidasEpiDoGhe = e.Ghes.ToDictionary(g => g.Numero, g => g.Atividades.SelectMany(a => a.Riscos).Where(r => !r.Excluido)
+            .SelectMany(r => r.Medidas)
+            .Where(m => m.EntraNoPgr() && (m.CatalogoEpiId is not null || m.Categoria == CategoriasMedida.Epi) && !string.IsNullOrWhiteSpace(m.Texto))
+            .ToList());
 
-        var idsEpi = matriz.Select(m => m.CatalogoEpiId).Concat(episDoGhe.Values.SelectMany(x => x)).Distinct().ToList();
+        var idsEpi = matriz.Select(m => m.CatalogoEpiId)
+            .Concat(medidasEpiDoGhe.Values.SelectMany(x => x).Where(m => m.CatalogoEpiId is not null).Select(m => m.CatalogoEpiId!.Value))
+            .Distinct().ToList();
         var catalogo = await db.CatalogoEpis.Where(c => idsEpi.Contains(c.Id))
             .Select(c => new { c.Id, c.Nome, c.CertificadoAprovacaoNumero, c.CertificadoAprovacaoValidade }).ToDictionaryAsync(c => c.Id, ct);
 
+        var funcoes = e.Ghes.SelectMany(g => g.Funcoes.Select(f => (Ghe: g.Numero, f.Nome)))
+            .GroupBy(f => f.Nome).OrderBy(x => x.Key);
         var linhas = new List<LinhaEpiFuncaoPdf>();
-        foreach (var funcao in funcoesDosGhes.GroupBy(f => f.Nome).OrderBy(x => x.Key))
+        foreach (var funcao in funcoes)
         {
-            var ghes = string.Join(", ", funcao.Select(f => f.Ghe).Distinct().OrderBy(n => n).Select(n => n.ToString("00")));
-            var daMatriz = matriz.Where(m => funcao.Any(f => f.Id == m.FuncaoId)).Select(m => m.CatalogoEpiId).ToHashSet();
-            var dasMedidas = funcao.SelectMany(f => episDoGhe.GetValueOrDefault(f.Ghe) ?? new HashSet<Guid>()).ToHashSet();
-            foreach (var idEpi in daMatriz.Concat(dasMedidas).Distinct())
+            var numeros = funcao.Select(f => f.Ghe).Distinct().OrderBy(n => n).ToList();
+            var ghes = string.Join(", ", numeros.Select(n => n.ToString("00")));
+            var ids = funcoesDosGhes.Where(f => f.Nome == funcao.Key).Select(f => f.Id).ToHashSet();
+            var vistos = new HashSet<string>();
+            void Adicionar(string nome, string? ca, DateTime? validade, bool daMatriz)
             {
-                if (!catalogo.TryGetValue(idEpi, out var epi)) continue;
-                linhas.Add(new LinhaEpiFuncaoPdf(funcao.Key, ghes, epi.Nome, epi.CertificadoAprovacaoNumero, epi.CertificadoAprovacaoValidade,
-                    daMatriz.Contains(idEpi)));
+                if (vistos.Add(FuncaoSstClassifier.Normalizar(nome))) linhas.Add(new LinhaEpiFuncaoPdf(funcao.Key, ghes, nome, ca, validade, daMatriz));
+            }
+
+            foreach (var m in matriz.Where(m => ids.Contains(m.FuncaoId)))
+                if (catalogo.TryGetValue(m.CatalogoEpiId, out var epi)) Adicionar(epi.Nome, epi.CertificadoAprovacaoNumero, epi.CertificadoAprovacaoValidade, true);
+            foreach (var m in numeros.SelectMany(n => medidasEpiDoGhe.GetValueOrDefault(n) ?? new List<MedidaGerada>()))
+            {
+                if (m.CatalogoEpiId is { } idEpi && catalogo.TryGetValue(idEpi, out var epi))
+                    Adicionar(epi.Nome, epi.CertificadoAprovacaoNumero, epi.CertificadoAprovacaoValidade, false);
+                else if (m.CatalogoEpiId is null)
+                    Adicionar(m.Texto.Trim(), null, null, false);
             }
         }
-        return linhas.OrderBy(l => l.Funcao).ThenBy(l => l.Epi).ToList();
+        return linhas;
     }
 }
