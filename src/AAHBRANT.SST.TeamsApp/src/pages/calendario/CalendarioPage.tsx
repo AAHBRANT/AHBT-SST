@@ -1,21 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-// makeStyles/mergeClasses/shorthands/tokens (Fluent cru) continuam aqui de propósito — exceção
-// permanente e consciente, não sobra não explicada. A Task 21 (Onda 2, já mesclada) já tinha
-// decidido manter o layout desta página fora dos templates (spec §4): a grade mensal 7x6 com
-// hover/seleção por célula, "chip" compacto de evento dentro da célula e o "ponto" colorido da
-// legenda não têm equivalente em `src/ui/` — não é lista (`DataTable`), não é card único
-// (`Card`/`FormSection`), não é o texto secundário genérico de `Legenda` (que é tipografia, não
-// marcador colorido). `tokens` cobre a escala de neutros/hover do Fluent (colorNeutralStroke2,
-// colorNeutralBackground1/2/3, colorNeutralBackground1Hover) que `designTokens` não reexpõe —
-// só tem os tokens semânticos da marca (primary/success/warning/...), não a escala neutra completa
-// de grade. `shorthands`/`mergeClasses` são utilitários de `makeStyles` sem substituto em `@ui`
-// (nenhum componente novo nasce nesta frente — global constraint da Onda 2/3). Construir um
-// componente de calendário em `@ui` para isto é trabalho de componente novo, fora do escopo desta
-// task de pontas soltas; se/quando `*Calendario*` ganhar um segundo consumidor, aí sim justifica
-// extrair `Grade`/`CelulaCalendario` para `@ui` (regra §5.1 se aplica quando há caso real repetido).
+// A grade mensal é compartilhada com o planejamento de DDS.
 // oxlint-disable-next-line no-restricted-imports
-import { makeStyles, mergeClasses, shorthands, tokens } from '@fluentui/react-components';
+import { makeStyles, shorthands, tokens } from '@fluentui/react-components';
+import { chaveDia, dataDoDia } from '../../lib/datasCalendario';
 import {
   ArrowLeft24Regular,
   ArrowRight24Regular,
@@ -33,62 +21,9 @@ import {
   type EventoSstCalendario,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
-import { Button, designTokens, FeedbackInline, StatusChip, Text, type Tom } from '@ui';
+import { Button, CalendarioMensal, designTokens, FeedbackInline, StatusChip, Text, type Tom } from '@ui';
 
 const useStyles = makeStyles({
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(7, 1fr)',
-    ...shorthands.gap('1px'),
-    backgroundColor: tokens.colorNeutralStroke2,
-    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
-    ...shorthands.borderRadius('8px'),
-    overflow: 'hidden',
-  },
-  cabecalhoDiaSemana: {
-    backgroundColor: tokens.colorNeutralBackground3,
-    padding: '8px',
-    textAlign: 'center',
-    fontSize: '12px',
-    fontWeight: 600,
-    color: tokens.colorNeutralForeground3,
-  },
-  celulaDia: {
-    backgroundColor: tokens.colorNeutralBackground1,
-    minHeight: '96px',
-    padding: '6px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-    cursor: 'pointer',
-    ...shorthands.transition('background-color', '0.15s'),
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground1Hover,
-    },
-  },
-  celulaSelecionada: {
-    boxShadow: `inset 0 0 0 2px ${designTokens.colorPrimary}`,
-  },
-  celulaOutroMes: {
-    backgroundColor: tokens.colorNeutralBackground2,
-  },
-  numeroDia: {
-    fontSize: '13px',
-    fontWeight: 600,
-  },
-  numeroDiaOutroMes: {
-    color: tokens.colorNeutralForeground4,
-  },
-  numeroDiaHoje: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '20px',
-    height: '20px',
-    borderRadius: '999px',
-    backgroundColor: designTokens.colorPrimary,
-    color: tokens.colorNeutralForegroundStaticInverted,
-  },
   chipEvento: {
     fontSize: '11px',
     lineHeight: '14px',
@@ -159,10 +94,6 @@ interface EventoDoDia {
   sst?: EventoSstCalendario;
 }
 
-function chaveDia(data: Date): string {
-  return data.toISOString().slice(0, 10);
-}
-
 function inicioDaSemana(data: Date): Date {
   const d = new Date(data);
   d.setDate(d.getDate() - d.getDay());
@@ -198,28 +129,22 @@ export function CalendarioPage() {
     return fim;
   }, [mesAtual]);
 
-  const diasDaGrade = useMemo(() => {
-    const dias: Date[] = [];
-    const cursor = new Date(primeiroDiaGrade);
-    while (cursor <= ultimoDiaGrade) {
-      dias.push(new Date(cursor));
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    return dias;
-  }, [primeiroDiaGrade, ultimoDiaGrade]);
-
   useEffect(() => {
+    let ativo = true;
     (async () => {
       try {
         setCarregando(true);
         setErro(null);
-        setCalendario(await api.calendario.obter(primeiroDiaGrade, ultimoDiaGrade));
+        setCalendario(null);
+        const recebido = await api.calendario.obter(primeiroDiaGrade, ultimoDiaGrade);
+        if (ativo) setCalendario(recebido);
       } catch (e) {
-        setErro(e instanceof Error ? e.message : 'Falha ao carregar o calendário.');
+        if (ativo) setErro(e instanceof Error ? e.message : 'Falha ao carregar o calendário.');
       } finally {
-        setCarregando(false);
+        if (ativo) setCarregando(false);
       }
     })();
+    return () => { ativo = false; };
   }, [primeiroDiaGrade, ultimoDiaGrade]);
 
   const eventosPorDia = useMemo(() => {
@@ -250,7 +175,6 @@ export function CalendarioPage() {
     return mapa;
   }, [calendario]);
 
-  const hojeChave = chaveDia(new Date());
   const eventosDoDiaSelecionado = (eventosPorDia.get(diaSelecionado) ?? []).sort(
     (a, b) => a.data.getTime() - b.data.getTime(),
   );
@@ -315,7 +239,7 @@ export function CalendarioPage() {
           </Text>
           {calendario.mensagemErroGraph && (
             <Text size={200} style={{ color: designTokens.colorNeutralMedium, display: 'block', marginTop: 4 }}>
-              Detalhe técnico: {calendario.mensagemErroGraph}
+              {calendario.mensagemErroGraph}
             </Text>
           )}
         </div>
@@ -340,46 +264,18 @@ export function CalendarioPage() {
         </div>
       </div>
 
-      <div className={estilosLocais.grid}>
-        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((diaSemana) => (
-          <div key={diaSemana} className={estilosLocais.cabecalhoDiaSemana}>
-            {diaSemana}
-          </div>
-        ))}
-        {diasDaGrade.map((dia) => {
-          const chave = chaveDia(dia);
-          const ehOutroMes = dia.getMonth() !== mesAtual.getMonth();
-          const eventosDoDia = (eventosPorDia.get(chave) ?? []).sort((a, b) => a.data.getTime() - b.data.getTime());
-          const eventosVisiveis = eventosDoDia.slice(0, 3);
-          const restante = eventosDoDia.length - eventosVisiveis.length;
-
-          return (
-            <div
-              key={chave}
-              className={mergeClasses(
-                estilosLocais.celulaDia,
-                ehOutroMes && estilosLocais.celulaOutroMes,
-                diaSelecionado === chave && estilosLocais.celulaSelecionada,
-              )}
-              onClick={() => setDiaSelecionado(chave)}
-            >
-              <span className={mergeClasses(estilosLocais.numeroDia, ehOutroMes && estilosLocais.numeroDiaOutroMes)}>
-                {chave === hojeChave ? <span className={estilosLocais.numeroDiaHoje}>{dia.getDate()}</span> : dia.getDate()}
-              </span>
-              {eventosVisiveis.map((evento) => (
-                <span key={evento.chave} className={estilosLocais.chipEvento} style={{ backgroundColor: evento.cor }}>
-                  {evento.rotulo}
-                </span>
-              ))}
-              {restante > 0 && <span className={estilosLocais.maisEventos}>+{restante} mais</span>}
-            </div>
-          );
-        })}
-      </div>
+      <CalendarioMensal mes={mesAtual} selecionado={diaSelecionado} aoSelecionar={setDiaSelecionado}
+        conteudoDia={(chave) => {
+          const eventos = [...(eventosPorDia.get(chave) ?? [])].sort((a, b) => a.data.getTime() - b.data.getTime());
+          return <>
+            {eventos.slice(0, 3).map(evento => <span key={evento.chave} className={estilosLocais.chipEvento} style={{ backgroundColor: evento.cor }}>{evento.rotulo}</span>)}
+            {eventos.length > 3 && <span className={estilosLocais.maisEventos}>+{eventos.length - 3} mais</span>}
+          </>;
+        }} />
 
       <div className={estilosLocais.painelDia}>
         <Text weight="semibold">
-          {new Date(diaSelecionado).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+          {dataDoDia(diaSelecionado).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
         </Text>
 
         {!carregando && eventosDoDiaSelecionado.length === 0 && (

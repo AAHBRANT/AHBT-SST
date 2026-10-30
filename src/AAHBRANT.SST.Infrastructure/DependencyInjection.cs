@@ -108,6 +108,8 @@ public static class DependencyInjection
 
         services.AddScoped<IDdsPdfService, DdsPdfService>();
         services.AddScoped<IDdsSemanalPdfService, DdsSemanalPdfService>();
+        services.AddScoped<AAHBRANT.SST.Application.Dds.Cronogramas.ICronogramaMensalDdsPdfService, CronogramaMensalDdsPdfService>();
+        services.AddScoped<AAHBRANT.SST.Application.Dds.Cronogramas.IEmissorCronogramaMensalDds, EmissorCronogramaMensalDds>();
         services.AddScoped<IPdfMesclador, PdfMesclador>();
         services.AddScoped<ICipaPdfService, CipaPdfService>();
         services.AddScoped<AAHBRANT.SST.Application.EscopoPcmso.IEscopoPcmsoPdfService, EscopoPcmsoPdfService>();

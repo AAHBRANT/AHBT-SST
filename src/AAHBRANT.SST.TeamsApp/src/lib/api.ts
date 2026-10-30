@@ -3300,6 +3300,26 @@ export interface CatalogoTemaDds {
   descricao?: string | null;
 }
 
+export interface TemaCronogramaDds {
+  catalogoTemaDdsId: string;
+  nome: string;
+  descricao?: string | null;
+}
+export interface DiaCronogramaDds {
+  data: string;
+  temas: TemaCronogramaDds[];
+}
+export interface CronogramaMensalDds {
+  id: string | null;
+  obraId: string;
+  ano: number;
+  mes: number;
+  versao: number;
+  numeroDocumento: string | null;
+  dias: DiaCronogramaDds[];
+  revisoes: { id: string; numero: number; versaoOrigem: number; emitidoEmUtc: string }[];
+}
+
 // Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §3/§5, etapa 6) — genérico,
 // identificado por EntidadeTipo/EntidadeId (ex.: "Dds" + ddsId). Primeiro consumidor: AssinarDdsPage.
 // PIN/crachá-QR e WebAuthn/FIDO2 foram removidos do sistema em 31/08 (decisão do usuário: único
@@ -6510,6 +6530,28 @@ export const api = {
     atualizar: (id: string, nome: string, descricao?: string | null) =>
       request<void>(`/api/catalogotemasdds/${id}`, { method: 'PUT', body: JSON.stringify({ nome, descricao }) }),
     excluir: (id: string) => request<void>(`/api/catalogotemasdds/${id}`, { method: 'DELETE' }),
+  },
+  cronogramasMensaisDds: {
+    obter: (obraId: string, ano: number, mes: number) =>
+      request<CronogramaMensalDds>(`/api/cronogramasmensaisdds/${obraId}/${ano}/${mes}`),
+    salvar: (obraId: string, ano: number, mes: number, versao: number, dias: DiaCronogramaDds[]) =>
+      request<CronogramaMensalDds>(`/api/cronogramasmensaisdds/${obraId}/${ano}/${mes}`, {
+        method: 'PUT', body: JSON.stringify({ versao, dias: dias.map(d => ({ data: d.data, temasIds: d.temas.map(t => t.catalogoTemaDdsId) })) }),
+      }),
+    pdf: async (id: string, versao: number, semanaCompleta: boolean, emitir: boolean) => {
+      const response = await fetch(`${API_BASE_URL}/api/cronogramasmensaisdds/${id}/pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...await montarHeadersAuth() },
+        body: JSON.stringify({ versao, semanaCompleta, emitir }),
+      });
+      if (!response.ok) throw new Error(extrairMensagemErro(await response.text(), response.status, response.statusText));
+      return response.blob();
+    },
+    revisaoPdf: async (id: string, revisaoId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/cronogramasmensaisdds/${id}/revisoes/${revisaoId}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) throw new Error(extrairMensagemErro(await response.text(), response.status, response.statusText));
+      return response.blob();
+    },
   },
   assinatura: {
     // Dos ids da lista, quais já estão travados pela assinatura (editar/excluir somem da tela). Mesma regra

@@ -71,3 +71,4 @@ export { DetailPageLayout, type DetailPageLayoutProps } from './layout/DetailPag
 export { WorkflowActions, type WorkflowActionsProps, type AcaoWorkflow } from './layout/WorkflowActions/WorkflowActions';
 
 export * from './graficos';
+export { CalendarioMensal } from './compostos/CalendarioMensal/CalendarioMensal';

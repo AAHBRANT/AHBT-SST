@@ -82,15 +82,15 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService, IReuniaoTeam
     // GET /users/{aadObjectId}/calendarView — lê os eventos reais do Outlook/Teams do usuário no
     // intervalo (requisito do usuário, 2026-08-29: "quero o calendário do Teams dentro do
     // aplicativo"). Reaproveita a mesma permissão de aplicativo (Calendars.ReadWrite) e o mesmo
-    // App Registration já usados por CriarEventoAsync/AtualizarEventoAsync/CancelarEventoAsync
-    // acima — não é preciso nenhuma permissão nova nem fluxo delegado (on-behalf-of).
+    // App Registration já usados por CriarEventoAsync/AtualizarEventoAsync/CancelarEventoAsync.
+    // A caixa também precisa estar no escopo autorizado do Exchange (AAP ou RBAC da aplicação).
     public async Task<IReadOnlyList<EventoGraphDto>> ListarEventosAsync(
         Guid usuarioId, DateTime inicio, DateTime fim, CancellationToken ct = default)
     {
         var (httpClient, aadObjectId) = await PrepararRequisicaoAsync(usuarioId, ct);
 
-        var inicioStr = Uri.EscapeDataString(inicio.ToString("yyyy-MM-ddTHH:mm:ss"));
-        var fimStr = Uri.EscapeDataString(fim.ToString("yyyy-MM-ddTHH:mm:ss"));
+        var inicioStr = Uri.EscapeDataString(FormatarLimiteConsulta(inicio));
+        var fimStr = Uri.EscapeDataString(FormatarLimiteConsulta(fim));
         using var requisicao = new HttpRequestMessage(
             HttpMethod.Get,
             $"https://graph.microsoft.com/v1.0/users/{aadObjectId}/calendarView" +
@@ -115,8 +115,18 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService, IReuniaoTeam
         evento.IsOnlineMeeting,
         evento.OnlineMeeting?.JoinUrl);
 
-    private static DateTime ParseDataHora(GraphDataHora? dataHora) =>
-        dataHora is not null && DateTime.TryParse(dataHora.DateTime, out var valor) ? valor : default;
+    // A API recebe limites ISO com fuso. O Prefer só afeta a resposta, não os limites da consulta.
+    internal static string FormatarLimiteConsulta(DateTime data) =>
+        (data.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(data, DateTimeKind.Utc) : data.ToUniversalTime())
+            .ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static DateTime ParseDataHora(GraphDataHora? dataHora)
+    {
+        if (dataHora is null || !DateTime.TryParse(dataHora.DateTime, out var valor)) return default;
+        if (valor.Kind == DateTimeKind.Utc) return valor;
+        var fuso = TimeZoneInfo.FindSystemTimeZoneById(dataHora.TimeZone ?? "America/Sao_Paulo");
+        return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(valor, DateTimeKind.Unspecified), fuso);
+    }
 
     private async Task<(HttpClient httpClient, string aadObjectId)> PrepararRequisicaoAsync(
         Guid organizadorUsuarioId, CancellationToken ct)
@@ -223,15 +233,19 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService, IReuniaoTeam
         };
     }
 
-    private static async Task GarantirSucessoAsync(HttpResponseMessage resposta, Guid organizadorUsuarioId, CancellationToken ct)
+    internal static async Task GarantirSucessoAsync(HttpResponseMessage resposta, Guid organizadorUsuarioId, CancellationToken ct)
     {
         if (resposta.IsSuccessStatusCode)
             return;
 
         var corpoResposta = await resposta.Content.ReadAsStringAsync(ct);
-        throw new InvalidOperationException(
+        var detalhe = new HttpRequestException(
             $"Falha ao sincronizar evento de calendário no Teams para o usuário {organizadorUsuarioId}: " +
             $"{(int)resposta.StatusCode} {resposta.StatusCode} — {corpoResposta}");
+        var mensagem = resposta.StatusCode == System.Net.HttpStatusCode.Forbidden
+            ? "O Exchange não autorizou o acesso do SST ao calendário desta conta. O administrador deve conferir o escopo de acesso da aplicação no Exchange."
+            : "Não foi possível consultar o Outlook/Teams agora. Tente novamente em instantes.";
+        throw new CalendarioTeamsIndisponivelException(mensagem, detalhe);
     }
 
     private class GraphEventoResposta

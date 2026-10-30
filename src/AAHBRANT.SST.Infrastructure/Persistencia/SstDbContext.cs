@@ -133,6 +133,8 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DdsParticipante> DdsParticipantes => Set<DdsParticipante>();
     public DbSet<DdsFuncionarioSelecionado> DdsFuncionariosSelecionados => Set<DdsFuncionarioSelecionado>();
     public DbSet<DdsSemanal> DdsSemanais => Set<DdsSemanal>();
+    public DbSet<CronogramaMensalDds> CronogramasMensaisDds => Set<CronogramaMensalDds>();
+    public DbSet<CronogramaMensalDdsRevisao> CronogramasMensaisDdsRevisoes => Set<CronogramaMensalDdsRevisao>();
     public DbSet<CatalogoTemaDds> CatalogosTemaDds => Set<CatalogoTemaDds>();
     public DbSet<TemaDdsAgendado> TemasDdsAgendados => Set<TemaDdsAgendado>();
     public DbSet<ReuniaoAnaliseOcorrencia> ReunioesAnaliseOcorrencia => Set<ReuniaoAnaliseOcorrencia>();
@@ -228,6 +230,11 @@ public class SstDbContext : DbContext, IAppDbContext
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
         modelBuilder.Entity<Dds>().HasQueryFilter(d =>
             d.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(d.ObraId)));
+        modelBuilder.Entity<CronogramaMensalDds>().HasQueryFilter(c =>
+            c.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(c.ObraId)));
+        modelBuilder.Entity<CronogramaMensalDdsRevisao>().HasQueryFilter(r =>
+            r.Ativo && r.Cronograma!.Ativo &&
+            (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(r.Cronograma.ObraId)));
         modelBuilder.Entity<TemaDdsAgendado>().HasQueryFilter(t =>
             t.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(t.ObraId)));
         modelBuilder.Entity<ReuniaoAnaliseOcorrencia>().HasQueryFilter(r =>

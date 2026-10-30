@@ -1,3 +1,4 @@
+import { chaveDia } from '../../lib/datasCalendario';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { makeStyles, mergeClasses, tokens, Text } from '@fluentui/react-components';
@@ -59,10 +60,6 @@ const useStyles = makeStyles({
     marginTop: '1px',
   },
 });
-
-function chaveDia(data: Date): string {
-  return data.toISOString().slice(0, 10);
-}
 
 function inicioDaSemana(data: Date): Date {
   const d = new Date(data);

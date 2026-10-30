@@ -123,6 +123,8 @@ public interface IAppDbContext
     DbSet<DdsParticipante> DdsParticipantes { get; }
     DbSet<DdsFuncionarioSelecionado> DdsFuncionariosSelecionados { get; }
     DbSet<DdsSemanal> DdsSemanais { get; }
+    DbSet<CronogramaMensalDds> CronogramasMensaisDds { get; }
+    DbSet<CronogramaMensalDdsRevisao> CronogramasMensaisDdsRevisoes { get; }
     DbSet<CatalogoTemaDds> CatalogosTemaDds { get; }
     DbSet<TemaDdsAgendado> TemasDdsAgendados { get; }
     DbSet<ReuniaoAnaliseOcorrencia> ReunioesAnaliseOcorrencia { get; }

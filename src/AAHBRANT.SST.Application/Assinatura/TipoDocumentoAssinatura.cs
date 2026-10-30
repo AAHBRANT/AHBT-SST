@@ -17,6 +17,7 @@ public static class TipoDocumentoAssinatura
         ["Apr"] = "APR — Análise Preliminar de Risco",
         ["Dds"] = "DDS — Diálogo Diário de Segurança",
         ["DdsSemanal"] = "Registro Semanal de DDS",
+        ["CronogramaMensalDdsRevisao"] = "Cronograma Mensal de Temas de DDS",
         ["Inspecao"] = "Inspeção de Segurança",
         ["PermissaoTrabalho"] = "Permissão de Trabalho",
         ["ProcessoEleitoralCipa"] = "Ata do Processo Eleitoral da CIPA",
@@ -40,6 +41,7 @@ public static class TipoDocumentoAssinatura
         ["FichaEpiTrabalhador"] = "Documento consolidado: as assinaturas são colhidas em cada entrega e devolução de EPI relacionada nesta ficha.",
         ["SessaoTreinamento"] = "Documento consolidado: as assinaturas são colhidas no certificado de cada participante da turma.",
         ["DdsSemanal"] = "Documento consolidado: as assinaturas são colhidas no DDS de cada dia da semana.",
+        ["CronogramaMensalDdsRevisao"] = "Documento de planejamento: não comprova a realização de DDS e não contém assinaturas de participantes.",
     };
 
     public static string Rotulo(string entidadeTipo) =>

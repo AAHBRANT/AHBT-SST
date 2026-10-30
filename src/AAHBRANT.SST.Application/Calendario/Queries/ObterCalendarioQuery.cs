@@ -58,10 +58,12 @@ public class ObterCalendarioQueryHandler : IRequestHandler<ObterCalendarioQuery,
             var eventosGraph = await _graph.ListarEventosAsync(usuario.Id, request.Inicio, request.Fim, ct);
             return new CalendarioDto(true, true, null, eventosGraph.ToList(), eventosSst);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             _logger.LogWarning(ex, "Falha ao ler o calendário do Teams/Outlook do usuário {UsuarioId} via Graph.", usuario.Id);
-            return new CalendarioDto(true, false, ex.Message, new List<EventoGraphDto>(), eventosSst);
+            var mensagem = ex is CalendarioTeamsIndisponivelException ? ex.Message :
+                "A conexão com o Outlook/Teams está indisponível. Tente novamente em instantes; se persistir, contate o administrador.";
+            return new CalendarioDto(true, false, mensagem, new List<EventoGraphDto>(), eventosSst);
         }
     }
 }
