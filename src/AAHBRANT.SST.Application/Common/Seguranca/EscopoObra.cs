@@ -188,4 +188,15 @@ public static class EscopoObra
 
     public static bool ObraNoEscopo(this IAppDbContext db, Guid? obraId) =>
         db.EscopoObraGlobal || (obraId.HasValue && db.ObrasNoEscopo.Contains(obraId.Value));
+
+    // Obra de um lançamento (entrada/ajuste/transferência de estoque...): o usuário precisa ter acesso a
+    // ela de forma EXPLÍCITA, e não só por efeito do filtro global de Obra. Devolve o nome para a
+    // mensagem de confirmação/auditoria. Sem acesso → 404, como o resto do escopo (não confirma que existe).
+    public static async Task<string> GarantirObraNoEscopoAsync(this IAppDbContext db, Guid obraId, CancellationToken ct)
+    {
+        var nome = await db.Obras.Where(o => o.Id == obraId).Select(o => o.Nome).FirstOrDefaultAsync(ct);
+        if (nome is null || !db.ObraNoEscopo(obraId))
+            throw new KeyNotFoundException("Obra não encontrada ou sem acesso para este usuário.");
+        return nome;
+    }
 }

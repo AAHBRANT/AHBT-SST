@@ -15,6 +15,7 @@ import {
 import {
   Button,
   Card,
+  Checkbox,
   Carregando,
   DataTable,
   EstadoVazio,
@@ -33,6 +34,7 @@ import {
   Textarea,
   designTokens,
   tokensUi,
+  useConfirmar,
   type Coluna,
   type Tom,
 } from '@ui';
@@ -47,6 +49,7 @@ import {
   type SolicitacaoReposicaoEpiResumo,
 } from '../../lib/api';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { useObraAtiva } from '../../lib/ObraAtivaContext';
 import { FotoCatalogoEpi } from './FotoCatalogoEpi';
 
 // Estoque de EPI por obra, redesenhado (especificação 21/10/2026, Módulos 2 e 3). Os números vêm
@@ -165,8 +168,10 @@ function LinhaItem({ item, aoAbrir }: { item: EstoqueEpiPainelItem; aoAbrir: () 
 
 export function EstoqueTab() {
   const [obras, setObras] = useState<Obra[]>([]);
-  const [obraId, setObraId] = useState('');
-  const [painel, setPainel] = useState<EstoqueEpiPainel | null>(null);
+  // Obra = a obra ativa do sistema (cabeçalho). Nunca se escolhe a "primeira da lista" sozinho: com
+  // "Todas as obras" ativa a tela fica só em consulta e o usuário precisa escolher a obra para lançar.
+  const { obraAtivaId: obraId, definirObraAtiva } = useObraAtiva();
+  const [painelBruto, setPainel] = useState<EstoqueEpiPainel | null>(null);
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoReposicaoEpiResumo[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -185,6 +190,8 @@ export function EstoqueTab() {
   const [formQuantidade, setFormQuantidade] = useState('1');
   const [formObservacao, setFormObservacao] = useState('');
   const [formObraDestino, setFormObraDestino] = useState('');
+  const [formCorrecao, setFormCorrecao] = useState(false);
+  const { confirmar, dialogElement } = useConfirmar();
 
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
@@ -193,10 +200,18 @@ export function EstoqueTab() {
       .listar()
       .then((lista) => {
         setObras(lista);
-        if (lista.length > 0) setObraId(lista[0].id);
+        // Quem só tem uma obra não precisa escolher: ela vira a obra ativa.
+        if (lista.length === 1) definirObraAtiva(lista[0].id, lista[0].nome);
       })
       .catch((e) => setErro(e instanceof Error ? e.message : 'Falha ao carregar as obras.'));
-  }, []);
+  }, [definirObraAtiva]);
+
+  function escolherObra(id: string) {
+    definirObraAtiva(id, obras.find((o) => o.id === id)?.nome ?? '');
+  }
+
+  // Painel só vale se for da obra ativa (trocar para "Todas" não pode deixar o painel antigo na tela).
+  const painel = obraId && painelBruto?.obraId === obraId ? painelBruto : null;
 
   const recarregar = useCallback(async () => {
     if (!obraId) return;
@@ -272,6 +287,7 @@ export function EstoqueTab() {
     setFormQuantidade('1');
     setFormObservacao('');
     setFormObraDestino(outrasObras[0]?.id ?? '');
+    setFormCorrecao(false);
     setPainelAberto(tipo);
   }
 
@@ -292,21 +308,35 @@ export function EstoqueTab() {
 
   async function salvarMovimento() {
     const quantidade = Number(formQuantidade);
-    if (!formEpiId || Number.isNaN(quantidade)) return;
+    if (!formEpiId || Number.isNaN(quantidade) || !obraId) return;
+    const nomeEpi = painel?.itens.find((i) => i.catalogoEpiId === formEpiId)?.nome ?? 'o EPI selecionado';
+    const obraNome = painel?.obraNome ?? '';
+    const destinoNome = obras.find((o) => o.id === formObraDestino)?.nome ?? '';
+
+    // Confirmação com o NOME da obra antes de gravar: o estoque é por obra e a entrega só enxerga o da
+    // obra do funcionário — lançar na obra errada gera "sem estoque" lá na frente.
+    const mensagem =
+      painelAberto === 'transferir'
+        ? `${formCorrecao ? 'Corrigir lançamento: mover' : 'Transferir'} ${quantidade} un. de ${nomeEpi} da obra "${obraNome}" para a obra "${destinoNome}"?`
+        : formTipo === 'entrada'
+          ? `Registrar entrada de ${quantidade} un. de ${nomeEpi} na obra "${obraNome}"?`
+          : `Ajustar o saldo de ${nomeEpi} na obra "${obraNome}" para ${quantidade} un.?`;
+    if (!(await confirmar({ titulo: 'Confirme a obra do lançamento', mensagem, rotuloConfirmar: 'Confirmar e salvar', tom: 'neutro' }))) return;
+
     const ok =
       painelAberto === 'transferir'
         ? await executar(
-            () => api.estoquesEpi.transferir({ catalogoEpiId: formEpiId, obraOrigemId: obraId, obraDestinoId: formObraDestino, quantidade, observacao: formObservacao || null }),
-            'Transferência registrada.',
+            () => api.estoquesEpi.transferir({ catalogoEpiId: formEpiId, obraOrigemId: obraId, obraDestinoId: formObraDestino, quantidade, observacao: formObservacao || null, correcao: formCorrecao }),
+            formCorrecao ? 'Correção registrada.' : 'Transferência registrada.',
           )
         : formTipo === 'entrada'
           ? await executar(
               () => api.estoquesEpi.registrarEntrada({ obraId, catalogoEpiId: formEpiId, quantidade, observacao: formObservacao || null }),
-              'Entrada registrada.',
+              `Entrada registrada na obra ${obraNome}.`,
             )
           : await executar(
               () => api.estoquesEpi.ajustar({ obraId, catalogoEpiId: formEpiId, novoSaldo: quantidade, observacao: formObservacao }),
-              'Saldo ajustado.',
+              `Saldo ajustado na obra ${obraNome}.`,
             );
     if (ok) setPainelAberto(null);
   }
@@ -419,7 +449,8 @@ export function EstoqueTab() {
 
       <div style={estilos.barraTopo}>
         <Field label="Obra" style={{ minWidth: 240, flex: '1 1 240px' }}>
-          <Select value={obraId} onChange={(_, d) => setObraId(d.value)}>
+          <Select value={obraId} onChange={(_, d) => escolherObra(d.value)}>
+            <option value="">Selecione a obra</option>
             {obras.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.nome}
@@ -442,6 +473,15 @@ export function EstoqueTab() {
           <Input contentBefore={<Search20Regular />} placeholder="Nome do EPI ou CA" value={busca} onChange={(_, d) => setBusca(d.value)} />
         </Field>
       </div>
+
+      {!obraId && (
+        <div style={estilos.dica}>
+          <Warning20Regular aria-hidden="true" />
+          <span style={{ flex: 1 }}>
+            Escolha a obra (aqui ou no cabeçalho) para ver e lançar estoque. O estoque é separado por obra, e a entrega de EPI usa o estoque da obra do funcionário.
+          </span>
+        </div>
+      )}
 
       {carregando ? (
         <Carregando variante="kpi" />
@@ -650,13 +690,13 @@ export function EstoqueTab() {
                 salvando ||
                 !formEpiId ||
                 formQuantidade === '' ||
-                (painelAberto === 'transferir' && (!formObraDestino || Number(formQuantidade) <= 0)) ||
+                (painelAberto === 'transferir' && (!formObraDestino || Number(formQuantidade) <= 0 || (formCorrecao && !formObservacao.trim()))) ||
                 (painelAberto === 'entrada' && formTipo === 'entrada' && Number(formQuantidade) <= 0) ||
                 (painelAberto === 'entrada' && formTipo === 'ajuste' && (!formObservacao.trim() || Number(formQuantidade) < 0))
               }
               onClick={salvarMovimento}
             >
-              {painelAberto === 'transferir' ? 'Transferir' : formTipo === 'entrada' ? 'Registrar entrada' : 'Ajustar saldo'}
+              {painelAberto === 'transferir' ? (formCorrecao ? 'Corrigir lançamento' : 'Transferir') : formTipo === 'entrada' ? 'Registrar entrada' : 'Ajustar saldo'}
             </Button>
           </>
         }
@@ -693,11 +733,18 @@ export function EstoqueTab() {
             <Input type="number" min={0} value={formQuantidade} onChange={(_, d) => setFormQuantidade(d.value)} />
           </Field>
           <Field
-            label={painelAberto === 'entrada' && formTipo === 'ajuste' ? 'Motivo do ajuste' : 'Observação'}
-            required={painelAberto === 'entrada' && formTipo === 'ajuste'}
+            label={painelAberto === 'entrada' && formTipo === 'ajuste' ? 'Motivo do ajuste' : formCorrecao ? 'Motivo da correção' : 'Observação'}
+            required={(painelAberto === 'entrada' && formTipo === 'ajuste') || (painelAberto === 'transferir' && formCorrecao)}
           >
             <Textarea value={formObservacao} onChange={(_, d) => setFormObservacao(d.value)} />
           </Field>
+          {painelAberto === 'transferir' && (
+            <Checkbox
+              checked={formCorrecao}
+              onChange={(_, d) => setFormCorrecao(!!d.checked)}
+              label="É uma correção: o estoque foi lançado na obra errada"
+            />
+          )}
           {painelAberto === 'transferir' && (
             <Legenda>Só sai o disponível: unidades separadas para kits de funcionários novos ficam na obra.</Legenda>
           )}
@@ -744,6 +791,7 @@ export function EstoqueTab() {
       </PainelLateral>
 
       {dialogoVisualizador}
+      {dialogElement}
     </div>
   );
 }

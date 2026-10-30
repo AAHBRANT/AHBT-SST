@@ -886,6 +886,10 @@ public enum TipoMovimentacaoEstoqueEpi
     // Transferência entre obras (especificação 21/10/2026): sai de uma obra e entra na outra.
     TransferenciaSaida = 5,
     TransferenciaEntrada = 6,
+    // Transferência feita para corrigir lançamento na obra errada (motivo obrigatório); mesmo efeito
+    // no saldo, mas destacada no histórico e na auditoria.
+    CorrecaoLancamentoSaida = 7,
+    CorrecaoLancamentoEntrada = 8,
 }
 
 // EPC (pedido do usuário, 04/09) — mesmo vocabulário de TipoMovimentacaoEstoqueEpi, só que

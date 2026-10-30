@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
@@ -38,8 +39,7 @@ public class RegistrarEntradaEstoqueUniformeCommandHandler : IRequestHandler<Reg
         if (!await _db.CatalogoUniformes.AnyAsync(c => c.Id == request.CatalogoUniformeId, ct))
             throw new KeyNotFoundException($"Peça de uniforme {request.CatalogoUniformeId} não encontrada.");
 
-        if (!await _db.Obras.AnyAsync(o => o.Id == request.ObraId, ct))
-            throw new KeyNotFoundException($"Obra {request.ObraId} não encontrada.");
+        await _db.GarantirObraNoEscopoAsync(request.ObraId, ct);
 
         var tamanho = request.Tamanho.Trim().ToUpperInvariant();
 

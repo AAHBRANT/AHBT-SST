@@ -96,7 +96,7 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
         var saldoAtual = estoque?.Saldo ?? 0;
 
         if (saldoAtual < request.Quantidade)
-            throw new InvalidOperationException($"Estoque insuficiente para este EPI nesta obra (saldo atual: {saldoAtual}).");
+            throw new InvalidOperationException(await MensagemSemEstoqueAsync(trabalhador.ObraId, request.CatalogoEpiId, saldoAtual, ct));
 
         // Kit separado para funcionário novo (plano de integração) é promessa: uma entrega avulsa não
         // pode levar a unidade de outra pessoa. A reserva do próprio trabalhador, essa sim, é usada aqui.
@@ -147,6 +147,26 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
         // Alerta de estoque mínimo da obra (especificação 21/10/2026, Módulo 2).
         if (_verificacaoMinimo is not null) await _verificacaoMinimo.VerificarAsync(trabalhador.ObraId, ct);
         return entrega.Id;
+    }
+
+    // O estoque é por obra e a entrega sai da obra do TRABALHADOR. Quando falta saldo, diz de qual obra é
+    // o saldo e, se outra obra (visível ao usuário) tem o EPI, aponta onde está — o caso típico é
+    // estoque lançado na obra errada, que se corrige em Estoque › Transferir.
+    private async Task<string> MensagemSemEstoqueAsync(Guid obraId, Guid catalogoEpiId, int saldoAtual, CancellationToken ct)
+    {
+        var obraNome = await _db.Obras.Where(o => o.Id == obraId).Select(o => o.Nome).FirstOrDefaultAsync(ct) ?? "do trabalhador";
+        var mensagem = $"Estoque insuficiente deste EPI na obra {obraNome} (saldo atual: {saldoAtual}), que é a obra do funcionário.";
+
+        var emOutras = await _db.EstoquesEpi
+            .Where(e => e.CatalogoEpiId == catalogoEpiId && e.ObraId != obraId && e.Saldo > 0)
+            .Join(_db.Obras, e => e.ObraId, o => o.Id, (e, o) => new { o.Nome, e.Saldo })
+            .OrderByDescending(x => x.Saldo)
+            .Take(3)
+            .ToListAsync(ct);
+        if (emOutras.Count > 0)
+            mensagem += " Há saldo em: " + string.Join(", ", emOutras.Select(x => $"{x.Nome} ({x.Saldo})")) +
+                ". Se o estoque foi lançado na obra errada, use Estoque › Transferir.";
+        return mensagem;
     }
 
     // "Hoje" no fuso de Brasília: UtcNow.Date vira o dia seguinte às 21h e declararia vencido um
