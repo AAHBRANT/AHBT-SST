@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Application.Inspecoes;
+﻿using AAHBRANT.SST.Application.Inspecoes;
 using AAHBRANT.SST.Domain.Enums;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -117,9 +117,11 @@ public class InspecaoPdfService : IInspecaoPdfService
                 if (!string.IsNullOrWhiteSpace(item.Observacao))
                     coluna.Item().Text(t => { t.Span("OBS: ").SemiBold(); t.Span(item.Observacao); });
 
-                // Veículos: a foto só existe (e só sai no PDF) quando o item foi marcado Não Conforme.
-                if (item.StatusItem == StatusItemChecklist.NaoConforme && item.FotoAntesConteudo is not null)
-                    coluna.Item().PaddingTop(4).Width(220).Element(c => BlocoEvidencia(c, "Evidência da não conformidade", item.FotoAntesConteudo));
+                // Veículos/Temas: 1 foto por item. Sai no PDF sempre que existir — em Tema a foto é
+                // tirada também nos itens Conformes, e antes ficava de fora do relatório (30/10/2026).
+                if (item.FotoAntesConteudo is not null)
+                    coluna.Item().PaddingTop(4).Width(220).Element(c => BlocoEvidencia(c,
+                        item.StatusItem == StatusItemChecklist.NaoConforme ? "Evidência da não conformidade" : "Evidência", item.FotoAntesConteudo));
                 return;
             }
 
