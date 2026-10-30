@@ -10,6 +10,8 @@ export interface LeituraLocalizacao {
   latitude: number;
   longitude: number;
   precisaoMetros: number | null;
+  // Altitude do GPS (só o navegador informa; o SDK do Teams não). Usada no carimbo da foto.
+  altitudeMetros?: number | null;
   // Epoch em ms de quando a posição foi medida (normalizado — ver normalizarMomento).
   obtidaEm: number;
   fonte: string;
