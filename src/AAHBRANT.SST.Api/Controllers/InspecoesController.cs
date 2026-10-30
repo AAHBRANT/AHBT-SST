@@ -77,6 +77,34 @@ public class InspecoesController : ControllerBase
         return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
     }
 
+    // Fotos extras do item (2ª foto do item, 30/10/2026) — ver FotosAdicionaisItemInspecaoCommands.
+    [Authorize(Policy = "inspecao:responder")]
+    [HttpPost("respostas/{respostaId:guid}/fotos-adicionais/{ordem:int}")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> AnexarFotoAdicional(Guid respostaId, int ordem, [FromForm] AnexarFotoItemInspecaoRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+        var id = await _mediator.Send(new AnexarFotoAdicionalItemInspecaoCommand(respostaId, ordem, stream.ToArray(), body.Foto.ContentType, body.Metadados), ct);
+        return Ok(new { id });
+    }
+
+    [Authorize(Policy = "inspecao:ver")]
+    [HttpGet("fotos-adicionais/{fotoId:guid}")]
+    public async Task<IActionResult> ObterFotoAdicional(Guid fotoId, CancellationToken ct)
+    {
+        var foto = await _mediator.Send(new ObterFotoAdicionalItemInspecaoQuery(fotoId), ct);
+        return foto is null ? NotFound() : File(foto.Conteudo, foto.ContentType, foto.NomeArquivo);
+    }
+
+    [Authorize(Policy = "inspecao:responder")]
+    [HttpDelete("fotos-adicionais/{fotoId:guid}")]
+    public async Task<IActionResult> RemoverFotoAdicional(Guid fotoId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoverFotoAdicionalItemInspecaoCommand(fotoId), ct);
+        return NoContent();
+    }
+
     // Evidência posterior ("depois de resolvido") — par dos dois endpoints acima, pedido "Patrulha
     // de Segurança do Trabalho" (planilha do usuário, 31/08).
     [Authorize(Policy = "inspecao:responder")]

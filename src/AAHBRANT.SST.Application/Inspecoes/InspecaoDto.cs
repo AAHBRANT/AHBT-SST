@@ -60,6 +60,14 @@ public class InspecaoItemRespostaDto
     public bool TemFoto { get; set; }
     public bool TemFotoDepois { get; set; }
     public Guid? NaoConformidadeId { get; set; }
+    public List<InspecaoFotoAdicionalDto> FotosAdicionais { get; set; } = new();
+}
+
+public class InspecaoFotoAdicionalDto
+{
+    public Guid Id { get; set; }
+    public int Ordem { get; set; }
+    public AAHBRANT.SST.Application.Common.DadosCapturaFoto? DadosFoto { get; set; }
 }
 
 // Composição por query, não por tabela nova — mesmo princípio já usado em PermissaoTrabalhoDetalheDto.

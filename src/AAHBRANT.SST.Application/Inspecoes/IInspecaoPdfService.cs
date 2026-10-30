@@ -18,7 +18,8 @@ public record InspecaoPdfItemModelo(
     string? ResponsavelNome,
     DateTime? Prazo,
     byte[]? FotoAntesConteudo,
-    byte[]? FotoDepoisConteudo);
+    byte[]? FotoDepoisConteudo,
+    byte[]? FotoAdicionalConteudo = null);
 
 public record InspecaoPdfSignatarioModelo(
     string Nome,

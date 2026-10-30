@@ -106,4 +106,19 @@ public class InspecaoItemResposta : AuditableEntity
 
     public byte[]? FotoDepoisConteudo { get; set; }
     public string? FotoDepoisContentType { get; set; }
+
+    public ICollection<InspecaoItemFotoAdicional> FotosAdicionais { get; set; } = new List<InspecaoItemFotoAdicional>();
+}
+
+// Fotos extras do item (30/10/2026): a foto principal continua em InspecaoItemResposta.FotoConteudo;
+// esta é a 2ª foto (máximo 2 por item), para quando uma foto só não mostra o item inteiro. Slot fixo por
+// Ordem, igual a DdsFotoEvidencia — reanexar na mesma posição substitui.
+public class InspecaoItemFotoAdicional : AuditableEntity
+{
+    public Guid InspecaoItemRespostaId { get; set; }
+    public InspecaoItemResposta? InspecaoItemResposta { get; set; }
+    public int Ordem { get; set; }
+    public byte[] FotoConteudo { get; set; } = Array.Empty<byte>();
+    public string FotoContentType { get; set; } = string.Empty;
+    public string? FotoMetadadosJson { get; set; }
 }

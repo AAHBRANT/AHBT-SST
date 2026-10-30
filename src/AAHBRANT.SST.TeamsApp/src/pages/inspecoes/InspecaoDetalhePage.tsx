@@ -123,6 +123,7 @@ export function InspecaoDetalhePage() {
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [fotoDepoisUrls, setFotoDepoisUrls] = useState<Record<string, string>>({});
+  const [fotoAdicionalUrls, setFotoAdicionalUrls] = useState<Record<string, string>>({});
   const [sync, setSync] = useState({ pendentes: 0, conflitos: 0, criacaoPendente: false, finalizacaoPendente: false, itensPendentes: [] as string[] });
   const [rascunhos, setRascunhos] = useState<string[]>([]);
   const [salvandoRascunho, setSalvandoRascunho] = useState(false);
@@ -175,6 +176,16 @@ export function InspecaoDetalhePage() {
             const blob = await baixarFotoInspecaoLocal(detalhe.inspecao.id, resposta.id);
             if (cancelado) return;
             setFotoUrls((atual) => ({ ...atual, [resposta.id]: criarUrl(blob) }));
+          } catch {
+            // Falha ao carregar miniatura não impede o uso da página; o slot fica vazio.
+          }
+        }
+        for (const extra of resposta.fotosAdicionais ?? []) {
+          if (fotoAdicionalUrls[extra.id]) continue;
+          try {
+            const blob = await api.inspecoes.baixarFotoAdicional(extra.id);
+            if (cancelado) return;
+            setFotoAdicionalUrls((atual) => ({ ...atual, [extra.id]: criarUrl(blob) }));
           } catch {
             // Falha ao carregar miniatura não impede o uso da página; o slot fica vazio.
           }
@@ -252,6 +263,26 @@ export function InspecaoDetalhePage() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao enviar a evidência anterior.');
+    }
+  }
+
+  async function enviarFotoAdicional(respostaId: string, arquivo: File) {
+    try {
+      setErro(null);
+      await api.inspecoes.anexarFotoAdicional(respostaId, arquivo);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao enviar a 2ª foto do item.');
+    }
+  }
+
+  async function removerFotoAdicional(fotoId: string) {
+    try {
+      setErro(null);
+      await api.inspecoes.removerFotoAdicional(fotoId);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao remover a 2ª foto do item.');
     }
   }
 
@@ -602,8 +633,9 @@ export function InspecaoDetalhePage() {
                     </Field>
 
                     {(ehInspecaoTema || edicao.statusItem === String(StatusItemChecklist.NaoConforme)) && (
-                      <Field label={ehInspecaoTema ? 'Foto do item (obrigatória)' : 'Foto da não conformidade (obrigatória)'}>
-                        <div style={{ maxWidth: 180 }}>
+                      <Field label={ehInspecaoTema ? 'Fotos do item (1ª obrigatória, até 2)' : 'Fotos da não conformidade (1ª obrigatória, até 2)'}>
+                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                        <div style={{ width: 180 }}>
                           <SlotFoto
                             rotulo={ehInspecaoTema ? 'Foto do item' : 'Foto da não conformidade'}
                             contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: inspecao.veiculoPlacaPrefixo }}
@@ -614,6 +646,28 @@ export function InspecaoDetalhePage() {
                             aoSelecionarArquivo={(arquivo) => enviarFoto(resposta.id, arquivo)}
                             aoErroValidacao={setErro}
                           />
+                        </div>
+                        {(() => {
+                          // 2ª foto (opcional): liberada depois da 1ª; online só.
+                          const extra = resposta.fotosAdicionais?.find((f) => f.ordem === 2);
+                          if (!extra && (!resposta.temFoto || somenteLeitura)) return null;
+                          return (
+                            <div style={{ width: 180 }}>
+                              <SlotFoto
+                                rotulo="2ª foto"
+                                contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: inspecao.veiculoPlacaPrefixo }}
+                                dadosFoto={extra?.dadosFoto}
+                                url={extra ? fotoAdicionalUrls[extra.id] : null}
+                                carregandoMiniatura={!!extra && !fotoAdicionalUrls[extra.id]}
+                                somenteLeitura={somenteLeitura}
+                                modo="remover"
+                                aoRemover={extra ? () => removerFotoAdicional(extra.id) : undefined}
+                                aoSelecionarArquivo={(arquivo) => enviarFotoAdicional(resposta.id, arquivo)}
+                                aoErroValidacao={setErro}
+                              />
+                            </div>
+                          );
+                        })()}
                         </div>
                       </Field>
                     )}

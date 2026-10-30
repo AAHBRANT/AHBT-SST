@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Domain.Entidades;
+﻿using AAHBRANT.SST.Domain.Entidades;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -91,5 +91,19 @@ public class InspecaoItemRespostaConfiguracao : IEntityTypeConfiguration<Inspeca
             .HasForeignKey(r => r.ResponsavelUsuarioId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(r => new { r.InspecaoId, r.ChecklistModeloItemId });
         builder.HasQueryFilter(r => r.Ativo);
+    }
+}
+
+public class InspecaoItemFotoAdicionalConfiguracao : IEntityTypeConfiguration<InspecaoItemFotoAdicional>
+{
+    public void Configure(EntityTypeBuilder<InspecaoItemFotoAdicional> builder)
+    {
+        builder.Property(f => f.FotoContentType).HasMaxLength(100);
+        builder.HasOne(f => f.InspecaoItemResposta)
+            .WithMany(r => r.FotosAdicionais)
+            .HasForeignKey(f => f.InspecaoItemRespostaId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(f => f.InspecaoItemRespostaId);
+        builder.HasQueryFilter(f => f.Ativo);
     }
 }

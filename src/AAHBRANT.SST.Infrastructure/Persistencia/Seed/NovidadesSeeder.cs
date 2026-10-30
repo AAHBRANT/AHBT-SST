@@ -2056,6 +2056,21 @@ public static class NovidadesSeeder
                     "O responsável era sempre quem abriu a inspeção.",
                     "No resumo da inspeção, o campo Responsável agora permite escolher a pessoa certa, até a inspeção ser assinada."),
             }),
+        new(
+            Versao: "5.111.3",
+            Titulo: "Inspeções: 2 fotos por item e relatório sem item cortado",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Até 2 fotos por item",
+                    "Cada item da inspeção por tema ou de veículo aceitava uma foto só.",
+                    "Depois da primeira foto, aparece o quadro da 2ª foto, que é opcional. No PDF, as duas saem lado a lado."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Item inteiro na mesma página do PDF",
+                    "No relatório, o título do item podia ficar numa página e a foto na seguinte.",
+                    "Cada item sai inteiro na mesma página, com título, observação e fotos juntos."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

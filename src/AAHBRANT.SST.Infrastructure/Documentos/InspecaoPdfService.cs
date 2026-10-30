@@ -101,7 +101,9 @@ public class InspecaoPdfService : IInspecaoPdfService
 
     private static void SecaoItem(IContainer container, InspecaoPdfItemModelo item, bool evidenciaUnicaSoNaoConforme)
     {
-        container.Border(1).BorderColor(Colors.Grey.Lighten1).Padding(8).Column(coluna =>
+        // ShowEntire: o item (título + fotos) nunca é partido entre duas páginas — antes o título
+        // ficava numa página e a foto na seguinte (30/10/2026).
+        container.ShowEntire().Border(1).BorderColor(Colors.Grey.Lighten1).Padding(8).Column(coluna =>
         {
             coluna.Spacing(4);
 
@@ -119,9 +121,20 @@ public class InspecaoPdfService : IInspecaoPdfService
 
                 // Veículos/Temas: 1 foto por item. Sai no PDF sempre que existir — em Tema a foto é
                 // tirada também nos itens Conformes, e antes ficava de fora do relatório (30/10/2026).
+                // Até 2 fotos por item, lado a lado (30/10/2026).
                 if (item.FotoAntesConteudo is not null)
-                    coluna.Item().PaddingTop(4).Width(220).Element(c => BlocoEvidencia(c,
-                        item.StatusItem == StatusItemChecklist.NaoConforme ? "Evidência da não conformidade" : "Evidência", item.FotoAntesConteudo));
+                {
+                    var titulo = item.StatusItem == StatusItemChecklist.NaoConforme ? "Evidência da não conformidade" : "Evidência";
+                    coluna.Item().PaddingTop(4).Row(linha =>
+                    {
+                        linha.RelativeItem().Element(c => BlocoEvidencia(c, titulo, item.FotoAntesConteudo));
+                        linha.ConstantItem(8);
+                        if (item.FotoAdicionalConteudo is not null)
+                            linha.RelativeItem().Element(c => BlocoEvidencia(c, titulo + " (2)", item.FotoAdicionalConteudo));
+                        else
+                            linha.RelativeItem();
+                    });
+                }
                 return;
             }
 
