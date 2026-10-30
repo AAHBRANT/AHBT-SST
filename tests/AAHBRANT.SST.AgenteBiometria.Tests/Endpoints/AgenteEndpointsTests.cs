@@ -90,7 +90,7 @@ public class AgenteEndpointsTests
     {
         public List<bool> PedidosDeNovoToque { get; } = new();
 
-        public Task<byte[]> CapturarAsync(CancellationToken ct, bool exigirNovoToque = false)
+        public Task<byte[]> CapturarAsync(CancellationToken ct, bool exigirNovoToque = false, Func<byte[], bool>? aceitar = null)
         {
             PedidosDeNovoToque.Add(exigirNovoToque);
             return Task.FromResult(new byte[] { 5 });

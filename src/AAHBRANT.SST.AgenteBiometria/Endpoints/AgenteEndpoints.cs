@@ -82,33 +82,67 @@ public static class AgenteEndpoints
     public static string ConteudoAssinado(string desafio, Guid trabalhadorId, double score) =>
         string.Join('|', desafio, trabalhadorId.ToString("D"), score.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
 
+    // Mesmo limiar padrão do servidor (assinatura por digital); aqui só decide quando parar de fotografar —
+    // quem aceita ou recusa a assinatura continua sendo o servidor.
+    public const double LimiarAssinatura = 50;
+
+    private static (Guid TrabalhadorId, double Score)? MelhorDoCache(IFingerprintMatcher matcher, TemplateCacheService cache, byte[] imagem)
+    {
+        byte[] captura;
+        try
+        {
+            captura = matcher.ExtrairTemplate(imagem);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+
+        return cache.Templates
+            .Select(t => (t.TrabalhadorId, Score: CompararSemDerrubar(matcher, captura, t)))
+            .OrderByDescending(r => r.Score)
+            .Select(r => ((Guid, double)?)r)
+            .FirstOrDefault();
+    }
+
     public static async Task<Results<Ok<CapturaResponse>, NotFound<ErroResponse>>> Capturar(
         IFingerprintReader leitor, IFingerprintMatcher matcher, TemplateCacheService cache, ChaveAssinaturaAgente chave,
         CapturarRequest? corpo, CancellationToken ct)
     {
-        var imagemBruta = await leitor.CapturarAsync(ct);
-        var captura = matcher.ExtrairTemplate(imagemBruta);
+        // Cada foto do leitor já é comparada com o cache: a primeira que alcança o limiar do servidor encerra a
+        // leitura (dedo seco ou fino que o sensor de presença não percebe ainda assina).
+        (Guid TrabalhadorId, double Score)? melhor = null;
+        byte[]? lida = null;
+        bool Aceitar(byte[] imagem)
+        {
+            melhor = MelhorDoCache(matcher, cache, imagem);
+            lida = imagem;
+            return melhor?.Score >= LimiarAssinatura;
+        }
 
-        var melhor = cache.Templates
-            .Select(t => new { t.TrabalhadorId, Score = CompararSemDerrubar(matcher, captura, t) })
-            .OrderByDescending(r => r.Score)
-            .FirstOrDefault();
+        var imagemBruta = await leitor.CapturarAsync(ct, aceitar: cache.Templates.Count > 0 ? Aceitar : null);
+        if (!ReferenceEquals(lida, imagemBruta))
+        {
+            melhor = MelhorDoCache(matcher, cache, imagemBruta);
+        }
 
         if (melhor is null)
         {
             return TypedResults.NotFound(new ErroResponse("Nenhum template cadastrado no cache local. Rode /api/sincronizar primeiro."));
         }
 
+        var (trabalhadorId, melhorScore) = melhor.Value;
+
         // Nota arredondada em 2 casas antes de assinar: o servidor confere exatamente o texto assinado, e assim
         // o número não muda no caminho (JSON do agente -> navegador -> servidor).
-        var score = Math.Round(melhor.Score, 2);
+        var score = Math.Round(melhorScore, 2);
         // Leitor simulado (testes, sem hardware) nunca assina: com a exigência de leitura assinada ligada no
         // servidor, uma instalação esquecida em "Simulado" não consegue assinar documento de verdade.
         var desafio = leitor is SimuladoFingerprintReader ? null : corpo?.Desafio;
-        var assinatura = string.IsNullOrWhiteSpace(desafio) ? null : chave.Assinar(ConteudoAssinado(desafio, melhor.TrabalhadorId, score));
+        var assinatura = string.IsNullOrWhiteSpace(desafio) ? null : chave.Assinar(ConteudoAssinado(desafio, trabalhadorId, score));
         var assinaturas = leitor is SimuladoFingerprintReader
             ? null
-            : corpo?.Desafios?.Select(d => chave.Assinar(ConteudoAssinado(d, melhor.TrabalhadorId, score))).ToList();
-        return TypedResults.Ok(new CapturaResponse(melhor.TrabalhadorId, score, ImagemDigitalPng.Converter(imagemBruta), desafio, assinatura, assinaturas));
+            : corpo?.Desafios?.Select(d => chave.Assinar(ConteudoAssinado(d, trabalhadorId, score))).ToList();
+        return TypedResults.Ok(new CapturaResponse(trabalhadorId, score, ImagemDigitalPng.Converter(imagemBruta), desafio, assinatura, assinaturas));
     }
 }
