@@ -17,6 +17,12 @@ public class FutronicFingerprintReader : IFingerprintReader
     private const int DoseCapturaDireta = 4;
     private const double MediaMinimaComDedo = 40;
 
+    // Captura contínua da assinatura (30/10, Beira Rio): uma funcionária ficava abaixo da média 40 na luz 4 e
+    // nunca era lida. Quando quem chama valida cada foto contra o cache (aceitar), o filtro de brilho vira só
+    // um descarte de vidro vazio (~9) e a luz alterna entre 4 e 6 — quem decide se é dedo é a comparação.
+    private static readonly int[] DosesCapturaContinua = { 4, 6 };
+    private const double MediaMinimaCapturaContinua = 15;
+
     private readonly TimeSpan _timeoutDedo;
     private readonly bool _detectarDedoFalso;
     private readonly SemaphoreSlim _acessoExclusivo = new(1, 1);
@@ -30,13 +36,13 @@ public class FutronicFingerprintReader : IFingerprintReader
         _detectarDedoFalso = detectarDedoFalso;
     }
 
-    public async Task<byte[]> CapturarAsync(CancellationToken ct, bool exigirNovoToque = false)
+    public async Task<byte[]> CapturarAsync(CancellationToken ct, bool exigirNovoToque = false, Func<byte[], bool>? aceitar = null)
     {
         // O driver só aceita um handle aberto por vez; requisições simultâneas ao agente esperam a vez.
         await _acessoExclusivo.WaitAsync(ct);
         try
         {
-            return await Task.Run(() => CapturarBloqueante(ct, exigirNovoToque), ct);
+            return await Task.Run(() => CapturarBloqueante(ct, exigirNovoToque, aceitar), ct);
         }
         finally
         {
@@ -44,7 +50,7 @@ public class FutronicFingerprintReader : IFingerprintReader
         }
     }
 
-    private byte[] CapturarBloqueante(CancellationToken ct, bool exigirNovoToque)
+    private byte[] CapturarBloqueante(CancellationToken ct, bool exigirNovoToque, Func<byte[], bool>? aceitar)
     {
         var handle = NativeMethods.ftrScanOpenDevice();
         if (handle == IntPtr.Zero)
@@ -80,6 +86,8 @@ public class FutronicFingerprintReader : IFingerprintReader
             var dedoDetectado = false;
             var quadrosVazios = 0;
             var capturasDiretasSeguidas = 0;
+            byte[]? ultimaLida = null;
+            var tentativaContinua = 0;
 
             // Segunda leitura do cadastro: o dedo da leitura anterior ainda pode estar no vidro. Espera sair
             // (dentro do mesmo tempo limite) para que a confirmação seja uma nova apoiada de verdade.
@@ -99,6 +107,11 @@ public class FutronicFingerprintReader : IFingerprintReader
             while (true)
             {
                 ct.ThrowIfCancellationRequested();
+                if (DateTime.UtcNow > limite && ultimaLida is not null)
+                {
+                    return ultimaLida;
+                }
+
                 if (DateTime.UtcNow > limite)
                 {
                     throw new TimeoutException(dedoDetectado
@@ -123,6 +136,29 @@ public class FutronicFingerprintReader : IFingerprintReader
                     return capturasDiretasSeguidas++ > 0 ? direta : null;
                 }
 
+                if (aceitar is not null && !_detectarDedoFalso)
+                {
+                    var foto = new byte[buffer.Length];
+                    var dose = DosesCapturaContinua[tentativaContinua++ % DosesCapturaContinua.Length];
+                    if (NativeMethods.ftrScanIsFingerPresent(handle, IntPtr.Zero) && NativeMethods.ftrScanGetFrame(handle, foto, IntPtr.Zero))
+                    {
+                        dedoDetectado = true;
+                    }
+                    else if (!CapturaDiretaComDedo(handle, foto, dose, MediaMinimaCapturaContinua))
+                    {
+                        Thread.Sleep(IntervaloPolling);
+                        continue;
+                    }
+
+                    ultimaLida = foto;
+                    if (aceitar(foto))
+                    {
+                        return foto;
+                    }
+
+                    continue;
+                }
+
                 if (!NativeMethods.ftrScanIsFingerPresent(handle, IntPtr.Zero))
                 {
                     if (TentarCapturaDireta() is { } semPresenca)
@@ -137,7 +173,13 @@ public class FutronicFingerprintReader : IFingerprintReader
                 dedoDetectado = true;
                 if (NativeMethods.ftrScanGetFrame(handle, buffer, IntPtr.Zero))
                 {
-                    break;
+                    if (aceitar is null || aceitar(buffer))
+                    {
+                        break;
+                    }
+
+                    ultimaLida = buffer.ToArray();
+                    continue;
                 }
 
                 var erro = NativeMethods.ftrScanGetLastError();
@@ -163,9 +205,12 @@ public class FutronicFingerprintReader : IFingerprintReader
         }
     }
 
-    private static bool DedoNaCapturaDireta(IntPtr handle, byte[] destino)
+    private static bool DedoNaCapturaDireta(IntPtr handle, byte[] destino) =>
+        CapturaDiretaComDedo(handle, destino, DoseCapturaDireta, MediaMinimaComDedo);
+
+    private static bool CapturaDiretaComDedo(IntPtr handle, byte[] destino, int dose, double mediaMinima)
     {
-        if (!NativeMethods.ftrScanGetImage(handle, DoseCapturaDireta, destino))
+        if (!NativeMethods.ftrScanGetImage(handle, dose, destino))
         {
             return false;
         }
@@ -176,7 +221,7 @@ public class FutronicFingerprintReader : IFingerprintReader
             soma += pixel;
         }
 
-        return soma >= MediaMinimaComDedo * destino.Length;
+        return soma >= mediaMinima * destino.Length;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
