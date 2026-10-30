@@ -2015,7 +2015,6 @@ public static class NovidadesSeeder
                     "A câmera facial era só \"clica e captura\", sem ajuda para posicionar o rosto.",
                     "A câmera facial volta a mostrar a guia oval e o quadrado que acompanha o rosto, com a mensagem do que ajustar (aproximar, centralizar, luz). No DDS e no treinamento dá para ligar a captura automática quando o rosto fica verde. O botão Capturar continua sempre liberado."),
             }),
-||||||| f5cf7053
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
