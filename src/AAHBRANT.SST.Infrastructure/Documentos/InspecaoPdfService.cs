@@ -1,4 +1,5 @@
-﻿using AAHBRANT.SST.Application.Inspecoes;
+﻿using AAHBRANT.SST.Application.Assinatura;
+using AAHBRANT.SST.Application.Inspecoes;
 using AAHBRANT.SST.Domain.Enums;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -50,6 +51,8 @@ public class InspecaoPdfService : IInspecaoPdfService
 
                         coluna.Item().Element(c => SecaoItem(c, item, modelo.EvidenciaUnicaSoNaoConforme));
                     }
+
+                    coluna.Item().Element(c => SecaoResponsavelTecnico(c, modelo));
 
                 });
 
@@ -173,6 +176,25 @@ public class InspecaoPdfService : IInspecaoPdfService
         });
     }
 
+    // Selo do técnico responsável no fim da inspeção, igual ao do certificado de treinamento (pedido de
+    // 30/10): sempre visível; tracejado com "Aguardando assinatura" até o documento ser assinado.
+    private static void SecaoResponsavelTecnico(IContainer container, InspecaoPdfModelo modelo)
+    {
+        var assinatura = modelo.Assinatura?.Signatarios
+            .FirstOrDefault(s => string.Equals(s.Nome.Trim(), modelo.ResponsavelNome.Trim(), StringComparison.OrdinalIgnoreCase))
+            ?? modelo.Assinatura?.Signatarios.FirstOrDefault();
+        var nome = (assinatura?.Nome ?? modelo.ResponsavelNome).ToUpperInvariant();
+        var cargo = assinatura?.Funcao ?? "Técnico de Segurança do Trabalho";
+
+        container.ShowEntire().PaddingTop(8).Column(coluna =>
+        {
+            coluna.Item().Text("Responsável técnico").FontSize(11).Bold().FontColor(CorMarca);
+            coluna.Item().PaddingTop(8).AlignCenter().Width(260).Element(c => AssinaturaPdfPadrao.Bloco(
+                c, null, nome, $"{cargo} · Responsável pela inspeção", assinatura?.AssinadoEm, assinatura?.MetodoAutenticacao,
+                modelo.Assinatura?.ConteudoHash));
+        });
+    }
+
     private static void SecaoAssinaturas(IContainer container, InspecaoPdfAssinaturaModelo assinatura)
     {
         container.Column(coluna =>
@@ -185,7 +207,7 @@ public class InspecaoPdfService : IInspecaoPdfService
             foreach (var signatario in assinatura.Signatarios)
             {
                 // Padrão único de assinatura: nome, linha, cargo e a legenda miúda (pedido de 02/10).
-                coluna.Item().Element(c => AssinaturaPdfPadrao.Bloco(
+                coluna.Item().AlignLeft().Width(260).Element(c => AssinaturaPdfPadrao.Bloco(
                     c, null, signatario.Nome, signatario.Funcao, signatario.AssinadoEm, signatario.MetodoAutenticacao));
             }
 
