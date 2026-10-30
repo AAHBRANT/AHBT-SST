@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Dialog, DialogBody, DialogSurface, Text } from '@fluentui/react-components';
-import { Stop24Regular } from '@fluentui/react-icons';
+import { Dialog, DialogSurface } from '@fluentui/react-components';
+import { Checkmark24Filled, Dismiss24Regular, Info24Regular, Person24Regular, ScanCamera24Regular } from '@fluentui/react-icons';
 import { api } from '../../lib/api';
 import { tocarBipeAssinaturaAceita, tocarBipeNegado } from '../../lib/bipeAssinatura';
 import { useDetectorRosto } from '../camera/useDetectorRosto';
@@ -15,13 +15,29 @@ interface FilaFacialDdsProps {
   // Envio próprio da foto (19/10): a turma de treinamento reaproveita esta mesma fila em tela cheia.
   // Sem ele, usa o endpoint de fila do DDS.
   enviarFoto?: (foto: File) => Promise<ResultadoFilaFacial>;
+  // Cabeçalho do pop-up (30/10): nome do DDS/turma, obra e quantos faltavam confirmar ao abrir a fila
+  // (o "X de Y"; o valor é congelado na abertura, porque a tela recarrega a cada confirmação).
+  titulo?: string;
+  subtitulo?: string;
+  totalInscritos?: number;
   aberto: boolean;
   aoFechar: () => void;
   // Chamado a cada presença nova confirmada, para a tela do DDS recarregar a lista de participantes.
   aoPresencaConfirmada: () => void;
 }
 
-type Resultado = { tom: 'ok' | 'info' | 'erro'; texto: string };
+type Resultado = { tom: 'ok' | 'info' | 'erro'; titulo: string; detalhe: string };
+type Confirmado = { nome: string; hora: string };
+
+// Paleta AAHBRANT do pop-up (mockup aprovado em 30/10).
+const MARSALA = '#670000';
+const BEGE = '#ebe9ad';
+const VERDE = '#1f7a3a';
+
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/);
+  return ((partes[0]?.[0] ?? '') + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
+}
 
 // Quantos ciclos seguidos (~120 ms cada) o rosto precisa estar no quadro antes da captura automática.
 const CICLOS_ESTAVEL = 6;
@@ -61,11 +77,11 @@ function mensagemDoErro(e: unknown): string {
   return e instanceof TypeError ? 'Sem conexão com o servidor. Verifique a internet.' : e.message;
 }
 
-// "Modo fila" do DDS por reconhecimento facial, em tela cheia para tablet: a câmera fica aberta, cada
+// "Modo fila" do DDS por reconhecimento facial, em pop-up (tela cheia até 30/10): a câmera fica aberta, cada
 // funcionário só olha para ela e a presença é confirmada sozinha, com bipe (igual à fila da digital).
 // O detector de rosto decide quando capturar (um rosto bom e estável); quem identifica é o Azure, no
 // servidor, que recusa leituras ambíguas. Ver RegistrarParticipanteFacialFilaCommand.
-export function FilaFacialDds({ ddsId, enviarFoto, aberto, aoFechar, aoPresencaConfirmada }: FilaFacialDdsProps) {
+export function FilaFacialDds({ ddsId, enviarFoto, titulo, subtitulo, totalInscritos, aberto, aoFechar, aoPresencaConfirmada }: FilaFacialDdsProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   // Guardado em ref para que a identidade de capturarEEnviar não mude a cada render da tela do DDS (o
   // efeito do detector contaria um "ciclo bom" a mais a cada render).
@@ -76,7 +92,9 @@ export function FilaFacialDds({ ddsId, enviarFoto, aberto, aoFechar, aoPresencaC
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [erroCamera, setErroCamera] = useState<string | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
-  const [confirmadas, setConfirmadas] = useState(0);
+  const [confirmados, setConfirmados] = useState<Confirmado[]>([]);
+  const confirmadas = confirmados.length;
+  const [totalNaAbertura, setTotalNaAbertura] = useState<number | undefined>(undefined);
   // Proporção real do vídeo da câmera (largura/altura), para a imagem ocupar a área sem faixas pretas.
   const [proporcao, setProporcao] = useState('16 / 9');
 
@@ -96,7 +114,8 @@ export function FilaFacialDds({ ddsId, enviarFoto, aberto, aoFechar, aoPresencaC
     let aberta: MediaStream | null = null;
     setErroCamera(null);
     setResultado(null);
-    setConfirmadas(0);
+    setConfirmados([]);
+    setTotalNaAbertura(totalInscritos);
     ocupada.current = false;
     armada.current = true;
     ciclosBons.current = 0;
@@ -149,15 +168,16 @@ export function FilaFacialDds({ ddsId, enviarFoto, aberto, aoFechar, aoPresencaC
         : await api.dds.registrarParticipanteFacialFila(ddsId ?? '', foto);
       tocarBipeAssinaturaAceita();
       if (r.jaConfirmado) {
-        novo = { tom: 'info', texto: `${r.trabalhadorNome} já teve a presença confirmada.` };
+        novo = { tom: 'info', titulo: r.trabalhadorNome, detalhe: 'Presença já estava confirmada.' };
       } else {
-        setConfirmadas((n) => n + 1);
+        const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        setConfirmados((lista) => [{ nome: r.trabalhadorNome, hora }, ...lista]);
         aoConfirmadaRef.current();
-        novo = { tom: 'ok', texto: `Presença de ${r.trabalhadorNome} confirmada.` };
+        novo = { tom: 'ok', titulo: r.trabalhadorNome, detalhe: `Presença confirmada · ${hora}` };
       }
     } catch (e) {
       tocarBipeNegado();
-      novo = { tom: 'erro', texto: mensagemDoErro(e) };
+      novo = { tom: 'erro', titulo: 'Rosto não reconhecido', detalhe: `${mensagemDoErro(e)} Tente de novo ou use a digital.` };
     }
     setResultado(novo);
     window.setTimeout(() => {
@@ -185,57 +205,146 @@ export function FilaFacialDds({ ddsId, enviarFoto, aberto, aoFechar, aoPresencaC
     if (ciclosBons.current >= CICLOS_ESTAVEL) void capturarEEnviar();
   }, [avaliacao, aberto, detector.situacao, detector.caixa, capturarEEnviar]);
 
-  const corResultado = resultado ? { ok: '#1f8a4c', info: '#1b6ec2', erro: '#d13438' }[resultado.tom] : undefined;
+  const corOval = resultado ? { ok: '#2fb35a', info: BEGE, erro: '#e5484d' }[resultado.tom] : 'rgba(235, 233, 173, 0.9)';
+  const fundoCartao = resultado ? { ok: VERDE, info: '#3a3a3a', erro: MARSALA }[resultado.tom] : MARSALA;
   const mensagemGuia = erroCamera
     ?? (detector.situacao === 'indisponivel'
       ? 'O detector de rosto não carregou. Use a fila da digital ou recarregue a página.'
       : detector.situacao === 'carregando' || !stream
         ? 'Preparando a câmera…'
-        : 'Próximo funcionário: olhe para a câmera.');
+        : null);
+  const totalInscritosFila = totalNaAbertura || undefined;
+  const progresso = totalInscritosFila ? Math.min(100, Math.round((confirmadas / totalInscritosFila) * 100)) : 0;
 
+  // Pop-up (mockup aprovado em 30/10): faixa marsala no topo, câmera com guia oval à esquerda e a lista de
+  // quem já foi confirmado nesta fila à direita. Em tela estreita a lista desce para baixo da câmera.
   return (
     <Dialog open={aberto} onOpenChange={(_, d) => !d.open && aoFechar()}>
-      <DialogSurface style={{ width: '100vw', maxWidth: '100vw', height: '100vh', maxHeight: '100vh', borderRadius: 0, padding: 0 }}>
-        <DialogBody style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr) auto', height: '100%', gap: 12, padding: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <Text size={600} weight="semibold">Fila facial · {confirmadas} confirmada{confirmadas === 1 ? '' : 's'} nesta fila</Text>
-            <Button appearance="primary" size="large" icon={<Stop24Regular />} onClick={aoFechar}>Fechar fila</Button>
+      <DialogSurface
+        aria-label="Fila facial"
+        style={{
+          width: 'min(1000px, calc(100vw - 32px))', maxWidth: 'none', height: 'min(680px, calc(100vh - 32px))', maxHeight: 'none',
+          padding: 0, borderRadius: 20, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', background: MARSALA, color: '#fff', flexWrap: 'wrap' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(235,233,173,0.18)', display: 'grid', placeItems: 'center', color: BEGE }}>
+            <ScanCamera24Regular />
           </div>
-
-          <div style={{ position: 'relative', minHeight: 0, display: 'grid', placeItems: 'center', background: '#111', borderRadius: 8, overflow: 'hidden' }}>
-            <div style={{ position: 'relative', height: '100%', maxWidth: '100%', aspectRatio: proporcao }}>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                onLoadedMetadata={(e) => {
-                  const v = e.currentTarget;
-                  if (v.videoWidth && v.videoHeight) setProporcao(`${v.videoWidth} / ${v.videoHeight}`);
-                }}
-                style={{ width: '100%', height: '100%', display: 'block', transform: 'scaleX(-1)' }}
-              />
-            </div>
-            {resultado && (
-              <div
-                role="status"
-                aria-live="assertive"
-                style={{
-                  position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 24,
-                  background: `${corResultado}e6`, color: '#fff', textAlign: 'center',
-                }}
-              >
-                <span style={{ fontSize: 'clamp(28px, 6vw, 56px)', fontWeight: 700, lineHeight: 1.2 }}>{resultado.texto}</span>
-              </div>
-            )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 200px', minWidth: 0 }}>
+            <span style={{ fontSize: 20, fontWeight: 700 }}>{titulo ?? 'Fila facial'}</span>
+            {subtitulo && <span style={{ fontSize: 13, color: BEGE }}>{subtitulo}</span>}
           </div>
-
-          <div role="status" aria-live="polite" style={{ textAlign: 'center', minHeight: 48 }}>
-            <span style={{ fontSize: 'clamp(20px, 3.4vw, 32px)', fontWeight: 600 }}>
-              {mensagemGuia}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, padding: '8px 16px', borderRadius: 999, background: 'rgba(255,255,255,0.12)' }}>
+            <span style={{ fontSize: 22, fontWeight: 800 }}>{confirmadas}</span>
+            <span style={{ fontSize: 14, color: BEGE }}>
+              {totalInscritosFila ? `de ${totalInscritosFila} confirmados` : `confirmado${confirmadas === 1 ? '' : 's'}`}
             </span>
           </div>
-        </DialogBody>
+          <button
+            type="button"
+            aria-label="Fechar fila"
+            onClick={aoFechar}
+            style={{ width: 44, height: 44, border: 0, borderRadius: 12, background: 'rgba(255,255,255,0.12)', color: '#fff', display: 'grid', placeItems: 'center', cursor: 'pointer' }}
+          >
+            <Dismiss24Regular />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', flex: 1, minHeight: 0, overflow: 'auto' }}>
+          <div style={{ flex: '999 1 420px', minWidth: 0, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ position: 'relative', flex: 1, minHeight: 280, borderRadius: 16, overflow: 'hidden', background: '#1b1414', display: 'grid', placeItems: 'center' }}>
+              <div style={{ position: 'relative', height: '100%', maxWidth: '100%', aspectRatio: proporcao }}>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  onLoadedMetadata={(e) => {
+                    const v = e.currentTarget;
+                    if (v.videoWidth && v.videoHeight) setProporcao(`${v.videoWidth} / ${v.videoHeight}`);
+                  }}
+                  style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover', transform: 'scaleX(-1)' }}
+                />
+              </div>
+              <div
+                aria-hidden
+                style={{
+                  position: 'absolute', left: '50%', top: '46%', height: '62%', aspectRatio: '3 / 4', transform: 'translate(-50%, -50%)',
+                  borderRadius: '50%', border: `${resultado ? 4 : 3}px ${resultado ? 'solid' : 'dashed'} ${corOval}`,
+                  boxShadow: '0 0 0 2000px rgba(0,0,0,0.35)', transition: 'border-color 150ms', pointerEvents: 'none',
+                }}
+              />
+              {stream && (
+                <div style={{ position: 'absolute', left: 14, top: 14, display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 999, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 13, fontWeight: 600 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#e5484d' }} />
+                  Câmera ao vivo
+                </div>
+              )}
+              {resultado && (
+                <div
+                  role="status"
+                  aria-live="assertive"
+                  style={{ position: 'absolute', left: 16, right: 16, bottom: 16, padding: 18, borderRadius: 16, background: fundoCartao, color: '#fff', display: 'flex', alignItems: 'center', gap: 16 }}
+                >
+                  <div style={{ width: 52, height: 52, flexShrink: 0, borderRadius: '50%', background: resultado.tom === 'erro' ? BEGE : '#fff', color: fundoCartao, display: 'grid', placeItems: 'center' }}>
+                    {resultado.tom === 'ok' ? <Checkmark24Filled /> : resultado.tom === 'info' ? <Info24Regular /> : <Dismiss24Regular />}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                    <span style={{ fontSize: 22, fontWeight: 800 }}>{resultado.titulo}</span>
+                    <span style={{ fontSize: 15, color: resultado.tom === 'erro' ? BEGE : '#fff' }}>{resultado.detalhe}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderRadius: 14, background: '#f7f6ea', border: '1px solid #e3e0b8', color: MARSALA }}>
+              <Person24Regular />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 18, fontWeight: 700 }}>{mensagemGuia ?? 'Próximo, por favor'}</span>
+                {!mensagemGuia && (
+                  <span style={{ fontSize: 14, color: '#4a4a4a' }}>Olhe para a câmera com o rosto dentro do oval. A presença é confirmada sozinha.</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ flex: '1 1 260px', minWidth: 0, borderLeft: '1px solid #ecebe4', background: '#fbfbf8', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '18px 18px 10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#5f5f5f' }}>Confirmados nesta fila</span>
+              {totalInscritosFila ? (
+                <div style={{ height: 8, borderRadius: 999, background: '#ecebe4', overflow: 'hidden' }}>
+                  <div style={{ width: `${progresso}%`, height: '100%', background: MARSALA, transition: 'width 300ms' }} />
+                </div>
+              ) : null}
+            </div>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {confirmados.length === 0 && (
+                <span style={{ padding: '8px 6px', fontSize: 14, color: '#5f5f5f' }}>Ninguém confirmado ainda nesta fila.</span>
+              )}
+              {confirmados.map((c, i) => (
+                <div key={`${c.nome}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, borderRadius: 12, background: '#fff', border: '1px solid #ecebe4' }}>
+                  <div style={{ width: 38, height: 38, flexShrink: 0, borderRadius: '50%', background: BEGE, color: MARSALA, fontSize: 14, fontWeight: 700, display: 'grid', placeItems: 'center' }}>
+                    {iniciais(c.nome)}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
+                    <span style={{ fontSize: 12, color: '#5f5f5f' }}>{c.hora}</span>
+                  </div>
+                  <span style={{ color: VERDE, display: 'grid' }}><Checkmark24Filled /></span>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: '14px 18px', borderTop: '1px solid #ecebe4' }}>
+              <button
+                type="button"
+                onClick={aoFechar}
+                style={{ width: '100%', height: 48, border: 0, borderRadius: 12, background: '#1a1a1a', color: '#fff', fontFamily: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Encerrar fila
+              </button>
+            </div>
+          </div>
+        </div>
       </DialogSurface>
     </Dialog>
   );

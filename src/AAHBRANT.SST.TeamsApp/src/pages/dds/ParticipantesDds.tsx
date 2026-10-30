@@ -274,6 +274,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
         variante="facialAzure"
         modoCamera="user"
         exigirCamera
+        permitirCapturaAutomatica
       />
       <Button size="small" appearance="subtle" icon={<Dismiss24Regular />} disabled={ocupado}
         aria-label={`Remover ${f.nome} da seleção`} onClick={() => alternar(f.trabalhadorId)}>Remover</Button>
@@ -388,6 +389,9 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
     <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
     <FilaFacialDds
       ddsId={dds.id}
+      titulo={`Fila facial · DDS ${dds.temaLivreNome ?? ''}`.trim()}
+      subtitulo={dds.obraNome}
+      totalInscritos={totalPendentes}
       aberto={filaFacialAberta}
       aoFechar={() => setFilaFacialAberta(false)}
       aoPresencaConfirmada={() => { void api.dds.obterDetalhe(dds.id).then(aoAtualizar).catch(() => undefined); }}
