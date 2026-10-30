@@ -24,6 +24,7 @@ public class IdentificacaoFacialMargemTests
             var url = request.RequestUri!.PathAndQuery;
             var corpo = url.Contains("/detect") ? "[{\"faceId\":\"face-1\"}]"
                 : url.Contains("/identify") ? $"[{{\"faceId\":\"face-1\",\"candidates\":{_candidatosJson}}}]"
+                : url.Contains("/persons?") ? "[{\"personId\":\"p1\",\"name\":\"Ana\",\"persistedFaceIds\":[\"f1\"]},{\"personId\":\"p9\",\"name\":\"Gabriel\",\"persistedFaceIds\":[\"f9\"]}]"
                 : "{\"recognitionModel\":\"recognition_04\"}";
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -153,5 +154,39 @@ public class IdentificacaoFacialMargemTests
 
         Assert.Equal(MotivoRejeicaoFacial.RostoNaoReconhecido, r.Motivo);
         Assert.Equal(MotivoFalhaFacial.RostoNaoReconhecido, (await db.FalhasReconhecimentoFacial.SingleAsync()).Motivo);
+    }
+
+    [Fact]
+    public async Task RostoReconhecidoSemFuncionarioVinculado_EhCadastroSemVinculoComPersonId()
+    {
+        // Caso Cuiá (30/10): o Azure reconhece com 93-97%, mas a pessoa do grupo não está ligada a ninguém.
+        var (estrategia, obraId, _, db) = await CriarAsync("[{\"personId\":\"p9\",\"confidence\":0.95}]");
+
+        var r = await estrategia.IdentificarAsync(obraId, Foto, CancellationToken.None);
+
+        Assert.False(r.Aceito);
+        Assert.Equal(MotivoRejeicaoFacial.CadastroSemVinculo, r.Motivo);
+        var falha = await db.FalhasReconhecimentoFacial.SingleAsync();
+        Assert.Equal(MotivoFalhaFacial.CadastroSemVinculo, falha.Motivo);
+        Assert.Equal("p9", falha.PersonIdAzure);
+        Assert.Null(falha.TrabalhadorId);
+    }
+
+    [Fact]
+    public async Task Diagnostico_ApontaVinculoQuebradoEPessoaSolta()
+    {
+        // Azure tem p1 (Ana) e p9 (solto). Bruno aponta para p2, que não existe no grupo.
+        var (estrategia, obraId, _, _) = await CriarAsync("[]");
+
+        var d = await estrategia.DiagnosticarVinculosAsync(obraId, CancellationToken.None);
+
+        Assert.True(d.GrupoExisteNoAzure);
+        Assert.Equal(2, d.CadastrosNoBanco);
+        Assert.Equal(2, d.PessoasNoAzure);
+        Assert.Equal("Bruno", Assert.Single(d.VinculosQuebrados).Nome);
+        var solta = Assert.Single(d.PessoasSemVinculo);
+        Assert.Equal("p9", solta.PersonIdAzure);
+        Assert.Equal("Gabriel", solta.NomeNoAzure);
+        Assert.Empty(d.DuplicadosNoBanco);
     }
 }

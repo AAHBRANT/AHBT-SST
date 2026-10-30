@@ -136,6 +136,7 @@ public class FalhaReconhecimentoFacialConfiguracao : IEntityTypeConfiguration<Fa
         builder.HasOne(f => f.Trabalhador).WithMany()
             .HasForeignKey(f => f.TrabalhadorId).OnDelete(DeleteBehavior.Restrict);
 
+        builder.Property(f => f.PersonIdAzure).HasMaxLength(64);
         builder.HasIndex(f => new { f.ObraId, f.OcorridaEm });
         builder.HasIndex(f => new { f.TrabalhadorId, f.OcorridaEm });
         builder.HasQueryFilter(f => f.Ativo);

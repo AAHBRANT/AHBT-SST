@@ -2000,6 +2000,17 @@ public static class NovidadesSeeder
                     "A relação copiava a frase inteira de cada medida de EPI, repetindo o mesmo capacete ou luva várias vezes, com \"sem CA\" em quase todas as linhas.",
                     "Cada função lista cada EPI uma vez, com a especificação técnica e os riscos que o exigem. A relação sai só do PGR, sem depender do catálogo nem da matriz do cadastro. O CA não aparece no PGR: ele é do produto entregue e fica registrado na ficha de entrega."),
             }),
+        new(
+            Versao: "5.111.0",
+            Titulo: "Reconhecimento facial: cadastro sem vínculo identificado",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Rosto reconhecido, mas presença recusada",
+                    "Quando o cadastro facial de um funcionário ficava sem ligação com ele, o rosto era reconhecido e mesmo assim recusado, aparecendo só como \"rosto não reconhecido\".",
+                    "A falha agora aparece como \"Cadastro facial sem vínculo com o funcionário\": basta refazer o cadastro facial dessa pessoa. O sistema também deixou de criar cadastros soltos quando uma foto de cadastro, a troca de obra ou a atualização do modelo de reconhecimento falham no meio."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

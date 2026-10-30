@@ -71,22 +71,30 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         }
         await CriarPersonGroupSeNaoExistirAsync(cliente, personGroupId, obra.Nome, ct);
 
+        // Person criado NESTA chamada: se a foto não entrar, ele é apagado antes do erro subir. Sem isso cada
+        // tentativa que falhava deixava uma pessoa sem vínculo no grupo (o banco não era salvo), e esses
+        // cadastros soltos com o nome do funcionário confundiam o diagnóstico (Cuiá, 30/10).
         var personId = trabalhador.AzureFacePersonId;
+        string? personCriadoAgora = null;
         if (personId is null)
         {
-            personId = await CriarPersonAsync(cliente, personGroupId, trabalhador.Nome, ct);
+            personId = personCriadoAgora = await CriarPersonAsync(cliente, personGroupId, trabalhador.Nome, ct);
             trabalhador.AzureFacePersonId = personId;
         }
 
         var erroAdicionarFace = await TentarAdicionarFaceAsync(cliente, personGroupId, personId, fotoJpeg, ct);
         if (erroAdicionarFace?.Code is "PersonNotFound")
         {
-            personId = await CriarPersonAsync(cliente, personGroupId, trabalhador.Nome, ct);
+            personId = personCriadoAgora = await CriarPersonAsync(cliente, personGroupId, trabalhador.Nome, ct);
             trabalhador.AzureFacePersonId = personId;
             erroAdicionarFace = await TentarAdicionarFaceAsync(cliente, personGroupId, personId, fotoJpeg, ct);
         }
         if (erroAdicionarFace is not null)
+        {
+            if (personCriadoAgora is not null)
+                await ApagarPersonMelhorEsforcoAsync(cliente, personGroupId, personCriadoAgora, ct);
             throw new InvalidOperationException(MontarMensagemErroAzure("Falha ao adicionar foto ao Person no Azure Face API", erroAdicionarFace));
+        }
 
         // Grupo e Person gravados antes do treino: se o treino falhar, a próxima tentativa reaproveita o
         // mesmo Person em vez de deixar um órfão no grupo. A foto só é gravada depois do treino concluído,
@@ -187,7 +195,10 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         var personNovo = await CriarPersonAsync(cliente, grupoNovo, trabalhador.Nome, ct);
         var erro = await TentarAdicionarFaceAsync(cliente, grupoNovo, personNovo, foto.Conteudo, ct);
         if (erro is not null)
+        {
+            await ApagarPersonMelhorEsforcoAsync(cliente, grupoNovo, personNovo, ct);
             throw new InvalidOperationException(MontarMensagemErroAzure("Falha ao levar o cadastro facial para a nova obra", erro));
+        }
 
         trabalhador.AzureFacePersonId = personNovo;
         await _db.SaveChangesAsync(ct);
@@ -256,51 +267,79 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
         var novosIds = new Dictionary<Guid, string>();
         var falharam = new List<Guid>();
+        // PersonId que cada funcionário tinha quando foi lido. Se mudar até a troca final, ele refez ou fez o
+        // cadastro no grupo antigo durante a migração: o id migrado ficou velho e ele é migrado de novo.
+        var personLido = new Dictionary<Guid, string?>();
 
-        // Duas passadas: a segunda pega quem fez cadastro (ou recadastro) enquanto a primeira rodava.
-        for (var passada = 0; passada < 2; passada++)
+        async Task MigrarAsync(Guid trabalhadorId, string nome, string? personIdAtual)
         {
-            var jaTratados = novosIds.Keys.Concat(falharam).ToList();
-            var pendentes = await _db.Trabalhadores.IgnoreQueryFilters()
-                .Where(t => t.ObraId == obra.Id && t.AzureFacePersonId != null && !jaTratados.Contains(t.Id))
-                .Select(t => new { t.Id, t.Nome })
-                .ToListAsync(ct);
-            foreach (var t in pendentes)
+            // Já migrado antes com outra foto: apaga a pessoa velha do grupo novo para não ficar duplicada.
+            if (novosIds.Remove(trabalhadorId, out var personVelho))
+                await ApagarPersonMelhorEsforcoAsync(cliente, grupoNovo, personVelho, ct);
+            falharam.Remove(trabalhadorId);
+            personLido[trabalhadorId] = personIdAtual;
+
+            var foto = await _db.FotosCadastroFacial.IgnoreQueryFilters()
+                .Where(f => f.TrabalhadorId == trabalhadorId && f.Ativo)
+                .OrderByDescending(f => f.CapturadaEm)
+                .Select(f => f.Conteudo)
+                .FirstOrDefaultAsync(ct);
+            if (foto is null)
             {
-                var foto = await _db.FotosCadastroFacial.IgnoreQueryFilters()
-                    .Where(f => f.TrabalhadorId == t.Id && f.Ativo)
-                    .OrderByDescending(f => f.CapturadaEm)
-                    .Select(f => f.Conteudo)
-                    .FirstOrDefaultAsync(ct);
-                if (foto is null)
-                {
-                    falharam.Add(t.Id);
-                    continue;
-                }
-
-                var respostaPessoa = await EnviarComRetryMigracaoAsync(
-                    () => cliente.PostAsJsonAsync($"face/v1.0/persongroups/{grupoNovo}/persons", new { name = t.Nome }, ct), ct);
-                if (!respostaPessoa.IsSuccessStatusCode)
-                    throw new InvalidOperationException($"Falha ao criar Person na migração do grupo {grupoNovo}: {respostaPessoa.StatusCode}");
-                var personId = (await respostaPessoa.Content.ReadFromJsonAsync<PersonCriadoResposta>(cancellationToken: ct))!.PersonId;
-
-                var respostaFace = await EnviarComRetryMigracaoAsync(async () =>
-                {
-                    using var conteudo = new ByteArrayContent(foto);
-                    conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-                    return await cliente.PostAsync(
-                        $"face/v1.0/persongroups/{grupoNovo}/persons/{personId}/persistedFaces?detectionModel={ModeloDeteccao}", conteudo, ct);
-                }, ct);
-                if (respostaFace.IsSuccessStatusCode)
-                    novosIds[t.Id] = personId;
-                else if ((int)respostaFace.StatusCode == 400)
-                    falharam.Add(t.Id); // foto recusada pelo Azure (ex.: rosto não detectado): cadastro precisa ser refeito
-                else
-                    throw new InvalidOperationException($"Falha ao adicionar face na migração do grupo {grupoNovo}: {respostaFace.StatusCode}");
-
-                if (_options.IntervaloMigracaoFacialMs > 0)
-                    await Task.Delay(_options.IntervaloMigracaoFacialMs, ct);
+                falharam.Add(trabalhadorId);
+                return;
             }
+
+            var respostaPessoa = await EnviarComRetryMigracaoAsync(
+                () => cliente.PostAsJsonAsync($"face/v1.0/persongroups/{grupoNovo}/persons", new { name = nome }, ct), ct);
+            if (!respostaPessoa.IsSuccessStatusCode)
+                throw new InvalidOperationException($"Falha ao criar Person na migração do grupo {grupoNovo}: {respostaPessoa.StatusCode}");
+            var personId = (await respostaPessoa.Content.ReadFromJsonAsync<PersonCriadoResposta>(cancellationToken: ct))!.PersonId;
+
+            var respostaFace = await EnviarComRetryMigracaoAsync(async () =>
+            {
+                using var conteudo = new ByteArrayContent(foto);
+                conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                return await cliente.PostAsync(
+                    $"face/v1.0/persongroups/{grupoNovo}/persons/{personId}/persistedFaces?detectionModel={ModeloDeteccao}", conteudo, ct);
+            }, ct);
+            if (respostaFace.IsSuccessStatusCode)
+                novosIds[trabalhadorId] = personId;
+            else if ((int)respostaFace.StatusCode == 400)
+            {
+                // Foto recusada pelo Azure (ex.: rosto não detectado): cadastro precisa ser refeito. A pessoa
+                // recém-criada sem foto sai do grupo, senão vira cadastro solto.
+                await ApagarPersonMelhorEsforcoAsync(cliente, grupoNovo, personId, ct);
+                falharam.Add(trabalhadorId);
+            }
+            else
+                throw new InvalidOperationException($"Falha ao adicionar face na migração do grupo {grupoNovo}: {respostaFace.StatusCode}");
+
+            if (_options.IntervaloMigracaoFacialMs > 0)
+                await Task.Delay(_options.IntervaloMigracaoFacialMs, ct);
+        }
+
+        // Funcionários ainda não migrados, ou cujo cadastro mudou desde que foram lidos.
+        async Task<List<(Guid Id, string Nome, string? PersonId)>> PendentesAsync()
+        {
+            var atuais = await _db.Trabalhadores.IgnoreQueryFilters()
+                .Where(t => t.ObraId == obra.Id && t.AzureFacePersonId != null)
+                .Select(t => new { t.Id, t.Nome, t.AzureFacePersonId })
+                .ToListAsync(ct);
+            return atuais
+                .Where(t => !personLido.TryGetValue(t.Id, out var lido) || lido != t.AzureFacePersonId)
+                .Select(t => (t.Id, t.Nome, (string?)t.AzureFacePersonId))
+                .ToList();
+        }
+
+        // Repete enquanto aparecer gente nova ou cadastro refeito durante a migração (até 4 passadas).
+        for (var passada = 0; passada < 4; passada++)
+        {
+            var pendentes = await PendentesAsync();
+            if (pendentes.Count == 0)
+                break;
+            foreach (var t in pendentes)
+                await MigrarAsync(t.Id, t.Nome, t.PersonId);
         }
 
         if (novosIds.Count > 0)
@@ -308,13 +347,26 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
         // Troca tudo de uma vez: a obra passa a usar o grupo novo e cada trabalhador o id novo. Quem não pôde
         // ser migrado fica sem cadastro (fotos arquivadas, como no "Refazer cadastro facial") para poder ser
-        // cadastrado de novo — senão ficaria apontando para um grupo que vai ser apagado.
+        // cadastrado de novo — senão ficaria apontando para um grupo que vai ser apagado. Quem cadastrou ou
+        // refez depois da última passada (cadastro no grupo antigo) também fica sem cadastro: o grupo antigo
+        // vai ser apagado e o vínculo ficaria quebrado (causa provável do caso da Cuiá, 30/10).
         var tratados = novosIds.Keys.Concat(falharam).ToList();
         var trabalhadores = await _db.Trabalhadores.IgnoreQueryFilters()
-            .Where(t => tratados.Contains(t.Id))
+            .Where(t => t.ObraId == obra.Id && (tratados.Contains(t.Id) || t.AzureFacePersonId != null))
             .ToListAsync(ct);
         foreach (var t in trabalhadores)
+        {
+            var mudouNoMeio = t.AzureFacePersonId is not null
+                && (!personLido.TryGetValue(t.Id, out var lido) || lido != t.AzureFacePersonId);
+            if (mudouNoMeio)
+            {
+                if (novosIds.Remove(t.Id, out var personVelho))
+                    await ApagarPersonMelhorEsforcoAsync(cliente, grupoNovo, personVelho, ct);
+                if (!falharam.Contains(t.Id))
+                    falharam.Add(t.Id);
+            }
             t.AzureFacePersonId = novosIds.TryGetValue(t.Id, out var id) ? id : null;
+        }
         if (falharam.Count > 0)
         {
             var fotos = await _db.FotosCadastroFacial.IgnoreQueryFilters()
@@ -342,6 +394,76 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         return new ResultadoMigracaoModeloFacial(
             novosIds.Count,
             trabalhadores.Where(t => falharam.Contains(t.Id)).Select(t => t.Nome).ToList());
+    }
+
+    public async Task<DiagnosticoVinculosFacialDto> DiagnosticarVinculosAsync(Guid obraId, CancellationToken ct)
+    {
+        var obra = await _db.Obras.FirstOrDefaultAsync(o => o.Id == obraId, ct)
+            ?? throw new KeyNotFoundException("Obra não encontrada.");
+
+        // Só colunas escalares (sem os bytes das fotos). IgnoreQueryFilters não: o escopo por obra do usuário vale.
+        var cadastros = await _db.Trabalhadores
+            .Where(t => t.ObraId == obraId && t.AzureFacePersonId != null)
+            .Select(t => new { t.Id, t.Nome, t.Matricula, PersonId = t.AzureFacePersonId!, TemFoto = _db.FotosCadastroFacial.Any(f => f.TrabalhadorId == t.Id) })
+            .ToListAsync(ct);
+
+        var pessoas = new List<PessoaAzureResposta>();
+        var grupoExiste = false;
+        if (obra.AzureFacePersonGroupId is { } grupo)
+        {
+            using var cliente = CriarCliente();
+            // Lista paginada do Azure (até 1000 por página, a partir do último id visto).
+            string? depoisDe = null;
+            while (true)
+            {
+                var url = $"face/v1.0/persongroups/{grupo}/persons?top=1000" + (depoisDe is null ? "" : $"&start={depoisDe}");
+                var resposta = await EnviarComRetry429Async(() => cliente.GetAsync(url, ct), ct);
+                if (resposta.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    break;
+                if (!resposta.IsSuccessStatusCode)
+                    throw await ErroDeIndisponibilidadeAsync(resposta, "listar pessoas do grupo", ct);
+                grupoExiste = true;
+                var pagina = await resposta.Content.ReadFromJsonAsync<List<PessoaAzureResposta>>(cancellationToken: ct) ?? new();
+                pessoas.AddRange(pagina);
+                if (pagina.Count < 1000)
+                    break;
+                depoisDe = pagina[^1].PersonId;
+            }
+        }
+
+        var idsNoAzure = pessoas.Select(p => p.PersonId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var idsNoBanco = cadastros.Select(c => c.PersonId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var quebrados = cadastros
+            .Where(c => !idsNoAzure.Contains(c.PersonId))
+            .OrderBy(c => c.Nome)
+            .Select(c => new VinculoFacialQuebradoDto(c.Id, c.Nome, c.Matricula, c.PersonId, c.TemFoto))
+            .ToList();
+        var soltos = pessoas
+            .Where(p => !idsNoBanco.Contains(p.PersonId))
+            .OrderBy(p => p.Name)
+            .Select(p => new PessoaFacialSemVinculoDto(p.PersonId, p.Name ?? "", p.PersistedFaceIds?.Count ?? 0))
+            .ToList();
+        var duplicados = cadastros
+            .GroupBy(c => c.PersonId, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .SelectMany(g => g)
+            .OrderBy(c => c.PersonId).ThenBy(c => c.Nome)
+            .Select(c => new VinculoFacialQuebradoDto(c.Id, c.Nome, c.Matricula, c.PersonId, c.TemFoto))
+            .ToList();
+
+        return new DiagnosticoVinculosFacialDto(obra.Id, obra.Nome, obra.AzureFacePersonGroupId, grupoExiste,
+            cadastros.Count, pessoas.Count, quebrados, soltos, duplicados);
+    }
+
+    private class PessoaAzureResposta
+    {
+        [JsonPropertyName("personId")]
+        public string PersonId { get; set; } = "";
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+        [JsonPropertyName("persistedFaceIds")]
+        public List<string>? PersistedFaceIds { get; set; }
     }
 
     // A migração faz muitas chamadas seguidas; no tier F0 (20/min) o 429 é esperado. Espera o tempo que o
@@ -488,17 +610,20 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
             return await RejeitarAsync(obraId, MotivoRejeicaoFacial.RostoNaoReconhecido, null, null, ct);
 
         if (candidato.Confidence < _options.LimiarConfiancaFacialMinimo)
-            return await RejeitarAsync(obraId, MotivoRejeicaoFacial.RostoNaoReconhecido, candidato.Confidence, null, ct);
+            return await RejeitarAsync(obraId, MotivoRejeicaoFacial.RostoNaoReconhecido, candidato.Confidence, null, ct, candidato.PersonId);
 
         var trabalhador = await _db.Trabalhadores.FirstOrDefaultAsync(t => t.AzureFacePersonId == candidato.PersonId && t.ObraId == obraId, ct);
 
         // Confiança entre o mínimo e o limiar: o Azure tem quase certeza de quem é, e por isso é aqui
         // que a falha vira atribuível a um cadastro fraco.
         if (candidato.Confidence < _options.LimiarConfiancaFacial)
-            return await RejeitarAsync(obraId, MotivoRejeicaoFacial.ConfiancaBaixa, candidato.Confidence, trabalhador?.Id, ct);
+            return await RejeitarAsync(obraId, MotivoRejeicaoFacial.ConfiancaBaixa, candidato.Confidence, trabalhador?.Id, ct, candidato.PersonId);
 
+        // O Azure reconheceu o rosto com segurança, mas nenhum funcionário da obra aponta para essa pessoa:
+        // é cadastro solto no grupo (vínculo quebrado), não rosto desconhecido. Antes caía como "não
+        // reconhecido" sem o PersonId, e não dava para descobrir de quem era (Cuiá, 30/10).
         if (trabalhador is null)
-            return await RejeitarAsync(obraId, MotivoRejeicaoFacial.RostoNaoReconhecido, candidato.Confidence, null, ct);
+            return await RejeitarAsync(obraId, MotivoRejeicaoFacial.CadastroSemVinculo, candidato.Confidence, null, ct, candidato.PersonId);
 
         // Consentimento LGPD conferido também na hora de assinar (antes só no cadastro): quem revogou o
         // consentimento não pode continuar sendo identificado pelo rosto.
@@ -509,7 +634,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         // frente do segundo. Dois candidatos próximos = provável colega parecido, melhor usar a digital.
         if (exigirMargemSobreSegundoColocado && confiancaSegundo is { } segundo
             && candidato.Confidence - segundo < _options.MargemMinimaIdentificacaoFacial)
-            return await RejeitarAsync(obraId, MotivoRejeicaoFacial.RostoAmbiguo, candidato.Confidence, null, ct);
+            return await RejeitarAsync(obraId, MotivoRejeicaoFacial.RostoAmbiguo, candidato.Confidence, null, ct, candidato.PersonId);
 
         // Rastro da validação para o log de assinaturas: modelo real do grupo (lido do Azure), grupo e
         // id da requisição. Nunca bloqueia a assinatura: se não vier, o log mostra "não informado".
@@ -522,7 +647,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
     // Registra a falha para a lista de cadastros fracos e devolve a rejeição. O registro é melhor esforço:
     // nunca atrapalha o fluxo de quem está assinando ou confirmando presença.
-    private async Task<ResultadoIdentificacaoFacial> RejeitarAsync(Guid obraId, MotivoRejeicaoFacial motivo, double? confianca, Guid? trabalhadorId, CancellationToken ct)
+    private async Task<ResultadoIdentificacaoFacial> RejeitarAsync(Guid obraId, MotivoRejeicaoFacial motivo, double? confianca, Guid? trabalhadorId, CancellationToken ct, string? personIdAzure = null)
     {
         try
         {
@@ -534,9 +659,11 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
                 {
                     MotivoRejeicaoFacial.ConfiancaBaixa => MotivoFalhaFacial.ConfiancaBaixa,
                     MotivoRejeicaoFacial.RostoAmbiguo => MotivoFalhaFacial.RostoAmbiguo,
+                    MotivoRejeicaoFacial.CadastroSemVinculo => MotivoFalhaFacial.CadastroSemVinculo,
                     _ => MotivoFalhaFacial.RostoNaoReconhecido,
                 },
                 Confianca = confianca,
+                PersonIdAzure = personIdAzure,
                 OcorridaEm = DateTime.UtcNow,
             });
             await _db.SaveChangesAsync(ct);
@@ -598,6 +725,18 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
             throw new InvalidOperationException($"Falha ao criar Person no Azure Face API: {resposta.StatusCode}");
         var corpo = await resposta.Content.ReadFromJsonAsync<PersonCriadoResposta>(cancellationToken: ct);
         return corpo!.PersonId;
+    }
+
+    // Limpeza de um Person que acabou de ser criado e não chegou a valer. Nunca esconde o erro original.
+    private static async Task ApagarPersonMelhorEsforcoAsync(HttpClient cliente, string personGroupId, string personId, CancellationToken ct)
+    {
+        try
+        {
+            await cliente.DeleteAsync($"face/v1.0/persongroups/{personGroupId}/persons/{personId}", ct);
+        }
+        catch (HttpRequestException)
+        {
+        }
     }
 
     private static async Task<AzureFaceErro?> TentarAdicionarFaceAsync(HttpClient cliente, string personGroupId, string personId, byte[] fotoJpeg, CancellationToken ct)
