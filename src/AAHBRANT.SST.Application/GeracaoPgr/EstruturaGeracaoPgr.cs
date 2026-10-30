@@ -293,12 +293,25 @@ public static class AjudanteGeral
     public static async Task UnificarAsync(IAppDbContext db, EstruturaGeracaoPgr e, CancellationToken ct)
     {
         NomesFuncoes.Padronizar(e);
+        JornadaPadrao.Completar(e);
         var funcoes = e.Ghes.SelectMany(g => g.Funcoes).ToList();
         if (!funcoes.Any(f => EhGenerico(f.Nome) || EncarregadoDeObras.EhEncarregado(f.Nome))) return;
         var cadastro = await db.Funcoes.Select(f => new { f.Id, f.Nome }).ToListAsync(ct);
         Guid? Id(string nome) => cadastro.FirstOrDefault(f => Common.FuncaoSstClassifier.Normalizar(f.Nome) == Common.FuncaoSstClassifier.Normalizar(nome))?.Id;
         Unificar(e, Id(Nome));
         EncarregadoDeObras.Unificar(e, Id(EncarregadoDeObras.Nome));
+    }
+}
+
+// Jornada padrão da obra (pedido do usuário, 30/10/2026): GHE sem jornada recebe "44 horas semanais". O técnico troca
+// onde for diferente (ex.: vigilância em 12x36).
+public static class JornadaPadrao
+{
+    public const string Texto = "44 horas semanais";
+
+    public static void Completar(EstruturaGeracaoPgr e)
+    {
+        foreach (var g in e.Ghes.Where(g => string.IsNullOrWhiteSpace(g.Jornada))) g.Jornada = Texto;
     }
 }
 

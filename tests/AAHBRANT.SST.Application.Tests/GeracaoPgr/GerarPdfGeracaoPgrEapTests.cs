@@ -70,6 +70,35 @@ public class GerarPdfGeracaoPgrEapTests
     }
 
     [Fact]
+    public async Task GeraPdf_RelacaoDeEpisPorFuncao_DaMatrizEDasMedidas_EJornadaPadrao()
+    {
+        var (db, geracao) = await CriarAsync(StatusGeracaoPgrEap.Rascunho, "{}");
+        var armador = new Funcao { Nome = "ARMADOR" };
+        var capacete = new CatalogoEpi { Nome = "Capacete classe B", CertificadoAprovacaoNumero = "111" };
+        var luva = new CatalogoEpi { Nome = "Luva de vaqueta", CertificadoAprovacaoNumero = "222" };
+        var cinto = new CatalogoEpi { Nome = "Cinto paraquedista", CertificadoAprovacaoNumero = "333" };
+        db.AddRange(armador, capacete, luva, cinto,
+            new MatrizEpiFuncao { Funcao = armador, CatalogoEpi = capacete },
+            new MatrizEpiFuncao { Funcao = armador, CatalogoEpi = luva });
+        await db.SaveChangesAsync();
+        geracao.EstruturaJson = $$"""
+            {"ghes":[{"numero":1,"nome":"Estrutura","funcoes":[{"funcaoId":"{{armador.Id}}","nome":"ARMADOR","descricao":"x"}],
+              "atividades":[{"codigoEap":"1.1","nome":"Laje","riscosGerados":true,"riscos":[{"tipo":"Acidente","perigo":"Queda de altura",
+                "probabilidade":3,"severidade":5,"medidas":[{"fase":2,"texto":"Use cinto","categoria":"EPI","catalogoEpiId":"{{cinto.Id}}","decisao":"Aceita"}]}]}]}]}
+            """;
+        await db.SaveChangesAsync();
+        var pdf = new PdfFalso();
+
+        await new GerarPdfGeracaoPgrEapQueryHandler(db, pdf).Handle(new GerarPdfGeracaoPgrEapQuery(geracao.Id, Minuta: true), default);
+
+        var epis = pdf.Dados!.EpisPorFuncao!;
+        Assert.Equal(new[] { "Capacete classe B", "Cinto paraquedista", "Luva de vaqueta" }, epis.Select(x => x.Epi).ToArray());
+        Assert.All(epis, x => Assert.Equal(("Armador", "01"), (x.Funcao, x.Ghes)));
+        Assert.False(epis.Single(x => x.Epi == "Cinto paraquedista").DaMatriz);
+        Assert.Equal(JornadaPadrao.Texto, pdf.Dados.Estrutura.Ghes[0].Jornada);
+    }
+
+    [Fact]
     public async Task GeraPdf_LevaOCaDoEpiLigadoNaMedida()
     {
         var (db, geracao) = await CriarAsync(StatusGeracaoPgrEap.Aprovado, "{}");

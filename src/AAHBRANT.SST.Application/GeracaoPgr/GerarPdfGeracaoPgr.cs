@@ -51,7 +51,13 @@ public record DadosPgrPdf(
     // Minuta para o engenheiro ler antes de assinar: marcada como "não assinado" em todas as páginas.
     bool Minuta = false,
     // Prévia do técnico antes de enviar para aprovação (29/10/2026): a minuta sai carimbada como RASCUNHO.
-    bool Rascunho = false);
+    bool Rascunho = false,
+    // Relação de EPIs por função (NR-06 e NR-18, 30/10/2026): matriz de EPI da função no cadastro + EPIs do catálogo citados
+    // nas medidas dos riscos do GHE.
+    IReadOnlyList<LinhaEpiFuncaoPdf>? EpisPorFuncao = null);
+
+// Um EPI de uma função: em quais GHEs ela está, o item do catálogo, o CA e a validade, e de onde veio (matriz ou medida).
+public record LinhaEpiFuncaoPdf(string Funcao, string Ghes, string Epi, string? Ca, DateTime? CaValidade, bool DaMatriz);
 
 // Uma linha de assinatura. AssinadoEmUtc preenchido = carimbo de assinatura eletrônica; AMao = a linha sai em branco, para
 // assinatura fora do sistema; sem as duas coisas, ainda não assinou.
@@ -145,6 +151,7 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
                 if (id is { } idFuncao) funcoesDosGhes.Add((ghe.Numero, f.Nome, idFuncao));
             }
         var treinamentos = await CronogramaTreinamentosPgr.MontarAsync(_db, g.ObraId, funcoesDosGhes, ct);
+        var episPorFuncao = await RelacaoEpisPorFuncao.MontarAsync(_db, estrutura, funcoesDosGhes, ct);
 
         // Controle de revisões: as registradas no PGR aprovado; sem nenhuma, a emissão inicial (revisão 00).
         var revisoesDb = g.PgrId is { } pgrId
@@ -199,7 +206,8 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
             assinaturas,
             verificacao,
             request.Minuta,
-            rascunho);
+            rascunho,
+            episPorFuncao);
 
         return new ArquivoPgrPdf(_pdf.Gerar(dados, obra.LogoConteudo), nomeArquivo);
     }
@@ -232,5 +240,41 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
             Montar(comp?.Engenheiro, PapelAssinatura.EngenheiroSegurancaPgr, "Engenheiro de Segurança do Trabalho",
                 "Engenheiro de Segurança do Trabalho · responsável técnico pela elaboração do PGR"),
         }.OfType<AssinaturaPgrPdf>().ToList();
+    }
+}
+
+// Relação de EPIs por função do PGR. Consultas por tabela e junção em memória (soft delete não some com a linha).
+internal static class RelacaoEpisPorFuncao
+{
+    public static async Task<List<LinhaEpiFuncaoPdf>> MontarAsync(IAppDbContext db, EstruturaGeracaoPgr e,
+        IReadOnlyList<(int Ghe, string Nome, Guid Id)> funcoesDosGhes, CancellationToken ct)
+    {
+        var idsFuncao = funcoesDosGhes.Select(f => f.Id).Distinct().ToList();
+        var matriz = await db.MatrizEpiFuncoes.Where(m => idsFuncao.Contains(m.FuncaoId))
+            .Select(m => new { m.FuncaoId, m.CatalogoEpiId }).ToListAsync(ct);
+
+        // EPIs do catálogo citados nas medidas de cada GHE (valem para as funções daquele GHE).
+        var episDoGhe = e.Ghes.ToDictionary(g => g.Numero, g => g.Atividades.SelectMany(a => a.Riscos).Where(r => !r.Excluido)
+            .SelectMany(r => r.Medidas).Where(m => m.EntraNoPgr() && m.CatalogoEpiId is not null)
+            .Select(m => m.CatalogoEpiId!.Value).ToHashSet());
+
+        var idsEpi = matriz.Select(m => m.CatalogoEpiId).Concat(episDoGhe.Values.SelectMany(x => x)).Distinct().ToList();
+        var catalogo = await db.CatalogoEpis.Where(c => idsEpi.Contains(c.Id))
+            .Select(c => new { c.Id, c.Nome, c.CertificadoAprovacaoNumero, c.CertificadoAprovacaoValidade }).ToDictionaryAsync(c => c.Id, ct);
+
+        var linhas = new List<LinhaEpiFuncaoPdf>();
+        foreach (var funcao in funcoesDosGhes.GroupBy(f => f.Nome).OrderBy(x => x.Key))
+        {
+            var ghes = string.Join(", ", funcao.Select(f => f.Ghe).Distinct().OrderBy(n => n).Select(n => n.ToString("00")));
+            var daMatriz = matriz.Where(m => funcao.Any(f => f.Id == m.FuncaoId)).Select(m => m.CatalogoEpiId).ToHashSet();
+            var dasMedidas = funcao.SelectMany(f => episDoGhe.GetValueOrDefault(f.Ghe) ?? new HashSet<Guid>()).ToHashSet();
+            foreach (var idEpi in daMatriz.Concat(dasMedidas).Distinct())
+            {
+                if (!catalogo.TryGetValue(idEpi, out var epi)) continue;
+                linhas.Add(new LinhaEpiFuncaoPdf(funcao.Key, ghes, epi.Nome, epi.CertificadoAprovacaoNumero, epi.CertificadoAprovacaoValidade,
+                    daMatriz.Contains(idEpi)));
+            }
+        }
+        return linhas.OrderBy(l => l.Funcao).ThenBy(l => l.Epi).ToList();
     }
 }

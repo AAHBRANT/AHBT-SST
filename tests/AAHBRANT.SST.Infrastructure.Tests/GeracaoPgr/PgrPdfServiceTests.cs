@@ -170,7 +170,15 @@ public class PgrPdfServiceTests
     [Fact]
     public void Gerar_ComRiscosDeTodosOsGrupos_ETipoForaDaTabela_DevolvePdfValido()
     {
-        var dados = DadosCompletos();
+        var dados = DadosCompletos() with
+        {
+            EpisPorFuncao = new List<LinhaEpiFuncaoPdf>
+            {
+                new("Ajudante Geral", "01, 02", "Capacete de segurança classe B", "31469", new DateTime(2028, 3, 1), true),
+                new("Ajudante Geral", "01, 02", "Luva de vaqueta", "37010", new DateTime(2025, 1, 10), true),
+                new("Armador", "01", "Cinto paraquedista", null, null, false),
+            },
+        };
         var riscos = dados.Estrutura.Ghes[0].Atividades[0].Riscos;
         foreach (var tipo in new[] { "Físico", "Químico", "Biológico", "Ergonômico", "Psicossocial", "Outro" })
             riscos.Add(new RiscoGerado { Tipo = tipo, Perigo = $"Perigo {tipo}", Danos = "x", Probabilidade = 2, Severidade = 3 });

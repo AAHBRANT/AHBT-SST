@@ -257,6 +257,8 @@ public class PgrPdfService : IPgrPdfService
                             FichaRisco(c, d.Matriz, ghe, atividade, risco, d.Epis);
                 }
 
+                RelacaoEpis(c, d.EpisPorFuncao);
+
                 // 7. Plano de ação
                 Titulo(c, Secoes[6]);
                 var acoes = d.Estrutura.AcoesPlano
@@ -819,6 +821,46 @@ public class PgrPdfService : IPgrPdfService
                     }
                 });
             });
+        });
+    }
+
+    // Relação de EPIs por função (NR-06; conteúdo do PGR de obra na NR-18), com CA e validade do catálogo.
+    private static void RelacaoEpis(ColumnDescriptor c, IReadOnlyList<LinhaEpiFuncaoPdf>? linhas)
+    {
+        c.Item().PaddingTop(12).Text("Relação de EPIs por função").FontSize(12).SemiBold();
+        c.Item().PaddingBottom(4).Text("EPIs da matriz de cada função no cadastro e os citados nas medidas de prevenção dos riscos dos GHEs em que a função atua. "
+            + "Fornecimento gratuito, com CA válido e registro da entrega em ficha (NR-06).").FontSize(8.5f).FontColor(Secundario).Justify();
+        if (linhas is not { Count: > 0 })
+        {
+            c.Item().Text("Nenhum EPI do catálogo ligado às funções deste PGR. Cadastre a matriz de EPI das funções ou ligue as medidas de EPI ao catálogo.")
+                .FontSize(8.5f).Italic().FontColor(Secundario);
+            return;
+        }
+        var hoje = DateTime.UtcNow.Date;
+        c.Item().Table(t =>
+        {
+            t.ColumnsDefinition(cd => { cd.RelativeColumn(1.5f); cd.ConstantColumn(44); cd.RelativeColumn(2.6f); cd.ConstantColumn(56); cd.ConstantColumn(62); });
+            t.Header(h =>
+            {
+                foreach (var titulo in new[] { "Função", "GHE", "EPI", "CA", "Validade CA" })
+                    h.Cell().Border(0.5f).BorderColor(Linha).Background(Fundo).Padding(4)
+                        .Text(titulo.ToUpperInvariant()).FontSize(6.5f).SemiBold().FontColor(Secundario);
+            });
+            foreach (var funcao in linhas.GroupBy(l => (l.Funcao, l.Ghes)))
+            {
+                var itens = funcao.ToList();
+                t.Cell().RowSpan((uint)itens.Count).Border(0.5f).BorderColor(Linha).Background(Fundo).Padding(4).Text(funcao.Key.Funcao).FontSize(8).SemiBold();
+                t.Cell().RowSpan((uint)itens.Count).Border(0.5f).BorderColor(Linha).Padding(4).Text(funcao.Key.Ghes).FontSize(8).FontColor(Secundario);
+                foreach (var l in itens)
+                {
+                    t.Cell().Border(0.5f).BorderColor(Linha).Padding(4).Text(l.Epi).FontSize(8.5f);
+                    t.Cell().Border(0.5f).BorderColor(Linha).Padding(4).Text(string.IsNullOrWhiteSpace(l.Ca) ? "sem CA" : l.Ca!).FontSize(8.5f)
+                        .FontColor(string.IsNullOrWhiteSpace(l.Ca) ? Marca : Texto);
+                    var vencido = l.CaValidade is { } v && v.Date < hoje;
+                    t.Cell().Border(0.5f).BorderColor(Linha).Padding(4).Text(l.CaValidade?.ToString("dd/MM/yyyy") ?? "—").FontSize(8.5f)
+                        .FontColor(vencido ? Marca : Texto);
+                }
+            }
         });
     }
 
