@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Application.EstoquesEpi.Minimo;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -43,8 +44,7 @@ public class RegistrarEntradaEstoqueEpiCommandHandler : IRequestHandler<Registra
         if (!await _db.CatalogoEpis.AnyAsync(c => c.Id == request.CatalogoEpiId, ct))
             throw new KeyNotFoundException($"EPI de catálogo {request.CatalogoEpiId} não encontrado.");
 
-        if (!await _db.Obras.AnyAsync(o => o.Id == request.ObraId, ct))
-            throw new KeyNotFoundException($"Obra {request.ObraId} não encontrada.");
+        await _db.GarantirObraNoEscopoAsync(request.ObraId, ct);
 
         var estoque = await _db.EstoquesEpi
             .FirstOrDefaultAsync(x => x.CatalogoEpiId == request.CatalogoEpiId && x.ObraId == request.ObraId, ct);

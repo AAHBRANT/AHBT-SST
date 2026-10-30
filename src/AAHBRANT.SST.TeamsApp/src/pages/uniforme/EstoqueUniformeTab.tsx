@@ -16,6 +16,7 @@ import {
   Text,
   Textarea,
   type Coluna,
+  useConfirmar,
 } from '@ui';
 import {
   api,
@@ -25,6 +26,7 @@ import {
   type MovimentacaoEstoqueUniforme,
   type Obra,
 } from '../../lib/api';
+import { useObraAtiva } from '../../lib/ObraAtivaContext';
 import { formatarDataHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 
 // Estoque de Uniforme — grade por Obra + Tamanho (mesmo princípio de segmentação por Obra do
@@ -36,7 +38,14 @@ import { formatarDataHoraBrasilia } from '../../components/assinatura/assinatura
 // substituindo a Table crua com Fragment que a versão antiga usava para simular a mesma expansão.
 export function EstoqueUniformeTab() {
   const [obras, setObras] = useState<Obra[]>([]);
-  const [obraId, setObraId] = useState('');
+  // Obra = obra ativa do sistema (cabeçalho). Nunca se pega a "primeira da lista" sozinho; com "Todas as
+  // obras" ativa, a tela fica em consulta e o usuário precisa escolher a obra para lançar.
+  const { obraAtivaId: obraId, definirObraAtiva } = useObraAtiva();
+  const { confirmar, dialogElement } = useConfirmar();
+  const nomeObra = obras.find((o) => o.id === obraId)?.nome ?? '';
+  function setObraId(id: string) {
+    definirObraAtiva(id, obras.find((o) => o.id === id)?.nome ?? '');
+  }
   const [itensCatalogo, setItensCatalogo] = useState<CatalogoUniforme[]>([]);
   const [saldos, setSaldos] = useState<EstoqueUniformePorObra[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -61,15 +70,19 @@ export function EstoqueUniformeTab() {
         const [listaObras, listaItens] = await Promise.all([api.obras.listar(), api.catalogosUniforme.listar()]);
         setObras(listaObras);
         setItensCatalogo(listaItens);
-        if (listaObras.length > 0) setObraId(listaObras[0].id);
+        // Quem só tem uma obra não precisa escolher: ela vira a obra ativa.
+        if (listaObras.length === 1) definirObraAtiva(listaObras[0].id, listaObras[0].nome);
       } catch (e) {
         setErro(e instanceof Error ? e.message : 'Falha ao carregar obras e catálogo de uniforme.');
       }
     })();
-  }, []);
+  }, [definirObraAtiva]);
 
   async function carregarSaldos() {
-    if (!obraId) return;
+    if (!obraId) {
+      setSaldos([]);
+      return;
+    }
     try {
       setErro(null);
       setSaldos(await api.estoquesUniforme.listarPorObra(obraId));
@@ -101,6 +114,8 @@ export function EstoqueUniformeTab() {
 
   async function registrarEntrada() {
     if (!obraId || !entradaCatalogoUniformeId || !entradaTamanho.trim()) return;
+    const nomeItem = itensCatalogo.find((x) => x.id === entradaCatalogoUniformeId)?.nome ?? 'o uniforme selecionado';
+    if (!(await confirmar({ titulo: 'Confirme a obra do lançamento', mensagem: `Registrar entrada de ${entradaQuantidade} un. de ${nomeItem} (tam. ${entradaTamanho.trim()}) na obra "${nomeObra}"?`, rotuloConfirmar: 'Confirmar e salvar', tom: 'neutro' }))) return;
     try {
       setCarregando(true);
       setErro(null);
@@ -125,6 +140,8 @@ export function EstoqueUniformeTab() {
 
   async function ajustarSaldo() {
     if (!obraId || !ajusteCatalogoUniformeId || !ajusteTamanho.trim() || !ajusteObservacao.trim()) return;
+    const nomeItem = itensCatalogo.find((x) => x.id === ajusteCatalogoUniformeId)?.nome ?? 'o uniforme selecionado';
+    if (!(await confirmar({ titulo: 'Confirme a obra do lançamento', mensagem: `Ajustar o saldo de ${nomeItem} (tam. ${ajusteTamanho.trim()}) na obra "${nomeObra}" para ${ajusteNovoSaldo} un.?`, rotuloConfirmar: 'Confirmar e salvar', tom: 'neutro' }))) return;
     try {
       setCarregando(true);
       setErro(null);
@@ -163,6 +180,7 @@ export function EstoqueUniformeTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {dialogElement}
       <PageHeader titulo="Estoque de Uniforme por Obra" />
 
       {erro && (

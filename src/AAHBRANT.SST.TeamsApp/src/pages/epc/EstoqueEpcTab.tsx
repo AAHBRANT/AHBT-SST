@@ -16,6 +16,7 @@ import {
   Text,
   Textarea,
   type Coluna,
+  useConfirmar,
 } from '@ui';
 import {
   api,
@@ -25,6 +26,7 @@ import {
   type MovimentacaoEstoqueEpc,
   type Obra,
 } from '../../lib/api';
+import { useObraAtiva } from '../../lib/ObraAtivaContext';
 import { formatarDataHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 
 // Estoque de EPC segmentado por Obra — mesma estrutura do estoque de EPI (Fase 3). Entradas/saídas
@@ -35,7 +37,14 @@ import { formatarDataHoraBrasilia } from '../../components/assinatura/assinatura
 // DataTable aninhada), substituindo a Table crua com Fragment que a versão antiga usava.
 export function EstoqueEpcTab() {
   const [obras, setObras] = useState<Obra[]>([]);
-  const [obraId, setObraId] = useState('');
+  // Obra = obra ativa do sistema (cabeçalho). Nunca se pega a "primeira da lista" sozinho; com "Todas as
+  // obras" ativa, a tela fica em consulta e o usuário precisa escolher a obra para lançar.
+  const { obraAtivaId: obraId, definirObraAtiva } = useObraAtiva();
+  const { confirmar, dialogElement } = useConfirmar();
+  const nomeObra = obras.find((o) => o.id === obraId)?.nome ?? '';
+  function setObraId(id: string) {
+    definirObraAtiva(id, obras.find((o) => o.id === id)?.nome ?? '');
+  }
   const [epcs, setEpcs] = useState<CatalogoEpc[]>([]);
   const [saldos, setSaldos] = useState<EstoqueEpcPorObra[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -58,15 +67,19 @@ export function EstoqueEpcTab() {
         const [listaObras, listaEpcs] = await Promise.all([api.obras.listar(), api.catalogosEpc.listar()]);
         setObras(listaObras);
         setEpcs(listaEpcs);
-        if (listaObras.length > 0) setObraId(listaObras[0].id);
+        // Quem só tem uma obra não precisa escolher: ela vira a obra ativa.
+        if (listaObras.length === 1) definirObraAtiva(listaObras[0].id, listaObras[0].nome);
       } catch (e) {
         setErro(e instanceof Error ? e.message : 'Falha ao carregar obras e catálogo de EPC.');
       }
     })();
-  }, []);
+  }, [definirObraAtiva]);
 
   async function carregarSaldos() {
-    if (!obraId) return;
+    if (!obraId) {
+      setSaldos([]);
+      return;
+    }
     try {
       setErro(null);
       setSaldos(await api.estoquesEpc.listarPorObra(obraId));
@@ -98,6 +111,8 @@ export function EstoqueEpcTab() {
 
   async function registrarEntrada() {
     if (!obraId || !entradaCatalogoEpcId) return;
+    const nomeEpc = epcs.find((x) => x.id === entradaCatalogoEpcId)?.nome ?? 'o EPC selecionado';
+    if (!(await confirmar({ titulo: 'Confirme a obra do lançamento', mensagem: `Registrar entrada de ${entradaQuantidade} un. de ${nomeEpc} na obra "${nomeObra}"?`, rotuloConfirmar: 'Confirmar e salvar', tom: 'neutro' }))) return;
     try {
       setCarregando(true);
       setErro(null);
@@ -120,6 +135,8 @@ export function EstoqueEpcTab() {
 
   async function ajustarSaldo() {
     if (!obraId || !ajusteCatalogoEpcId || !ajusteObservacao.trim()) return;
+    const nomeEpc = epcs.find((x) => x.id === ajusteCatalogoEpcId)?.nome ?? 'o EPC selecionado';
+    if (!(await confirmar({ titulo: 'Confirme a obra do lançamento', mensagem: `Ajustar o saldo de ${nomeEpc} na obra "${nomeObra}" para ${ajusteNovoSaldo} un.?`, rotuloConfirmar: 'Confirmar e salvar', tom: 'neutro' }))) return;
     try {
       setCarregando(true);
       setErro(null);
@@ -156,6 +173,7 @@ export function EstoqueEpcTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {dialogElement}
       <PageHeader titulo="Estoque de EPC por Obra" />
 
       {erro && (

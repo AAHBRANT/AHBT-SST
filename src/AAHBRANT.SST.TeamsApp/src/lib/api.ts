@@ -1025,6 +1025,8 @@ export const tipoMovimentacaoEstoqueEpiLabel: Record<number, string> = {
   3: 'Ajuste manual',
   5: 'Transferência (saída)',
   6: 'Transferência (entrada)',
+  7: 'Correção de lançamento (saída)',
+  8: 'Correção de lançamento (entrada)',
 };
 
 // Painel da aba Estoque (especificação 21/10/2026, Módulos 2 e 3) — tudo calculado no servidor
@@ -5667,7 +5669,7 @@ export const api = {
       request<{ aplicados: number }>(`/api/estoquesepi/obra/${obraId}/minimos/aplicar-sugestoes`, { method: 'POST' }),
     definirPrazoReposicao: (obraId: string, dias: number) =>
       request<void>(`/api/estoquesepi/obra/${obraId}/prazo-reposicao`, { method: 'PUT', body: JSON.stringify({ dias }) }),
-    transferir: (dados: { catalogoEpiId: string; obraOrigemId: string; obraDestinoId: string; quantidade: number; observacao?: string | null }) =>
+    transferir: (dados: { catalogoEpiId: string; obraOrigemId: string; obraDestinoId: string; quantidade: number; observacao?: string | null; correcao?: boolean }) =>
       request<void>('/api/estoquesepi/transferencia', { method: 'POST', body: JSON.stringify(dados) }),
     listarSolicitacoesReposicao: (obraId: string) =>
       request<SolicitacaoReposicaoEpiResumo[]>(`/api/estoquesepi/obra/${obraId}/solicitacoes-reposicao`),
