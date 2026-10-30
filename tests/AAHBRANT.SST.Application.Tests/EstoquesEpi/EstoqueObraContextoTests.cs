@@ -12,6 +12,8 @@ namespace AAHBRANT.SST.Application.Tests.EstoquesEpi;
 // da transferência), e a transferência de correção exige motivo e fica identificável na auditoria.
 public class EstoqueObraContextoTests
 {
+    // Leituras com AsNoTracking: o handler grava por OUTRO contexto (Restrito) sobre o mesmo banco, e o
+    // Global já tem a entidade rastreada do seed — sem isso o teste leria o saldo velho do cache.
     private sealed record Cenario(SstDbContext Global, SstDbContext Restrito, Obra Permitida, Obra Negada, CatalogoEpi Luva);
 
     private static async Task<Cenario> MontarAsync()
@@ -41,7 +43,7 @@ public class EstoqueObraContextoTests
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
             new RegistrarEntradaEstoqueEpiCommandHandler(c.Restrito).Handle(new RegistrarEntradaEstoqueEpiCommand(c.Luva.Id, c.Negada.Id, 5, null), default));
 
-        Assert.Equal(10, (await c.Global.EstoquesEpi.SingleAsync(e => e.ObraId == c.Negada.Id)).Saldo);
+        Assert.Equal(10, (await c.Global.EstoquesEpi.AsNoTracking().SingleAsync(e => e.ObraId == c.Negada.Id)).Saldo);
     }
 
     [Fact]
@@ -51,7 +53,7 @@ public class EstoqueObraContextoTests
 
         await new RegistrarEntradaEstoqueEpiCommandHandler(c.Restrito).Handle(new RegistrarEntradaEstoqueEpiCommand(c.Luva.Id, c.Permitida.Id, 5, null), default);
 
-        Assert.Equal(15, (await c.Global.EstoquesEpi.SingleAsync(e => e.ObraId == c.Permitida.Id)).Saldo);
+        Assert.Equal(15, (await c.Global.EstoquesEpi.AsNoTracking().SingleAsync(e => e.ObraId == c.Permitida.Id)).Saldo);
     }
 
     [Fact]
@@ -71,8 +73,8 @@ public class EstoqueObraContextoTests
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
             new TransferirEstoqueEpiCommandHandler(c.Restrito).Handle(new TransferirEstoqueEpiCommand(c.Luva.Id, c.Permitida.Id, c.Negada.Id, 3, null), default));
 
-        Assert.Equal(10, (await c.Global.EstoquesEpi.SingleAsync(e => e.ObraId == c.Permitida.Id)).Saldo);
-        Assert.Equal(10, (await c.Global.EstoquesEpi.SingleAsync(e => e.ObraId == c.Negada.Id)).Saldo);
+        Assert.Equal(10, (await c.Global.EstoquesEpi.AsNoTracking().SingleAsync(e => e.ObraId == c.Permitida.Id)).Saldo);
+        Assert.Equal(10, (await c.Global.EstoquesEpi.AsNoTracking().SingleAsync(e => e.ObraId == c.Negada.Id)).Saldo);
         Assert.Empty(await c.Global.MovimentacoesEstoqueEpi.ToListAsync());
     }
 
@@ -106,7 +108,7 @@ public class EstoqueObraContextoTests
 
         string Codigo(string s) => s.Split(' ').Single(p => p.StartsWith("TRF-"));
         Assert.Equal(Codigo(saida.Observacao!), Codigo(entrada.Observacao!));
-        Assert.Equal(6, (await c.Global.EstoquesEpi.SingleAsync(e => e.ObraId == c.Negada.Id)).Saldo);
-        Assert.Equal(14, (await c.Global.EstoquesEpi.SingleAsync(e => e.ObraId == c.Permitida.Id)).Saldo);
+        Assert.Equal(6, (await c.Global.EstoquesEpi.AsNoTracking().SingleAsync(e => e.ObraId == c.Negada.Id)).Saldo);
+        Assert.Equal(14, (await c.Global.EstoquesEpi.AsNoTracking().SingleAsync(e => e.ObraId == c.Permitida.Id)).Saldo);
     }
 }
