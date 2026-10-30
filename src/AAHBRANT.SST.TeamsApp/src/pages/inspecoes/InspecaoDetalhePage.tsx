@@ -25,7 +25,6 @@ import {
   ArrowDownload24Regular,
   Eye24Regular,
   Open24Regular,
-  Save24Regular,
   Signature24Regular,
   Warning24Regular,
 } from '@fluentui/react-icons';
@@ -216,12 +215,40 @@ export function InspecaoDetalhePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Salvamento automático (30/10/2026): sem botão "Salvar item" — cada alteração vai para o rascunho
+  // na hora e, 1,2 s depois da última, é salva como resposta (precisa do status escolhido).
+  const temporizadoresAutoSalvar = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const edicoesAtuais = useRef<Record<string, EdicaoResposta>>({});
+  edicoesAtuais.current = edicoes;
+
+  function agendarAutoSalvar(respostaId: string) {
+    clearTimeout(temporizadoresAutoSalvar.current[respostaId]);
+    temporizadoresAutoSalvar.current[respostaId] = setTimeout(() => {
+      const edicao = edicoesAtuais.current[respostaId];
+      if (edicao?.statusItem) void autoSalvar(respostaId, edicao);
+    }, 1200);
+  }
+
+  // Não usa `processando` (que deixa a tela só leitura): os campos seguem editáveis durante o envio.
+  async function autoSalvar(respostaId: string, edicao: EdicaoResposta) {
+    if (!id) return;
+    try {
+      await escritaRascunhos.current;
+      await salvarRespostaInspecao(id, respostaId, edicao);
+      // Recarrega só se nada mudou desde o agendamento — senão o texto digitado nesse meio-tempo voltaria.
+      if (edicoesAtuais.current[respostaId] === edicao) await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao salvar o item automaticamente.');
+    }
+  }
+
   function atualizarEdicao(respostaId: string, campos: Partial<EdicaoResposta>) {
     versaoEdicao.current += 1;
     setEdicoes((atual) => ({
       ...atual,
       [respostaId]: { ...(atual[respostaId] ?? edicaoInicial()), ...campos },
     }));
+    agendarAutoSalvar(respostaId);
     if (!id) return;
     gravacoes.current += 1;
     setSalvandoRascunho(true);
@@ -232,26 +259,6 @@ export function InspecaoDetalhePage() {
       gravacoes.current -= 1;
       if (gravacoes.current === 0) setSalvandoRascunho(false);
     });
-  }
-
-  async function salvarResposta(respostaId: string) {
-    const edicao = edicoes[respostaId];
-    if (!edicao?.statusItem) {
-      setErro('Selecione o status do ponto verificado antes de salvar.');
-      return;
-    }
-    try {
-      setProcessando(true);
-      setErro(null);
-      if (!id) return;
-      await escritaRascunhos.current;
-      await salvarRespostaInspecao(id, respostaId, edicao);
-      await carregar();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao salvar o ponto verificado.');
-    } finally {
-      setProcessando(false);
-    }
   }
 
   // Tirar a foto já salva o item (30/10/2026): se o status já foi escolhido e há alteração em
@@ -443,7 +450,7 @@ export function InspecaoDetalhePage() {
       chave: 'encerrar',
       rotulo: 'Finalizar inspeção',
       finalizacao: true,
-      pendencias: [...(rascunhos.length ? ['Salve os itens em rascunho antes de finalizar.'] : []), ...detalhe.respostas.flatMap(r => {
+      pendencias: [...(rascunhos.length ? ['Aguarde o salvamento automático dos itens (escolha o status de cada um).'] : []), ...detalhe.respostas.flatMap(r => {
         const p: string[] = [];
         if (r.statusItem == null) p.push('resposta do checklist');
         if (r.exigeFotografia && !r.temFoto) p.push('foto anterior obrigatória');
@@ -591,7 +598,7 @@ export function InspecaoDetalhePage() {
         <FeedbackInline tom="aviso">Há envios recusados desta inspeção. Abra o indicador de sincronização para conferir o motivo e tentar novamente ou descartar. A finalização aguarda a resolução dessas pendências.</FeedbackInline>
       )}
       {rascunhos.length > 0 && (
-        <FeedbackInline tom="info">{salvandoRascunho ? 'Salvando rascunho no tablet…' : 'Rascunho salvo no tablet. Use Salvar item para incluir as respostas na sincronização.'}</FeedbackInline>
+        <FeedbackInline tom="info">{salvandoRascunho ? 'Salvando rascunho no tablet…' : 'Salvando automaticamente… Escolha o status do item para que ele seja salvo.'}</FeedbackInline>
       )}
 
       <Text weight="semibold">Pontos verificados</Text>
@@ -684,18 +691,6 @@ export function InspecaoDetalhePage() {
                     )}
                   </div>
 
-                  {!somenteLeitura && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-                      <Button
-                        appearance="primary"
-                        icon={<Save24Regular />}
-                        onClick={() => salvarResposta(resposta.id)}
-                        disabled={processando || salvandoRascunho}
-                      >
-                        Salvar item
-                      </Button>
-                    </div>
-                  )}
                 </>
               ) : ehInspecaoAlojamento ? (
                 <>
@@ -752,18 +747,6 @@ export function InspecaoDetalhePage() {
                     )}
                   </div>
 
-                  {!somenteLeitura && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-                      <Button
-                        appearance="primary"
-                        icon={<Save24Regular />}
-                        onClick={() => salvarResposta(resposta.id)}
-                        disabled={processando || salvandoRascunho}
-                      >
-                        Salvar item
-                      </Button>
-                    </div>
-                  )}
                 </>
               ) : (
                 <>
@@ -922,16 +905,6 @@ export function InspecaoDetalhePage() {
                     )
                   )}
                 </div>
-                {!somenteLeitura && (
-                  <Button
-                    appearance="primary"
-                    icon={<Save24Regular />}
-                    onClick={() => salvarResposta(resposta.id)}
-                    disabled={processando || salvandoRascunho}
-                  >
-                    Salvar ponto verificado
-                  </Button>
-                )}
               </div>
               </>
               )}

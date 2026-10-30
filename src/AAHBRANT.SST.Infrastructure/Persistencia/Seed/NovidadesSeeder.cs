@@ -2082,9 +2082,9 @@ public static class NovidadesSeeder
                     "No relatório, o título do item podia ficar numa página e a foto na seguinte.",
                     "Cada item sai inteiro na mesma página, com título, observação e fotos juntos."),
                 new NovidadeSeedItem(CategoriaNovidade.Melhoria,
-                    "Foto já salva o item",
-                    "Depois de tirar a foto, era preciso clicar em Salvar item.",
-                    "Ao tirar a foto, o item é salvo junto com o status e a observação já preenchidos."),
+                    "Itens salvos automaticamente",
+                    "Depois de responder ou tirar a foto, era preciso clicar em Salvar item.",
+                    "O botão Salvar item saiu. Ao escolher o status, escrever a observação ou tirar a foto, o item é salvo sozinho."),
             }),
     };
 
