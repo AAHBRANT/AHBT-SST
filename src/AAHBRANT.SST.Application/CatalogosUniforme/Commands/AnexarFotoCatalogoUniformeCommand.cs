@@ -44,6 +44,7 @@ public class AnexarFotoCatalogoUniformeCommandHandler : IRequestHandler<AnexarFo
             ?? throw new KeyNotFoundException($"Peça de catálogo de uniforme {request.CatalogoUniformeId} não encontrada.");
 
         item.FotoConteudo = request.FotoConteudo;
+        item.ReferenciaVisual = null;
         item.FotoContentType = request.FotoContentType;
         await _db.SaveChangesAsync(ct);
     }

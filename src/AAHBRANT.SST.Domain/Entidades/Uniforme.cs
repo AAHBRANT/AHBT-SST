@@ -12,6 +12,7 @@ public class CatalogoUniforme : AuditableEntity
 {
     public string Nome { get; set; } = string.Empty;
     public string? Categoria { get; set; }
+    public string? ReferenciaVisual { get; set; }
 
     // Foto do item cadastrado (decisão do usuário, 2026-09-07: mesmo padrão de
     // CatalogoEpi.FotoConteudo/FotoContentType) — binário direto na coluna, sem storage próprio.

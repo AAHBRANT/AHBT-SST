@@ -25,7 +25,15 @@ public class ObterFotoCatalogoUniformeQueryHandler : IRequestHandler<ObterFotoCa
     {
         var item = await _db.CatalogoUniformes.FirstOrDefaultAsync(x => x.Id == request.CatalogoUniformeId, ct);
 
-        if (item is null || item.FotoConteudo is null || item.FotoConteudo.Length == 0) return null;
+        if (item is null) return null;
+        if (item.ReferenciaVisual is not null && ReferenciasUniforme.Valida(item.ReferenciaVisual))
+        {
+            return new FotoCatalogoUniformeResultado {
+                Conteudo = await ReferenciasUniforme.LerFotoAsync(item.ReferenciaVisual, ct),
+                ContentType = "image/jpeg", NomeArquivo = $"{item.ReferenciaVisual}.jpeg"
+            };
+        }
+        if (item.FotoConteudo is null || item.FotoConteudo.Length == 0) return null;
 
         var extensao = item.FotoContentType == "image/png" ? "png" : "jpg";
         return new FotoCatalogoUniformeResultado

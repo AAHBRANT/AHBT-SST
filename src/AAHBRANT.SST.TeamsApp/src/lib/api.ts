@@ -1247,13 +1247,15 @@ export interface RegistrarRemocaoEpc {
 }
 
 export interface CatalogoUniforme {
+  referenciaVisual?: string | null;
+  funcoesAtribuidas?: string[] | null;
   id: string;
   nome: string;
   categoria?: string | null;
   temFoto: boolean;
 }
 
-export type NovoCatalogoUniforme = Omit<CatalogoUniforme, 'id' | 'temFoto'>;
+export type NovoCatalogoUniforme = Omit<CatalogoUniforme, 'id' | 'temFoto' | 'funcoesAtribuidas'>;
 export type AtualizarCatalogoUniforme = Omit<CatalogoUniforme, 'temFoto'>;
 
 export const MotivoEntregaUniforme = {
@@ -1281,7 +1283,7 @@ export interface EntregaUniforme {
   observacoes?: string | null;
 }
 
-export type NovaEntregaUniforme = Omit<EntregaUniforme, 'id' | 'tamanho'>;
+export type NovaEntregaUniforme = Omit<EntregaUniforme, 'id' | 'tamanho'> & { tamanho?: string };
 
 export const TipoMovimentacaoEstoqueUniforme = {
   EntradaManual: 0,
@@ -5609,6 +5611,8 @@ export const api = {
     },
   },
   entregasUniforme: {
+    criarLote: (dados: { trabalhadorId: string; dataEntrega: string; motivoTipo: number; observacoes?: string | null; itens: { catalogoUniformeId: string; tamanho: string; quantidade: number }[] }, chave: string) =>
+      request<{ ids: string[] }>('/api/entregasuniforme/lote', { method: 'POST', headers: { 'Idempotency-Key': chave }, body: JSON.stringify({ ...dados, operacaoId: chave }) }),
     listar: (trabalhadorId?: string) =>
       request<EntregaUniforme[]>(`/api/entregasuniforme${trabalhadorId ? `?trabalhadorId=${trabalhadorId}` : ''}`),
     obterPorId: (id: string) => request<EntregaUniforme>(`/api/entregasuniforme/${id}`),

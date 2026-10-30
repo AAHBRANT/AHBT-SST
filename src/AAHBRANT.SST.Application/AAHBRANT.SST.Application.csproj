@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\AAHBRANT.SST.Domain\AAHBRANT.SST.Domain.csproj" />
@@ -17,4 +17,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="CatalogosUniforme/Referencias/*.jpeg" />
+  </ItemGroup>
 </Project>

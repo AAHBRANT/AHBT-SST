@@ -1,3 +1,4 @@
+import './uniforme.css';
 import { Abas, DashboardTopo, useAbaNaUrl, PageHeader } from '@ui';
 import { UniformeDashboardTab } from './dashboard/UniformeDashboardTab';
 import { CatalogoUniformeTab } from './CatalogoUniformeTab';
