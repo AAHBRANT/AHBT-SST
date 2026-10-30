@@ -2011,6 +2011,17 @@ public static class NovidadesSeeder
                     "A data, a hora e a posição da foto ficavam só nos dados do sistema; a imagem baixada ou impressa não mostrava nada.",
                     "Toda foto tirada pela câmera no G-SST sai com o carimbo no canto superior direito: data e hora, endereço, latitude e longitude, altitude, obra e local. Fotos da galeria e do reconhecimento facial não recebem carimbo."),
             }),
+        new(
+            Versao: "5.110.1",
+            Titulo: "Inspeção de alojamento com uma foto por item",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Alojamento no padrão do checklist",
+                    "A inspeção de alojamento pedia duas fotos em cada item, uma antes e outra depois.",
+                    "Cada item pede uma foto obrigatória, igual às demais inspeções. As fotos posteriores já registradas continuam no histórico e no PDF."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
