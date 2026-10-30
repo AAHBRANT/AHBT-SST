@@ -254,7 +254,7 @@ public class PgrPdfService : IPgrPdfService
 
                     foreach (var atividade in ghe.Atividades)
                         foreach (var risco in atividade.Riscos.Where(r => !r.Excluido))
-                            FichaRisco(c, d.Matriz, atividade, risco, d.Epis);
+                            FichaRisco(c, d.Matriz, ghe, atividade, risco, d.Epis);
                 }
 
                 // 7. Plano de ação
@@ -742,7 +742,9 @@ public class PgrPdfService : IPgrPdfService
         }
     }
 
-    private static void FichaRisco(ColumnDescriptor c, MatrizRiscoPdf? m, AtividadeGerada atividade, RiscoGerado r,
+    // Ficha de risco (layout aprovado em 30/10/2026): cabeçalho com perigo, GHE, grupo e nível; avaliação no topo; identificação
+    // em tabela rótulo × conteúdo; medidas em tabela tipo × o que fazer × quando, na ordem da NR-01.
+    private static void FichaRisco(ColumnDescriptor c, MatrizRiscoPdf? m, GheGerado ghe, AtividadeGerada atividade, RiscoGerado r,
         IReadOnlyDictionary<Guid, CatalogoEpiInfo>? epis)
     {
         var nivel = NivelDe(m, r);
@@ -750,57 +752,55 @@ public class PgrPdfService : IPgrPdfService
             .Where(x => x.EntraNoPgr() && !string.IsNullOrWhiteSpace(x.Texto))
             .OrderBy(x => x.Fase)
             .ToList();
-
         var grupo = GruposRisco.DoTipo(r.Tipo);
-        // Faixa lateral e selo na cor do grupo (tabela de cores, 29/10/2026); tipo fora da tabela sai em cinza, como antes.
+        var corGrupo = grupo?.CorHex ?? Linha;
+        var exposicao = r.Exposicao ?? new ExposicaoRisco();
+
         // PaddingLeft(0) separa as duas bordas: sem ele, a borda fina sobrescreveria a faixa.
-        c.Item().ShowEntire().PaddingTop(8).BorderLeft(4).BorderColor(grupo?.CorHex ?? Linha).PaddingLeft(0)
+        c.Item().ShowEntire().PaddingTop(10).BorderLeft(5).BorderColor(corGrupo).PaddingLeft(0)
             .Border(0.5f).BorderColor(Linha).Column(f =>
         {
-            f.Item().Background(Fundo).Padding(7).Row(h =>
+            // Cabeçalho
+            f.Item().Background(grupo is null ? Fundo : Clarear(corGrupo, 0.88f)).PaddingVertical(6).PaddingHorizontal(8).Row(h =>
             {
-                h.RelativeItem().Text(r.Perigo).SemiBold();
-                if (grupo is null) h.ConstantItem(110).AlignRight().Text(r.Tipo).FontSize(8.5f).FontColor(Secundario);
-                else h.ConstantItem(150).AlignRight().AlignMiddle().Element(e => Selo(e, grupo, $"Grupo {grupo.Numero} · {r.Tipo}"));
-            });
-            f.Item().Padding(7).Column(b =>
-            {
-                b.Spacing(4);
-                Grupo(b, "Identificação");
-                Linha2(b, "Possíveis lesões ou agravos à saúde", r.Danos);
-                Linha2(b, "Fontes ou circunstâncias", $"EAP {atividade.CodigoEap} — {atividade.Nome}");
-                if (r.Base.Count > 0) Linha2(b, "Requisitos legais", string.Join(", ", r.Base));
-                Grupo(b, "Prevenção e controle");
-                if (medidas.Count == 0) b.Item().Text("Nenhuma medida de prevenção.").FontSize(8.5f).FontColor(Secundario).Italic();
-                else
+                h.RelativeItem().Column(t =>
                 {
-                    // Na ordem de prioridade da NR-01; medida sem classificação (rascunho antigo) vai por último.
-                    var grupos = CategoriasMedida.Todas.Select(cat => (Rotulo: RotuloCategoria(cat), Itens: medidas.Where(x => x.Categoria == cat).ToList()))
-                        .Append((Rotulo: "Outras medidas", Itens: medidas.Where(x => !CategoriasMedida.Valida(x.Categoria)).ToList()))
-                        .Where(x => x.Itens.Count > 0);
-                    foreach (var (rotulo, itens) in grupos)
-                        b.Item().Row(lin =>
-                        {
-                            lin.ConstantItem(150).Text(rotulo).FontSize(8.5f).FontColor(Secundario);
-                            lin.RelativeItem().Column(col =>
-                            {
-                                foreach (var x in itens)
-                                    col.Item().Text(t =>
-                                    {
-                                        t.Span(x.Texto.Trim()).FontSize(8.5f);
-                                        // EPI ligado ao catálogo: nome, CA e validade (NR-06) logo depois do texto da medida.
-                                        if (x.CatalogoEpiId is { } epiId && epis is not null && epis.TryGetValue(epiId, out var epi))
-                                            t.Span($" — {epi.Nome}, {(string.IsNullOrWhiteSpace(epi.Ca) ? "sem CA informado" : $"CA {epi.Ca}")}"
-                                                   + (epi.CaValidade is { } val ? $" (validade {val:dd/MM/yyyy})" : string.Empty)).FontSize(8).SemiBold();
-                                        t.Span($"  ({NomeFase(x.Fase)})").FontSize(7.5f).FontColor(Secundario);
-                                    });
-                            });
-                        });
-                }
-                Grupo(b, "Exposição");
-                var exposicao = r.Exposicao ?? new ExposicaoRisco();
-                Linha2(b, "Critério", exposicao.Criterio == CriteriosExposicao.Quantitativo ? "Quantitativo, com medição" : "Qualitativo, pela matriz de risco");
-                if (!string.IsNullOrWhiteSpace(exposicao.Perfil)) Linha2(b, "Perfil de exposição", exposicao.Perfil);
+                    t.Item().Text(r.Perigo).Bold().FontSize(10.5f);
+                    t.Item().Text($"GHE {ghe.Numero:00} · {ghe.Nome}").FontSize(7.5f).FontColor(Secundario);
+                });
+                h.AutoItem().AlignMiddle().PaddingLeft(6).Row(selos =>
+                {
+                    selos.Spacing(4);
+                    if (grupo is null) selos.AutoItem().Text(r.Tipo).FontSize(8.5f).FontColor(Secundario);
+                    else selos.AutoItem().Element(e => Selo(e, grupo, $"Grupo {grupo.Numero} · {r.Tipo}"));
+                    if (nivel is { } n)
+                        selos.AutoItem().Background(FundoNivel(n)).PaddingHorizontal(5).PaddingVertical(1.5f)
+                            .Text(NomeNivel(n)).FontSize(8).Bold().FontColor(TintaNivel(n));
+                });
+            });
+
+            // Avaliação no topo
+            f.Item().BorderTop(0.5f).BorderBottom(0.5f).BorderColor(Linha).Row(a =>
+            {
+                CelulaAvaliacao(a, "Severidade", $"S {r.Severidade}", null, true);
+                CelulaAvaliacao(a, "Probabilidade", $"P {r.Probabilidade}", null, true);
+                CelulaAvaliacao(a, "Nível", Classificacao(r, nivel).Replace(" – ", " · "), nivel is { } n1 ? TintaNivel(n1) : null, true);
+                CelulaAvaliacao(a, "Conduta", nivel is null ? "—" : Conduta(nivel.Value), null, false);
+            });
+
+            // 1 · Identificação
+            f.Item().PaddingHorizontal(8).PaddingTop(7).Column(b =>
+            {
+                TituloBloco(b, "1 · Identificação");
+                b.Item().Table(t =>
+                {
+                    t.ColumnsDefinition(cd => { cd.RelativeColumn(1.3f); cd.RelativeColumn(2.7f); });
+                    LinhaTabela(t, "Possíveis lesões ou agravos", string.IsNullOrWhiteSpace(r.Danos) ? "—" : r.Danos!);
+                    LinhaTabela(t, "Onde ocorre (atividade da EAP)", $"{atividade.CodigoEap} · {atividade.Nome}");
+                    if (r.Base.Count > 0) LinhaTabela(t, "Requisitos legais", string.Join(", ", r.Base));
+                    LinhaTabela(t, "Critério de avaliação", exposicao.Criterio == CriteriosExposicao.Quantitativo ? "Quantitativo, com medição" : "Qualitativo, pela matriz de risco");
+                    if (!string.IsNullOrWhiteSpace(exposicao.Perfil)) LinhaTabela(t, "Perfil de exposição", exposicao.Perfil!);
+                });
                 if (exposicao.Medicoes.Count > 0)
                     Tabela(b, new[] { ("Data", 1.1f), ("Medição", 1.2f), ("Limite", 1.1f), ("Nível de ação", 1.1f), ("Empresa", 1.4f), ("Técnica", 1.3f), ("Equipamento", 1.4f) },
                         exposicao.Medicoes.Select(med => new[]
@@ -810,16 +810,92 @@ public class PgrPdfService : IPgrPdfService
                             med.LimiteTolerancia ?? "—", med.NivelAcao ?? "—", med.Empresa ?? "—", med.Tecnica ?? "—", med.Equipamento ?? "—",
                         }),
                         "");
-                Grupo(b, "Avaliação de risco");
-                b.Item().Row(a =>
+            });
+
+            // 2 · Medidas de prevenção
+            f.Item().PaddingHorizontal(8).PaddingTop(7).PaddingBottom(8).Column(b =>
+            {
+                TituloBloco(b, "2 · Medidas de prevenção (na ordem da NR-01)");
+                if (medidas.Count == 0)
                 {
-                    Metrica(a, "Severidade", $"S {r.Severidade}");
-                    Metrica(a, "Probabilidade", $"P {r.Probabilidade}");
-                    Metrica(a, "Classificação", Classificacao(r, nivel), nivel is NivelRisco.Alto or NivelRisco.Critico);
-                    Metrica(a, "Conduta", nivel is null ? "—" : Conduta(nivel.Value));
+                    b.Item().Text("Nenhuma medida de prevenção.").FontSize(8.5f).FontColor(Secundario).Italic();
+                    return;
+                }
+                // Na ordem de prioridade da NR-01; medida sem classificação (rascunho antigo) vai por último.
+                var grupos = CategoriasMedida.Todas.Select(cat => (Rotulo: RotuloCategoria(cat), Itens: medidas.Where(x => x.Categoria == cat).ToList()))
+                    .Append((Rotulo: "Outras medidas", Itens: medidas.Where(x => !CategoriasMedida.Valida(x.Categoria)).ToList()))
+                    .Where(x => x.Itens.Count > 0)
+                    .ToList();
+                b.Item().Table(t =>
+                {
+                    t.ColumnsDefinition(cd => { cd.RelativeColumn(1.05f); cd.RelativeColumn(3.1f); cd.ConstantColumn(46); });
+                    t.Header(hd =>
+                    {
+                        foreach (var titulo in new[] { "Tipo de medida", "O que fazer", "Quando" })
+                            hd.Cell().Border(0.5f).BorderColor(Linha).Background(Fundo).Padding(4)
+                                .Text(titulo.ToUpperInvariant()).FontSize(6.5f).SemiBold().FontColor(Secundario);
+                    });
+                    foreach (var (rotulo, itens) in grupos)
+                    {
+                        t.Cell().RowSpan((uint)itens.Count).Border(0.5f).BorderColor(Linha).Background(Fundo).Padding(4)
+                            .Text(rotulo).FontSize(8).SemiBold();
+                        foreach (var x in itens)
+                        {
+                            t.Cell().Border(0.5f).BorderColor(Linha).Padding(4).Text(tx =>
+                            {
+                                tx.Span(x.Texto.Trim()).FontSize(8.5f);
+                                // EPI ligado ao catálogo: nome, CA e validade (NR-06) logo depois do texto da medida.
+                                if (x.CatalogoEpiId is { } epiId && epis is not null && epis.TryGetValue(epiId, out var epi))
+                                    tx.Span($" — {epi.Nome}, {(string.IsNullOrWhiteSpace(epi.Ca) ? "sem CA informado" : $"CA {epi.Ca}")}"
+                                           + (epi.CaValidade is { } val ? $" (validade {val:dd/MM/yyyy})" : string.Empty)).FontSize(8).SemiBold();
+                            });
+                            t.Cell().Border(0.5f).BorderColor(Linha).Padding(4).Text(NomeFase(x.Fase)).FontSize(8).FontColor(Secundario);
+                        }
+                    }
                 });
             });
         });
+    }
+
+    private static void TituloBloco(ColumnDescriptor b, string titulo) =>
+        b.Item().PaddingBottom(3).Text(titulo.ToUpperInvariant()).FontSize(7.5f).Bold().LetterSpacing(0.06f).FontColor(Marca);
+
+    private static void LinhaTabela(TableDescriptor t, string rotulo, string valor)
+    {
+        t.Cell().Border(0.5f).BorderColor(Linha).Background(Fundo).Padding(4).Text(rotulo).FontSize(8).SemiBold().FontColor(Secundario);
+        t.Cell().Border(0.5f).BorderColor(Linha).Padding(4).Text(valor).FontSize(8.5f);
+    }
+
+    private static void CelulaAvaliacao(RowDescriptor a, string rotulo, string valor, string? cor, bool borda) =>
+        a.RelativeItem().Element(e => borda ? e.BorderRight(0.5f).BorderColor(Linha) : e).PaddingVertical(5).PaddingHorizontal(8).Column(col =>
+        {
+            col.Item().Text(rotulo.ToUpperInvariant()).FontSize(6.5f).LetterSpacing(0.06f).FontColor(Secundario);
+            var tx = col.Item().Text(valor).FontSize(9.5f).Bold();
+            if (cor is not null) tx.FontColor(cor);
+        });
+
+    private static string FundoNivel(NivelRisco n) => n switch
+    {
+        NivelRisco.Critico => "#fde8e8",
+        NivelRisco.Alto => "#fdecd9",
+        NivelRisco.Moderado => "#fff6d6",
+        _ => "#e7f4ea",
+    };
+
+    private static string TintaNivel(NivelRisco n) => n switch
+    {
+        NivelRisco.Critico => "#9b1c1c",
+        NivelRisco.Alto => "#8a4b00",
+        NivelRisco.Moderado => "#7a5a00",
+        _ => "#1e6b34",
+    };
+
+    // Mistura a cor com branco (fração = quanto de branco), para o fundo claro do cabeçalho da ficha.
+    private static string Clarear(string hex, float fracao)
+    {
+        var h = hex.TrimStart('#');
+        int Canal(int i) => (int)Math.Round(Convert.ToInt32(h.Substring(i, 2), 16) * (1 - fracao) + 255 * fracao);
+        return $"#{Canal(0):x2}{Canal(2):x2}{Canal(4):x2}";
     }
 
     // ───────────────────────────── Grupos e cores de risco ─────────────────────────────
@@ -894,24 +970,6 @@ public class PgrPdfService : IPgrPdfService
                 i.Item().Element(e => Selo(e, g, $"{g.Nome} · {qtde}"));
         });
     }
-
-    private static void Grupo(ColumnDescriptor b, string titulo) =>
-        b.Item().PaddingTop(2).Text(titulo.ToUpperInvariant()).FontSize(7.5f).SemiBold().FontColor(Marca);
-
-    private static void Linha2(ColumnDescriptor b, string rotulo, string? valor) =>
-        b.Item().Row(r =>
-        {
-            r.ConstantItem(150).Text(rotulo).FontSize(8.5f).FontColor(Secundario);
-            r.RelativeItem().Text(string.IsNullOrWhiteSpace(valor) ? "—" : valor).FontSize(8.5f);
-        });
-
-    private static void Metrica(RowDescriptor r, string rotulo, string valor, bool destaque = false) =>
-        r.RelativeItem().Column(col =>
-        {
-            col.Item().Text(rotulo).FontSize(7.5f).FontColor(Secundario);
-            var texto = col.Item().Text(valor).FontSize(9.5f).SemiBold();
-            if (destaque) texto.FontColor(Marca);
-        });
 
     // ───────────────────────────── Nomes e cores ─────────────────────────────
 

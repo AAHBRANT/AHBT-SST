@@ -1952,6 +1952,17 @@ public static class NovidadesSeeder
                     "No passo Inventário de riscos, a tag P × S piscava em vermelho a partir de 20, mesmo quando a matriz classificava o risco como Alto.",
                     "A tag segue a matriz do PGR, a mesma do PDF, e mostra o nível junto, como \"P × S = 20 · Alto\". Só o Crítico fica vermelho e pisca; Alto aparece em laranja."),
             }),
+        new(
+            Versao: "5.109.5",
+            Titulo: "PGR: ficha de risco mais fácil de ler",
+            DataPublicacao: new DateTime(2026, 10, 30, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Ficha de risco do PDF reorganizada",
+                    "Na ficha de risco do PDF, rótulos e textos ficavam soltos lado a lado, a avaliação vinha no fim e a fase da medida aparecia entre parênteses no fim da frase.",
+                    "A ficha mostra o perigo, o GHE, o grupo e o nível no topo, logo seguidos da avaliação (severidade, probabilidade, nível e conduta). A identificação vem numa tabela de rótulo e conteúdo, e as medidas numa tabela com o tipo de medida, o que fazer e quando, na ordem da NR-01."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
