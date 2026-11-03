@@ -77,14 +77,18 @@ export function avaliarRostos(
 
   const c = caixas[0];
 
-  const cortado = c.x < 0 || c.y < 0 || c.x + c.largura > larguraVideo || c.y + c.altura > alturaVideo;
-  if (cortado) return bloqueia('fora', 'O rosto está cortado. Afaste-se um pouco e centralize.', 'atencao');
-
-  if (!rostoDentroDoOval(c, larguraVideo, alturaVideo))
-    return bloqueia('fora', 'Deixe o rosto inteiro dentro do círculo. Centralize e afaste um pouco.', 'atencao');
+  // Uma instrução por vez: se o rosto não cabe nem centralizado, o problema é o tamanho (AFASTE); se
+  // cabe centralizado, o problema é a posição (CENTRALIZE). O oval está sempre dentro do quadro, então
+  // isto também cobre o rosto cortado pela borda do vídeo.
+  if (!rostoDentroDoOval(c, larguraVideo, alturaVideo)) {
+    const centralizado = { ...c, x: (larguraVideo - c.largura) / 2, y: (alturaVideo - c.altura) / 2 };
+    return rostoDentroDoOval(centralizado, larguraVideo, alturaVideo)
+      ? bloqueia('fora', 'Centralize o rosto dentro do círculo.', 'atencao')
+      : bloqueia('fora', 'Afaste o rosto da câmera.', 'atencao');
+  }
 
   if (Math.min(c.largura, c.altura) < LADO_MINIMO_ROSTO_PX)
-    return bloqueia('longe', 'Aproxime o rosto da câmera, sem sair do círculo.', 'atencao');
+    return bloqueia('longe', 'Aproxime o rosto da câmera.', 'atencao');
 
   // A partir daqui o rosto está inteiro no círculo: o botão Capturar já pode liberar. A luz só orienta.
   if (luz) {
