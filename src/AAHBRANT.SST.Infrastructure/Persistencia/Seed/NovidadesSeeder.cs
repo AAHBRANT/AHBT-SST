@@ -2202,7 +2202,7 @@ public static class NovidadesSeeder
                     "O PDF do cronograma mensal de DDS agora mostra sempre \"Cliente: Supervisão\"."),
             }),
         new(
-            Versao: "5.121.0",
+            Versao: "5.125.0",
             Titulo: "Carimbo da foto no rodapé e sem corte no relatório",
             DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
