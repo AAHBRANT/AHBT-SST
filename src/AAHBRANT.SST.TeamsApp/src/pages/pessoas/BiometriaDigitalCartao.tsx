@@ -1,8 +1,25 @@
 import { useEffect, useState } from 'react';
 import { Card, Legenda, StatusChip, Text, designTokens, tokensUi, type Tom } from '@ui';
-import { Checkmark16Regular, Fingerprint24Regular } from '@fluentui/react-icons';
+import { Checkmark16Regular, Fingerprint24Regular, Person24Regular } from '@fluentui/react-icons';
 import { api, DedoBiometria, type StatusCadastroBiometrico } from '../../lib/api';
 import { CadastroDigitalDialog } from '../../components/pessoas/CadastroDigitalDialog';
+import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
+import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
+import { useGuiaCadastroFacial } from '../../components/pessoas/GuiaCadastroFacialDialog';
+
+function extrairMensagemErro(e: unknown, fallback: string): string {
+  if (!(e instanceof Error)) return fallback;
+  const trechoJson = e.message.match(/\{.*\}$/);
+  if (trechoJson) {
+    try {
+      const corpo = JSON.parse(trechoJson[0]) as { erro?: string };
+      if (typeof corpo.erro === 'string') return corpo.erro;
+    } catch {
+      // corpo não era JSON — cai no fallback abaixo
+    }
+  }
+  return e.message || fallback;
+}
 
 function dataBr(iso?: string | null): string {
   return iso ? iso.slice(0, 10).split('-').reverse().join('/') : '';
@@ -32,6 +49,22 @@ export function BiometriaDigitalCartao({
   const [status, setStatus] = useState<StatusCadastroBiometrico | null>(null);
   const [erro, setErro] = useState(false);
   const [dedoAlvo, setDedoAlvo] = useState<DedoBiometria | null>(null);
+  const [erroFacial, setErroFacial] = useState<string | null>(null);
+  const { guia: guiaFacial, pedirGuia } = useGuiaCadastroFacial();
+
+  // 03/11 (pedido do usuário): a captura facial saiu da aba Assinaturas e veio para este card, abaixo
+  // dos indicadores — um lugar só para cadastrar biometria. Sem botão de refazer aqui: cadastrado uma
+  // vez, fica só a confirmação com a data.
+  async function cadastrarFacial(arquivo: File) {
+    try {
+      setErroFacial(null);
+      await api.trabalhadores.cadastrarFacial(trabalhadorId, arquivo);
+      await carregar();
+      aoAlterar?.();
+    } catch (e) {
+      setErroFacial(extrairMensagemErro(e, 'Falha ao cadastrar a face.'));
+    }
+  }
 
   async function carregar() {
     try {
@@ -53,7 +86,7 @@ export function BiometriaDigitalCartao({
   const termosRegistrados = !!status?.consentimentoBiometriaEm && !consentimentoRevogado;
 
   return (
-    <Card titulo="Biometria digital" subtitulo="Leitor de digital · cada indicador é cadastrado uma vez">
+    <Card titulo="Biometria" subtitulo="Digital e facial · cada uma é cadastrada uma vez">
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: tokensUi.espaco.sm }}>
         {INDICADORES.map(({ dedo, rotulo }) => {
           const cadastro = digitais.find((d) => d.dedo === dedo);
@@ -150,6 +183,72 @@ export function BiometriaDigitalCartao({
           </Legenda>
         </div>
       )}
+
+      <div
+        style={{
+          marginTop: tokensUi.espaco.md,
+          paddingTop: tokensUi.espaco.md,
+          borderTop: `1px solid ${designTokens.colorCardBorder}`,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: tokensUi.espaco.sm,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: tokensUi.espaco.sm,
+            padding: tokensUi.espaco.sm,
+            borderRadius: tokensUi.raio.md,
+            border: `1px ${status?.temFacial ? 'solid' : 'dashed'} ${status?.temFacial ? tokensUi.status.ok.tinta : designTokens.colorCardBorder}`,
+            backgroundColor: status?.temFacial ? tokensUi.status.ok.fundo : designTokens.colorSurface,
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              width: 44,
+              height: 44,
+              flex: 'none',
+              borderRadius: '50%',
+              display: 'grid',
+              placeItems: 'center',
+              backgroundColor: tokensUi.status[status?.temFacial ? 'ok' : 'atencao'].fundo,
+              color: tokensUi.status[status?.temFacial ? 'ok' : 'atencao'].tinta,
+            }}
+          >
+            <Person24Regular />
+          </span>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <Text weight="semibold" size={200}>
+              {status?.temFacial ? 'Facial cadastrada' : 'Facial'}
+            </Text>
+            <Legenda>
+              {!status
+                ? 'Verificando…'
+                : status.temFacial
+                  ? `Cadastrada em ${dataBr(status.facialCadastradoEm)}`
+                  : 'Rosto de frente, sem boné ou óculos escuros'}
+            </Legenda>
+          </div>
+        </div>
+        {status && !status.temFacial && !consentimentoRevogado && (
+          <SeletorFotoCamera
+            aoSelecionarArquivo={cadastrarFacial}
+            aoErroValidacao={setErroFacial}
+            rotulo="Capturar facial"
+            tamanho="medium"
+            variante="facialAzure"
+            modoCamera="user"
+            cameraInicial="environment"
+            exigirCamera
+            guiaAntesDeAbrir={pedirGuia}
+          />
+        )}
+      </div>
+      {guiaFacial}
+      <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
 
       <CadastroDigitalDialog
         trabalhadorId={dedoAlvo !== null ? trabalhadorId : null}

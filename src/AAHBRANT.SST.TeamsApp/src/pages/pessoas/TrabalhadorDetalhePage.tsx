@@ -193,20 +193,10 @@ export function TrabalhadorDetalhePage() {
             alignItems: 'start',
           }}
         >
-          {/* A coluna fixa ganhou o cartão de biometria (21/10); com os dois cartões ela pode passar da
-              altura da tela, então rola por dentro em vez de cortar o fim. */}
+          {/* 03/11: a coluna deixou de ser fixa (sticky + 100vh). No tablet a altura da tela não descontava o
+              cabeçalho do app e o fim do cartão de biometria ficava cortado; agora rola junto com a página. */}
           <aside
-            style={
-              telaEstreita
-                ? estiloPilha
-                : {
-                    ...estiloPilha,
-                    position: 'sticky',
-                    top: tokensUi.espaco.lg,
-                    maxHeight: `calc(100vh - ${tokensUi.espaco.xxl})`,
-                    overflowY: 'auto',
-                  }
-            }
+            style={estiloPilha}
             aria-label="Identificação do trabalhador"
           >
             <FichaTrabalhadorLateral

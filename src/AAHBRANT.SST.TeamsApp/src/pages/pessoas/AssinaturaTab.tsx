@@ -1,14 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, Card, FeedbackInline, Legenda } from '@ui';
 import { CheckmarkCircle24Regular } from '@fluentui/react-icons';
-import { BotaoBiometriaDigital } from '../../components/assinatura/BotaoBiometriaDigital';
 import { api, type StatusCadastroBiometrico } from '../../lib/api';
-import { capturarDigitalParaCadastro } from '../../lib/agenteBiometricoLocal';
-import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
-import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
-import { useGuiaCadastroFacial } from '../../components/pessoas/GuiaCadastroFacialDialog';
-import { FotosCadastroFacial } from '../../components/pessoas/FotosCadastroFacial';
-import { RefazerCadastroFacialDialog } from '../../components/pessoas/RefazerCadastroFacialDialog';
 import { RevogarConsentimentoBiometriaDialog } from '../../components/pessoas/RevogarConsentimentoBiometriaDialog';
 
 interface AssinaturaTabProps {
@@ -29,10 +22,6 @@ function extrairMensagemErro(e: unknown, fallback: string): string {
   return e.message || fallback;
 }
 
-function formatarDataHora(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
-}
-
 // Aba de configuração do Motor de Assinatura Eletrônica para este trabalhador (docs/Motor-Assinatura-
 // Eletronica.md §3/§5). Decisão do usuário (31/08): único método de cadastro nesta tela passa a ser a
 // digital via leitor local Futronic FS80H — os cartões de PIN de assinatura (crachá/QR) e credencial
@@ -46,57 +35,20 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
   // Regra do usuário (30/09): digital e facial são cadastrados uma única vez. Depois de concluído com
   // sucesso o botão de cadastro some e fica só a confirmação — o backend também recusa um 2º cadastro.
   const [statusCadastro, setStatusCadastro] = useState<StatusCadastroBiometrico | null>(null);
-  const [erroStatus, setErroStatus] = useState(false);
   const [revogandoConsentimento, setRevogandoConsentimento] = useState(false);
   const [versaoStatus, setVersaoStatus] = useState(0);
 
   useEffect(() => {
     let cancelado = false;
     setStatusCadastro(null);
-    setErroStatus(false);
     api.trabalhadores
       .obterStatusCadastroBiometrico(trabalhadorId)
       .then((s) => !cancelado && setStatusCadastro(s))
-      .catch(() => !cancelado && setErroStatus(true));
+      .catch(() => undefined);
     return () => {
       cancelado = true;
     };
   }, [trabalhadorId, versaoStatus]);
-
-  function marcarCadastrado(campo: 'digital' | 'facial') {
-    const agora = new Date().toISOString();
-    setStatusCadastro((s) => {
-      const base = s ?? { temDigital: false, temFacial: false, digitalCadastradaEm: null, facialCadastradoEm: null };
-      return campo === 'digital'
-        ? { ...base, temDigital: true, digitalCadastradaEm: base.digitalCadastradaEm ?? agora }
-        : { ...base, temFacial: true, facialCadastradoEm: base.facialCadastradoEm ?? agora };
-    });
-  }
-
-  const [cadastrandoBiometriaLocal, setCadastrandoBiometriaLocal] = useState(false);
-  const [erroBiometriaLocal, setErroBiometriaLocal] = useState<string | null>(null);
-  const [biometriaLocalCadastrada, setBiometriaLocalCadastrada] = useState(false);
-  const [etapaCaptura, setEtapaCaptura] = useState<string | null>(null);
-
-  const [erroFacial, setErroFacial] = useState<string | null>(null);
-  const [facialCadastrada, setFacialCadastrada] = useState(false);
-  const [versaoFotosFacial, setVersaoFotosFacial] = useState(0);
-  // Quem cadastra o facial (técnico) também refaz, só de funcionário da obra dele: o servidor confere
-  // a obra e devolve "não encontrado" para funcionário de outra obra.
-  const [refazendoFacial, setRefazendoFacial] = useState(false);
-
-  async function refazerCadastroFacial(motivo: string) {
-    try {
-      await api.trabalhadores.refazerCadastroFacial(trabalhadorId, motivo);
-    } catch (e) {
-      throw new Error(extrairMensagemErro(e, 'Falha ao refazer o cadastro facial.'));
-    }
-    setRefazendoFacial(false);
-    setFacialCadastrada(false);
-    setStatusCadastro((s) => (s ? { ...s, temFacial: false, facialCadastradoEm: null } : s));
-    setVersaoFotosFacial((v) => v + 1);
-  }
-  const { guia: guiaFacial, pedirGuia } = useGuiaCadastroFacial();
 
   const [confirmandoAceite, setConfirmandoAceite] = useState(false);
   const [erroAceite, setErroAceite] = useState<string | null>(null);
@@ -122,36 +74,6 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
       setErroAceite(extrairMensagemErro(e, 'Falha ao confirmar o aceite.'));
     } finally {
       setConfirmandoAceite(false);
-    }
-  }
-
-  async function cadastrarFacial(arquivo: File) {
-    try {
-      setErroFacial(null);
-      setFacialCadastrada(false);
-      await api.trabalhadores.cadastrarFacial(trabalhadorId, arquivo);
-      setFacialCadastrada(true);
-      marcarCadastrado('facial');
-      setVersaoFotosFacial((v) => v + 1);
-    } catch (e) {
-      setErroFacial(extrairMensagemErro(e, 'Falha ao cadastrar a face.'));
-    }
-  }
-
-  async function cadastrarBiometriaLocal() {
-    try {
-      setCadastrandoBiometriaLocal(true);
-      setErroBiometriaLocal(null);
-      setBiometriaLocalCadastrada(false);
-      const captura = await capturarDigitalParaCadastro(setEtapaCaptura);
-      await api.trabalhadores.cadastrarBiometriaLocal(trabalhadorId, captura.templateBruto, captura.imagemPng);
-      setBiometriaLocalCadastrada(true);
-      marcarCadastrado('digital');
-    } catch (e) {
-      setErroBiometriaLocal(extrairMensagemErro(e, 'Falha ao cadastrar a digital.'));
-    } finally {
-      setCadastrandoBiometriaLocal(false);
-      setEtapaCaptura(null);
     }
   }
 
@@ -221,93 +143,7 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
         }}
       />
 
-      <Card densidade="compacta" titulo="Digital (leitor local — Futronic FS80H)">
-        <div style={{ marginBottom: 12 }}>
-          <Legenda>
-            Exige aceite de assinatura eletrônica e consentimento biométrico já registrados para este
-            trabalhador.
-          </Legenda>
-        </div>
-        {erroBiometriaLocal && (
-          <FeedbackInline tom="erro" aoFechar={() => setErroBiometriaLocal(null)}>
-            {erroBiometriaLocal}
-          </FeedbackInline>
-        )}
-        {biometriaLocalCadastrada && (
-          <FeedbackInline tom="sucesso" aoFechar={() => setBiometriaLocalCadastrada(false)}>
-            Digital cadastrada com sucesso.
-          </FeedbackInline>
-        )}
-        {cadastrandoBiometriaLocal && etapaCaptura && <FeedbackInline tom="info">{etapaCaptura}</FeedbackInline>}
-        {statusCadastro === null && !erroStatus && <Legenda>Verificando cadastro…</Legenda>}
-        {erroStatus && <Legenda>Não foi possível verificar se a digital já está cadastrada.</Legenda>}
-        {statusCadastro?.temDigital && !biometriaLocalCadastrada && (
-          <FeedbackInline tom="sucesso">
-            Digital já cadastrada em {formatarDataHora(statusCadastro.digitalCadastradaEm)}.
-          </FeedbackInline>
-        )}
-        {statusCadastro && !statusCadastro.temDigital && (
-          <BotaoBiometriaDigital onClick={cadastrarBiometriaLocal} disabled={cadastrandoBiometriaLocal}>
-            Capturar digital
-          </BotaoBiometriaDigital>
-        )}
-      </Card>
-
-      <Card densidade="compacta" titulo="Reconhecimento Facial (Azure)">
-        <div style={{ marginBottom: 12 }}>
-          <Legenda>
-            Método adicional ao leitor de digital. A foto facial é enviada ao Azure Face API para cadastro
-            e autenticação, usando o consentimento biométrico LGPD já registrado para este trabalhador.
-          </Legenda>
-        </div>
-        {/* Esta é a foto de referência: é contra ela que toda assinatura futura vai ser comparada.
-            Foto ruim aqui vira "baixa confiança" na hora de assinar, semanas depois, e ninguém liga
-            uma coisa à outra. Por isso o servidor recusa foto fraca (ver ValidarQualidadeParaCadastro)
-            e a orientação vem antes da captura, não só no erro. */}
-        <div style={{ marginBottom: 12 }}>
-          <Legenda>
-            <strong>Para a foto ser aceita:</strong> rosto de frente ocupando boa parte do quadro, luz vindo
-            da frente (nunca contra janela), sem boné, capacete na testa ou óculos escuros, olhando direto
-            para a câmera e sem tremer. Só o trabalhador no enquadramento.
-          </Legenda>
-        </div>
-        {facialCadastrada && <FeedbackInline tom="sucesso">Face cadastrada com sucesso.</FeedbackInline>}
-        {statusCadastro === null && !erroStatus && <Legenda>Verificando cadastro…</Legenda>}
-        {erroStatus && <Legenda>Não foi possível verificar se o facial já está cadastrado.</Legenda>}
-        {statusCadastro?.temFacial && !facialCadastrada && (
-          <FeedbackInline tom="sucesso">
-            Reconhecimento facial já cadastrado em {formatarDataHora(statusCadastro.facialCadastradoEm)}.
-          </FeedbackInline>
-        )}
-        {statusCadastro?.temFacial && (
-          <Button appearance="secondary" onClick={() => setRefazendoFacial(true)}>
-            Refazer cadastro facial
-          </Button>
-        )}
-        {statusCadastro && !statusCadastro.temFacial && (
-          <SeletorFotoCamera
-            aoSelecionarArquivo={cadastrarFacial}
-            aoErroValidacao={setErroFacial}
-            rotulo="Capturar facial"
-            tamanho="medium"
-            variante="facialAzure"
-            modoCamera="user"
-            cameraInicial="environment"
-            exigirCamera
-            guiaAntesDeAbrir={pedirGuia}
-          />
-        )}
-        <div style={{ marginTop: 16 }}>
-          <FotosCadastroFacial trabalhadorId={trabalhadorId} versao={versaoFotosFacial} />
-        </div>
-      </Card>
-      {guiaFacial}
-      <RefazerCadastroFacialDialog
-        aberto={refazendoFacial}
-        aoConfirmar={refazerCadastroFacial}
-        aoCancelar={() => setRefazendoFacial(false)}
-      />
-      <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
+      <Legenda>O cadastro de digital e facial fica na aba Geral, no card Biometria.</Legenda>
     </div>
   );
 }

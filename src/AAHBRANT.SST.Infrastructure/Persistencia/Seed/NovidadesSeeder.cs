@@ -2177,6 +2177,21 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.119.0",
+            Titulo: "Biometria num lugar só no perfil do funcionário",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Facial junto das digitais",
+                    "A digital e a facial podiam ser cadastradas em dois lugares diferentes do perfil.",
+                    "O card Biometria, na coluna da esquerda do perfil, reúne os dois indicadores e a captura facial. A aba Assinaturas fica só com o cofre e os termos."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Card de biometria inteiro no tablet",
+                    "No tablet, o fim do card de biometria ficava cortado.",
+                    "A coluna da esquerda agora rola junto com a página e o card aparece inteiro."),
+            }),
+        new(
+            Versao: "5.120.0",
             Titulo: "Ordem de Serviço emitida e assinada",
             DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
