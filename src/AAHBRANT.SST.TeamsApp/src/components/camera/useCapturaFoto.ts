@@ -272,12 +272,36 @@ export function useCapturaFoto({
   // mesmo computador (pedido do usuário, 22/09).
   async function trocarDispositivo(deviceId: string) {
     if (!navigator.mediaDevices?.getUserMedia) return;
+    const idAnterior = dispositivoAtualId;
+    const abrir = (id: string) =>
+      navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: id }, ...resolucaoIdeal(modoCamera) } });
+    // Tablets/celulares Android costumam não abrir duas câmeras ao mesmo tempo (NotReadableError):
+    // é preciso soltar a câmera atual ANTES de pedir a nova. Desligar o vídeo evita quadro congelado.
+    stream?.getTracks().forEach((track) => track.stop());
+    if (videoRef.current) videoRef.current.srcObject = null;
     try {
-      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, ...resolucaoIdeal(modoCamera) } });
+      let novoStream: MediaStream;
+      try {
+        novoStream = await abrir(deviceId);
+      } catch {
+        // O Android libera o hardware de forma assíncrona — uma segunda tentativa curta resolve a maioria dos casos.
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        novoStream = await abrir(deviceId);
+      }
       setStream(novoStream);
       setDispositivoAtualId(deviceId);
       salvarCameraPreferida(deviceId);
+      await atualizarDispositivos();
     } catch {
+      // Não conseguiu a câmera escolhida: volta para a anterior pra o diálogo não ficar sem imagem.
+      if (idAnterior) {
+        try {
+          setStream(await abrir(idAnterior));
+          setDispositivoAtualId(idAnterior);
+        } catch {
+          // Sem a anterior também — o aviso abaixo já informa o usuário.
+        }
+      }
       aoErroValidacao?.('Não foi possível trocar para essa câmera. Verifique se ela ainda está conectada.');
     }
   }
