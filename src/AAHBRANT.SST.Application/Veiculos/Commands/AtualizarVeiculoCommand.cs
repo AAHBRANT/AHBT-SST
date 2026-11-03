@@ -65,7 +65,7 @@ public class AtualizarVeiculoCommandHandler : IRequestHandler<AtualizarVeiculoCo
             throw new InvalidOperationException($"Já existe outro veículo cadastrado com a placa/prefixo \"{placa}\".");
 
         var emAndamento = await _db.Inspecoes
-            .Where(i => i.VeiculoId == veiculo.Id && i.Status == StatusInspecao.EmAndamento)
+            .Where(i => i.VeiculoId == veiculo.Id && (i.Status == StatusInspecao.EmAndamento || i.Status == StatusInspecao.AguardandoAssinatura))
             .ToListAsync(ct);
 
         if (emAndamento.Count > 0 && request.Tipo != veiculo.Tipo)

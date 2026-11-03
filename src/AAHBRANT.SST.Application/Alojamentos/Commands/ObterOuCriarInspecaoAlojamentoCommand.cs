@@ -34,7 +34,7 @@ public class ObterOuCriarInspecaoAlojamentoCommandHandler : IRequestHandler<Obte
             ?? throw new KeyNotFoundException($"Alojamento {request.AlojamentoId} não encontrado.");
 
         var existente = await _db.Inspecoes
-            .Where(i => i.AlojamentoId == alojamento.Id && i.Status == StatusInspecao.EmAndamento)
+            .Where(i => i.AlojamentoId == alojamento.Id && (i.Status == StatusInspecao.EmAndamento || i.Status == StatusInspecao.AguardandoAssinatura))
             .OrderByDescending(i => i.Data)
             .FirstOrDefaultAsync(ct);
 
@@ -87,7 +87,7 @@ public class ObterOuCriarInspecaoAlojamentoCommandHandler : IRequestHandler<Obte
             // Reconsulta e devolve a que venceu, espelhando o caminho feliz de "já existe" acima —
             // um resultado idempotente em vez de um erro genérico.
             var vencedora = await _db.Inspecoes
-                .Where(i => i.AlojamentoId == alojamento.Id && i.Status == StatusInspecao.EmAndamento)
+                .Where(i => i.AlojamentoId == alojamento.Id && (i.Status == StatusInspecao.EmAndamento || i.Status == StatusInspecao.AguardandoAssinatura))
                 .OrderByDescending(i => i.Data)
                 .FirstOrDefaultAsync(ct);
 

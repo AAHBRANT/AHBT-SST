@@ -5323,7 +5323,7 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("AlojamentoId")
                         .IsUnique()
-                        .HasFilter("[AlojamentoId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
+                        .HasFilter("[AlojamentoId] IS NOT NULL AND [Status] IN (1, 3) AND [Ativo] = 1");
 
                     b.HasIndex("AtividadeId");
 
@@ -5331,7 +5331,7 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("ItemInspecionavelId")
                         .IsUnique()
-                        .HasFilter("[ItemInspecionavelId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
+                        .HasFilter("[ItemInspecionavelId] IS NOT NULL AND [Status] IN (1, 3) AND [Ativo] = 1");
 
                     b.HasIndex("ObraId");
 
@@ -5339,7 +5339,7 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("VeiculoId")
                         .IsUnique()
-                        .HasFilter("[VeiculoId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
+                        .HasFilter("[VeiculoId] IS NOT NULL AND [Status] IN (1, 3) AND [Ativo] = 1");
 
                     b.ToTable("Inspecoes");
                 });
@@ -6794,6 +6794,69 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .IsUnique();
 
                     b.ToTable("Obras");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.OrdemServico", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ConteudoJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("EmitidaEm")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Numero")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<Guid>("ObraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Revisao")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TrabalhadorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Numero")
+                        .IsUnique();
+
+                    b.HasIndex("ObraId");
+
+                    b.HasIndex("TrabalhadorId", "ObraId", "Revisao")
+                        .IsUnique();
+
+                    b.ToTable("OrdensServico", (string)null);
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ParticipanteReuniaoCipa", b =>
@@ -11876,6 +11939,23 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("NovidadeVersao");
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.OrdemServico", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", null)
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
+                        .WithMany()
+                        .HasForeignKey("TrabalhadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Trabalhador");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ParticipanteReuniaoCipa", b =>

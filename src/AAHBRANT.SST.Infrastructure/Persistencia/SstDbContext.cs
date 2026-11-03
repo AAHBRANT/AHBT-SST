@@ -125,6 +125,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<AlojamentoMorador> AlojamentoMoradores => Set<AlojamentoMorador>();
     public DbSet<ConfiguracaoAlojamento> ConfiguracoesAlojamento => Set<ConfiguracaoAlojamento>();
     public DbSet<Veiculo> Veiculos => Set<Veiculo>();
+    public DbSet<OrdemServico> OrdensServico => Set<OrdemServico>();
     public DbSet<TemaInspecao> TemasInspecao => Set<TemaInspecao>();
     public DbSet<ItemInspecionavel> ItensInspecionaveis => Set<ItemInspecionavel>();
 
@@ -305,6 +306,8 @@ public class SstDbContext : DbContext, IAppDbContext
             p.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(p.ObraId)));
         modelBuilder.Entity<Veiculo>().HasQueryFilter(v =>
             v.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(v.ObraId)));
+        modelBuilder.Entity<OrdemServico>().HasQueryFilter(o =>
+            o.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(o.ObraId)));
         modelBuilder.Entity<ItemInspecionavel>().HasQueryFilter(i =>
             i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
         // ASO NÃO tem filtro global por obra (tentado em #115 e revertido): o ASO só chega à obra pelo

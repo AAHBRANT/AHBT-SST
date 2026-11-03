@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BotaoAcao, BotaoVoltar, Button, Card, EstadoVazio, FeedbackInline, PageHeader, StatusChip, type Tom } from '@ui';
-import { ArrowDownload24Regular, ClipboardTaskListLtr24Regular, Eye24Regular, Home24Regular, Open24Regular, Send24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, ClipboardTaskListLtr24Regular, Eye24Regular, Home24Regular, Open24Regular, Send24Regular, Signature24Regular } from '@fluentui/react-icons';
 import {
   api,
   StatusDocumentoAssinatura,
@@ -53,6 +53,12 @@ function nomePdfAssinado(inspecao: AlojamentoInspecaoResumo) {
 // grade de obras com resumo, clique abre a grade de alojamentos daquela obra. Diferente de
 // TrabalhadoresTab, aqui os "sub-itens" também são cards (não uma DataTable), pois um alojamento
 // não tem colunas tabulares ricas o bastante para justificar DataTable (regra dos 3 pilotos).
+// Inspeção já finalizada que espera a assinatura: ela ocupa a vaga do alojamento, então o cartão
+// mostra "Assinar inspeção" no lugar de "Nova inspeção".
+function inspecaoAguardandoAssinatura(alojamento: AlojamentoResumo) {
+  return alojamento.historicoInspecoes.find((i) => i.status === StatusInspecao.AguardandoAssinatura);
+}
+
 export function AlojamentoTab() {
   const navigate = useNavigate();
   const [obras, setObras] = useState<Obra[]>([]);
@@ -217,7 +223,15 @@ export function AlojamentoTab() {
                     {rotuloStatus(alojamento.statusUltimaInspecao, alojamento.diasDesdeUltimaInspecao)}
                   </StatusChip>
                   {alojamento.inspecaoEmAndamento && <StatusChip tom="info">Inspeção em andamento</StatusChip>}
+                  {inspecaoAguardandoAssinatura(alojamento) && <StatusChip tom="atencao">Aguardando assinatura</StatusChip>}
                 </div>
+
+                {inspecaoAguardandoAssinatura(alojamento) && (
+                  <div style={{ fontSize: 12 }}>
+                    Finalizada em {formatarData(inspecaoAguardandoAssinatura(alojamento)!.data)} ·{' '}
+                    {inspecaoAguardandoAssinatura(alojamento)!.itensNaoConformes} pendência(s). Falta só a assinatura.
+                  </div>
+                )}
 
                 {alojamento.ultimaInspecaoConcluida && (
                   <div style={{ fontSize: 12 }}>
@@ -239,13 +253,33 @@ export function AlojamentoTab() {
                 )}
 
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-                  <Button
-                    appearance="primary"
-                    icon={<ClipboardTaskListLtr24Regular />}
-                    onClick={() => abrirInspecao(alojamento.id)}
-                  >
-                    {alojamento.inspecaoEmAndamento ? 'Continuar inspeção' : 'Nova inspeção'}
-                  </Button>
+                  {inspecaoAguardandoAssinatura(alojamento) ? (
+                    <>
+                      <Button
+                        appearance="primary"
+                        icon={<Signature24Regular />}
+                        onClick={() => navigate(`/prevencao/inspecoes/${inspecaoAguardandoAssinatura(alojamento)!.id}/assinar`)}
+                      >
+                        Assinar inspeção
+                      </Button>
+                      <BotaoAcao
+                        tom="ver"
+                        icon={<Eye24Regular />}
+                        onClick={() => visualizarPdfInspecao(inspecaoAguardandoAssinatura(alojamento)!)}
+                        aria-label="Visualizar inspeção aguardando assinatura"
+                      >
+                        Visualizar
+                      </BotaoAcao>
+                    </>
+                  ) : (
+                    <Button
+                      appearance="primary"
+                      icon={<ClipboardTaskListLtr24Regular />}
+                      onClick={() => abrirInspecao(alojamento.id)}
+                    >
+                      {alojamento.inspecaoEmAndamento ? 'Continuar inspeção' : 'Nova inspeção'}
+                    </Button>
+                  )}
                   {alojamento.ultimaInspecaoConcluida && (
                     <BotaoAcao
                       tom="ver"
@@ -343,7 +377,7 @@ export function AlojamentoTab() {
                               }
                               aria-label="Abrir inspeção"
                             />
-                            {inspecao.status === StatusInspecao.Concluida && (
+                            {inspecao.status !== StatusInspecao.EmAndamento && (
                               <BotaoAcao
                                 tom="ver"
                                 icon={<Eye24Regular />}
@@ -351,7 +385,7 @@ export function AlojamentoTab() {
                                 aria-label="Visualizar PDF"
                               />
                             )}
-                            {inspecao.status === StatusInspecao.Concluida && (
+                            {inspecao.status !== StatusInspecao.EmAndamento && (
                               <BotaoAcao
                                 tom="baixar"
                                 icon={<ArrowDownload24Regular />}

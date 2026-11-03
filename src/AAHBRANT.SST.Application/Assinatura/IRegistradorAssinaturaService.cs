@@ -138,6 +138,9 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
                 throw new InvalidOperationException("Apenas Técnico de Segurança ou Engenheiro de Segurança podem assinar inspeções.");
         }
 
+        if (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura)
+            await GarantirOrdemAssinaturaOsAsync(documento, resultado, trabalhador, ct);
+
         var operadorUsuarioId = await ObterOperadorAsync(ct);
         var signatario = new DocumentoSignatario
         {
@@ -186,8 +189,11 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
 
         await _db.SaveChangesAsync(ct);
 
-        // Inspeção aceita uma assinatura só: assinada, está concluída — fecha o documento na hora.
-        if (documento.EntidadeTipo == nameof(Inspecao) && _mediator is not null)
+        // Inspeção aceita uma assinatura só: assinada, está concluída — fecha o documento na hora. A OS
+        // fecha com a assinatura do técnico, que é sempre a última.
+        var fechaAgora = documento.EntidadeTipo == nameof(Inspecao)
+            || (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura && resultado.Metodo == MetodoAutenticacaoAssinatura.SessaoLogada);
+        if (fechaAgora && _mediator is not null)
             await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, documento.Id, ct);
 
         return new DocumentoSignatarioDto(trabalhador.Id, trabalhador.Nome, signatario.MetodoAutenticacao, signatario.AssinadoEm, signatario.IpAddress);
@@ -247,6 +253,8 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
                 .Where(e => e.Id == documento.EntidadeId).Select(e => (Guid?)e.TrabalhadorId).FirstOrDefaultAsync(ct),
             "EntregaUniforme" => await _db.EntregasUniforme
                 .Where(e => e.Id == documento.EntidadeId).Select(e => (Guid?)e.TrabalhadorId).FirstOrDefaultAsync(ct),
+            "OrdemServico" => await _db.OrdensServico.IgnoreQueryFilters()
+                .Where(o => o.Id == documento.EntidadeId).Select(o => (Guid?)o.TrabalhadorId).FirstOrDefaultAsync(ct),
             "Treinamento" => await _db.Treinamentos
                 .Where(t => t.Id == documento.EntidadeId).Select(t => (Guid?)t.TrabalhadorId).FirstOrDefaultAsync(ct),
             // A ficha consolidada é do próprio trabalhador: a entidade É ele.
@@ -258,7 +266,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
 
         // Documento pessoal cuja origem sumiu (excluída ou nunca existiu): antes virava "qualquer um assina"
         // (auditoria 19/10, A14). Agora recusa.
-        var ehDocumentoPessoal = documento.EntidadeTipo is "EntregaEpi" or "DevolucaoEpi" or "EntregaUniforme" or "Treinamento";
+        var ehDocumentoPessoal = documento.EntidadeTipo is "EntregaEpi" or "DevolucaoEpi" or "EntregaUniforme" or "Treinamento" or "OrdemServico";
         if (trabalhadorEsperadoId is null && ehDocumentoPessoal)
             throw new KeyNotFoundException("Registro de origem do documento não encontrado.");
 
@@ -278,6 +286,28 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             $"{comoFoiIdentificado} é de {identificado.Nome}, mas este documento é de {nomeEsperado ?? "outro trabalhador"} — " +
             "a assinatura não foi registrada. Confirme que quem está assinando é a pessoa certa; " +
             "se for, o cadastro biométrico de um dos dois precisa ser refeito.");
+    }
+
+    // Ordem de Serviço (03/11): o funcionário assina primeiro, por digital ou facial; depois o técnico de
+    // segurança com o próprio login. Quem assina como técnico não pode ser o dono da OS e precisa ter
+    // função de Técnico ou Engenheiro de Segurança (mesmo critério da inspeção).
+    private async Task GarantirOrdemAssinaturaOsAsync(
+        DocumentoAssinatura documento, ResultadoAutenticacaoAssinatura resultado, Trabalhador assinante, CancellationToken ct)
+    {
+        if (resultado.Metodo != MetodoAutenticacaoAssinatura.SessaoLogada)
+            return;
+
+        var donoId = await _db.OrdensServico.IgnoreQueryFilters()
+            .Where(o => o.Id == documento.EntidadeId).Select(o => (Guid?)o.TrabalhadorId).FirstOrDefaultAsync(ct)
+            ?? throw new KeyNotFoundException("Ordem de Serviço não encontrada.");
+        if (assinante.Id == donoId)
+            throw new InvalidOperationException("O próprio funcionário não pode assinar a OS como técnico de segurança.");
+        if (!FuncaoPodeAssinarInspecao(assinante.Funcao?.Nome))
+            throw new InvalidOperationException("Apenas Técnico de Segurança ou Engenheiro de Segurança podem assinar a Ordem de Serviço como responsável de SST.");
+        if (!await _db.DocumentoSignatarios.AnyAsync(s => s.DocumentoAssinaturaId == documento.Id && s.TrabalhadorId == donoId, ct))
+            throw new InvalidOperationException("O funcionário assina primeiro. Colha a digital ou a facial dele antes da assinatura do técnico.");
+        if (await _db.DocumentoSignatarios.AnyAsync(s => s.DocumentoAssinaturaId == documento.Id && s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada, ct))
+            throw new InvalidOperationException("Esta Ordem de Serviço já tem a assinatura do técnico de segurança.");
     }
 
     private static bool FuncaoPodeAssinarInspecao(string? nomeFuncao)

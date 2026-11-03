@@ -59,17 +59,19 @@ public class InspecaoConfiguracao : IEntityTypeConfiguration<Inspecao>
         // alojamento). StatusInspecao.EmAndamento = 1 (ver Enums.cs). "Ativo = 1" é obrigatório:
         // excluir inspeção é soft delete e mantém Status = 1; sem isso a linha excluída ocupava a
         // vaga e impedia abrir uma nova inspeção (duplicate key → 500, 05/10/2026).
+        // Status 3 = AguardandoAssinatura: enquanto a inspeção espera assinatura, ela ainda ocupa a vaga
+        // (não se abre outra no mesmo alojamento/veículo).
         builder.HasIndex(i => i.AlojamentoId)
             .IsUnique()
-            .HasFilter("[AlojamentoId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
-        // Idem para veículos: uma única inspeção em andamento por veículo, garantida no banco.
+            .HasFilter("[AlojamentoId] IS NOT NULL AND [Status] IN (1, 3) AND [Ativo] = 1");
+        // Idem para veículos: uma única inspeção em andamento/aguardando assinatura por veículo, garantida no banco.
         builder.HasIndex(i => i.VeiculoId)
             .IsUnique()
-            .HasFilter("[VeiculoId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
-        // Idem para itens de tema: uma única inspeção em andamento por item.
+            .HasFilter("[VeiculoId] IS NOT NULL AND [Status] IN (1, 3) AND [Ativo] = 1");
+        // Idem para itens de tema: uma única inspeção em andamento/aguardando assinatura por item.
         builder.HasIndex(i => i.ItemInspecionavelId)
             .IsUnique()
-            .HasFilter("[ItemInspecionavelId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
+            .HasFilter("[ItemInspecionavelId] IS NOT NULL AND [Status] IN (1, 3) AND [Ativo] = 1");
         builder.HasQueryFilter(i => i.Ativo);
     }
 }

@@ -1025,6 +1025,8 @@ export const tipoMovimentacaoEstoqueEpiLabel: Record<number, string> = {
   3: 'Ajuste manual',
   5: 'Transferência (saída)',
   6: 'Transferência (entrada)',
+  7: 'Correção de lançamento (saída)',
+  8: 'Correção de lançamento (entrada)',
 };
 
 // Painel da aba Estoque (especificação 21/10/2026, Módulos 2 e 3) — tudo calculado no servidor
@@ -2690,11 +2692,14 @@ export const statusItemChecklistLabel: Record<number, string> = {
 export const StatusInspecao = {
   EmAndamento: 1,
   Concluida: 2,
+  // "Finalizar" leva para cá; só a assinatura torna a inspeção Concluída.
+  AguardandoAssinatura: 3,
 } as const;
 
 export const statusInspecaoLabel: Record<number, string> = {
   1: 'Em andamento',
   2: 'Concluída',
+  3: 'Aguardando assinatura',
 };
 
 export interface ChecklistModelo {
@@ -2975,6 +2980,29 @@ export interface AtividadeOs {
   interromperQuando: string[];
   restricoes: { texto: string; requisito?: string | null }[];
   autorizacoes: string[];
+}
+
+// OS emitida (03/11/2026): o funcionário assina primeiro (digital/facial), depois o técnico de segurança.
+export type SituacaoOrdemServico = 'AguardandoFuncionario' | 'AguardandoTecnico' | 'Valida';
+
+export interface AssinaturaOs {
+  nome: string;
+  funcao?: string | null;
+  assinadoEm: string;
+  metodo: number;
+}
+
+export interface OrdemServicoEmitida {
+  id: string;
+  numero: string;
+  revisao: number;
+  emitidaEm: string;
+  obraId: string;
+  documentoAssinaturaId?: string | null;
+  situacao: SituacaoOrdemServico;
+  vigente: boolean;
+  funcionario?: AssinaturaOs | null;
+  tecnico?: AssinaturaOs | null;
 }
 
 export interface MinutaOrdemServico {
@@ -5703,7 +5731,7 @@ export const api = {
       request<{ aplicados: number }>(`/api/estoquesepi/obra/${obraId}/minimos/aplicar-sugestoes`, { method: 'POST' }),
     definirPrazoReposicao: (obraId: string, dias: number) =>
       request<void>(`/api/estoquesepi/obra/${obraId}/prazo-reposicao`, { method: 'PUT', body: JSON.stringify({ dias }) }),
-    transferir: (dados: { catalogoEpiId: string; obraOrigemId: string; obraDestinoId: string; quantidade: number; observacao?: string | null }) =>
+    transferir: (dados: { catalogoEpiId: string; obraOrigemId: string; obraDestinoId: string; quantidade: number; observacao?: string | null; correcao?: boolean }) =>
       request<void>('/api/estoquesepi/transferencia', { method: 'POST', body: JSON.stringify(dados) }),
     listarSolicitacoesReposicao: (obraId: string) =>
       request<SolicitacaoReposicaoEpiResumo[]>(`/api/estoquesepi/obra/${obraId}/solicitacoes-reposicao`),
@@ -6340,6 +6368,8 @@ export const api = {
     },
     removerFotoAdicional: (fotoId: string) => request<void>(`/api/inspecoes/fotos-adicionais/${fotoId}`, { method: 'DELETE' }),
     encerrar: (id: string) => request<void>(`/api/inspecoes/${id}/encerrar`, { method: 'POST' }),
+    // Aguardando assinatura (sem nenhuma assinatura ainda) → Em andamento, para corrigir um erro.
+    reabrir: (id: string) => request<void>(`/api/inspecoes/${id}/reabrir`, { method: 'POST' }),
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/inspecoes/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
@@ -6432,6 +6462,17 @@ export const api = {
   },
   ordensServico: {
     obterMinuta: (trabalhadorId: string) => request<MinutaOrdemServico>(`/api/trabalhadores/${trabalhadorId}/ordem-servico/minuta`),
+    listar: (trabalhadorId: string) => request<OrdemServicoEmitida[]>(`/api/trabalhadores/${trabalhadorId}/ordem-servico`),
+    emitir: (trabalhadorId: string) =>
+      request<OrdemServicoEmitida>(`/api/trabalhadores/${trabalhadorId}/ordem-servico`, { method: 'POST' }),
+    baixarPdf: async (trabalhadorId: string, ordemServicoId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${trabalhadorId}/ordem-servico/${ordemServicoId}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
   },
   materiaisApoio: {
     listar: (categoria?: string) =>

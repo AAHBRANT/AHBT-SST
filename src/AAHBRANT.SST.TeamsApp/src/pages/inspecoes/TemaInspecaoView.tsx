@@ -28,6 +28,7 @@ import {
   Edit24Regular,
   Eye24Regular,
   Open24Regular,
+  Signature24Regular,
 } from '@fluentui/react-icons';
 import {
   api,
@@ -317,6 +318,8 @@ export function TemaInspecaoView({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
         {visiveis.map((item) => {
           const ultima = item.ultimaInspecaoConcluida;
+          // Inspeção já finalizada que espera assinatura: ocupa a vaga do item.
+          const aguardando = item.historicoInspecoes.find((i) => i.status === StatusInspecao.AguardandoAssinatura);
           return (
             <Card key={item.id}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -339,6 +342,7 @@ export function TemaInspecaoView({
                     {rotuloStatus(item.statusUltimaInspecao, item.diasDesdeUltimaInspecao)}
                   </StatusChip>
                   {item.inspecaoEmAndamento && <StatusChip tom="info">Inspeção em andamento</StatusChip>}
+                  {aguardando && <StatusChip tom="atencao">Aguardando assinatura</StatusChip>}
                 </div>
                 <SeloProximaInspecao
                   proximaEm={item.proximaInspecaoEm}
@@ -352,10 +356,26 @@ export function TemaInspecaoView({
                   </div>
                 )}
 
+                {aguardando && (
+                  <div style={{ fontSize: 12 }}>
+                    Finalizada em {formatarData(aguardando.data)} · {aguardando.itensNaoConformes} não conformidade(s). Falta só a assinatura.
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-                  <Button appearance="primary" icon={<ClipboardTaskListLtr24Regular />} onClick={() => abrirInspecao(item.id)}>
-                    {item.inspecaoEmAndamento ? 'Continuar inspeção' : 'Nova inspeção'}
-                  </Button>
+                  {aguardando ? (
+                    <Button
+                      appearance="primary"
+                      icon={<Signature24Regular />}
+                      onClick={() => navigate(`/prevencao/inspecoes/${aguardando.id}/assinar`)}
+                    >
+                      Assinar inspeção
+                    </Button>
+                  ) : (
+                    <Button appearance="primary" icon={<ClipboardTaskListLtr24Regular />} onClick={() => abrirInspecao(item.id)}>
+                      {item.inspecaoEmAndamento ? 'Continuar inspeção' : 'Nova inspeção'}
+                    </Button>
+                  )}
                   {ultima && (
                     <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={() => visualizarPdfInspecao(item, ultima)} aria-label="Visualizar última inspeção">
                       Visualizar última
@@ -379,7 +399,6 @@ export function TemaInspecaoView({
                     <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Histórico de inspeções</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {item.historicoInspecoes.map((inspecao) => {
-                        const concluida = inspecao.status === StatusInspecao.Concluida;
                         return (
                           <div key={inspecao.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: 8, fontSize: 12 }}>
                             <div>
@@ -401,10 +420,10 @@ export function TemaInspecaoView({
                                 }
                                 aria-label="Abrir inspeção"
                               />
-                              {concluida && (
+                              {inspecao.status !== StatusInspecao.EmAndamento && (
                                 <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={() => visualizarPdfInspecao(item, inspecao)} aria-label="Visualizar PDF" />
                               )}
-                              {concluida && (
+                              {inspecao.status !== StatusInspecao.EmAndamento && (
                                 <BotaoAcao
                                   tom="baixar"
                                   icon={<ArrowDownload24Regular />}

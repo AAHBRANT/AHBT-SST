@@ -2200,6 +2200,20 @@ public static class NovidadesSeeder
                     "Cliente do cronograma mensal de DDS",
                     "O PDF mostrava \"Cliente / Fiscalização\" com o cliente do cadastro da obra.",
                     "O PDF do cronograma mensal de DDS agora mostra sempre \"Cliente: Supervisão\"."),
+            }),        new(
+            Versao: "5.121.0",
+            Titulo: "Inspeções: só ficam concluídas depois de assinadas",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Finalizar inspeção leva direto para a assinatura",
+                    "A inspeção ficava Concluída assim que era finalizada, e a assinatura podia ficar para depois ou nunca acontecer.",
+                    "Ao clicar em \"Finalizar inspeção\", quem realizou a inspeção assina automaticamente, em um clique, e a inspeção fica \"Concluída\". Se não for possível assinar na hora (o usuário não é Técnico ou Engenheiro de Segurança, ou outra pessoa fez a inspeção), ela fica \"Aguardando assinatura\", com o checklist travado e o botão \"Assinar inspeção\". Vale para inspeções de alojamento, veículo, tema e demais tipos."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Reabrir para ajustes antes de assinar",
+                    "Se alguém finalizasse com um erro, não havia como corrigir.",
+                    "Enquanto ninguém assinou, o botão \"Reabrir para ajustes\" devolve a inspeção para \"Em andamento\". Depois da primeira assinatura não é mais possível reabrir. Enquanto uma inspeção aguarda assinatura, o alojamento, veículo ou item não abre outra, e o cartão mostra \"Assinar inspeção\"."),
             }),
         new(
             Versao: "5.121.0",
@@ -2225,6 +2239,21 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.123.0",
+            Titulo: "Ordem de Serviço emitida e assinada",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Emitir a OS com número e assinaturas",
+                    "A aba Ordem de Serviço mostrava só a minuta e as pendências; o botão Emitir OS ainda não funcionava.",
+                    "Sem pendências, Emitir OS gera o número (OS-2026-0001) e abre a assinatura: primeiro o funcionário, por digital ou facial; depois o técnico de segurança, com o próprio login. A OS só fica Válida com as duas."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "PDF da OS com a logo da obra",
+                    null,
+                    "O PDF tem a logo cadastrada na obra no cabeçalho, as nove seções da OS e os dois carimbos de assinatura. O histórico da aba lista cada OS emitida com a situação e o botão Ver PDF."),
+            }),
+        new(
+            Versao: "5.124.0",
             Titulo: "Ações do plano: marcar como resolvido",
             DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
