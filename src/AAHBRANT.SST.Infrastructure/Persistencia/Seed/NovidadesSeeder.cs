@@ -2214,6 +2214,17 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.122.0",
+            Titulo: "PGR pela EAP: plano de ação com melhorias",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Ações de melhoria no plano de ação",
+                    "O plano de ação do PGR só tinha o que o técnico digitava, além do cronograma de treinamentos.",
+                    "Ao gerar o inventário, o plano já sai com as ações de melhoria tiradas das medidas dos riscos de nível alto ou acima. Defina responsável e prazo. O botão \"Sugerir ações de melhoria\" atualiza a lista."),
+            }),
+        new(
+            Versao: "5.123.0",
             Titulo: "Ações do plano: marcar como resolvido",
             DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
@@ -2223,6 +2234,7 @@ public static class NovidadesSeeder
                     "Ações automáticas ou sem vínculo só concluíam quando o fato vinculado acontecia.",
                     "Toda ação pode ser marcada como resolvida, descrevendo como foi resolvida; o texto, o nome e a data ficam registrados."),
             }),
+||||||| 72c906f2
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

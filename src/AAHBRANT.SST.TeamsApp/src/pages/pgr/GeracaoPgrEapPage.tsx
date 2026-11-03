@@ -216,6 +216,13 @@ function Assistente({ id }: { id: string }) {
       }
     }
     if (falhas.length) setErro(`Não foi possível gerar os riscos de: ${falhas.join(', ')}. Use "Gerar riscos" na atividade para tentar de novo.`);
+    // O plano de ação já sai com as ações de melhoria dos riscos altos; o engenheiro só completa responsável e prazo.
+    try {
+      const m = await api.geracoesPgrEap.sugerirAcoesMelhoria(id);
+      if (m.acoes > 0) setAviso(`${m.acoes} ação(ões) de melhoria entraram no plano de ação. Defina responsável e prazo.`);
+    } catch {
+      // Não trava a geração: o botão "Sugerir ações de melhoria" tenta de novo.
+    }
     await carregar(4);
   }
 
@@ -318,6 +325,14 @@ function Assistente({ id }: { id: string }) {
             await carregar(5);
           })}
           gerarPendentes={() => void executar('Gerando…', gerarInventario)}
+          sugerirMelhorias={() => void executar('Montando as ações de melhoria a partir dos riscos…', async () => {
+            await salvar(4);
+            const r = await api.geracoesPgrEap.sugerirAcoesMelhoria(id);
+            await carregar(4);
+            setAviso(r.acoes > 0
+              ? `${r.acoes} ação(ões) de melhoria entraram no plano de ação. Defina responsável e prazo.`
+              : 'Nenhuma ação nova: os riscos altos já estão cobertos pelo plano.');
+          })}
           sugerirAcompanhamento={() => void executar('Sugerindo o acompanhamento das ações com IA…', async () => {
             await salvar(4);
             const r = await api.geracoesPgrEap.sugerirAcompanhamento(id);
@@ -443,7 +458,7 @@ function GheEditor({ ghe, todos, funcoesCadastradas, editavel, alterar }: {
   );
 }
 
-function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, enviar, gerarPendentes, sugerirAcompanhamento }: {
+function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, enviar, gerarPendentes, sugerirAcompanhamento, sugerirMelhorias }: {
   g: GeracaoPgrEap;
   e: EstruturaGeracaoPgr;
   editavel: boolean;
@@ -454,6 +469,7 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
   enviar: () => void;
   gerarPendentes: () => void;
   sugerirAcompanhamento: () => void;
+  sugerirMelhorias: () => void;
 }) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
@@ -545,9 +561,14 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
 
       <Card
         titulo="Plano de ação"
-        acoes={editavel && (e.acoesPlano ?? []).some((a) => a.descricao.trim())
-          ? <Button size="small" disabled={ocupado} onClick={sugerirAcompanhamento}>Sugerir acompanhamento</Button>
-          : undefined}
+        acoes={editavel ? (
+          <>
+            <Button size="small" disabled={ocupado} onClick={sugerirMelhorias}>Sugerir ações de melhoria</Button>
+            {(e.acoesPlano ?? []).some((a) => a.descricao.trim()) && (
+              <Button size="small" disabled={ocupado} onClick={sugerirAcompanhamento}>Sugerir acompanhamento</Button>
+            )}
+          </>
+        ) : undefined}
       >
         {(e.acoesPlano ?? []).map((a, i) => (
           <AcaoPlanoLinha key={i} acao={a} usuarios={usuarios} editavel={editavel}
