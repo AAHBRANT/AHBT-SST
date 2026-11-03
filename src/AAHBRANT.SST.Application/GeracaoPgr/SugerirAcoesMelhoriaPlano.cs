@@ -16,7 +16,7 @@ public record SugerirAcoesMelhoriaPlanoGeracaoPgrCommand(Guid Id) : IRequest<int
 
 public class SugerirAcoesMelhoriaPlanoGeracaoPgrCommandHandler : IRequestHandler<SugerirAcoesMelhoriaPlanoGeracaoPgrCommand, int>
 {
-    private const int MaxAcoes = 5;
+    private const int MaxAcoes = 20;
     private const int MaxPorPerigo = 2;
     private const int MaxCaracteres = 500;
 
