@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Switch } from '@fluentui/react-components';
-import { Card, DataTable, FeedbackInline, Legenda, Select, StatusChip, type Coluna } from '@ui';
+import { Card, DataTable, FeedbackInline, Legenda, Select, StatusChip, Switch, type Coluna } from '@ui';
 import {
   api,
   FrequenciaPendenciaAutomatica,
