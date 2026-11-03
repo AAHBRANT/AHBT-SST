@@ -2234,7 +2234,6 @@ public static class NovidadesSeeder
                     "Ações automáticas ou sem vínculo só concluíam quando o fato vinculado acontecia.",
                     "Toda ação pode ser marcada como resolvida, descrevendo como foi resolvida; o texto, o nome e a data ficam registrados."),
             }),
-||||||| 72c906f2
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
