@@ -2,6 +2,8 @@ using AAHBRANT.SST.Application.Assinatura.Queries;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.GeracaoPgr;
 using AAHBRANT.SST.Application.Inspecoes.Queries;
+using AAHBRANT.SST.Application.OrdensServico;
+using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -73,6 +75,10 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
 
         if (signatarios.Count == 0)
             throw new InvalidOperationException("Documento sem nenhuma assinatura não pode ser finalizado.");
+        // A OS só fecha com as duas assinaturas; a do técnico (sessão logada) é sempre a segunda.
+        if (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura
+            && !signatarios.Any(s => s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada))
+            throw new InvalidOperationException("A Ordem de Serviço só é finalizada depois da assinatura do técnico de segurança.");
 
         var hash = HashConteudoDocumentoCalculador.Calcular(documento.EntidadeTipo, documento.EntidadeId, signatariosDto);
         // Mantém o token se o documento já tinha sido exportado (rodapé com QR): trocar invalidaria o QR já
@@ -91,6 +97,12 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
         {
             await _db.SaveChangesAsync(ct);
             documento.PdfConteudo = await _mediator.Send(new ExportarInspecaoPdfQuery(documento.EntidadeId), ct);
+        }
+        else if (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura)
+        {
+            // OS: o arquivo guardado é a própria OS, com as duas assinaturas, o QR e o código de verificação.
+            await _db.SaveChangesAsync(ct);
+            documento.PdfConteudo = await _mediator.Send(new ExportarOrdemServicoPdfQuery(documento.EntidadeId), ct);
         }
         else if (documento.EntidadeTipo == AssinaturaGeracaoPgr.EntidadeTipo)
         {

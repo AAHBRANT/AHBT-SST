@@ -2223,6 +2223,21 @@ public static class NovidadesSeeder
                     "O plano de ação do PGR só tinha o que o técnico digitava, além do cronograma de treinamentos.",
                     "Ao gerar o inventário, o plano já sai com as ações de melhoria tiradas das medidas dos riscos de nível alto ou acima. Defina responsável e prazo. O botão \"Sugerir ações de melhoria\" atualiza a lista."),
             }),
+        new(
+            Versao: "5.123.0",
+            Titulo: "Ordem de Serviço emitida e assinada",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Emitir a OS com número e assinaturas",
+                    "A aba Ordem de Serviço mostrava só a minuta e as pendências; o botão Emitir OS ainda não funcionava.",
+                    "Sem pendências, Emitir OS gera o número (OS-2026-0001) e abre a assinatura: primeiro o funcionário, por digital ou facial; depois o técnico de segurança, com o próprio login. A OS só fica Válida com as duas."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "PDF da OS com a logo da obra",
+                    null,
+                    "O PDF tem a logo cadastrada na obra no cabeçalho, as nove seções da OS e os dois carimbos de assinatura. O histórico da aba lista cada OS emitida com a situação e o botão Ver PDF."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

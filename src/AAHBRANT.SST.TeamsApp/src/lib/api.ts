@@ -2977,6 +2977,29 @@ export interface AtividadeOs {
   autorizacoes: string[];
 }
 
+// OS emitida (03/11/2026): o funcionário assina primeiro (digital/facial), depois o técnico de segurança.
+export type SituacaoOrdemServico = 'AguardandoFuncionario' | 'AguardandoTecnico' | 'Valida';
+
+export interface AssinaturaOs {
+  nome: string;
+  funcao?: string | null;
+  assinadoEm: string;
+  metodo: number;
+}
+
+export interface OrdemServicoEmitida {
+  id: string;
+  numero: string;
+  revisao: number;
+  emitidaEm: string;
+  obraId: string;
+  documentoAssinaturaId?: string | null;
+  situacao: SituacaoOrdemServico;
+  vigente: boolean;
+  funcionario?: AssinaturaOs | null;
+  tecnico?: AssinaturaOs | null;
+}
+
 export interface MinutaOrdemServico {
   trabalhadorId: string;
   podeEmitir: boolean;
@@ -6432,6 +6455,17 @@ export const api = {
   },
   ordensServico: {
     obterMinuta: (trabalhadorId: string) => request<MinutaOrdemServico>(`/api/trabalhadores/${trabalhadorId}/ordem-servico/minuta`),
+    listar: (trabalhadorId: string) => request<OrdemServicoEmitida[]>(`/api/trabalhadores/${trabalhadorId}/ordem-servico`),
+    emitir: (trabalhadorId: string) =>
+      request<OrdemServicoEmitida>(`/api/trabalhadores/${trabalhadorId}/ordem-servico`, { method: 'POST' }),
+    baixarPdf: async (trabalhadorId: string, ordemServicoId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${trabalhadorId}/ordem-servico/${ordemServicoId}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
   },
   materiaisApoio: {
     listar: (categoria?: string) =>
