@@ -2175,6 +2175,21 @@ public static class NovidadesSeeder
                     "Depois da digital ou do facial aparecia só uma linha pequena \"Assinatura registrada\", difícil de ver de longe.",
                     "A tela fica verde por 2,5 segundos com o ✓ e o nome do funcionário em letra grande, no quiosque e na assinatura em lote de EPI e de uniforme. Depois some sozinha para o próximo."),
             }),
+        new(
+            Versao: "5.119.0",
+            Titulo: "Biometria num lugar só no perfil do funcionário",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Facial junto das digitais",
+                    "A digital e a facial podiam ser cadastradas em dois lugares diferentes do perfil.",
+                    "O card Biometria, na coluna da esquerda do perfil, reúne os dois indicadores e a captura facial. A aba Assinaturas fica só com o cofre e os termos."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Card de biometria inteiro no tablet",
+                    "No tablet, o fim do card de biometria ficava cortado.",
+                    "A coluna da esquerda agora rola junto com a página e o card aparece inteiro."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
