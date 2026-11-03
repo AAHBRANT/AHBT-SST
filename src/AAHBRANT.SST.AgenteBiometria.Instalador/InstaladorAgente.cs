@@ -251,19 +251,30 @@ public class InstaladorAgente
 
     private static void RegistrarVigia(string exe)
     {
+        // Pela API COM do Agendador, e não por schtasks.exe: em PCs da empresa o antivírus nega ("Acesso negado")
+        // que um programa sem assinatura abra o schtasks.exe, e a vigia não era criada.
         try
         {
-            var psi = new ProcessStartInfo("schtasks.exe")
-            {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-            };
-            foreach (var arg in new[] { "/Create", "/F", "/SC", "MINUTE", "/MO", "5", "/TN", NomeTarefaVigia, "/TR", $"\"{exe}\"" })
-                psi.ArgumentList.Add(arg);
-            using var p = Process.Start(psi)!;
-            p.WaitForExit(15_000);
+            dynamic servico = Activator.CreateInstance(Type.GetTypeFromProgID("Schedule.Service")!)!;
+            servico.Connect();
+            dynamic tarefa = servico.NewTask(0);
+            tarefa.RegistrationInfo.Description = "Reabre o Agente de Biometria se ele for fechado.";
+            tarefa.Settings.DisallowStartIfOnBatteries = false;
+            tarefa.Settings.StopIfGoingOnBatteries = false;
+            tarefa.Settings.ExecutionTimeLimit = "PT0S";
+            tarefa.Settings.MultipleInstances = 2; // ignora nova execução enquanto a anterior roda
+            dynamic gatilho = tarefa.Triggers.Create(9); // ao fazer logon deste usuário
+            gatilho.UserId = $@"{Environment.UserDomainName}\{Environment.UserName}";
+            gatilho.Repetition.Interval = "PT5M";
+            // E já a partir de agora, sem esperar o próximo login.
+            dynamic agora = tarefa.Triggers.Create(1);
+            agora.StartBoundary = DateTime.Now.AddMinutes(1).ToString("yyyy-MM-ddTHH:mm:ss");
+            agora.Repetition.Interval = "PT5M";
+            dynamic acao = tarefa.Actions.Create(0);
+            acao.Path = exe;
+            acao.WorkingDirectory = Path.GetDirectoryName(exe);
+            tarefa.Principal.LogonType = 3; // sessão interativa: o agente aparece na bandeja
+            servico.GetFolder(@"\").RegisterTaskDefinition(NomeTarefaVigia, tarefa, 6, null, null, 3, null);
         }
         catch (Exception) { /* sem a vigia o agente ainda abre no login pela entrada Run */ }
     }
