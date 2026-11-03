@@ -109,3 +109,30 @@ public class InspecaoItemFotoAdicionalConfiguracao : IEntityTypeConfiguration<In
         builder.HasQueryFilter(f => f.Ativo);
     }
 }
+
+// Filtros de query (com escopo por obra) ficam no SstDbContext, como o da Inspeção.
+public class ContatoEmailRelatorioConfiguracao : IEntityTypeConfiguration<ContatoEmailRelatorio>
+{
+    public void Configure(EntityTypeBuilder<ContatoEmailRelatorio> builder)
+    {
+        builder.Property(c => c.Nome).HasMaxLength(150);
+        builder.Property(c => c.Email).IsRequired().HasMaxLength(200);
+        builder.HasOne(c => c.Usuario).WithMany().HasForeignKey(c => c.UsuarioId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(c => c.Obra).WithMany().HasForeignKey(c => c.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(c => new { c.UsuarioId, c.Email }).IsUnique().HasFilter("[Ativo] = 1 AND [UsuarioId] IS NOT NULL");
+        builder.HasIndex(c => new { c.ObraId, c.Email }).IsUnique().HasFilter("[Ativo] = 1 AND [ObraId] IS NOT NULL");
+    }
+}
+
+public class EnvioEmailInspecaoConfiguracao : IEntityTypeConfiguration<EnvioEmailInspecao>
+{
+    public void Configure(EntityTypeBuilder<EnvioEmailInspecao> builder)
+    {
+        builder.Property(e => e.EnviadoPorNome).IsRequired().HasMaxLength(200);
+        builder.Property(e => e.Destinatarios).IsRequired().HasMaxLength(4000);
+        builder.Property(e => e.Falhas).HasMaxLength(4000);
+        builder.Property(e => e.Mensagem).HasMaxLength(2000);
+        builder.HasOne(e => e.Inspecao).WithMany().HasForeignKey(e => e.InspecaoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(e => e.InspecaoId);
+    }
+}

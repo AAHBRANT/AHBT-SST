@@ -107,6 +107,8 @@ public interface IAppDbContext
     DbSet<Inspecao> Inspecoes { get; }
     DbSet<InspecaoItemResposta> InspecaoItemRespostas { get; }
     DbSet<InspecaoItemFotoAdicional> InspecaoItemFotosAdicionais { get; }
+    DbSet<ContatoEmailRelatorio> ContatosEmailRelatorio { get; }
+    DbSet<EnvioEmailInspecao> EnviosEmailInspecao { get; }
 
     DbSet<Alojamento> Alojamentos { get; }
     DbSet<AlojamentoMorador> AlojamentoMoradores { get; }
