@@ -36,6 +36,7 @@ public class InstaladorAgente
     public Func<string, bool> IniciarEConferir { get; set; }
     public Action PararAgente { get; set; }
     public Action<string> RegistrarInicioAutomatico { get; set; }
+    public Func<bool> AgenteEstaRodando { get; set; }
 
     public InstaladorAgente(string destino, Action<string> log)
     {
@@ -44,6 +45,39 @@ public class InstaladorAgente
         IniciarEConferir = IniciarEConferirPadrao;
         PararAgente = PararAgentePadrao;
         RegistrarInicioAutomatico = RegistrarInicioAutomaticoPadrao;
+        AgenteEstaRodando = AgenteEstaRodandoPadrao;
+    }
+
+    // Rede de segurança da atualização automática (03/11): o agente fecha a si mesmo para o Setup trocar a
+    // versão. Se a troca falhar no meio (arquivo preso pelo antivírus, disco, pacote ruim), ninguém reabria o
+    // agente e o posto ficava sem leitor até o próximo login. Aqui devolve a pasta anterior, se a atual sumiu,
+    // e abre o agente se ele não estiver rodando. Não faz nada quando o agente já está de pé.
+    public void GarantirAgenteRodando()
+    {
+        var exe = Path.Combine(_destino, NomeExe + ".exe");
+        var anterior = _destino + ".anterior";
+        if (!File.Exists(exe) && Directory.Exists(anterior))
+        {
+            _log("A pasta do agente ficou incompleta depois da falha. Restaurando a versão anterior...");
+            var falha = _destino + ".falhou";
+            ApagarSeExistir(falha);
+            if (Directory.Exists(_destino))
+                Mover(_destino, falha);
+            Mover(anterior, _destino);
+        }
+
+        if (!File.Exists(exe))
+        {
+            _log("Não há agente instalado para reabrir.");
+            return;
+        }
+        if (AgenteEstaRodando())
+            return;
+
+        _log("O agente não está aberto. Abrindo de novo...");
+        RegistrarInicioAutomatico(exe);
+        if (!IniciarEConferir(exe))
+            _log("O agente foi aberto, mas não respondeu. Rode o diagnóstico.");
     }
 
     public string Destino => _destino;
@@ -138,10 +172,15 @@ public class InstaladorAgente
         foreach (var (chave, antigo, novo) in EnderecosCorrigidos)
             if (agente[chave]?.GetValue<string>()?.TrimEnd('/') == antigo)
                 agente[chave] = novo;
-        if (!agente.ContainsKey("UrlManifestoAtualizacao") && !string.IsNullOrWhiteSpace(urlManifestoPadrao))
+        // Vazia ou de um Setup gerado só para instalar à mão (domínio .invalid): o Setup oficial pode corrigir.
+        if (!string.IsNullOrWhiteSpace(urlManifestoPadrao) && UrlPodeSerSubstituida(agente["UrlManifestoAtualizacao"]?.GetValue<string>()))
             agente["UrlManifestoAtualizacao"] = urlManifestoPadrao;
         return raiz.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
+
+    private static bool UrlPodeSerSubstituida(string? url) =>
+        string.IsNullOrWhiteSpace(url)
+        || (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Host.EndsWith(".invalid", StringComparison.OrdinalIgnoreCase));
 
     // Segredos em disco: só o usuário atual lê (mesma regra do instalar.ps1).
     private static void RestringirAoUsuarioAtual(string arquivo)
@@ -196,10 +235,48 @@ public class InstaladorAgente
         }
     }
 
+    private static bool AgenteEstaRodandoPadrao() => Process.GetProcessesByName(NomeExe).Length > 0;
+
     private static void RegistrarInicioAutomaticoPadrao(string exe)
     {
         using var chave = Registry.CurrentUser.CreateSubKey(ChaveRun);
         chave.SetValue(NomeRun, $"\"{exe}\"");
+        RegistrarVigia(exe);
+    }
+
+    // Vigia (03/11): a entrada Run só abre o agente no login. Se ele travar ou alguém fechar no meio do dia,
+    // o posto ficava sem leitor. A tarefa abre o agente a cada 5 min; se ele já estiver aberto, a segunda
+    // instância sai na hora (mutex em Program.Main). Roda no usuário do posto, sem administrador.
+    public const string NomeTarefaVigia = "AAHBRANT Agente Biometria (vigia)";
+
+    private static void RegistrarVigia(string exe)
+    {
+        // Pela API COM do Agendador, e não por schtasks.exe: em PCs da empresa o antivírus nega ("Acesso negado")
+        // que um programa sem assinatura abra o schtasks.exe, e a vigia não era criada.
+        try
+        {
+            dynamic servico = Activator.CreateInstance(Type.GetTypeFromProgID("Schedule.Service")!)!;
+            servico.Connect();
+            dynamic tarefa = servico.NewTask(0);
+            tarefa.RegistrationInfo.Description = "Reabre o Agente de Biometria se ele for fechado.";
+            tarefa.Settings.DisallowStartIfOnBatteries = false;
+            tarefa.Settings.StopIfGoingOnBatteries = false;
+            tarefa.Settings.ExecutionTimeLimit = "PT0S";
+            tarefa.Settings.MultipleInstances = 2; // ignora nova execução enquanto a anterior roda
+            dynamic gatilho = tarefa.Triggers.Create(9); // ao fazer logon deste usuário
+            gatilho.UserId = $@"{Environment.UserDomainName}\{Environment.UserName}";
+            gatilho.Repetition.Interval = "PT5M";
+            // E já a partir de agora, sem esperar o próximo login.
+            dynamic agora = tarefa.Triggers.Create(1);
+            agora.StartBoundary = DateTime.Now.AddMinutes(1).ToString("yyyy-MM-ddTHH:mm:ss");
+            agora.Repetition.Interval = "PT5M";
+            dynamic acao = tarefa.Actions.Create(0);
+            acao.Path = exe;
+            acao.WorkingDirectory = Path.GetDirectoryName(exe);
+            tarefa.Principal.LogonType = 3; // sessão interativa: o agente aparece na bandeja
+            servico.GetFolder(@"\").RegisterTaskDefinition(NomeTarefaVigia, tarefa, 6, null, null, 3, null);
+        }
+        catch (Exception) { /* sem a vigia o agente ainda abre no login pela entrada Run */ }
     }
 
     private static bool IniciarEConferirPadrao(string exe)

@@ -104,8 +104,46 @@ if ($escuta) { Registrar "Porta $porta (somente este PC)" 'APROVADO' ($escuta | 
 else { Registrar "Porta $porta" 'FALHOU' 'Ninguem escutando.' 'O agente nao esta rodando ou outra aplicacao usa a porta.' }
 
 $run = Get-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'AAHBRANT Agente Biometria' -ErrorAction SilentlyContinue
-if ($run) { Registrar 'Inicio automatico com o Windows' 'APROVADO' '' '' }
+if ($run) {
+  # Confere o CAMINHO e se o Windows nao desativou a entrada (Gerenciador de Tarefas > Aplicativos de inicializacao).
+  $caminhoRun = ([string]$run.'AAHBRANT Agente Biometria').Trim().Trim('"')
+  $desativado = $false
+  $aprovado = Get-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run' -Name 'AAHBRANT Agente Biometria' -ErrorAction SilentlyContinue
+  if ($aprovado) {
+    $bytes = $aprovado.'AAHBRANT Agente Biometria'
+    # Primeiro byte par (02/06) = habilitado; impar (03/07) = desabilitado pelo usuario.
+    if ($bytes -and $bytes.Length -gt 0 -and ($bytes[0] % 2) -eq 1) { $desativado = $true }
+  }
+  if (-not (Test-Path $caminhoRun)) {
+    Registrar 'Inicio automatico com o Windows' 'FALHOU' "A entrada aponta para um arquivo que nao existe: $caminhoRun" 'Reinstale o agente (Setup ou instalar.ps1) para recriar a entrada com o caminho correto.'
+  } elseif ($caminhoRun -ne $exe) {
+    Registrar 'Inicio automatico com o Windows' 'ATENCAO' "A entrada aponta para $caminhoRun, e nao para $exe." 'Confira se o agente instalado e o que abre no login. Se nao for, reinstale o agente.'
+  } elseif ($desativado) {
+    Registrar 'Inicio automatico com o Windows' 'FALHOU' 'A entrada existe, mas esta DESATIVADA no Windows.' 'Abra o Gerenciador de Tarefas > Aplicativos de inicializacao, selecione "AAHBRANT Agente Biometria" e clique em Habilitar.'
+  } else {
+    Registrar 'Inicio automatico com o Windows' 'APROVADO' $caminhoRun ''
+  }
+}
 else { Registrar 'Inicio automatico com o Windows' 'ATENCAO' 'Nao configurado.' 'Rode o instalar.ps1 sem -SemAutoStart para o agente voltar sozinho apos reiniciar.' }
+
+# 4b. Se o agente nao esta rodando, mostra o que a ultima atualizacao deixou para tras (so leitura).
+if (-not $proc) {
+  $pastaAgente = Split-Path $Destino -Parent
+  $logInstalador = Join-Path $pastaAgente 'instalador-agente.log'
+  if (Test-Path $logInstalador) {
+    $ultimas = (Get-Content $logInstalador -Tail 4 -ErrorAction SilentlyContinue) -join ' | '
+    $temErro = [bool]($ultimas -match 'ERRO|nao respondeu|não respondeu')
+    Registrar 'Ultimas linhas do log do instalador' $(if ($temErro) { 'ATENCAO' } else { 'INFO' }) $ultimas $(if ($temErro) { 'A atualizacao automatica pode ter falhado e fechado o agente. Abra o agente na mao e mande esta linha para quem acompanha o piloto.' } else { '' })
+  }
+  # O instalador guarda ".anterior" (backup) e ".falhou" (versao recusada) mesmo quando tudo da certo, entao
+  # elas so indicam troca interrompida se a pasta principal ficou sem o agente. ".nova" sobrando e sempre sinal.
+  $sobras = @('.nova')
+  if (-not (Test-Path $exe)) { $sobras += '.anterior', '.falhou' }
+  $sobras = $sobras | Where-Object { Test-Path ($Destino + $_) }
+  if ($sobras) {
+    Registrar 'Pastas de atualizacao incompletas' 'ATENCAO' (($sobras | ForEach-Object { (Split-Path $Destino -Leaf) + $_ }) -join ', ') 'Sinal de atualizacao interrompida. Rode o Setup do agente de novo para consertar.'
+  }
+}
 
 # 5. Respostas do agente (CORS e rede privada)
 $origem = if ($cfg -and $cfg.OrigemPermitida) { $cfg.OrigemPermitida.TrimEnd('/') } else { 'https://origem-nao-configurada.invalid' }
