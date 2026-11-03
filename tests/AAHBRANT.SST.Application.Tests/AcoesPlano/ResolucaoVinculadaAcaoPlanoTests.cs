@@ -116,15 +116,16 @@ public class ResolucaoVinculadaAcaoPlanoTests
     }
 
     [Fact]
-    public async Task ConcluirManual_AcaoVinculada_Recusa()
+    public async Task ConcluirManual_AcaoVinculada_AceitaComDescricao()
     {
         var c = await CenarioAsync();
         var acao = Acao(c.Acidente, TipoResolucaoAcaoPlano.Inspecao, tipoInspecao: TipoInspecao.Andaimes);
         c.Db.Add(acao);
         await c.Db.SaveChangesAsync();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new ConcluirAcaoPlanoCommandHandler(c.Db).Handle(new ConcluirAcaoPlanoCommand(acao.Id, "feito", null), default));
+        await new ConcluirAcaoPlanoCommandHandler(c.Db).Handle(new ConcluirAcaoPlanoCommand(acao.Id, "feito", null), default);
+
+        Assert.Equal(StatusControleRisco.Concluido, (await c.Db.AcoesPlano.SingleAsync(a => a.Id == acao.Id)).Status);
     }
 
     [Fact]

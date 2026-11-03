@@ -81,17 +81,9 @@ public class ConcluirAcaoPlanoCommandHandler : IRequestHandler<ConcluirAcaoPlano
         if (acao.Status == StatusControleRisco.Concluido)
             throw new InvalidOperationException("Esta ação já está concluída.");
 
-        var automatica = await ResolucaoAutomaticaAcaoPlano.CarregarAsync(_db, new[] { acao.Id }, ct);
-        if (automatica.TryGetValue(acao.Id, out var resolucao))
-            throw new InvalidOperationException($"Esta ação é concluída automaticamente: {resolucao.Texto.ToLowerInvariant()}.");
-
-        if (acao.OrigemTipo == nameof(Acidente))
-            throw new InvalidOperationException(acao.TipoResolucao is null
-                ? "A conclusão manual não existe mais: defina como a ação se resolve (treinamento, inspeção ou entrega de EPI) em Alterar."
-                : "Esta ação é concluída automaticamente pelo treinamento, inspeção ou entrega de EPI vinculado.");
-        if (acao.TipoResolucao is not null)
-            throw new InvalidOperationException("Esta ação é concluída automaticamente pelo treinamento, inspeção ou entrega de EPI vinculado.");
-
+        // 03/11/2026: toda ação pode ser marcada como resolvida à mão, inclusive as automáticas e as sem
+        // vínculo — desde que o usuário descreva COMO foi resolvida (fica registrado com quem e quando).
+        // Se o fato vinculado acontecer depois, a ação já está concluída e permanece como está.
         acao.Status = StatusControleRisco.Concluido;
         acao.DataConclusao = DateTime.UtcNow;
         acao.ConcluidoPorUsuarioId = request.UsuarioAtualId;

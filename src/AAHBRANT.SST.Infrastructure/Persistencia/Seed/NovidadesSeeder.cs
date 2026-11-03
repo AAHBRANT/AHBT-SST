@@ -2252,6 +2252,17 @@ public static class NovidadesSeeder
                     null,
                     "O PDF tem a logo cadastrada na obra no cabeçalho, as nove seções da OS e os dois carimbos de assinatura. O histórico da aba lista cada OS emitida com a situação e o botão Ver PDF."),
             }),
+        new(
+            Versao: "5.124.0",
+            Titulo: "Ações do plano: marcar como resolvido",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Botão \"Resolvido\" nas ações do plano da ocorrência",
+                    "Ações automáticas ou sem vínculo só concluíam quando o fato vinculado acontecia.",
+                    "Toda ação pode ser marcada como resolvida, descrevendo como foi resolvida; o texto, o nome e a data ficam registrados."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
