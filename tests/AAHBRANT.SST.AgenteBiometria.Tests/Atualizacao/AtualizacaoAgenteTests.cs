@@ -223,6 +223,28 @@ public class InstaladorAgenteTests : IDisposable
         Assert.Equal("https://minha", novo["Agente"]!["UrlManifestoAtualizacao"]!.GetValue<string>());
     }
 
+    [Theory]
+    [InlineData("https://exemplo.invalid/agente-biometria/manifesto.json")]
+    [InlineData("")]
+    public void Completar_troca_url_vazia_ou_de_setup_manual(string urlAtual)
+    {
+        var antigo = $"{{\"Agente\":{{\"UrlManifestoAtualizacao\":\"{urlAtual}\"}}}}";
+
+        var novo = JsonNode.Parse(InstaladorAgente.Completar(antigo, "https://padrao/manifesto.json"))!;
+
+        Assert.Equal("https://padrao/manifesto.json", novo["Agente"]!["UrlManifestoAtualizacao"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void Completar_nao_troca_url_valida_por_url_de_setup_manual()
+    {
+        var antigo = "{\"Agente\":{\"UrlManifestoAtualizacao\":\"https://minha/manifesto.json\"}}";
+
+        var novo = JsonNode.Parse(InstaladorAgente.Completar(antigo, "https://exemplo.invalid/manifesto.json"))!;
+
+        Assert.Equal("https://minha/manifesto.json", novo["Agente"]!["UrlManifestoAtualizacao"]!.GetValue<string>());
+    }
+
     [Fact]
     public void Completar_corrige_enderecos_azurewebsites_antigos()
     {

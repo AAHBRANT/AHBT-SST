@@ -172,10 +172,15 @@ public class InstaladorAgente
         foreach (var (chave, antigo, novo) in EnderecosCorrigidos)
             if (agente[chave]?.GetValue<string>()?.TrimEnd('/') == antigo)
                 agente[chave] = novo;
-        if (!agente.ContainsKey("UrlManifestoAtualizacao") && !string.IsNullOrWhiteSpace(urlManifestoPadrao))
+        // Vazia ou de um Setup gerado só para instalar à mão (domínio .invalid): o Setup oficial pode corrigir.
+        if (!string.IsNullOrWhiteSpace(urlManifestoPadrao) && UrlPodeSerSubstituida(agente["UrlManifestoAtualizacao"]?.GetValue<string>()))
             agente["UrlManifestoAtualizacao"] = urlManifestoPadrao;
         return raiz.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
+
+    private static bool UrlPodeSerSubstituida(string? url) =>
+        string.IsNullOrWhiteSpace(url)
+        || (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Host.EndsWith(".invalid", StringComparison.OrdinalIgnoreCase));
 
     // Segredos em disco: só o usuário atual lê (mesma regra do instalar.ps1).
     private static void RestringirAoUsuarioAtual(string arquivo)
@@ -236,6 +241,31 @@ public class InstaladorAgente
     {
         using var chave = Registry.CurrentUser.CreateSubKey(ChaveRun);
         chave.SetValue(NomeRun, $"\"{exe}\"");
+        RegistrarVigia(exe);
+    }
+
+    // Vigia (03/11): a entrada Run só abre o agente no login. Se ele travar ou alguém fechar no meio do dia,
+    // o posto ficava sem leitor. A tarefa abre o agente a cada 5 min; se ele já estiver aberto, a segunda
+    // instância sai na hora (mutex em Program.Main). Roda no usuário do posto, sem administrador.
+    public const string NomeTarefaVigia = "AAHBRANT Agente Biometria (vigia)";
+
+    private static void RegistrarVigia(string exe)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo("schtasks.exe")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+            foreach (var arg in new[] { "/Create", "/F", "/SC", "MINUTE", "/MO", "5", "/TN", NomeTarefaVigia, "/TR", $"\"{exe}\"" })
+                psi.ArgumentList.Add(arg);
+            using var p = Process.Start(psi)!;
+            p.WaitForExit(15_000);
+        }
+        catch (Exception) { /* sem a vigia o agente ainda abre no login pela entrada Run */ }
     }
 
     private static bool IniciarEConferirPadrao(string exe)
