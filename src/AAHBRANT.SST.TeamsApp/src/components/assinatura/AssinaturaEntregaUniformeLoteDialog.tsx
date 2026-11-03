@@ -12,6 +12,7 @@ import {
 } from '@fluentui/react-components';
 import { Checkmark24Filled, PersonBoard24Regular, Warning24Regular } from '@fluentui/react-icons';
 import { BotaoBiometriaDigital } from './BotaoBiometriaDigital';
+import { AssinaturaConfirmadaTelaCheia } from './AssinaturaConfirmadaTelaCheia';
 import { api, MetodoAutenticacaoAssinatura, type DocumentoAssinatura } from '../../lib/api';
 import { capturarDigitalLocal, credencialLeitura, estaAgenteLocalDisponivel, obterDispositivoLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
@@ -228,6 +229,7 @@ export function AssinaturaEntregaUniformeLoteDialog({
         <DialogBody>
           <DialogTitle>Assinatura da entrega de uniforme</DialogTitle>
           <DialogContent>
+            <AssinaturaConfirmadaTelaCheia nome={ultimoAssinante} />
             <div className={estilos.card} style={{ marginBottom: 16 }}>
               <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
                 Peças entregues ({itens.length})

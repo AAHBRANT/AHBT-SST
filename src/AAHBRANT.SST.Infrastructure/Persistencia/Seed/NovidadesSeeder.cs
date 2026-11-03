@@ -2164,6 +2164,17 @@ public static class NovidadesSeeder
                     null,
                     "Em Administração > Pendências automáticas, o Administrador liga ou desliga cada aviso e escolhe se ele abre toda vez que a pessoa entra ou uma vez por dia, e se pode ser fechado."),
             }),
+        new(
+            Versao: "5.118.0",
+            Titulo: "Confirmação de assinatura em tela cheia",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Tela verde com o nome de quem assinou",
+                    "Depois da digital ou do facial aparecia só uma linha pequena \"Assinatura registrada\", difícil de ver de longe.",
+                    "A tela fica verde por 2,5 segundos com o ✓ e o nome do funcionário em letra grande, no quiosque e na assinatura em lote de EPI e de uniforme. Depois some sozinha para o próximo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
