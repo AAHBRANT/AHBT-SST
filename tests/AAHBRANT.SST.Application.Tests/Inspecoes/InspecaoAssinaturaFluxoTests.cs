@@ -121,3 +121,77 @@ public class InspecaoAssinaturaFluxoTests
         Assert.Equal(1, await db.Inspecoes.CountAsync(i => i.AlojamentoId == alojamento.Id));
     }
 }
+
+// "Finalizar" assina na hora quem realizou a inspeção (Técnico/Engenheiro de Segurança); nos demais casos
+// a inspeção fica aguardando a assinatura de um técnico.
+public class AssinarInspecaoAoFinalizarTests
+{
+    private const string Oid = "oid-tecnico-assina";
+
+    private sealed class AuditoriaFalsa : AAHBRANT.SST.Application.Common.Interfaces.IAuditoriaService
+    {
+        public Task RegistrarAsync(string acao, string entidadeTipo, Guid entidadeId, Guid? usuarioId, Guid? trabalhadorId, object? dadosDepois, CancellationToken ct)
+            => Task.CompletedTask;
+    }
+
+    private static async Task<(SstDbContext db, Inspecao inspecao, AssinarInspecaoAoFinalizarCommandHandler handler)> Montar(
+        string banco, string funcao, bool usuarioEhResponsavel = true, bool comVinculo = true)
+    {
+        var db = AAHBRANT.SST.Application.Tests.TestSupport.DbContextFactory.Criar();
+        var obra = new Obra { Codigo = "OB1", Nome = "Obra" };
+        var trabalhador = new Trabalhador { Nome = "Gilton", Cpf = "11122233344", ObraId = obra.Id, Funcao = new Funcao { Nome = funcao } };
+        var logado = new Usuario { Email = "a@aahbrant.com", Nome = "Logado", AzureAdObjectId = Oid, TrabalhadorId = comVinculo ? trabalhador.Id : null };
+        var outro = new Usuario { Email = "b@aahbrant.com", Nome = "Outro" };
+        var checklist = new ChecklistModelo { Nome = "Checklist", TipoInspecao = TipoInspecao.Alojamento, Versao = 1 };
+        db.AddRange(obra, trabalhador, logado, outro, checklist);
+        await db.SaveChangesAsync();
+        var inspecao = new Inspecao
+        {
+            TipoInspecao = TipoInspecao.Alojamento, ObraId = obra.Id, ChecklistModeloId = checklist.Id, Data = DateTime.UtcNow,
+            ResponsavelUsuarioId = usuarioEhResponsavel ? logado.Id : outro.Id, Status = StatusInspecao.AguardandoAssinatura,
+        };
+        db.Inspecoes.Add(inspecao);
+        db.DocumentosAssinatura.Add(new DocumentoAssinatura { EntidadeTipo = nameof(Inspecao), EntidadeId = inspecao.Id });
+        await db.SaveChangesAsync();
+        return (db, inspecao, new AssinarInspecaoAoFinalizarCommandHandler(db, new AAHBRANT.SST.Application.Assinatura.RegistradorAssinaturaService(db, new AuditoriaFalsa())));
+    }
+
+    [Fact]
+    public async Task ResponsavelTecnicoDeSeguranca_AssinaNaHora()
+    {
+        var (db, inspecao, handler) = await Montar(nameof(ResponsavelTecnicoDeSeguranca_AssinaNaHora), "Técnico de Segurança do Trabalho");
+
+        var r = await handler.Handle(new AssinarInspecaoAoFinalizarCommand(inspecao.Id, Oid), default);
+
+        Assert.True(r.Assinada);
+        Assert.Equal("Gilton", r.AssinadaPor);
+        var signatario = await db.DocumentoSignatarios.SingleAsync();
+        Assert.Equal(MetodoAutenticacaoAssinatura.SessaoLogada, signatario.MetodoAutenticacao);
+    }
+
+    [Theory]
+    [InlineData("Pedreiro", true, true)]            // função que não pode assinar inspeção
+    [InlineData("Técnico de Segurança", false, true)] // outro usuário realizou a inspeção
+    [InlineData("Técnico de Segurança", true, false)] // usuário sem vínculo com trabalhador
+    public async Task NaoAssina_FicaAguardando(string funcao, bool responsavel, bool vinculo)
+    {
+        var (db, inspecao, handler) = await Montar("na" + funcao + responsavel + vinculo, funcao, responsavel, vinculo);
+
+        var r = await handler.Handle(new AssinarInspecaoAoFinalizarCommand(inspecao.Id, Oid), default);
+
+        Assert.False(r.Assinada);
+        Assert.False(string.IsNullOrWhiteSpace(r.Motivo));
+        Assert.Equal(0, await db.DocumentoSignatarios.CountAsync());
+        Assert.Equal(StatusInspecao.AguardandoAssinatura, (await db.Inspecoes.FirstAsync()).Status);
+    }
+
+    [Fact]
+    public async Task SemUsuarioIdentificado_NaoAssina()
+    {
+        var (_, inspecao, handler) = await Montar(nameof(SemUsuarioIdentificado_NaoAssina), "Técnico de Segurança");
+
+        var r = await handler.Handle(new AssinarInspecaoAoFinalizarCommand(inspecao.Id, null), default);
+
+        Assert.False(r.Assinada);
+    }
+}

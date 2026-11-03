@@ -2209,7 +2209,7 @@ public static class NovidadesSeeder
                 new NovidadeSeedItem(CategoriaNovidade.Melhoria,
                     "Finalizar inspeção leva direto para a assinatura",
                     "A inspeção ficava Concluída assim que era finalizada, e a assinatura podia ficar para depois ou nunca acontecer.",
-                    "Ao clicar em \"Finalizar inspeção\", a inspeção passa para \"Aguardando assinatura\", o checklist fica travado e o botão \"Assinar inspeção\" aparece. Ela só vira \"Concluída\" quando é assinada. Vale para inspeções de alojamento, veículo, tema e demais tipos."),
+                    "Ao clicar em \"Finalizar inspeção\", quem realizou a inspeção assina automaticamente, em um clique, e a inspeção fica \"Concluída\". Se não for possível assinar na hora (o usuário não é Técnico ou Engenheiro de Segurança, ou outra pessoa fez a inspeção), ela fica \"Aguardando assinatura\", com o checklist travado e o botão \"Assinar inspeção\". Vale para inspeções de alojamento, veículo, tema e demais tipos."),
                 new NovidadeSeedItem(CategoriaNovidade.Novidade,
                     "Reabrir para ajustes antes de assinar",
                     "Se alguém finalizasse com um erro, não havia como corrigir.",

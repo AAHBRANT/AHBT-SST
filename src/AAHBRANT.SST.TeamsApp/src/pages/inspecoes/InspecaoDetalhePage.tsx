@@ -604,7 +604,7 @@ export function InspecaoDetalhePage() {
     >
       {inspecao.status === StatusInspecao.AguardandoAssinatura && (
         <FeedbackInline tom="aviso">
-          Falta só a assinatura. Esta inspeção só será concluída depois de assinada.
+          Falta só a assinatura de um Técnico ou Engenheiro de Segurança. Esta inspeção só será concluída depois de assinada.
         </FeedbackInline>
       )}
 

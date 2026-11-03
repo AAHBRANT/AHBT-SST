@@ -132,7 +132,11 @@ public class InspecoesController : ControllerBase
     public async Task<IActionResult> Encerrar(Guid id, CancellationToken ct)
     {
         await _mediator.Send(new EncerrarInspecaoCommand(id), ct);
-        return NoContent();
+        // Quem realizou a inspeção assina na hora (um clique, sessão logada) e a inspeção vira Concluída.
+        // Se não puder (outro usuário, função fora de Técnico/Engenheiro de Segurança), fica aguardando.
+        var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var assinatura = await _mediator.Send(new AssinarInspecaoAoFinalizarCommand(id, azureAdObjectId), ct);
+        return Ok(assinatura);
     }
 
     // Volta uma inspeção "Aguardando assinatura" (ainda sem assinatura) para "Em andamento".
