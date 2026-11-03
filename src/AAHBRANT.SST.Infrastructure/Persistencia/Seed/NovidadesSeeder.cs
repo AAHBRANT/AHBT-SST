@@ -2201,6 +2201,17 @@ public static class NovidadesSeeder
                     "O PDF mostrava \"Cliente / Fiscalização\" com o cliente do cadastro da obra.",
                     "O PDF do cronograma mensal de DDS agora mostra sempre \"Cliente: Supervisão\"."),
             }),
+        new(
+            Versao: "5.121.0",
+            Titulo: "Atribuir perfil a usuário voltou a funcionar",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Erro ao atribuir de novo um perfil já removido",
+                    "Atribuir a um usuário um perfil que já tinha sido removido dele na mesma obra mostrava \"Ocorreu um erro inesperado\".",
+                    "O perfil é atribuído normalmente, inclusive quando já foi removido antes."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

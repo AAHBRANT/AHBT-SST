@@ -72,12 +72,25 @@ public class AtribuirPerfilObraCommandHandler : IRequestHandler<AtribuirPerfilOb
             }
         }
 
-        var jaAtribuido = await _db.UsuariosPerfilObra.AnyAsync(
-            x => x.UsuarioId == request.UsuarioId
-              && x.PerfilAcessoId == request.PerfilAcessoId
-              && x.ObraId == request.ObraId, ct);
-        if (jaAtribuido)
-            throw new InvalidOperationException("Este usuário já possui este perfil neste escopo de obra.");
+        // IgnoreQueryFilters: a remoção é soft-delete, mas o índice único (Usuario, Perfil, Obra)
+        // continua valendo para a linha removida. Sem enxergá-la, reatribuir um perfil já removido
+        // violava o índice e virava "erro inesperado" (500).
+        var existente = await _db.UsuariosPerfilObra
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(
+                x => x.UsuarioId == request.UsuarioId
+                  && x.PerfilAcessoId == request.PerfilAcessoId
+                  && x.ObraId == request.ObraId, ct);
+
+        if (existente is not null)
+        {
+            if (existente.Ativo)
+                throw new InvalidOperationException("Este usuário já possui este perfil neste escopo de obra.");
+
+            existente.Ativo = true;
+            await _db.SaveChangesAsync(ct);
+            return existente.Id;
+        }
 
         var vinculo = new UsuarioPerfilObra
         {
