@@ -300,7 +300,14 @@ function Assistente({ id }: { id: string }) {
           <ResumoCbo ghes={e.ghes} />
           {e.ghes.map((gh, gi) => (
             <GheEditor key={gh.numero} ghe={gh} todos={e.ghes} funcoesCadastradas={g.funcoesCadastradas} editavel={editavel}
-              alterar={(f) => alterar((x) => f(x.ghes[gi], x))} />
+              alterar={(f) => alterar((x) => f(x.ghes[gi], x))}
+              remover={(destino) => void executar('Removendo o GHE…', async () => {
+                // O servidor trabalha sobre o que está salvo: grava a tela antes, para não perder edições.
+                await salvar(3);
+                const r = await api.geracoesPgrEap.removerGhe(id, gh.numero, destino);
+                await carregar(3);
+                setAviso(`GHE ${String(gh.numero).padStart(2, '0')} removido (${r.funcoes} função(ões), ${r.riscos} risco(s)). ${r.acoesRemovidas} ação(ões) do plano retirada(s).`);
+              })} />
           ))}
           {editavel && e.ghes.length > 0 && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
@@ -386,16 +393,46 @@ function ResumoCbo({ ghes }: { ghes: GheGerado[] }) {
   );
 }
 
-function GheEditor({ ghe, todos, funcoesCadastradas, editavel, alterar }: {
+function GheEditor({ ghe, todos, funcoesCadastradas, editavel, alterar, remover }: {
   ghe: GheGerado;
   todos: GheGerado[];
   funcoesCadastradas: { id: string; nome: string }[];
   editavel: boolean;
   alterar: (f: (g: GheGerado, e: EstruturaGeracaoPgr) => void) => void;
+  remover: (destinoGheNumero: number | null) => void;
 }) {
   const [novaFuncao, setNovaFuncao] = useState('');
+  const [confirmando, setConfirmando] = useState(false);
+  const outros = todos.filter((x) => x.numero !== ghe.numero);
+  const [destino, setDestino] = useState<string>(''); // '' = descartar as atividades
+  const riscosNoGhe = ghe.atividades.flatMap((a) => a.riscos).filter((r) => !r.excluido).length;
   return (
     <Card titulo={`GHE ${String(ghe.numero).padStart(2, '0')}`}>
+      {editavel && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <Button size="small" onClick={() => setConfirmando(true)}>Remover GHE</Button>
+        </div>
+      )}
+      {confirmando && (
+        <div role="alertdialog" aria-label="Confirmar remoção do GHE"
+          style={{ border: `1px solid var(--colorNeutralStroke2)`, borderRadius: 8, padding: 12, marginBottom: 12 }}>
+          <Text weight="semibold" style={{ display: 'block' }}>Remover GHE {String(ghe.numero).padStart(2, '0')} — {ghe.nome}?</Text>
+          <Text size={200} style={{ display: 'block', margin: '6px 0' }}>
+            Saem junto: {ghe.funcoes.length} função(ões) com descrição e CBO e {riscosNoGhe} risco(s) com suas medidas
+            {' '}(se as atividades forem movidas, os riscos vão com elas). As ações do plano geradas desses riscos e ainda sem
+            responsável, prazo ou edição também saem; as que você escreveu ou editou ficam.
+          </Text>
+          <Text weight="semibold" style={{ display: 'block', marginBottom: 4 }}>O que fazer com as {ghe.atividades.length} atividade(s) da EAP?</Text>
+          <Select value={destino} aria-label="Destino das atividades" onChange={(_, d) => setDestino(d.value)}>
+            <option value="">Descartar (ficam “sem GHE” até serem movidas ou desmarcadas na EAP)</option>
+            {outros.map((x) => <option key={x.numero} value={x.numero}>Mover para GHE {String(x.numero).padStart(2, '0')} — {x.nome}</option>)}
+          </Select>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+            <Button onClick={() => setConfirmando(false)}>Cancelar</Button>
+            <Button appearance="primary" onClick={() => { setConfirmando(false); remover(destino === '' ? null : Number(destino)); }}>Remover GHE</Button>
+          </div>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
         <Field label="Nome do GHE"><Input value={ghe.nome} disabled={!editavel} onChange={(_, d) => alterar((g) => { g.nome = d.value; })} /></Field>
         <Field label="Ambiente"><Input value={ghe.ambiente ?? ''} disabled={!editavel} onChange={(_, d) => alterar((g) => { g.ambiente = d.value; })} /></Field>

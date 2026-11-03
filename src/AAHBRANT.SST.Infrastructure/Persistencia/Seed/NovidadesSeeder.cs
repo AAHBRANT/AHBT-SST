@@ -2252,6 +2252,17 @@ public static class NovidadesSeeder
                     null,
                     "O PDF tem a logo cadastrada na obra no cabeçalho, as nove seções da OS e os dois carimbos de assinatura. O histórico da aba lista cada OS emitida com a situação e o botão Ver PDF."),
             }),
+        new(
+            Versao: "5.124.0",
+            Titulo: "PGR pela EAP: remover um GHE do rascunho",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Remover um GHE sem refazer todos",
+                    "Para tirar um GHE do rascunho era preciso pedir a sugestão de GHEs de novo, que trocava todos e perdia os ajustes.",
+                    "No passo Funções e GHE, cada GHE tem o botão Remover GHE. Você escolhe mover as atividades para outro GHE (os riscos vão junto) ou descartá-las. As funções, os riscos e as ações do plano geradas desses riscos saem junto; ações escritas ou editadas por você, com responsável ou com prazo, ficam."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
