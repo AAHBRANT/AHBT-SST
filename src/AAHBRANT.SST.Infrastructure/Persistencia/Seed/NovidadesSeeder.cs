@@ -2166,6 +2166,17 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.118.0",
+            Titulo: "Confirmação de assinatura em tela cheia",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Tela verde com o nome de quem assinou",
+                    "Depois da digital ou do facial aparecia só uma linha pequena \"Assinatura registrada\", difícil de ver de longe.",
+                    "A tela fica verde por 2,5 segundos com o ✓ e o nome do funcionário em letra grande, no quiosque e na assinatura em lote de EPI e de uniforme. Depois some sozinha para o próximo."),
+            }),
+        new(
+            Versao: "5.119.0",
             Titulo: "Biometria num lugar só no perfil do funcionário",
             DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
@@ -2179,6 +2190,7 @@ public static class NovidadesSeeder
                     "No tablet, o fim do card de biometria ficava cortado.",
                     "A coluna da esquerda agora rola junto com a página e o card aparece inteiro."),
             }),
+||||||| e3a66609
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

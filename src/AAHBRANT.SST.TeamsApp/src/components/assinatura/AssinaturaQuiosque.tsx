@@ -19,6 +19,7 @@ import {
 } from '@fluentui/react-components';
 import { Checkmark24Filled, LockClosed24Regular, Warning24Regular } from '@fluentui/react-icons';
 import { BotaoBiometriaDigital } from './BotaoBiometriaDigital';
+import { AssinaturaConfirmadaTelaCheia } from './AssinaturaConfirmadaTelaCheia';
 import { api, metodoAutenticacaoAssinaturaLabel, StatusDocumentoAssinatura, type DocumentoAssinatura } from '../../lib/api';
 import { capturarDigitalLocal, credencialLeitura, estaAgenteLocalDisponivel, obterDispositivoLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
@@ -171,6 +172,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
 
   return (
     <div>
+      <AssinaturaConfirmadaTelaCheia nome={ultimoAssinante} />
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
       {finalizado ? (
