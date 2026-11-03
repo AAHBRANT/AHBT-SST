@@ -11,19 +11,21 @@ namespace AAHBRANT.SST.Application.Tests.AcoesPlano;
 public class ConcluirReabrirAcaoPlanoTests
 {
     [Fact]
-    public async Task Concluir_Manual_NaOcorrencia_Recusa()
+    public async Task Concluir_Manual_NaOcorrencia_RegistraComoFoiResolvido()
     {
         var (db, acao, tecnico, _) = await CenarioAsync();
 
-        var erro = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new ConcluirAcaoPlanoCommandHandler(db).Handle(new ConcluirAcaoPlanoCommand(acao.Id, "Rodapés instalados.", tecnico.Id), default));
+        await new ConcluirAcaoPlanoCommandHandler(db).Handle(new ConcluirAcaoPlanoCommand(acao.Id, "Rodapés instalados.", tecnico.Id), default);
 
-        Assert.Contains("não existe mais", erro.Message);
-        Assert.Equal(StatusControleRisco.Pendente, (await db.AcoesPlano.SingleAsync(a => a.Id == acao.Id)).Status);
+        var salva = await db.AcoesPlano.SingleAsync(a => a.Id == acao.Id);
+        Assert.Equal(StatusControleRisco.Concluido, salva.Status);
+        Assert.Equal("Rodapés instalados.", salva.DescricaoConclusao);
+        Assert.Equal(tecnico.Id, salva.ConcluidoPorUsuarioId);
+        Assert.NotNull(salva.DataConclusao);
     }
 
     [Fact]
-    public async Task Concluir_AcaoDoDdsAutomatico_Recusa()
+    public async Task Concluir_AcaoDoDdsAutomatico_AceitaResolucaoManual()
     {
         var (db, acao, tecnico, acidente) = await CenarioAsync();
         db.TemasDdsAgendados.Add(new TemaDdsAgendado
@@ -33,9 +35,9 @@ public class ConcluirReabrirAcaoPlanoTests
         });
         await db.SaveChangesAsync();
 
-        var erro = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new ConcluirAcaoPlanoCommandHandler(db).Handle(new ConcluirAcaoPlanoCommand(acao.Id, "feito", tecnico.Id), default));
-        Assert.Contains("automaticamente", erro.Message);
+        await new ConcluirAcaoPlanoCommandHandler(db).Handle(new ConcluirAcaoPlanoCommand(acao.Id, "DDS feito em campo.", tecnico.Id), default);
+
+        Assert.Equal(StatusControleRisco.Concluido, (await db.AcoesPlano.SingleAsync(a => a.Id == acao.Id)).Status);
     }
 
     [Fact]
