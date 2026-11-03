@@ -134,7 +134,7 @@ public class VeiculosHandlersTests
 
         await new EncerrarInspecaoCommandHandler(db).Handle(new EncerrarInspecaoCommand(inspecao.Id), default);
 
-        Assert.Equal(StatusInspecao.Concluida, (await db.Inspecoes.FirstAsync(i => i.Id == inspecao.Id)).Status);
+        Assert.Equal(StatusInspecao.AguardandoAssinatura, (await db.Inspecoes.FirstAsync(i => i.Id == inspecao.Id)).Status);
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class VeiculosHandlersTests
 
         await new EncerrarInspecaoCommandHandler(db).Handle(new EncerrarInspecaoCommand(inspecao.Id), default);
 
-        Assert.Equal(StatusInspecao.Concluida, (await db.Inspecoes.FirstAsync(i => i.Id == inspecao.Id)).Status);
+        Assert.Equal(StatusInspecao.AguardandoAssinatura, (await db.Inspecoes.FirstAsync(i => i.Id == inspecao.Id)).Status);
     }
 
     [Fact]

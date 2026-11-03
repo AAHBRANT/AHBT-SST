@@ -32,7 +32,7 @@ export function AssinarInspecaoPage() {
     <div>
       <PageHeader
         titulo={`Assinatura eletrônica — ${inspecao ? tipoInspecaoLabel[inspecao.tipoInspecao] : 'Carregando...'}`}
-        subtitulo={inspecao && `Obra: ${inspecao.obraNome} · Data: ${inspecao.data?.slice(0, 10)}`}
+        subtitulo={inspecao && `Obra: ${inspecao.obraNome} · Data: ${inspecao.data?.slice(0, 10)}. Ao assinar, a inspeção é marcada como Concluída.`}
         voltarPara={`/prevencao/inspecoes/${id}`}
         rotuloVoltar="Voltar para a inspeção"
       />

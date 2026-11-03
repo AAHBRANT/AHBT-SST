@@ -89,6 +89,11 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
         // gravado, para quem baixar o PDF pela página pública conferir que é o mesmo.
         if (documento.EntidadeTipo == "Inspecao")
         {
+            // Regra: a inspeção só fica Concluída depois de assinada. Marca antes de gerar o PDF
+            // para que o comprovante saia com o status "Concluída".
+            var inspecao = await _db.Inspecoes.FirstOrDefaultAsync(i => i.Id == documento.EntidadeId, ct);
+            if (inspecao is not null && inspecao.Status == StatusInspecao.AguardandoAssinatura)
+                inspecao.Status = StatusInspecao.Concluida;
             await _db.SaveChangesAsync(ct);
             documento.PdfConteudo = await _mediator.Send(new ExportarInspecaoPdfQuery(documento.EntidadeId), ct);
         }

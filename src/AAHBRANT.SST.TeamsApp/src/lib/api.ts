@@ -2690,11 +2690,14 @@ export const statusItemChecklistLabel: Record<number, string> = {
 export const StatusInspecao = {
   EmAndamento: 1,
   Concluida: 2,
+  // "Finalizar" leva para cá; só a assinatura torna a inspeção Concluída.
+  AguardandoAssinatura: 3,
 } as const;
 
 export const statusInspecaoLabel: Record<number, string> = {
   1: 'Em andamento',
   2: 'Concluída',
+  3: 'Aguardando assinatura',
 };
 
 export interface ChecklistModelo {
@@ -6339,6 +6342,8 @@ export const api = {
     },
     removerFotoAdicional: (fotoId: string) => request<void>(`/api/inspecoes/fotos-adicionais/${fotoId}`, { method: 'DELETE' }),
     encerrar: (id: string) => request<void>(`/api/inspecoes/${id}/encerrar`, { method: 'POST' }),
+    // Aguardando assinatura (sem nenhuma assinatura ainda) → Em andamento, para corrigir um erro.
+    reabrir: (id: string) => request<void>(`/api/inspecoes/${id}/reabrir`, { method: 'POST' }),
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/inspecoes/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {

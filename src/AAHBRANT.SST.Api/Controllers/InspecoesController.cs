@@ -135,6 +135,15 @@ public class InspecoesController : ControllerBase
         return NoContent();
     }
 
+    // Volta uma inspeção "Aguardando assinatura" (ainda sem assinatura) para "Em andamento".
+    [Authorize(Policy = "inspecao:encerrar")]
+    [HttpPost("{id:guid}/reabrir")]
+    public async Task<IActionResult> Reabrir(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new ReabrirInspecaoCommand(id), ct);
+        return NoContent();
+    }
+
     [Authorize(Policy = "inspecao:ver")]
     [HttpGet("{id:guid}/pdf")]
     public async Task<IActionResult> ExportarPdf(Guid id, CancellationToken ct)

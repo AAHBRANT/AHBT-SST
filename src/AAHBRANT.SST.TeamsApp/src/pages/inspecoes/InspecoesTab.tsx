@@ -54,6 +54,7 @@ function criarInspecaoVazia(): NovaInspecao {
 const tomPorStatusInspecao: Record<number, Tom> = {
   1: 'info',
   2: 'ok',
+  3: 'atencao',
 };
 
 // Onda D do spec de formulário inline (2026-09-11): o PainelLateral (drawer) saiu — mesmo padrão

@@ -612,7 +612,11 @@ public enum StatusItemChecklist
 public enum StatusInspecao
 {
     EmAndamento = 1,
-    Concluida = 2
+    // Concluída só existe depois de assinada (FinalizarDocumentoCommand). Valor 2 preservado por causa
+    // dos dados já gravados; o status intermediário entra como 3.
+    Concluida = 2,
+    // "Finalizar" valida o checklist e trava a edição, mas a inspeção só vira Concluída com a assinatura.
+    AguardandoAssinatura = 3
 }
 
 // Seção 25 da Base de Conhecimento (linhas 620-643) não lista vocabulário fechado para a "origem"

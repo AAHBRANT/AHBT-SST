@@ -108,7 +108,12 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             detalhe.Inspecao.ChecklistModeloVersao,
             detalhe.Inspecao.Data,
             detalhe.Inspecao.ResponsavelUsuarioNome,
-            detalhe.Inspecao.Status == StatusInspecao.Concluida ? "Concluída" : "Em andamento",
+            detalhe.Inspecao.Status switch
+            {
+                StatusInspecao.Concluida => "Concluída",
+                StatusInspecao.AguardandoAssinatura => "Aguardando assinatura",
+                _ => "Em andamento",
+            },
             itens,
             inspecao.NumeroDocumento,
             assinatura?.ConteudoHash ?? rastreio.ConteudoHash,

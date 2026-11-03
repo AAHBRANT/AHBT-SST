@@ -39,7 +39,7 @@ public class ResponderItemInspecaoCommandHandler : IRequestHandler<ResponderItem
 
     public async Task<string?> Handle(ResponderItemInspecaoCommand request, CancellationToken ct)
     {
-        var resposta = await _db.InspecaoItemRespostas.FirstOrDefaultAsync(r => r.Id == request.RespostaId, ct)
+        var resposta = await _db.InspecaoItemRespostas.Include(r => r.Inspecao).FirstOrDefaultAsync(r => r.Id == request.RespostaId, ct)
             ?? throw new KeyNotFoundException($"Resposta {request.RespostaId} não encontrada.");
         await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "Inspecao", resposta.InspecaoId, ct);
         await _db.GarantirObraDoPaiNoEscopoAsync(
@@ -49,6 +49,9 @@ public class ResponderItemInspecaoCommandHandler : IRequestHandler<ResponderItem
             throw new DbUpdateConcurrencyException("O item foi alterado enquanto o dispositivo estava offline.");
         var concluida = await _db.Inspecoes.AnyAsync(i => i.Id == resposta.InspecaoId && i.Status == StatusInspecao.Concluida, ct);
         if (concluida) throw new InvalidOperationException("A inspeção já foi finalizada.");
+
+        if (resposta.Inspecao?.Status == StatusInspecao.AguardandoAssinatura)
+            throw new InvalidOperationException("A inspeção está aguardando assinatura. Reabra para ajustes antes de alterar o checklist.");
 
         if (request.ResponsavelUsuarioId.HasValue)
         {

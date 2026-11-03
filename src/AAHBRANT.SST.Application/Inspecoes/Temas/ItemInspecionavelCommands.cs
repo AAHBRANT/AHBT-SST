@@ -122,7 +122,7 @@ public class ExcluirItemInspecionavelCommandHandler : IRequestHandler<ExcluirIte
         var item = await _db.ItensInspecionaveis.FirstOrDefaultAsync(i => i.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Item {request.Id} não encontrado.");
 
-        if (await _db.Inspecoes.AnyAsync(i => i.ItemInspecionavelId == item.Id && i.Status == StatusInspecao.EmAndamento, ct))
+        if (await _db.Inspecoes.AnyAsync(i => i.ItemInspecionavelId == item.Id && (i.Status == StatusInspecao.EmAndamento || i.Status == StatusInspecao.AguardandoAssinatura), ct))
             throw new InvalidOperationException(
                 "Não é possível excluir o item com uma inspeção em andamento. Conclua ou exclua a inspeção primeiro.");
 
