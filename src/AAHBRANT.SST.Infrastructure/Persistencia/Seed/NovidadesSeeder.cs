@@ -2190,6 +2190,17 @@ public static class NovidadesSeeder
                     "No tablet, o fim do card de biometria ficava cortado.",
                     "A coluna da esquerda agora rola junto com a página e o card aparece inteiro."),
             }),
+        new(
+            Versao: "5.120.0",
+            Titulo: "Cronograma de DDS: cliente sempre Supervisão",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Cliente do cronograma mensal de DDS",
+                    "O PDF mostrava \"Cliente / Fiscalização\" com o cliente do cadastro da obra.",
+                    "O PDF do cronograma mensal de DDS agora mostra sempre \"Cliente: Supervisão\"."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
