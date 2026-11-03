@@ -31,7 +31,8 @@ public class EmissorCronogramaMensalDds(SstDbContext db, ICronogramaMensalDdsPdf
         var dias = ConteudoCronogramaDds.Ler(cronograma.ProgramacaoJson);
         // Nunca omitir temas de sábado/domingo, mesmo se o cliente pedir só os dias úteis.
         semanaCompleta |= dias.Any(d => d.Temas.Count > 0 && d.Data.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday);
-        var modelo = new CronogramaDdsPdfModelo(cronograma.Obra.Nome, cronograma.Obra.Cliente, logo,
+        // Cliente do cronograma de DDS é sempre a Supervisão, independente do cadastro da obra.
+        var modelo = new CronogramaDdsPdfModelo(cronograma.Obra.Nome, "Supervisão", logo,
             cronograma.Ano, cronograma.Mes, cronograma.ResponsavelUsuario?.Nome ?? "",
             cronograma.NumeroDocumento, semanaCompleta, dias);
         var nome = $"cronograma-dds-{cronograma.Ano}-{cronograma.Mes:00}";

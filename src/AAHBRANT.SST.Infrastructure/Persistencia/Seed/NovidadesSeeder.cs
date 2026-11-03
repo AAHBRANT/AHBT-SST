@@ -2192,6 +2192,17 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.120.0",
+            Titulo: "Cronograma de DDS: cliente sempre Supervisão",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Cliente do cronograma mensal de DDS",
+                    "O PDF mostrava \"Cliente / Fiscalização\" com o cliente do cadastro da obra.",
+                    "O PDF do cronograma mensal de DDS agora mostra sempre \"Cliente: Supervisão\"."),
+            }),
+        new(
+            Versao: "5.121.0",
             Titulo: "Ordem de Serviço emitida e assinada",
             DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
