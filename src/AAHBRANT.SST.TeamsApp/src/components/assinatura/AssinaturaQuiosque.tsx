@@ -132,7 +132,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
   // são finalizados sozinhos (assinatura única / encerramento do DDS) — finalizar um DDS no meio barraria
   // os participantes que ainda vão chegar, por isso o botão não aparece para eles.
   const finalizado = documento?.status === StatusDocumentoAssinatura.Finalizado;
-  const podeFinalizar = !finalizado && entidadeTipo !== 'Inspecao' && entidadeTipo !== 'Dds' && (documento?.signatarios.length ?? 0) > 0;
+  const podeFinalizar = !finalizado && entidadeTipo !== 'Inspecao' && entidadeTipo !== 'Dds' && entidadeTipo !== 'OrdemServico' && (documento?.signatarios.length ?? 0) > 0;
 
   async function finalizar() {
     if (!documento) return;

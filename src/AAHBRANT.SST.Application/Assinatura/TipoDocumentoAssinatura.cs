@@ -32,6 +32,7 @@ public static class TipoDocumentoAssinatura
         ["NaoConformidade"] = "Registro de Não Conformidade",
         ["GeracaoPgrEap"] = "PGR — Programa de Gerenciamento de Riscos",
         ["SolicitacaoReposicaoEpi"] = "Solicitação de Reposição de EPI",
+        ["OrdemServico"] = "Ordem de Serviço de SST",
     };
 
     // Onde estão, de fato, as assinaturas de cada documento consolidado. A frase entra na página
