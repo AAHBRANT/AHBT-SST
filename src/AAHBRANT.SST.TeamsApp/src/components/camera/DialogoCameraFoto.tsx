@@ -113,6 +113,9 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                     position: 'absolute',
                     inset: 0,
                     borderRadius: 8,
+                    // Corta o escurecimento do entorno nas bordas do vídeo — sem isso o box-shadow
+                    // vazava por cima do seletor de câmera e do resto do diálogo.
+                    overflow: 'hidden',
                     pointerEvents: 'none',
                     display: 'flex',
                     alignItems: 'center',
@@ -121,7 +124,9 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                 >
                   <div
                     style={{
-                      width: '55%',
+                      // Dimensionado pela ALTURA do vídeo: com largura fixa (55%) o oval ficava mais alto
+                      // que o vídeo horizontal do tablet/notebook e invadia o que está em volta.
+                      height: '88%',
                       aspectRatio: '3 / 4',
                       borderRadius: '50%',
                       border: '3px solid rgba(255, 255, 255, 0.85)',
