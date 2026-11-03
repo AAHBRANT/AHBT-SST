@@ -52,6 +52,12 @@ export function rostoDentroDoOval(c: CaixaRosto, larguraVideo: number, alturaVid
 // cadastro é recusada.
 export const LADO_MINIMO_ROSTO_PX = 200;
 
+// Mínimo proporcional ao vídeo (03/11): só os 200 px deixavam capturar de longe quando a câmera do
+// tablet entrega mais que 720p — 200 px viram uma fração pequena da imagem. O rosto precisa ocupar ao
+// menos esta fração da ALTURA do vídeo (a caixa do detector é aproximadamente quadrada). Valor de
+// partida: calibrar com o tablet em campo; o teto é o próprio oval (~48% da altura).
+export const FRACAO_MINIMA_ROSTO_ALTURA_VIDEO = 0.33;
+
 // Limites de luz (escala 0 a 255). Valores de partida: calibrar com fotos reais de canteiro.
 export const LUZ_ROSTO_MINIMA = 70;
 export const LUZ_ROSTO_MAXIMA = 225;
@@ -87,7 +93,8 @@ export function avaliarRostos(
       : bloqueia('fora', 'Afaste o rosto da câmera.', 'atencao');
   }
 
-  if (Math.min(c.largura, c.altura) < LADO_MINIMO_ROSTO_PX)
+  const ladoMinimo = Math.max(LADO_MINIMO_ROSTO_PX, FRACAO_MINIMA_ROSTO_ALTURA_VIDEO * alturaVideo);
+  if (Math.min(c.largura, c.altura) < ladoMinimo)
     return bloqueia('longe', 'Aproxime o rosto da câmera.', 'atencao');
 
   // A partir daqui o rosto está inteiro no círculo: o botão Capturar já pode liberar. A luz só orienta.
