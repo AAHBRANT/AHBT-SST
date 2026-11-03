@@ -70,6 +70,18 @@ public class SugerirAcoesMelhoriaPlanoTests
     }
 
     [Fact]
+    public void Plano_recebe_no_maximo_cinco_acoes_comecando_pelas_de_maior_prioridade()
+    {
+        var riscos = Enumerable.Range(1, 6).Select(i => Risco($"Perigo {i}", 4, 5,
+            (CategoriasMedida.Administrativa, $"Treinar {i}"), (CategoriasMedida.Epc, $"Proteger {i}"))).ToArray();
+
+        var acoes = SugerirAcoesMelhoriaPlanoGeracaoPgrCommandHandler.Montar(Estrutura(riscos), Matriz);
+
+        Assert.Equal(5, acoes.Count);
+        Assert.All(acoes, a => Assert.StartsWith("Proteger", a.Descricao));
+    }
+
+    [Fact]
     public void Medida_descartada_e_risco_excluido_nao_entram()
     {
         var descartada = Risco("Queda", 5, 5, (CategoriasMedida.Epc, "Rede de proteção"));
