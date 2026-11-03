@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Checkbox, Input, Text, Textarea } from '@fluentui/react-components';
 import { Delete24Regular, Mail24Regular } from '@fluentui/react-icons';
-import { BotaoAcao, Card, FeedbackInline, StatusChip } from '@ui';
+import { BotaoAcao, Button, Card, Checkbox, FeedbackInline, Input, StatusChip, Text, Textarea } from '@ui';
 import { api, type EnvioEmailInspecaoPainel } from '../../lib/api';
 
 // Envio do relatório da inspeção por e-mail (mockup aprovado em 03/11/2026,
