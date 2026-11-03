@@ -2145,6 +2145,25 @@ public static class NovidadesSeeder
                     "A finalização dos documentos de assinatura falhava sem aviso; a inspeção assinada continuava mostrando \"Aguardando assinatura\" no PDF.",
                     "A finalização volta a funcionar. Inspeções já assinadas são finalizadas na próxima vez que o PDF for gerado e saem com o selo, o hash e o QR de validação."),
             }),
+        new(
+            Versao: "5.116.0",
+            Titulo: "Pop-up de pendências da obra: facial e digitais",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Lista de quem precisa de novo cadastro facial",
+                    "Não havia um lugar que mostrasse quem ficou sem cadastro facial depois da renovação das biometrias.",
+                    "Ao entrar no sistema, o Técnico de Segurança vê os funcionários das obras dele que precisam cadastrar o rosto, com o botão para cadastrar na hora. O Administrador vê todas as obras."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Digitais: uma de cada mão",
+                    "Cada funcionário podia ficar com uma única digital e não havia aviso de quem faltava.",
+                    "O pop-up lista quem ainda não tem as 2 digitais, uma de cada mão, e mostra qual mão falta. Se um dedo estiver machucado ou seco, o funcionário assina com o outro."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Administrador controla os avisos",
+                    null,
+                    "Em Administração > Pendências automáticas, o Administrador liga ou desliga cada aviso e escolhe se ele abre toda vez que a pessoa entra ou uma vez por dia, e se pode ser fechado."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

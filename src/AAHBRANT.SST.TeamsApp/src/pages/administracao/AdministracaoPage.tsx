@@ -10,8 +10,9 @@ import { LeitorNfcTab } from '../identificacao/LeitorNfcTab';
 import { NovidadesTab } from './NovidadesTab';
 import { LeitoresDigitalTab } from './LeitoresDigitalTab';
 import { DestinatariosRelatoriosTab } from './DestinatariosRelatoriosTab';
+import { PendenciasAutomaticasTab } from './PendenciasAutomaticasTab';
 
-const ABAS_VALIDAS = ['obras', 'acesso', 'auditoria', 'assinaturas', 'grh', 'gsupri', 'tags', 'leitor', 'leitoresDigital', 'destinatarios', 'novidades'] as const;
+const ABAS_VALIDAS = ['obras', 'acesso', 'auditoria', 'assinaturas', 'grh', 'gsupri', 'tags', 'leitor', 'leitoresDigital', 'destinatarios', 'pendencias', 'novidades'] as const;
 type AbaAdministracao = (typeof ABAS_VALIDAS)[number];
 
 // Obras virou aba daqui (pedido do usuário, 01/09) — antes era aba de Operação (ver App.tsx pro
@@ -48,6 +49,7 @@ export function AdministracaoPage() {
           { valor: 'leitor', rotulo: 'Leitor / Teste NFC' },
           { valor: 'leitoresDigital', rotulo: 'Leitores de digital' },
           { valor: 'destinatarios', rotulo: 'Destinatários dos relatórios' },
+          { valor: 'pendencias', rotulo: 'Pendências automáticas' },
           { valor: 'novidades', rotulo: 'Novidades da versão' },
         ]}
       />
@@ -62,6 +64,7 @@ export function AdministracaoPage() {
       {aba === 'leitor' && <LeitorNfcTab />}
       {aba === 'leitoresDigital' && <LeitoresDigitalTab />}
       {aba === 'destinatarios' && <DestinatariosRelatoriosTab />}
+      {aba === 'pendencias' && <PendenciasAutomaticasTab />}
       {aba === 'novidades' && <NovidadesTab />}
     </div>
   );

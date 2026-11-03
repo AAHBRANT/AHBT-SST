@@ -182,6 +182,7 @@ public interface IAppDbContext
     DbSet<ContratoVagaFuncao> ContratoVagasFuncao { get; }
 
     DbSet<NovidadeVersao> NovidadesVersao { get; }
+    DbSet<ConfiguracaoPendenciaAutomatica> ConfiguracoesPendenciaAutomatica { get; }
     DbSet<NovidadeVersaoItem> NovidadesVersaoItens { get; }
     DbSet<NovidadeVisualizacao> NovidadesVisualizacao { get; }
 

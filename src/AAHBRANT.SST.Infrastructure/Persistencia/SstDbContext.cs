@@ -192,6 +192,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<ContratoVagaFuncao> ContratoVagasFuncao => Set<ContratoVagaFuncao>();
 
     public DbSet<NovidadeVersao> NovidadesVersao => Set<NovidadeVersao>();
+    public DbSet<ConfiguracaoPendenciaAutomatica> ConfiguracoesPendenciaAutomatica => Set<ConfiguracaoPendenciaAutomatica>();
     public DbSet<NovidadeVersaoItem> NovidadesVersaoItens => Set<NovidadeVersaoItem>();
     public DbSet<NovidadeVisualizacao> NovidadesVisualizacao => Set<NovidadeVisualizacao>();
 
