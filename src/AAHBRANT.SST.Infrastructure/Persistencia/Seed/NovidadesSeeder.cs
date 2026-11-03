@@ -2201,6 +2201,17 @@ public static class NovidadesSeeder
                     "O PDF mostrava \"Cliente / Fiscalização\" com o cliente do cadastro da obra.",
                     "O PDF do cronograma mensal de DDS agora mostra sempre \"Cliente: Supervisão\"."),
             }),
+        new(
+            Versao: "5.121.0",
+            Titulo: "Carimbo da foto no rodapé e sem corte no relatório",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Data, hora e local da foto sempre visíveis no PDF",
+                    "O carimbo ficava no canto superior da foto e o relatório recortava a imagem; em fotos tiradas com o celular em pé, o carimbo era cortado.",
+                    "O carimbo passa para o canto inferior direito da foto. Nos relatórios de inspeção e de investigação de ocorrência a foto aparece inteira, sem recorte. Vale para as fotos tiradas daqui para frente; fotos antigas mantêm o carimbo em cima, mas também deixam de ser cortadas no PDF."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
