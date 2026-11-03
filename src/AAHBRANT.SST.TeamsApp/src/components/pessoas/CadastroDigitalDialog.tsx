@@ -92,9 +92,17 @@ export function CadastroDigitalDialog({
   }, [aberto, trabalhadorId, termosJaRegistrados]);
 
   useEffect(() => {
-    if (!consentimentosSalvos) return;
-    estaAgenteLocalDisponivel().then(setAgenteDisponivel);
-  }, [consentimentosSalvos]);
+    // Depende também de aberto/trabalhadorId: ao reabrir o diálogo para o outro indicador,
+    // consentimentosSalvos continua true (não muda), e sem isto o leitor nunca era reverificado.
+    if (!aberto || !consentimentosSalvos) return;
+    let ativo = true;
+    estaAgenteLocalDisponivel().then((ok) => {
+      if (ativo) setAgenteDisponivel(ok);
+    });
+    return () => {
+      ativo = false;
+    };
+  }, [aberto, trabalhadorId, consentimentosSalvos]);
 
   async function confirmarConsentimentos() {
     if (!trabalhadorId) return;
