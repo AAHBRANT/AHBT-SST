@@ -135,7 +135,11 @@ if (-not $proc) {
     $temErro = [bool]($ultimas -match 'ERRO|nao respondeu|não respondeu')
     Registrar 'Ultimas linhas do log do instalador' $(if ($temErro) { 'ATENCAO' } else { 'INFO' }) $ultimas $(if ($temErro) { 'A atualizacao automatica pode ter falhado e fechado o agente. Abra o agente na mao e mande esta linha para quem acompanha o piloto.' } else { '' })
   }
-  $sobras = @('.nova', '.anterior', '.falhou') | Where-Object { Test-Path ($Destino + $_) }
+  # O instalador guarda ".anterior" (backup) e ".falhou" (versao recusada) mesmo quando tudo da certo, entao
+  # elas so indicam troca interrompida se a pasta principal ficou sem o agente. ".nova" sobrando e sempre sinal.
+  $sobras = @('.nova')
+  if (-not (Test-Path $exe)) { $sobras += '.anterior', '.falhou' }
+  $sobras = $sobras | Where-Object { Test-Path ($Destino + $_) }
   if ($sobras) {
     Registrar 'Pastas de atualizacao incompletas' 'ATENCAO' (($sobras | ForEach-Object { (Split-Path $Destino -Leaf) + $_ }) -join ', ') 'Sinal de atualizacao interrompida. Rode o Setup do agente de novo para consertar.'
   }
