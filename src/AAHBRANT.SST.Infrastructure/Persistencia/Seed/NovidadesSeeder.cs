@@ -2212,6 +2212,17 @@ public static class NovidadesSeeder
                     "Atribuir a um usuário um perfil que já tinha sido removido dele na mesma obra mostrava \"Ocorreu um erro inesperado\".",
                     "O perfil é atribuído normalmente, inclusive quando já foi removido antes."),
             }),
+        new(
+            Versao: "5.122.0",
+            Titulo: "PGR pela EAP: plano de ação com melhorias",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Ações de melhoria no plano de ação",
+                    "O plano de ação do PGR só tinha o que o técnico digitava, além do cronograma de treinamentos.",
+                    "Ao gerar o inventário, o plano já sai com as ações de melhoria tiradas das medidas dos riscos de nível alto ou acima. Defina responsável e prazo. O botão \"Sugerir ações de melhoria\" atualiza a lista."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

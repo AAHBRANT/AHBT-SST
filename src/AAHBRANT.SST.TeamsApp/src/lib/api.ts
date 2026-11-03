@@ -5899,6 +5899,7 @@ export const api = {
       request<void>(`/api/geracoes-pgr-eap/${id}`, { method: 'PUT', body: JSON.stringify({ passo, estrutura }) }),
     sugerirGhes: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/sugerir-ghes`, { method: 'POST' }),
     // Só preenche campo vazio das ações já salvas; devolve quantas ações receberam sugestão.
+    sugerirAcoesMelhoria: (id: string) => request<{ acoes: number }>(`/api/geracoes-pgr-eap/${id}/sugerir-acoes-melhoria`, { method: 'POST' }),
     sugerirAcompanhamento: (id: string) => request<{ acoes: number }>(`/api/geracoes-pgr-eap/${id}/sugerir-acompanhamento`, { method: 'POST' }),
     // Locais, rotas e recomendação da IA a partir do endereço da obra; não grava nada.
     sugerirEmergencia: (id: string) => request<SugestaoEmergencia>(`/api/geracoes-pgr-eap/${id}/sugerir-emergencia`, { method: 'POST' }),
