@@ -145,6 +145,64 @@ public class InstaladorAgenteTests : IDisposable
     }
 
     [Fact]
+    public void Falha_na_troca_que_deixou_so_a_pasta_anterior_restaura_e_reabre_o_agente()
+    {
+        Criar().Instalar(Pacote("v1"), Config());
+        // Estado deixado por uma troca que falhou depois de mover a pasta atual para o lado.
+        Directory.Move(Destino, Destino + ".anterior");
+        var abertos = new List<string>();
+        var instalador = Criar();
+        instalador.AgenteEstaRodando = () => false;
+        instalador.IniciarEConferir = exe => { abertos.Add(File.ReadAllText(exe)); return true; };
+
+        instalador.GarantirAgenteRodando();
+
+        Assert.Equal("v1", File.ReadAllText(Path.Combine(Destino, InstaladorAgente.NomeExe + ".exe")));
+        Assert.Equal(new[] { "v1" }, abertos);
+    }
+
+    [Fact]
+    public void Agente_instalado_mas_fechado_e_reaberto()
+    {
+        Criar().Instalar(Pacote("v1"), Config());
+        var aberturas = 0;
+        var instalador = Criar();
+        instalador.AgenteEstaRodando = () => false;
+        instalador.IniciarEConferir = _ => { aberturas++; return true; };
+
+        instalador.GarantirAgenteRodando();
+
+        Assert.Equal(1, aberturas);
+    }
+
+    [Fact]
+    public void Agente_ja_rodando_nao_e_reaberto()
+    {
+        Criar().Instalar(Pacote("v1"), Config());
+        var aberturas = 0;
+        var instalador = Criar();
+        instalador.AgenteEstaRodando = () => true;
+        instalador.IniciarEConferir = _ => { aberturas++; return true; };
+
+        instalador.GarantirAgenteRodando();
+
+        Assert.Equal(0, aberturas);
+    }
+
+    [Fact]
+    public void Sem_agente_instalado_nao_tenta_abrir_nada()
+    {
+        var aberturas = 0;
+        var instalador = Criar();
+        instalador.AgenteEstaRodando = () => false;
+        instalador.IniciarEConferir = _ => { aberturas++; return true; };
+
+        instalador.GarantirAgenteRodando();
+
+        Assert.Equal(0, aberturas);
+    }
+
+    [Fact]
     public void Completar_acrescenta_url_de_atualizacao_sem_mexer_no_resto()
     {
         var antigo = "{\"Agente\":{\"DispositivoId\":\"abc\",\"SegredoDispositivo\":\"s\"}}";

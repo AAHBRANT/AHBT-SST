@@ -95,10 +95,27 @@ public static class Program
         }
 
         var instalador = new InstaladorAgente(InstaladorAgente.DestinoPadrao, Registrar);
-        using var pacote = AbrirPacote();
-        instalador.Instalar(pacote, config: null, ManifestoPadrao);
-        Registrar($"Atualizado para {VersaoDoSetup()}.");
-        return 0;
+        try
+        {
+            using var pacote = AbrirPacote();
+            instalador.Instalar(pacote, config: null, ManifestoPadrao);
+            Registrar($"Atualizado para {VersaoDoSetup()}.");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            // O agente já saiu para esta troca: sem isto, uma falha deixava o posto sem leitor.
+            Registrar($"ERRO na atualização: {ex}");
+            try
+            {
+                instalador.GarantirAgenteRodando();
+            }
+            catch (Exception ex2)
+            {
+                Registrar($"ERRO ao reabrir o agente: {ex2}");
+            }
+            return 1;
+        }
     }
 
     private static Stream AbrirPacote() =>

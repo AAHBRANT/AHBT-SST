@@ -36,6 +36,7 @@ public class InstaladorAgente
     public Func<string, bool> IniciarEConferir { get; set; }
     public Action PararAgente { get; set; }
     public Action<string> RegistrarInicioAutomatico { get; set; }
+    public Func<bool> AgenteEstaRodando { get; set; }
 
     public InstaladorAgente(string destino, Action<string> log)
     {
@@ -44,6 +45,39 @@ public class InstaladorAgente
         IniciarEConferir = IniciarEConferirPadrao;
         PararAgente = PararAgentePadrao;
         RegistrarInicioAutomatico = RegistrarInicioAutomaticoPadrao;
+        AgenteEstaRodando = AgenteEstaRodandoPadrao;
+    }
+
+    // Rede de segurança da atualização automática (03/11): o agente fecha a si mesmo para o Setup trocar a
+    // versão. Se a troca falhar no meio (arquivo preso pelo antivírus, disco, pacote ruim), ninguém reabria o
+    // agente e o posto ficava sem leitor até o próximo login. Aqui devolve a pasta anterior, se a atual sumiu,
+    // e abre o agente se ele não estiver rodando. Não faz nada quando o agente já está de pé.
+    public void GarantirAgenteRodando()
+    {
+        var exe = Path.Combine(_destino, NomeExe + ".exe");
+        var anterior = _destino + ".anterior";
+        if (!File.Exists(exe) && Directory.Exists(anterior))
+        {
+            _log("A pasta do agente ficou incompleta depois da falha. Restaurando a versão anterior...");
+            var falha = _destino + ".falhou";
+            ApagarSeExistir(falha);
+            if (Directory.Exists(_destino))
+                Mover(_destino, falha);
+            Mover(anterior, _destino);
+        }
+
+        if (!File.Exists(exe))
+        {
+            _log("Não há agente instalado para reabrir.");
+            return;
+        }
+        if (AgenteEstaRodando())
+            return;
+
+        _log("O agente não está aberto. Abrindo de novo...");
+        RegistrarInicioAutomatico(exe);
+        if (!IniciarEConferir(exe))
+            _log("O agente foi aberto, mas não respondeu. Rode o diagnóstico.");
     }
 
     public string Destino => _destino;
@@ -195,6 +229,8 @@ public class InstaladorAgente
             try { p.Kill(); p.WaitForExit(10_000); } catch (InvalidOperationException) { }
         }
     }
+
+    private static bool AgenteEstaRodandoPadrao() => Process.GetProcessesByName(NomeExe).Length > 0;
 
     private static void RegistrarInicioAutomaticoPadrao(string exe)
     {
