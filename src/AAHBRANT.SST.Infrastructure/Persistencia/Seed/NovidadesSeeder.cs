@@ -2190,7 +2190,6 @@ public static class NovidadesSeeder
                     "No tablet, o fim do card de biometria ficava cortado.",
                     "A coluna da esquerda agora rola junto com a página e o card aparece inteiro."),
             }),
-||||||| e3a66609
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
