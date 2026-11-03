@@ -4950,6 +4950,42 @@ export interface NovaNovidadeVersao {
 // depois das Novidades para o Técnico de Segurança e o Administrador.
 export type SituacaoPassoIntegracao = 'feito' | 'pendente' | 'agendado' | 'aguardando' | 'naoConfigurado';
 export type SituacaoItemKit = 'separado' | 'emFalta' | 'entregue';
+// Pop-up de pendências automáticas por obra (03/11): recadastro facial e digitais (uma de cada mão).
+export const TipoPendenciaAutomatica = {
+  RecadastroFacial: 1,
+  DigitaisIncompletas: 2,
+} as const;
+export type TipoPendenciaAutomatica = (typeof TipoPendenciaAutomatica)[keyof typeof TipoPendenciaAutomatica];
+export const FrequenciaPendenciaAutomatica = {
+  TodaEntrada: 1,
+  UmaVezPorDia: 2,
+} as const;
+export type FrequenciaPendenciaAutomatica = (typeof FrequenciaPendenciaAutomatica)[keyof typeof FrequenciaPendenciaAutomatica];
+export interface ConfiguracaoPendenciaAutomatica {
+  tipo: TipoPendenciaAutomatica;
+  ligada: boolean;
+  frequencia: FrequenciaPendenciaAutomatica;
+  podeFechar: boolean;
+}
+export interface ConfiguracaoPendenciaComTotal extends ConfiguracaoPendenciaAutomatica {
+  totalPendentes: number;
+}
+export interface TrabalhadorPendente {
+  trabalhadorId: string;
+  nome: string;
+  funcao: string;
+  falta: string;
+}
+export interface ObraPendencia {
+  obraId: string;
+  obraNome: string;
+  totalTrabalhadores: number;
+  pendentes: TrabalhadorPendente[];
+}
+export interface PendenciaAutomatica {
+  configuracao: ConfiguracaoPendenciaAutomatica;
+  obras: ObraPendencia[];
+}
 export const MotivoPlanoIntegracao = {
   Admissao: 1,
   TrocaFuncao: 2,
@@ -6914,6 +6950,15 @@ export const api = {
       request<SuporteIaSolicitacao>(`/api/suporte-ia/${id}/validar`, {
         method: 'POST',
         body: JSON.stringify({ confirmado, comentario }),
+      }),
+  },
+  pendenciasAutomaticas: {
+    listar: () => request<PendenciaAutomatica[]>('/api/pendencias-automaticas'),
+    configuracao: () => request<ConfiguracaoPendenciaComTotal[]>('/api/pendencias-automaticas/configuracao'),
+    salvarConfiguracao: (config: ConfiguracaoPendenciaAutomatica) =>
+      request<void>(`/api/pendencias-automaticas/configuracao/${config.tipo}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ligada: config.ligada, frequencia: config.frequencia, podeFechar: config.podeFechar }),
       }),
   },
   planosIntegracao: {

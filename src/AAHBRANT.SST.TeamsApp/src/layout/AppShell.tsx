@@ -51,11 +51,19 @@ import {
 import { designTokens } from '@ui';
 import { useThemeMode } from '../theme/ThemeModeContext';
 import { useTeamsContext } from '../teams/useTeamsContext';
-import { api, StatusAlerta, type NovidadeVersao, type PlanoIntegracao } from '../lib/api';
+import {
+  api,
+  FrequenciaPendenciaAutomatica,
+  StatusAlerta,
+  type NovidadeVersao,
+  type PendenciaAutomatica,
+  type PlanoIntegracao,
+} from '../lib/api';
 import { LogoAahbrant } from './MarcaAahbrant';
 import { SyncStatusBadge } from '../components/SyncStatusBadge';
 import { NovidadesModal } from '../components/novidades/NovidadesModal';
 import { FuncionarioNovoModal } from '../components/planos-integracao/FuncionarioNovoModal';
+import { PendenciasAutomaticasModal } from '../components/pendencias/PendenciasAutomaticasModal';
 import { ID_TOASTER_GLOBAL } from '../lib/toaster';
 
 // Rail de navegação (Hub Gênesis SST — design decidido em sessão anterior): faixa fina só com
@@ -923,6 +931,45 @@ export function AppShell({ children }: { children: ReactNode }) {
     setPlanosIntegracao([]);
   }
 
+  // Pop-up de pendências automáticas por obra (03/11): recadastro facial e digitais. Vem depois das
+  // Novidades e um tipo por vez. "Toda vez que entrar" volta a cada abertura do sistema; "1 vez por
+  // dia" guarda o dia neste navegador. Abrir um cadastro tira o pop-up de cena até a próxima entrada.
+  const [pendencias, setPendencias] = useState<PendenciaAutomatica[]>([]);
+  useEffect(() => {
+    if (!novidadesResolvidas) return;
+    let cancelado = false;
+    api.pendenciasAutomaticas
+      .listar()
+      .then((lista) => {
+        if (cancelado) return;
+        const vistos = lerPendenciasVistasHoje();
+        setPendencias(
+          lista.filter(
+            (p) => p.configuracao.frequencia !== FrequenciaPendenciaAutomatica.UmaVezPorDia || !vistos.includes(p.configuracao.tipo),
+          ),
+        );
+      })
+      .catch(() => {
+        // Opcional como os demais pop-ups: a pendência continua visível no perfil de cada funcionário.
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [novidadesResolvidas]);
+
+  function fecharPendenciaAtual() {
+    const atual = pendencias[0];
+    if (!atual) return;
+    marcarPendenciaVistaHoje(atual.configuracao.tipo);
+    setPendencias((lista) => lista.slice(1));
+  }
+
+  function abrirCadastroPendencia() {
+    const atual = pendencias[0];
+    if (atual) marcarPendenciaVistaHoje(atual.configuracao.tipo);
+    setPendencias([]);
+  }
+
   return (
     <div className={mergeClasses(estilos.root, railExpandido ? estilos.rootExpandido : estilos.rootColapsado)}>
       {railExpandido && (
@@ -1197,6 +1244,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         <FuncionarioNovoModal planos={planosIntegracao} aoFechar={fecharPlanosIntegracao} />
       )}
 
+      {!novidadePendente && planosIntegracao.length === 0 && pendencias.length > 0 && (
+        <PendenciasAutomaticasModal
+          key={pendencias[0].configuracao.tipo}
+          pendencia={pendencias[0]}
+          aoFechar={fecharPendenciaAtual}
+          aoAbrirCadastro={abrirCadastroPendencia}
+        />
+      )}
+
       <main className={estilos.content}>
         <FaixaObraAtiva />
         {children}
@@ -1233,6 +1289,26 @@ function marcarPlanosVistosHoje(ids: string[]) {
     localStorage.setItem(CHAVE_PLANOS_VISTOS, JSON.stringify({ dia: hojeLocal(), ids: [...new Set([...atuais, ...ids])] }));
   } catch {
     // Sem armazenamento (janela anônima, Teams com dados bloqueados): o pop-up volta na próxima abertura.
+  }
+}
+
+const CHAVE_PENDENCIAS_VISTAS = 'sst.pendenciasAutomaticas.vistas';
+
+function lerPendenciasVistasHoje(): number[] {
+  try {
+    const salvo = JSON.parse(localStorage.getItem(CHAVE_PENDENCIAS_VISTAS) ?? 'null') as { dia?: string; tipos?: number[] } | null;
+    return salvo?.dia === hojeLocal() && Array.isArray(salvo.tipos) ? salvo.tipos : [];
+  } catch {
+    return [];
+  }
+}
+
+function marcarPendenciaVistaHoje(tipo: number) {
+  try {
+    const atuais = lerPendenciasVistasHoje();
+    localStorage.setItem(CHAVE_PENDENCIAS_VISTAS, JSON.stringify({ dia: hojeLocal(), tipos: [...new Set([...atuais, tipo])] }));
+  } catch {
+    // Sem armazenamento: o pop-up volta na próxima abertura, o que só é mais insistente.
   }
 }
 

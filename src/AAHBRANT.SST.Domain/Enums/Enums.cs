@@ -1089,3 +1089,16 @@ public enum OrigemCursoObrigatorio
     Pgr = 1,
     Manual = 2,
 }
+
+// Pop-up de pendências automáticas por obra (03/11).
+public enum TipoPendenciaAutomatica
+{
+    RecadastroFacial = 1,
+    DigitaisIncompletas = 2,
+}
+
+public enum FrequenciaPendenciaAutomatica
+{
+    TodaEntrada = 1,
+    UmaVezPorDia = 2,
+}

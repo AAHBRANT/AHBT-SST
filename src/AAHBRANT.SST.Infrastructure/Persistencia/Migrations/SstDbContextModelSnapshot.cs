@@ -2190,6 +2190,55 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("ConfiguracoesAlojamento");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ConfiguracaoPendenciaAutomatica", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Frequencia")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Ligada")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("PodeFechar")
+                        .HasColumnType("bit");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Tipo")
+                        .IsUnique();
+
+                    b.ToTable("ConfiguracoesPendenciaAutomatica");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ContadorDocumento", b =>
                 {
                     b.Property<Guid>("Id")

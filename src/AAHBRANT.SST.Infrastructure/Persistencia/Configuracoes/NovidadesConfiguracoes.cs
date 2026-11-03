@@ -47,3 +47,11 @@ public class NovidadeVisualizacaoConfiguracao : IEntityTypeConfiguration<Novidad
         builder.HasQueryFilter(v => v.Ativo);
     }
 }
+
+public class ConfiguracaoPendenciaAutomaticaConfiguracao : IEntityTypeConfiguration<ConfiguracaoPendenciaAutomatica>
+{
+    public void Configure(EntityTypeBuilder<ConfiguracaoPendenciaAutomatica> builder)
+    {
+        builder.HasIndex(c => c.Tipo).IsUnique();
+    }
+}
