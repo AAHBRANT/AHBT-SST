@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Application.PlanosIntegracao;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
@@ -143,7 +144,10 @@ public class DefinirPrazoReposicaoEpiCommandHandler : IRequestHandler<DefinirPra
 
 // Transferência entre obras: sai do disponível da origem (respeitando os kits separados) e entra na
 // outra, com uma movimentação de cada lado para o histórico explicar de onde veio o saldo.
-public record TransferirEstoqueEpiCommand(Guid CatalogoEpiId, Guid ObraOrigemId, Guid ObraDestinoId, int Quantidade, string? Observacao) : IRequest;
+// Correcao = true: lançamento feito na obra errada sendo desfeito — o motivo passa a ser obrigatório
+// e o histórico destaca como "Correção de lançamento". As duas pontas levam o mesmo código (TRF-xxxxxxxx)
+// na observação; quem fez e quando já ficam em CreatedBy/CreatedAtUtc (AuditableEntity).
+public record TransferirEstoqueEpiCommand(Guid CatalogoEpiId, Guid ObraOrigemId, Guid ObraDestinoId, int Quantidade, string? Observacao, bool Correcao = false) : IRequest;
 
 public class TransferirEstoqueEpiCommandValidator : AbstractValidator<TransferirEstoqueEpiCommand>
 {
@@ -154,6 +158,7 @@ public class TransferirEstoqueEpiCommandValidator : AbstractValidator<Transferir
         RuleFor(x => x.ObraDestinoId).NotEmpty().NotEqual(x => x.ObraOrigemId).WithMessage("Escolha uma obra de destino diferente da origem.");
         RuleFor(x => x.Quantidade).GreaterThan(0);
         RuleFor(x => x.Observacao).MaximumLength(200);
+        RuleFor(x => x.Observacao).NotEmpty().When(x => x.Correcao).WithMessage("Informe o motivo da correção.");
     }
 }
 
@@ -170,10 +175,9 @@ public class TransferirEstoqueEpiCommandHandler : IRequestHandler<TransferirEsto
 
     public async Task Handle(TransferirEstoqueEpiCommand request, CancellationToken ct)
     {
-        var obras = await _db.Obras.Where(o => o.Id == request.ObraOrigemId || o.Id == request.ObraDestinoId)
-            .Select(o => new { o.Id, o.Nome }).ToListAsync(ct);
-        var origemNome = obras.FirstOrDefault(o => o.Id == request.ObraOrigemId)?.Nome ?? throw new KeyNotFoundException("Obra de origem não encontrada.");
-        var destinoNome = obras.FirstOrDefault(o => o.Id == request.ObraDestinoId)?.Nome ?? throw new KeyNotFoundException("Obra de destino não encontrada.");
+        // Acesso às DUAS obras, de forma explícita: ninguém move estoque de/para obra que não pode ver.
+        var origemNome = await _db.GarantirObraNoEscopoAsync(request.ObraOrigemId, ct);
+        var destinoNome = await _db.GarantirObraNoEscopoAsync(request.ObraDestinoId, ct);
         if (!await _db.CatalogoEpis.AnyAsync(c => c.Id == request.CatalogoEpiId, ct)) throw new KeyNotFoundException("EPI não encontrado.");
 
         var origem = await UsuarioPorObjectId.EstoqueAsync(_db, request.ObraOrigemId, request.CatalogoEpiId, ct);
@@ -183,18 +187,22 @@ public class TransferirEstoqueEpiCommandHandler : IRequestHandler<TransferirEsto
             throw new InvalidOperationException($"A obra {origemNome} tem {Math.Max(0, disponivel)} unidade(s) disponível(is) deste EPI (saldo {origem.Saldo}, {reservado} separada(s) para kits).");
 
         var destino = await UsuarioPorObjectId.EstoqueAsync(_db, request.ObraDestinoId, request.CatalogoEpiId, ct);
+        var codigo = $"TRF-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
+        var rotulo = request.Correcao ? "Correção de lançamento" : "Transferência";
         var obs = string.IsNullOrWhiteSpace(request.Observacao) ? "" : $" — {request.Observacao.Trim()}";
         origem.Saldo -= request.Quantidade;
         destino.Saldo += request.Quantidade;
         _db.MovimentacoesEstoqueEpi.Add(new MovimentacaoEstoqueEpi
         {
-            EstoqueEpiId = origem.Id, Tipo = TipoMovimentacaoEstoqueEpi.TransferenciaSaida, Quantidade = request.Quantidade,
-            SaldoResultante = origem.Saldo, Observacao = $"Transferência para {destinoNome}{obs}",
+            EstoqueEpiId = origem.Id, Quantidade = request.Quantidade, SaldoResultante = origem.Saldo,
+            Tipo = request.Correcao ? TipoMovimentacaoEstoqueEpi.CorrecaoLancamentoSaida : TipoMovimentacaoEstoqueEpi.TransferenciaSaida,
+            Observacao = Limitar($"{rotulo} {codigo} para {destinoNome}{obs}"),
         });
         _db.MovimentacoesEstoqueEpi.Add(new MovimentacaoEstoqueEpi
         {
-            EstoqueEpiId = destino.Id, Tipo = TipoMovimentacaoEstoqueEpi.TransferenciaEntrada, Quantidade = request.Quantidade,
-            SaldoResultante = destino.Saldo, Observacao = $"Transferência de {origemNome}{obs}",
+            EstoqueEpiId = destino.Id, Quantidade = request.Quantidade, SaldoResultante = destino.Saldo,
+            Tipo = request.Correcao ? TipoMovimentacaoEstoqueEpi.CorrecaoLancamentoEntrada : TipoMovimentacaoEstoqueEpi.TransferenciaEntrada,
+            Observacao = Limitar($"{rotulo} {codigo} de {origemNome}{obs}"),
         });
         await _db.SaveChangesAsync(ct);
 
@@ -204,4 +212,7 @@ public class TransferirEstoqueEpiCommandHandler : IRequestHandler<TransferirEsto
             await _verificacao.VerificarAsync(request.ObraDestinoId, ct);
         }
     }
+
+    // Observacao da movimentação cabe em 300 caracteres (configuração do EF).
+    private static string Limitar(string texto) => texto.Length <= 300 ? texto : texto[..300];
 }
