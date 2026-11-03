@@ -103,7 +103,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                   width: '100%',
                   borderRadius: 8,
                   display: 'block',
-                  transform: modoCamera === 'user' ? 'scaleX(-1)' : undefined,
+                  transform: captura.espelharVideo ? 'scaleX(-1)' : undefined,
                 }}
               />
               {mostrarGuiaRosto && (

@@ -81,6 +81,7 @@ export function SeletorFotoCamera({
   tiposAceitos = 'image/*',
   apenasIcone = false,
   modoCamera = 'environment',
+  cameraInicial,
   permitirCamera = true,
   exigirCamera = false,
   permitirCapturaAutomatica = false,
@@ -88,7 +89,7 @@ export function SeletorFotoCamera({
   contextoFoto,
   guiaAntesDeAbrir,
 }: SeletorFotoCameraProps) {
-  const captura = useCapturaFoto({ contextoFoto, aoSelecionarArquivo, aoErroValidacao, tamanhoMaximoMb, modoCamera, permitirCamera, exigirCamera, permitirCapturaAutomatica });
+  const captura = useCapturaFoto({ contextoFoto, aoSelecionarArquivo, aoErroValidacao, tamanhoMaximoMb, modoCamera, cameraInicial, permitirCamera, exigirCamera, permitirCapturaAutomatica });
   const { inputRef, processando, abrirCamera, onInputChange } = captura;
   const estilosBotaoCamera = useEstilosBotaoCamera();
   const classeBotao = permitirCamera
