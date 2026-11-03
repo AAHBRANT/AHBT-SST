@@ -19,7 +19,7 @@ public class ExcluirVeiculoCommandHandler : IRequestHandler<ExcluirVeiculoComman
         var veiculo = await _db.Veiculos.FirstOrDefaultAsync(v => v.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Veículo {request.Id} não encontrado.");
 
-        if (await _db.Inspecoes.AnyAsync(i => i.VeiculoId == veiculo.Id && i.Status == StatusInspecao.EmAndamento, ct))
+        if (await _db.Inspecoes.AnyAsync(i => i.VeiculoId == veiculo.Id && (i.Status == StatusInspecao.EmAndamento || i.Status == StatusInspecao.AguardandoAssinatura), ct))
             throw new InvalidOperationException(
                 "Não é possível excluir o veículo com uma inspeção em andamento. Conclua ou exclua a inspeção primeiro.");
 

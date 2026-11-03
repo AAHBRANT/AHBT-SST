@@ -30,7 +30,7 @@ public class ObterOuCriarInspecaoItemCommandHandler : IRequestHandler<ObterOuCri
             ?? throw new KeyNotFoundException($"Item {request.ItemInspecionavelId} não encontrado.");
 
         var existente = await _db.Inspecoes
-            .Where(i => i.ItemInspecionavelId == item.Id && i.Status == StatusInspecao.EmAndamento)
+            .Where(i => i.ItemInspecionavelId == item.Id && (i.Status == StatusInspecao.EmAndamento || i.Status == StatusInspecao.AguardandoAssinatura))
             .OrderByDescending(i => i.Data)
             .FirstOrDefaultAsync(ct);
 
@@ -74,7 +74,7 @@ public class ObterOuCriarInspecaoItemCommandHandler : IRequestHandler<ObterOuCri
             // Perdeu a corrida para outro clique: devolve a inspeção que venceu (resultado idempotente em
             // vez de 500). Se não houver vencedora, o erro é real — propaga.
             var vencedora = await _db.Inspecoes
-                .Where(i => i.ItemInspecionavelId == item.Id && i.Status == StatusInspecao.EmAndamento)
+                .Where(i => i.ItemInspecionavelId == item.Id && (i.Status == StatusInspecao.EmAndamento || i.Status == StatusInspecao.AguardandoAssinatura))
                 .OrderByDescending(i => i.Data)
                 .FirstOrDefaultAsync(ct);
             if (vencedora is null) throw;

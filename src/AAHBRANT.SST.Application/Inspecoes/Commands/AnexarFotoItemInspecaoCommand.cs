@@ -47,7 +47,7 @@ public class AnexarFotoItemInspecaoCommandHandler : IRequestHandler<AnexarFotoIt
         resposta.FotoConteudo = request.FotoConteudo;
         resposta.FotoContentType = request.FotoContentType;
 
-        if (resposta.Inspecao!.Status == AAHBRANT.SST.Domain.Enums.StatusInspecao.Concluida)
+        if (resposta.Inspecao!.Status != AAHBRANT.SST.Domain.Enums.StatusInspecao.EmAndamento)
             throw new InvalidOperationException("A inspeção já foi finalizada.");
         resposta.FotoMetadadosJson = await DadosCapturaFoto.PrepararAsync(request.Metadados, resposta.Inspecao.ObraId, _db, ct);
         await _db.SaveChangesAsync(ct);

@@ -107,6 +107,12 @@ public class TemasInspecaoTests
         await db.SaveChangesAsync();
         await new EncerrarInspecaoCommandHandler(db).Handle(new EncerrarInspecaoCommand(atual.InspecaoId), default);
 
+        // Finalizar só leva para "Aguardando assinatura": o item continua "nunca inspecionado" até assinar.
+        var aguardando = (await listar.Handle(new ListarItensInspecionaveisQuery(temaId, null), default)).Single();
+        Assert.Equal("nunca", aguardando.StatusUltimaInspecao);
+        (await db.Inspecoes.SingleAsync(i => i.Id == atual.InspecaoId)).Status = StatusInspecao.Concluida; // assinatura finalizada
+        await db.SaveChangesAsync();
+
         var depois = (await listar.Handle(new ListarItensInspecionaveisQuery(temaId, null), default)).Single();
         Assert.Equal("inspecionado", depois.StatusUltimaInspecao);
         Assert.Single(depois.HistoricoInspecoes);
@@ -165,7 +171,7 @@ public class TemasInspecaoTests
         if (conclui)
         {
             await encerrar();
-            Assert.Equal(StatusInspecao.Concluida, (await db.Inspecoes.SingleAsync()).Status);
+            Assert.Equal(StatusInspecao.AguardandoAssinatura, (await db.Inspecoes.SingleAsync()).Status);
         }
         else
         {

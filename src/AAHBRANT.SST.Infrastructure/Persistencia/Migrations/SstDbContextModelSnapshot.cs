@@ -5323,7 +5323,7 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("AlojamentoId")
                         .IsUnique()
-                        .HasFilter("[AlojamentoId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
+                        .HasFilter("[AlojamentoId] IS NOT NULL AND [Status] IN (1, 3) AND [Ativo] = 1");
 
                     b.HasIndex("AtividadeId");
 
@@ -5331,7 +5331,7 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("ItemInspecionavelId")
                         .IsUnique()
-                        .HasFilter("[ItemInspecionavelId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
+                        .HasFilter("[ItemInspecionavelId] IS NOT NULL AND [Status] IN (1, 3) AND [Ativo] = 1");
 
                     b.HasIndex("ObraId");
 
@@ -5339,7 +5339,7 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("VeiculoId")
                         .IsUnique()
-                        .HasFilter("[VeiculoId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
+                        .HasFilter("[VeiculoId] IS NOT NULL AND [Status] IN (1, 3) AND [Ativo] = 1");
 
                     b.ToTable("Inspecoes");
                 });

@@ -2200,6 +2200,20 @@ public static class NovidadesSeeder
                     "Cliente do cronograma mensal de DDS",
                     "O PDF mostrava \"Cliente / Fiscalização\" com o cliente do cadastro da obra.",
                     "O PDF do cronograma mensal de DDS agora mostra sempre \"Cliente: Supervisão\"."),
+            }),        new(
+            Versao: "5.121.0",
+            Titulo: "Inspeções: só ficam concluídas depois de assinadas",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Finalizar inspeção leva direto para a assinatura",
+                    "A inspeção ficava Concluída assim que era finalizada, e a assinatura podia ficar para depois ou nunca acontecer.",
+                    "Ao clicar em \"Finalizar inspeção\", quem realizou a inspeção assina automaticamente, em um clique, e a inspeção fica \"Concluída\". Se não for possível assinar na hora (o usuário não é Técnico ou Engenheiro de Segurança, ou outra pessoa fez a inspeção), ela fica \"Aguardando assinatura\", com o checklist travado e o botão \"Assinar inspeção\". Vale para inspeções de alojamento, veículo, tema e demais tipos."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Reabrir para ajustes antes de assinar",
+                    "Se alguém finalizasse com um erro, não havia como corrigir.",
+                    "Enquanto ninguém assinou, o botão \"Reabrir para ajustes\" devolve a inspeção para \"Em andamento\". Depois da primeira assinatura não é mais possível reabrir. Enquanto uma inspeção aguarda assinatura, o alojamento, veículo ou item não abre outra, e o cartão mostra \"Assinar inspeção\"."),
             }),
         new(
             Versao: "5.121.0",

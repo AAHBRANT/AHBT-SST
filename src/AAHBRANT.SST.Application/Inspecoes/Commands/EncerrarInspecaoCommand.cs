@@ -94,7 +94,9 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
                 AAHBRANT.SST.Application.Common.DadosCapturaFoto.ExigirCompletaSeInformada(resposta.FotoDepoisMetadadosJson, $"Item {resposta.ChecklistModeloItem?.Ordem} — foto posterior");
         }
 
-        inspecao.Status = StatusInspecao.Concluida;
+        // A inspeção só vira Concluída quando assinada (FinalizarDocumentoCommand). Até lá fica
+        // travada em "Aguardando assinatura"; ReabrirInspecaoCommand devolve para ajustes se ninguém assinou.
+        inspecao.Status = StatusInspecao.AguardandoAssinatura;
 
         // Item Não Conforme sem NC vira NC automaticamente no encerramento (decisão do usuário, 17/10):
         // basta um item para gerar; uma NC por item. Itens que já tiveram "Gerar ocorrência" não duplicam.

@@ -30,6 +30,6 @@ public class InspecaoIndiceUnicoEmAndamentoTests
 
         Assert.NotNull(filtro);
         Assert.Contains("[Ativo] = 1", filtro);
-        Assert.Contains("[Status] = 1", filtro);
+        Assert.Contains("[Status] IN (1, 3)", filtro); // Em andamento ou Aguardando assinatura
     }
 }
