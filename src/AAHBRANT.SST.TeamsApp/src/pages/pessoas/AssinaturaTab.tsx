@@ -292,6 +292,7 @@ export function AssinaturaTab({ trabalhadorId }: AssinaturaTabProps) {
             tamanho="medium"
             variante="facialAzure"
             modoCamera="user"
+            cameraInicial="environment"
             exigirCamera
             guiaAntesDeAbrir={pedirGuia}
           />

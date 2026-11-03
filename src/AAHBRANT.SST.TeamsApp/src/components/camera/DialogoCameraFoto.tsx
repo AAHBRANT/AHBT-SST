@@ -18,6 +18,7 @@ import { useDetectorRosto } from './useDetectorRosto';
 import { DURACAO_CAPTURA_AUTOMATICA_MS, useCapturaAutomatica } from './useCapturaAutomatica';
 import { QuadradoRosto, CORES_DETECTOR } from './QuadradoRosto';
 import { pendenciasFoto } from '../../lib/dadosFoto';
+import { OVAL_ALTURA_FRACAO, OVAL_PROPORCAO } from '../../lib/rosto/avaliarRosto';
 import { FeedbackInline } from '@ui';
 
 interface DialogoCameraFotoProps {
@@ -55,6 +56,12 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   const corQuadrado = avaliacao ? CORES_DETECTOR[avaliacao.tom] : CORES_DETECTOR.ok;
   // Captura sozinha depois de 1,5 s com o rosto aprovado (verde) e estável. Só onde a tela permite
   // (treinamento e DDS) e só quando o detector está ativo; começa desligada a cada abertura.
+  // O botão Capturar só libera com o rosto INTEIRO dentro do círculo (pedido do usuário, 03/11): foto
+  // com rosto cortado ou fora do guia é a que o Azure recusa. Revê a decisão de 11/10 só no que é
+  // geometria — luz e contraluz continuam apenas orientando. Se o detector não carregar
+  // ('indisponivel'), não há como verificar e o botão fica liberado, para o cadastro não travar.
+  const aguardandoEnquadramento =
+    mostrarGuiaRosto && (detector.situacao === 'carregando' || (detector.situacao === 'ativo' && !avaliacao?.enquadrado));
   const oferecerAutomatica = mostrarGuiaRosto && captura.permitirCapturaAutomatica;
   const automatica = useCapturaAutomatica(
     stream,
@@ -103,7 +110,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                   width: '100%',
                   borderRadius: 8,
                   display: 'block',
-                  transform: modoCamera === 'user' ? 'scaleX(-1)' : undefined,
+                  transform: captura.espelharVideo ? 'scaleX(-1)' : undefined,
                 }}
               />
               {mostrarGuiaRosto && (
@@ -113,6 +120,9 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                     position: 'absolute',
                     inset: 0,
                     borderRadius: 8,
+                    // Corta o escurecimento do entorno nas bordas do vídeo — sem isso o box-shadow
+                    // vazava por cima do seletor de câmera e do resto do diálogo.
+                    overflow: 'hidden',
                     pointerEvents: 'none',
                     display: 'flex',
                     alignItems: 'center',
@@ -121,10 +131,13 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                 >
                   <div
                     style={{
-                      width: '55%',
-                      aspectRatio: '3 / 4',
+                      // Dimensionado pela ALTURA do vídeo: com largura fixa (55%) o oval ficava mais alto
+                      // que o vídeo horizontal do tablet/notebook e invadia o que está em volta.
+                      height: `${OVAL_ALTURA_FRACAO * 100}%`,
+                      aspectRatio: `${OVAL_PROPORCAO}`,
                       borderRadius: '50%',
-                      border: '3px solid rgba(255, 255, 255, 0.85)',
+                      // Verde quando o rosto está inteiro dentro do círculo (é quando o Capturar libera).
+                      border: `3px solid ${avaliacao?.enquadrado ? CORES_DETECTOR.ok : 'rgba(255, 255, 255, 0.85)'}`,
                       boxShadow: '0 0 0 2000px rgba(0, 0, 0, 0.35)',
                     }}
                   />
@@ -153,7 +166,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                 ) : (
                   <Text size={200}>
                     {detector.situacao === 'carregando'
-                      ? 'Preparando o detector de rosto… Centralize o rosto dentro do círculo.'
+                      ? 'Preparando o detector de rosto… O botão libera quando o rosto estiver inteiro dentro do círculo.'
                       : 'Centralize o rosto dentro do círculo antes de capturar.'}
                   </Text>
                 )}
@@ -173,7 +186,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
             <Button appearance="secondary" onClick={fecharCamera}>
               Cancelar
             </Button>
-            <Button appearance="primary" icon={<Camera24Regular />} onClick={capturarFoto} disabled={captura.processando}>
+            <Button appearance="primary" icon={<Camera24Regular />} onClick={capturarFoto} disabled={captura.processando || aguardandoEnquadramento}>
               Capturar
             </Button>
           </DialogActions>

@@ -20,6 +20,10 @@ export interface UseCapturaFotoOptions {
   // Câmera frontal ("user", ex.: reconhecimento facial — a pessoa fotografa o próprio rosto) ou
   // traseira ("environment", padrão — fotos de evidência/EPI/documento, apontando pra outra coisa).
   modoCamera?: 'user' | 'environment';
+  // Câmera que abre primeiro, quando difere do modo (ex.: cadastro facial pelo tablet, com a
+  // traseira por padrão). Mantém guia de rosto/detector do modo 'user'; o usuário ainda pode trocar
+  // no seletor. Quando informada, ignora a câmera salva de usos anteriores.
+  cameraInicial?: 'user' | 'environment';
   // false para pontos de anexo que nunca são foto (ex.: documento PDF) — pula o diálogo de câmera
   // e vai direto pro seletor de arquivos nativo, já que a câmera só pode produzir JPEG.
   permitirCamera?: boolean;
@@ -71,6 +75,7 @@ export function useCapturaFoto({
   aoErroValidacao,
   tamanhoMaximoMb = 5,
   modoCamera = 'environment',
+  cameraInicial,
   permitirCamera = true,
   exigirCamera = false,
   permitirCapturaAutomatica = false,
@@ -136,6 +141,11 @@ export function useCapturaFoto({
   // da primeira permissão concedida (getUserMedia bem-sucedido); ver abrirCamera/atualizarDispositivos.
   const [dispositivosVideo, setDispositivosVideo] = useState<MediaDeviceInfo[]>([]);
   const [dispositivoAtualId, setDispositivoAtualId] = useState<string | null>(null);
+
+  // Espelha o vídeo só quando a câmera em uso é a frontal. Usa o facingMode real da track (celular/
+  // tablet informam); webcam de notebook não informa, então vale o modo pedido.
+  const facingAtual = stream?.getVideoTracks()[0]?.getSettings().facingMode;
+  const espelharVideo = (facingAtual ?? cameraInicial ?? modoCamera) === 'user';
 
   async function atualizarDispositivos() {
     if (!navigator.mediaDevices?.enumerateDevices) return;
@@ -245,7 +255,7 @@ export function useCapturaFoto({
     // quiosque de assinatura facial), tenta abrir ela direto — sem isso o navegador decidiria
     // sozinho e podia cair na webcam interna do notebook em vez da externa. Se o dispositivo salvo
     // não existir mais (foi desconectado), cai para a escolha automática por facingMode abaixo.
-    const preferidaId = lerCameraPreferida();
+    const preferidaId = cameraInicial ? null : lerCameraPreferida();
     if (preferidaId) {
       try {
         const novoStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: preferidaId }, ...resolucaoIdeal(modoCamera) } });
@@ -258,7 +268,7 @@ export function useCapturaFoto({
       }
     }
     try {
-      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: modoCamera, ...resolucaoIdeal(modoCamera) } });
+      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: cameraInicial ?? modoCamera, ...resolucaoIdeal(modoCamera) } });
       setStream(novoStream);
       setDispositivoAtualId(novoStream.getVideoTracks()[0]?.getSettings().deviceId ?? null);
       await atualizarDispositivos();
@@ -272,12 +282,36 @@ export function useCapturaFoto({
   // mesmo computador (pedido do usuário, 22/09).
   async function trocarDispositivo(deviceId: string) {
     if (!navigator.mediaDevices?.getUserMedia) return;
+    const idAnterior = dispositivoAtualId;
+    const abrir = (id: string) =>
+      navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: id }, ...resolucaoIdeal(modoCamera) } });
+    // Tablets/celulares Android costumam não abrir duas câmeras ao mesmo tempo (NotReadableError):
+    // é preciso soltar a câmera atual ANTES de pedir a nova. Desligar o vídeo evita quadro congelado.
+    stream?.getTracks().forEach((track) => track.stop());
+    if (videoRef.current) videoRef.current.srcObject = null;
     try {
-      const novoStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, ...resolucaoIdeal(modoCamera) } });
+      let novoStream: MediaStream;
+      try {
+        novoStream = await abrir(deviceId);
+      } catch {
+        // O Android libera o hardware de forma assíncrona — uma segunda tentativa curta resolve a maioria dos casos.
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        novoStream = await abrir(deviceId);
+      }
       setStream(novoStream);
       setDispositivoAtualId(deviceId);
       salvarCameraPreferida(deviceId);
+      await atualizarDispositivos();
     } catch {
+      // Não conseguiu a câmera escolhida: volta para a anterior pra o diálogo não ficar sem imagem.
+      if (idAnterior) {
+        try {
+          setStream(await abrir(idAnterior));
+          setDispositivoAtualId(idAnterior);
+        } catch {
+          // Sem a anterior também — o aviso abaixo já informa o usuário.
+        }
+      }
       aoErroValidacao?.('Não foi possível trocar para essa câmera. Verifique se ela ainda está conectada.');
     }
   }
@@ -362,6 +396,7 @@ export function useCapturaFoto({
     processando,
     stream,
     modoCamera,
+    espelharVideo,
     permitirCamera,
     exigirCamera,
     permitirCapturaAutomatica,
