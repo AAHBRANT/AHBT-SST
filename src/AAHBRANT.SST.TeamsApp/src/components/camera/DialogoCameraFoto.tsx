@@ -172,6 +172,16 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                 )}
               </div>
             )}
+            {/* DIAGNÓSTICO TEMPORÁRIO (03/11): resolução real do vídeo e tamanho do rosto, para calibrar a
+                distância mínima no tablet do campo. Remover depois da calibração. */}
+            {mostrarGuiaRosto && stream && (
+              <Text size={100} style={{ display: 'block', textAlign: 'center', marginTop: 4, opacity: 0.7 }}>
+                Diagnóstico: vídeo {videoRef.current?.videoWidth ?? '?'}×{videoRef.current?.videoHeight ?? '?'}
+                {detector.caixa && videoRef.current?.videoHeight
+                  ? ` · rosto ${Math.round((Math.min(detector.caixa.largura * videoRef.current.videoWidth, detector.caixa.altura * videoRef.current.videoHeight) / videoRef.current.videoHeight) * 100)}% da altura do vídeo (liberado entre 33% e ~48%)`
+                  : ' · sem rosto'}
+              </Text>
+            )}
             {oferecerAutomatica && detector.situacao === 'ativo' && (
               <Switch
                 style={{ marginTop: 4 }}
