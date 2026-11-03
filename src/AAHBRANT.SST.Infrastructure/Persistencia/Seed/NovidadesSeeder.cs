@@ -2164,6 +2164,21 @@ public static class NovidadesSeeder
                     null,
                     "Em Administração > Pendências automáticas, o Administrador liga ou desliga cada aviso e escolhe se ele abre toda vez que a pessoa entra ou uma vez por dia, e se pode ser fechado."),
             }),
+        new(
+            Versao: "5.118.0",
+            Titulo: "Biometria num lugar só no perfil do funcionário",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Facial junto das digitais",
+                    "A digital e a facial podiam ser cadastradas em dois lugares diferentes do perfil.",
+                    "O card Biometria, na coluna da esquerda do perfil, reúne os dois indicadores e a captura facial. A aba Assinaturas fica só com o cofre e os termos."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Card de biometria inteiro no tablet",
+                    "No tablet, o fim do card de biometria ficava cortado.",
+                    "A coluna da esquerda agora rola junto com a página e o card aparece inteiro."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
