@@ -103,6 +103,9 @@ export function AcidenteDetalhePage() {
   const [resolucaoNova, setResolucaoNova] = useState<ResolucaoEmEdicao>(resolucaoVazia());
   const [acaoAlterando, setAcaoAlterando] = useState<AcaoPlano | null>(null);
   const [resolucaoAlterando, setResolucaoAlterando] = useState<ResolucaoEmEdicao>(resolucaoVazia());
+  // "Resolvido": qualquer ação pode ser marcada como resolvida à mão, descrevendo como foi resolvida.
+  const [acaoResolvendo, setAcaoResolvendo] = useState<AcaoPlano | null>(null);
+  const [comoResolvido, setComoResolvido] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
@@ -296,6 +299,33 @@ export function AcidenteDetalhePage() {
     }
   }
 
+  function abrirResolver(acao: AcaoPlano) {
+    setErro(null);
+    setComoResolvido('');
+    setAcaoResolvendo(acao);
+  }
+
+  async function salvarResolvido() {
+    if (!acaoResolvendo) return;
+    const texto = comoResolvido.trim();
+    if (!texto) {
+      setErro('Descreva como a ação foi resolvida.');
+      return;
+    }
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.acidentes.concluirAcao(acaoResolvendo.id, texto);
+      setAcaoResolvendo(null);
+      await carregar();
+      sucessoToast('Ação marcada como resolvida.');
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao marcar a ação como resolvida.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
   async function reabrirAcao(acao: AcaoPlano) {
     const ok = await confirmar({
       titulo: 'Reabrir ação?',
@@ -321,7 +351,7 @@ export function AcidenteDetalhePage() {
     const ok = await confirmar({
       titulo: 'Reabrir ações concluídas sem execução?',
       mensagem:
-        'Reabre todas as ações do plano que foram concluídas sem o fato que as resolve: concluídas à mão, treinamento ou inspeção que não aconteceu, DDS ou reunião ainda não realizados. As que foram concluídas pelo fato real ficam como estão.',
+        'Reabre todas as ações do plano que foram concluídas sem o fato que as resolve: concluídas à mão, treinamento ou inspeção que não aconteceu, DDS ou reunião ainda não realizados. As que foram concluídas pelo fato real ficam como estão. Atenção: isso também reabre as que foram marcadas como resolvidas à mão.',
       rotuloConfirmar: 'Reabrir ações',
       tom: 'neutro',
     });
@@ -425,12 +455,12 @@ export function AcidenteDetalhePage() {
           <span>
             <StatusChip tom={acao.tipoResolucaoAutomatica ? 'info' : 'atencao'}>{acao.tipoResolucaoAutomatica ? 'Automática' : 'Sem vínculo'}</StatusChip>
           </span>
-          {acao.tipoResolucaoAutomatica ? (
+          {acao.status === StatusAcaoPlano.Concluido && acao.descricaoConclusao ? (
+            <Legenda>Como foi resolvido: "{acao.descricaoConclusao}"</Legenda>
+          ) : acao.tipoResolucaoAutomatica ? (
             <Legenda>{acao.resolucaoAutomatica}</Legenda>
-          ) : acao.status === StatusAcaoPlano.Concluido ? (
-            acao.descricaoConclusao && <Legenda>"{acao.descricaoConclusao}"</Legenda>
-          ) : (
-            <Legenda>Defina como se resolve (Alterar). Sem isso a ação não conclui.</Legenda>
+          ) : acao.status === StatusAcaoPlano.Concluido ? null : (
+            <Legenda>Defina como se resolve (Alterar) ou marque como Resolvido.</Legenda>
           )}
         </div>
       ),
@@ -732,9 +762,13 @@ export function AcidenteDetalhePage() {
                   Reabrir
                 </Button>
               );
-            // DDS e reunião se resolvem pelo próprio fluxo; não têm botão.
-            if (acao.tipoResolucaoAutomatica === 'Dds' || acao.tipoResolucaoAutomatica === 'Reuniao') return null;
+            const podeAlterar = acao.tipoResolucaoAutomatica !== 'Dds' && acao.tipoResolucaoAutomatica !== 'Reuniao';
             return (
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <Button appearance="secondary" size="small" onClick={() => abrirResolver(acao)} disabled={processando}>
+                Resolvido
+              </Button>
+              {podeAlterar && (
               <Button
                 appearance={acao.tipoResolucao ? 'subtle' : 'primary'}
                 size="small"
@@ -743,11 +777,44 @@ export function AcidenteDetalhePage() {
               >
                 {acao.tipoResolucao ? 'Alterar' : 'Definir como se resolve'}
               </Button>
+              )}
+              </div>
             );
           }}
         />
       </Card>
       {dialogoConfirmacao}
+      <Dialog open={!!acaoResolvendo} onOpenChange={(_, d) => { if (!d.open) setAcaoResolvendo(null); }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Marcar ação como resolvida</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'grid', gap: 10 }}>
+                <Text>"{acaoResolvendo?.descricao}"</Text>
+                <Field label="Como foi resolvido?" required>
+                  <Textarea
+                    value={comoResolvido}
+                    onChange={(_, d) => setComoResolvido(d.value)}
+                    rows={4}
+                    maxLength={1000}
+                    placeholder="Descreva o que foi feito (ex.: andaimes reinspecionados, sapatas repostas)."
+                  />
+                </Field>
+                <Legenda>Fica registrado com seu nome e a data. Se precisar, use Reabrir para desfazer.</Legenda>
+                {erro && acaoResolvendo && <FeedbackInline tom="erro">{erro}</FeedbackInline>}
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setAcaoResolvendo(null)} disabled={processando}>
+                Cancelar
+              </Button>
+              <Button appearance="primary" onClick={() => void salvarResolvido()} disabled={processando}>
+                Marcar como resolvida
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
       <Dialog open={!!acaoAlterando} onOpenChange={(_, d) => { if (!d.open) setAcaoAlterando(null); }}>
         <DialogSurface>
           <DialogBody>
