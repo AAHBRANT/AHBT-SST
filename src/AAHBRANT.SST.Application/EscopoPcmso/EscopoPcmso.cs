@@ -69,7 +69,7 @@ public class ObterEscopoPcmsoQueryHandler : IRequestHandler<ObterEscopoPcmsoQuer
             .Select(f => new { f.GheId, f.FuncaoId, f.DescricaoAtividades }).ToListAsync(ct);
         var idsFuncoes = gheFuncoes.Select(f => f.FuncaoId).Distinct().ToList();
         var funcoes = await _db.Funcoes.IgnoreQueryFilters().Where(f => idsFuncoes.Contains(f.Id)).ToDictionaryAsync(f => f.Id, f => f.Nome, ct);
-        var trabalhadores = await _db.Trabalhadores.Where(t => t.ObraId == obra.Id && t.DataDemissao == null).Select(t => t.FuncaoId).ToListAsync(ct);
+        var trabalhadores = await _db.Trabalhadores.Where(t => t.ObraId == obra.Id && t.DataDemissao == null && t.Vinculo != Domain.Enums.TipoVinculo.PrestadorServico).Select(t => t.FuncaoId).ToListAsync(ct);
         var porFuncao = trabalhadores.GroupBy(f => f).ToDictionary(g => g.Key, g => g.Count());
 
         // Só atividades dos GHE em uso: revisão nova do PGR desativa os GHE antigos, mas as

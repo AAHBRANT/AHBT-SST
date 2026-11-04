@@ -2298,6 +2298,21 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.127.0",
+            Titulo: "Registro profissional no usuário e prestador PJ",
+            DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Registro profissional na edição do usuário",
+                    "O registro profissional (MTE/CREA) do instrutor só era cadastrado dentro da turma, e no PGR era digitado a cada documento.",
+                    "Em Administração > Controle de acesso, o usuário passa a ter a seção Registro profissional (formação, conselho, número e UF). Com o número preenchido, a pessoa aparece na escolha de instrutor das turmas, o registro sai no certificado e vem preenchido no \"Quem assina\" do PGR."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Prestador de serviço (PJ) pode assinar",
+                    "Quem não era funcionário (engenheiro ou instrutor PJ) não podia assinar pelo sistema, porque o usuário precisava estar vinculado a um cadastro de funcionário.",
+                    "Em \"Funcionário vinculado\", a opção \"Prestador (PJ), não é funcionário\" cria o cadastro dele com CPF, obra base e função e já vincula o usuário. O prestador assina e dá curso, mas fica fora do efetivo, dos indicadores, do DDS e das pendências de ASO, treinamentos, EPI e biometria."),
+            }),
+        new(
+            Versao: "5.128.0",
             Titulo: "Botão Assinar em destaque e assinatura da ocorrência",
             DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
@@ -2309,7 +2324,7 @@ public static class NovidadesSeeder
                 new NovidadeSeedItem(CategoriaNovidade.Novidade,
                     "Assinar a ocorrência depois de concluída",
                     "Uma ocorrência concluída (acidente, incidente, quase acidente ou não conformidade) ficava sem opção de assinatura.",
-                    "Ao abrir uma ocorrência concluída que ainda não foi assinada, aparece no topo a faixa \"Falta a assinatura desta ocorrência\" com o botão \"Assinar ocorrência\". Ele leva à tela de assinatura por digital ou facial."),
+                    "Ao abrir uma ocorrência concluída que ainda não foi assinada, aparece no topo a faixa \"Falta a assinatura desta ocorrência\" com o botão \"Assinar ocorrência\". Ela leva à tela de assinatura por digital ou facial. Quem assina é o Técnico ou o Engenheiro de Segurança, uma vez só."),
             }),
     };
 

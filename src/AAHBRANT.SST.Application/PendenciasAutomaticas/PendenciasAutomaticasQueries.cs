@@ -97,7 +97,7 @@ public class ListarPendenciasAutomaticasQueryHandler : IRequestHandler<ListarPen
     internal static async Task<List<SituacaoBiometrica>> SituacaoBiometricaAsync(IAppDbContext db, CancellationToken ct)
     {
         var trabalhadores = await db.Trabalhadores
-            .Where(t => t.Situacao == Domain.Enums.SituacaoTrabalhador.Ativo)
+            .Where(t => t.Situacao == Domain.Enums.SituacaoTrabalhador.Ativo && t.Vinculo != Domain.Enums.TipoVinculo.PrestadorServico)
             .Select(t => new { t.Id, t.Nome, t.ObraId, ObraNome = t.Obra!.Nome, Funcao = t.Funcao != null ? t.Funcao.Nome : "" })
             .ToListAsync(ct);
         if (trabalhadores.Count == 0) return new List<SituacaoBiometrica>();

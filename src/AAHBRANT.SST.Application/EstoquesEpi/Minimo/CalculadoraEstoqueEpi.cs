@@ -81,7 +81,7 @@ public static class CalculadoraEstoqueEpi
             .ToListAsync(ct);
 
         var trabalhadores = await db.Trabalhadores
-            .Where(t => t.ObraId == obraId && t.Situacao != SituacaoTrabalhador.Desligado && t.DataDemissao == null)
+            .Where(t => t.ObraId == obraId && t.Situacao != SituacaoTrabalhador.Desligado && t.DataDemissao == null && t.Vinculo != Domain.Enums.TipoVinculo.PrestadorServico)
             .Select(t => new { t.FuncaoId, t.DataAdmissao })
             .ToListAsync(ct);
         var matriz = await db.MatrizEpiFuncoes.Select(m => new { m.FuncaoId, m.CatalogoEpiId }).ToListAsync(ct);

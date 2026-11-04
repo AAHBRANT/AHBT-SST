@@ -129,7 +129,7 @@ public class CriarDdsCommandHandler : IRequestHandler<CriarDdsCommand, Guid>
         // ListarFuncionariosDdsQuery); a presença continua só para quem assina. Dia sem expediente
         // nasce por outro comando, então não passa por aqui.
         var trabalhadoresIds = await _db.Trabalhadores.AsNoTracking()
-            .Where(t => t.ObraId == dds.ObraId && t.Ativo && t.Situacao == SituacaoTrabalhador.Ativo
+            .Where(t => t.ObraId == dds.ObraId && t.Ativo && t.Situacao == SituacaoTrabalhador.Ativo && t.Vinculo != Domain.Enums.TipoVinculo.PrestadorServico
                 && (!t.DataDemissao.HasValue || t.DataDemissao.Value.Date > dds.Data.Date))
             .Select(t => t.Id)
             .ToListAsync(ct);

@@ -45,7 +45,7 @@ public class ListarCursosObrigatoriosObraQueryHandler : IRequestHandler<ListarCu
         var cursos = await _db.CursosTreinamento.IgnoreQueryFilters().Where(c => idsCursos.Contains(c.Id))
             .ToDictionaryAsync(c => c.Id, c => new { c.Nome, c.NormaReferencia }, ct);
         var trabalhadoresPorFuncao = (await _db.Trabalhadores
-                .Where(t => t.ObraId == request.ObraId && t.DataDemissao == null).Select(t => t.FuncaoId).ToListAsync(ct))
+                .Where(t => t.ObraId == request.ObraId && t.DataDemissao == null && t.Vinculo != Domain.Enums.TipoVinculo.PrestadorServico).Select(t => t.FuncaoId).ToListAsync(ct))
             .GroupBy(id => id).ToDictionary(g => g.Key, g => g.Count());
         var pgr = await _db.Pgrs.Where(p => p.ObraId == request.ObraId && p.Status == StatusPgr.Vigente)
             .Select(p => new { p.Nome, p.DataElaboracao }).FirstOrDefaultAsync(ct);
