@@ -24,6 +24,7 @@ public class GeracoesPgrEapController : ControllerBase
     public record SalvarRequest(int Passo, EstruturaGeracaoPgr Estrutura);
 
     public record GerarRiscosRequest(int GheNumero, string CodigoEap);
+    public record RemoverGheRequest(int GheNumero, int? DestinoGheNumero);
 
     public record DevolverRequest(string Motivo);
 
@@ -71,6 +72,13 @@ public class GeracoesPgrEapController : ControllerBase
     [HttpPost("{id:guid}/gerar-riscos")]
     public async Task<IActionResult> GerarRiscos(Guid id, GerarRiscosRequest corpo, CancellationToken ct)
         => Ok(new { riscos = await _mediator.Send(new GerarRiscosAtividadeGeracaoPgrCommand(id, corpo.GheNumero, corpo.CodigoEap), ct) });
+
+    // Remove um GHE do rascunho (funções, riscos e medidas saem com ele). As atividades vão para o GHE de destino ou
+    // são descartadas; as ações do plano geradas dos riscos removidos e ainda intocadas saem junto.
+    [Authorize(Policy = "pgr:criar")]
+    [HttpPost("{id:guid}/remover-ghe")]
+    public async Task<IActionResult> RemoverGhe(Guid id, RemoverGheRequest corpo, CancellationToken ct)
+        => Ok(await _mediator.Send(new RemoverGheGeracaoPgrCommand(id, corpo.GheNumero, corpo.DestinoGheNumero), ct));
 
     // Sugere forma de acompanhamento, periodicidade e critério de aferição para as ações do plano que ainda não têm.
     [Authorize(Policy = "pgr:criar")]

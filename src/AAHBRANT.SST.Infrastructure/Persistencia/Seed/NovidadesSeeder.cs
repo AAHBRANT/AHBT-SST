@@ -2263,6 +2263,17 @@ public static class NovidadesSeeder
                     "Ações automáticas ou sem vínculo só concluíam quando o fato vinculado acontecia.",
                     "Toda ação pode ser marcada como resolvida, descrevendo como foi resolvida; o texto, o nome e a data ficam registrados."),
             }),
+        new(
+            Versao: "5.125.0",
+            Titulo: "PGR pela EAP: remover um GHE do rascunho",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Remover um GHE sem refazer todos",
+                    "Para tirar um GHE do rascunho era preciso pedir a sugestão de GHEs de novo, que trocava todos e perdia os ajustes.",
+                    "No passo Funções e GHE, cada GHE tem o botão Remover GHE. Você escolhe mover as atividades para outro GHE (os riscos vão junto) ou descartá-las. As funções, os riscos e as ações do plano geradas desses riscos saem junto; ações escritas ou editadas por você, com responsável ou com prazo, ficam."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

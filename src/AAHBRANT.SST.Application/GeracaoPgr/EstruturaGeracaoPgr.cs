@@ -142,6 +142,9 @@ public static class CategoriasMedida
 public class AcaoPlanoGerada
 {
     public string Descricao { get; set; } = string.Empty;
+    // Texto com que a ação nasceu das medidas dos riscos. Só as ações geradas o têm; as escritas à mão ficam nulas.
+    // Ao remover um GHE, a ação sai junto se ainda tem este texto e ninguém mexeu nela (sem responsável nem datas).
+    public string? DescricaoGerada { get; set; }
     public Guid? ResponsavelUsuarioId { get; set; }
     public string? ResponsavelNome { get; set; }
     // Início opcional: com ele o cronograma mensal marca todos os meses de Início a Prazo.

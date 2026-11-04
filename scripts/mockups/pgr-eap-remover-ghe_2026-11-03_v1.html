@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Remover GHE do rascunho do PGR</title>
+<style>
+:root{--vinho:#670000;--bege:#ebe9ad;--borda:#d9d6d0;--txt:#1c1c1c;--mut:#666}
+*{box-sizing:border-box}body{margin:0;font:14px/1.5 "Segoe UI",system-ui,sans-serif;color:var(--txt);background:#f6f5f2;padding:24px}
+h1{font-size:16px;color:var(--vinho);margin:0 0 4px}.sub{color:var(--mut);margin:0 0 20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px;max-width:1100px}
+.tela{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:16px}
+.tela>h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:0 0 12px}
+.card{border:1px solid var(--borda);border-radius:8px;padding:12px;margin-bottom:10px}
+.cab{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.cab b{color:var(--vinho)}
+.btn{font:inherit;padding:5px 12px;border-radius:6px;border:1px solid var(--borda);background:#fff;cursor:pointer}
+.btn.perigo{border-color:var(--vinho);color:var(--vinho)}
+.btn.pri{background:var(--vinho);border-color:var(--vinho);color:#fff}
+.mut{color:var(--mut);font-size:13px}
+.modal{border:1px solid var(--borda);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:18px}
+.modal h3{margin:0 0 8px;color:var(--vinho);font-size:16px}
+.resumo{background:var(--bege);border-radius:8px;padding:10px 12px;margin:10px 0;font-size:13px}
+.resumo li{margin:2px 0}
+label.op{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--borda);border-radius:8px;padding:8px 10px;margin:6px 0}
+select{font:inherit;padding:4px 6px;margin-top:4px}
+.rod{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+</style></head><body>
+<h1>Remover GHE do rascunho do PGR — proposta</h1>
+<p class="sub">Só aparece com o rascunho editável (antes de enviar para aprovação). Nada é gravado até clicar em Remover e depois Salvar rascunho.</p>
+<div class="grid">
+  <div class="tela"><h2>1. Card do GHE</h2>
+    <div class="card"><div class="cab"><b>GHE 03 — Acabamento</b><button class="btn perigo">Remover GHE</button></div>
+      <div class="mut">2 funções · 4 atividades da EAP · 11 riscos</div></div>
+    <div class="card"><div class="cab"><b>GHE 04 — Administrativo</b><button class="btn perigo">Remover GHE</button></div>
+      <div class="mut">1 função · 1 atividade · 3 riscos</div></div>
+  </div>
+  <div class="tela"><h2>2. Confirmação</h2>
+    <div class="modal">
+      <h3>Remover GHE 03 — Acabamento?</h3>
+      <div class="resumo"><b>Sai junto com o GHE:</b>
+        <ul><li>2 funções (com descrição e CBO)</li><li>11 riscos e suas medidas</li><li>5 ações do plano que só existem por causa destes riscos</li></ul></div>
+      <b>O que fazer com as 4 atividades da EAP?</b>
+      <label class="op"><input type="radio" name="d" checked><span>Mover para outro GHE <small class="mut">(os riscos vão junto; as ações do plano deles continuam)</small><br>
+        <select><option>GHE 01 — Estrutura</option><option>GHE 02 — Alvenaria</option></select></span></label>
+      <label class="op"><input type="radio" name="d"><span>Descartar <small class="mut">(riscos saem; as atividades ficam “sem GHE” até serem movidas ou desmarcadas na EAP)</small></span></label>
+      <p class="mut">Ações do plano que você escreveu ou editou à mão nunca são removidas.</p>
+      <div class="rod"><button class="btn">Cancelar</button><button class="btn pri">Remover GHE</button></div>
+    </div>
+  </div>
+  <div class="tela"><h2>3. Depois de remover</h2>
+    <div class="card" style="background:var(--bege)">GHE 03 removido. 5 ações do plano retiradas. Renumeramos os GHEs? <b>Não</b> — a numeração atual é mantida para não confundir com o que já foi revisado.</div>
+    <div class="mut">Pendência exibida enquanto restar atividade sem GHE:<br><b>Atividade da EAP sem GHE: 4.2 Revestimento.</b></div>
+  </div>
+</div>
+</body></html>
