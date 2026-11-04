@@ -546,7 +546,7 @@ export function SessaoTreinamentoDetalhePage() {
               <div style={{ display: 'flex', gap: 6 }}>
                 {!(p.certificadoAssinadoPeloTrabalhadorEm && p.certificadoAssinadoPeloInstrutorEm) && (
                   <BotaoAcao
-                    tom="ver"
+                    tom="assinar"
                     size="small"
                     icon={<Signature24Regular />}
                     onClick={() => navigate(`/treinamentos/${p.treinamentoGeradoId}/assinar`)}

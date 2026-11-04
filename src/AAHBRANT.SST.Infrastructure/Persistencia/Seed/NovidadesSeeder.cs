@@ -1,4 +1,4 @@
-﻿using AAHBRANT.SST.Domain.Entidades;
+﻿﻿using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -2325,6 +2325,21 @@ public static class NovidadesSeeder
                     "Botão Capturar liberado na assinatura e confirmação por facial",
                     "Na assinatura (DDS, quiosque, entrega de EPI e uniforme, treinamento), o botão Capturar só liberava com o rosto inteiro dentro do círculo.",
                     "Na assinatura, o círculo é só um guia e o botão libera assim que a câmera encontra um rosto. O enquadramento no círculo continua exigido apenas no cadastro da foto facial."),
+            }),
+        new(
+            Versao: "5.129.0",
+            Titulo: "Botão Assinar em destaque e assinatura da ocorrência",
+            DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Botão Assinar em vinho, fácil de achar",
+                    "O botão de assinar era igual aos outros e muita gente não o encontrava.",
+                    "Em todas as telas onde dá para assinar (inspeção, DDS, APR, PT, treinamento, entrega de EPI e de uniforme), o botão agora é vinho e se destaca dos demais, que são verdes. Nas telas de detalhe ele é maior e pulsa de leve; nas listas fica no tamanho normal da linha."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Assinar a ocorrência depois de concluída",
+                    "Uma ocorrência concluída (acidente, incidente, quase acidente ou não conformidade) ficava sem opção de assinatura.",
+                    "Ao abrir uma ocorrência concluída que ainda não foi assinada, aparece no topo a faixa \"Falta a assinatura desta ocorrência\" com o botão \"Assinar ocorrência\". Ela leva à tela de assinatura por digital ou facial. Quem assina é o Técnico ou o Engenheiro de Segurança, uma vez só."),
             }),
     };
 

@@ -518,13 +518,14 @@ export function InspecaoDetalhePage() {
             </BotaoAcao>
             {dialogoVisualizador}
             {inspecao.status === StatusInspecao.AguardandoAssinatura && (
-              <Button
-                appearance="primary"
+              <BotaoAcao
+                tom="assinar"
                 icon={<Signature24Regular />}
                 onClick={() => navigate(`/prevencao/inspecoes/${id}/assinar`)}
+                aria-label="Assinar inspeção"
               >
                 Assinar inspeção
-              </Button>
+              </BotaoAcao>
             )}
           </>
         ),

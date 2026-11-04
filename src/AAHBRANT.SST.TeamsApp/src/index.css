@@ -65,6 +65,11 @@ body,
   /* Botões de ação: verde dos botões do sistema (o mesmo do "Atalhos"), decisão do usuário 28/10/2026. */
   --sst-acao-marca-fundo: #16a34a;     --sst-acao-marca-fundo-hover: #15803d;
   --sst-acao-marca-tinta: #15803d;     --sst-acao-marca-wash: rgba(22, 163, 74, 0.10);
+  /* Botão Assinar e faixa "falta assinar" (tom 'assinar' do BotaoAcao, 04/11/2026): vinho da marca, para
+     não se confundir com os demais botões de ação, que são verdes. */
+  --sst-acao-assinar-fundo: #670000;   --sst-acao-assinar-fundo-hover: #7a0101;
+  --sst-acao-assinar-halo: rgba(103, 0, 0, 0.45);
+  --sst-faixa-assinar-fundo: #fbeaea;  --sst-faixa-assinar-tinta: #670000;
   /* Padrão de botão (Proposta B · Premium, 21/10/2026 — ver ui/primitivos/Botao/estiloBotao.ts). */
   /* Primário verde (28/10/2026): todos os botões no verde do "Atalhos", no lugar do vinho. */
   --sst-botao-marca: #16a34a;          --sst-botao-marca-hover: #15803d;   --sst-botao-marca-pressionado: #166534;
@@ -115,6 +120,9 @@ body,
   /* No escuro #670000 some sobre o fundo: sólido vai para o vinho do menu ativo e o contorno clareia. */
   --sst-acao-marca-fundo: #16a34a;     --sst-acao-marca-fundo-hover: #15803d;
   --sst-acao-marca-tinta: #4ade80;     --sst-acao-marca-wash: rgba(74, 222, 128, 0.14);
+  --sst-acao-assinar-fundo: #96110d;   --sst-acao-assinar-fundo-hover: #b03838;
+  --sst-acao-assinar-halo: rgba(236, 132, 132, 0.55);
+  --sst-faixa-assinar-fundo: #2a1212;  --sst-faixa-assinar-tinta: #f2b1b1;
   /* No escuro o vinho #670000 some sobre o fundo: o primário usa o vinho do menu ativo. */
   --sst-botao-marca: #16a34a;          --sst-botao-marca-hover: #15803d;   --sst-botao-marca-pressionado: #166534;
   --sst-botao-marca-wash-forte: rgba(74, 222, 128, 0.22);

@@ -37,10 +37,12 @@ const AdministracaoPage = lazy(() => import('./pages/administracao/Administracao
 const SuporteIaPage = lazy(() => import('./pages/suporte-ia/SuporteIaPage').then((m) => ({ default: m.SuporteIaPage })));
 const SuporteIaDetalhePage = lazy(() => import('./pages/suporte-ia/SuporteIaDetalhePage').then((m) => ({ default: m.SuporteIaDetalhePage })));
 const NaoConformidadeDetalhePage = lazy(() => import('./pages/naoconformidades/NaoConformidadeDetalhePage').then((m) => ({ default: m.NaoConformidadeDetalhePage })));
+const AssinarNaoConformidadePage = lazy(() => import('./pages/naoconformidades/AssinarNaoConformidadePage').then((m) => ({ default: m.AssinarNaoConformidadePage })));
 const AlertasPage = lazy(() => import('./pages/alertas/AlertasPage').then((m) => ({ default: m.AlertasPage })));
 const RelatoriosPage = lazy(() => import('./pages/relatorios/RelatoriosPage').then((m) => ({ default: m.RelatoriosPage })));
 const CalendarioPage = lazy(() => import('./pages/calendario/CalendarioPage').then((m) => ({ default: m.CalendarioPage })));
 const AcidenteDetalhePage = lazy(() => import('./pages/acidentes/AcidenteDetalhePage').then((m) => ({ default: m.AcidenteDetalhePage })));
+const AssinarAcidentePage = lazy(() => import('./pages/acidentes/AssinarAcidentePage').then((m) => ({ default: m.AssinarAcidentePage })));
 const DdsSemanalDetalhePage = lazy(() => import('./pages/dds/DdsSemanalDetalhePage').then((m) => ({ default: m.DdsSemanalDetalhePage })));
 const DdsDetalhePage = lazy(() => import('./pages/dds/DdsDetalhePage').then((m) => ({ default: m.DdsDetalhePage })));
 const AssinarDdsPage = lazy(() => import('./pages/dds/AssinarDdsPage').then((m) => ({ default: m.AssinarDdsPage })));
@@ -247,8 +249,10 @@ function AppRoteado() {
               <Route path="/ocorrencias" element={<OcorrenciasPage />} />
               <Route path="/nao-conformidades" element={<Navigate to="/ocorrencias?secao=nao-conformidades" replace />} />
               <Route path="/nao-conformidades/:id" element={<NaoConformidadeDetalhePage />} />
+              <Route path="/nao-conformidades/:id/assinar" element={<AssinarNaoConformidadePage />} />
               <Route path="/acidentes" element={<Navigate to="/ocorrencias?secao=acidentes" replace />} />
               <Route path="/acidentes/:id" element={<AcidenteDetalhePage />} />
+              <Route path="/acidentes/:id/assinar" element={<AssinarAcidentePage />} />
 
               <Route path="/epi/:id/assinar" element={<AssinarEntregaEpiPage />} />
               <Route path="/epi/termo/:trabalhadorId/assinar" element={<AssinarTermoEpiPage />} />

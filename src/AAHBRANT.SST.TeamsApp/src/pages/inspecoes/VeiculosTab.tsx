@@ -532,13 +532,14 @@ export function VeiculosTab() {
 
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
                     {aguardando ? (
-                      <Button
-                        appearance="primary"
+                      <BotaoAcao
+                        tom="assinar"
                         icon={<Signature24Regular />}
                         onClick={() => navigate(`/prevencao/inspecoes/${aguardando.id}/assinar`)}
+                        aria-label="Assinar inspeção"
                       >
                         Assinar inspeção
-                      </Button>
+                      </BotaoAcao>
                     ) : (
                       <Button appearance="primary" icon={<ClipboardTaskListLtr24Regular />} onClick={() => abrirInspecao(veiculo.id)}>
                         {veiculo.inspecaoEmAndamento ? 'Continuar inspeção' : 'Nova inspeção'}
