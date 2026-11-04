@@ -240,6 +240,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
             tamanho="medium"
             variante="facialAzure"
             modoCamera="user"
+            modoCaptura="assinatura"
             exigirCamera
           />
         </div>

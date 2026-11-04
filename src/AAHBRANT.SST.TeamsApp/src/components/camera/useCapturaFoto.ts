@@ -4,6 +4,7 @@ import { leituraParaLocalizacao, pendenciasFoto, vincularDadosFoto, type Context
 import { criarRastreadorFoto } from '../../lib/fontesLocalizacao';
 import { desenharCarimbo, enderecoDaPosicao, linhasCarimbo, observarEndereco, type ObservadorEndereco } from '../../lib/carimboFoto';
 import type { EstadoRastreio, Rastreador } from '../../lib/rastreadorLocalizacao';
+import type { ModoCapturaRosto } from '../../lib/rosto/avaliarRosto';
 
 // Quanto o clique em "capturar" espera pela posição quando ela ainda não está boa. O quadro já foi
 // congelado no clique; a posição que chegar nesse intervalo fica dentro da janela de 60 s.
@@ -36,6 +37,9 @@ export interface UseCapturaFotoOptions {
   // Mostra a chave "Captura automática" na câmera frontal (sempre começa desligada). Pedido do
   // usuário (11/10): só no treinamento e no DDS, onde várias pessoas confirmam presença em sequência.
   permitirCapturaAutomatica?: boolean;
+  // Câmera frontal: 'cadastro' (padrão) exige o rosto enquadrado no oval para liberar o Capturar;
+  // 'assinatura' (04/11) usa o oval só como guia e libera com 1 rosto no quadro. Ver avaliarRosto.ts.
+  modoCaptura?: ModoCapturaRosto;
 }
 
 // Lógica de captura/seleção de foto extraída de SeletorFotoCamera (14/09) para ser reaproveitada
@@ -79,6 +83,7 @@ export function useCapturaFoto({
   permitirCamera = true,
   exigirCamera = false,
   permitirCapturaAutomatica = false,
+  modoCaptura = 'cadastro',
   contextoFoto,
 }: UseCapturaFotoOptions) {
   const [localFoto, setLocalFoto] = useState(contextoFoto?.local ?? '');
@@ -400,6 +405,7 @@ export function useCapturaFoto({
     permitirCamera,
     exigirCamera,
     permitirCapturaAutomatica,
+    modoCaptura,
     dispositivosVideo,
     dispositivoAtualId,
     abrirCamera,

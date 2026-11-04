@@ -107,3 +107,15 @@ export function avaliarRostos(
 
   return { estado: 'ok', mensagem: 'Pronto. Pode capturar.', tom: 'ok', liberaCaptura: true, enquadrado: true };
 }
+
+// Modo das regras do detector: 'cadastro' (foto de referência — enquadramento completo, acima) ou
+// 'assinatura' (pedido do usuário, 04/11): na hora de assinar/confirmar presença o oval é só guia e
+// basta haver exatamente 1 rosto no quadro — sem posição, tamanho, ângulo ou luz. Quem decide se a
+// foto serve continua sendo o Azure Face no servidor.
+export type ModoCapturaRosto = 'cadastro' | 'assinatura';
+
+export function avaliarPresencaRosto(caixas: readonly CaixaRosto[]): AvaliacaoRosto {
+  if (caixas.length === 0) return bloqueia('nenhum', 'Nenhum rosto encontrado. Olhe para a câmera.', 'alerta');
+  if (caixas.length > 1) return bloqueia('varios', 'Mais de um rosto. Fique só o trabalhador no quadro.', 'alerta');
+  return { estado: 'ok', mensagem: 'Rosto encontrado. Pode capturar.', tom: 'ok', liberaCaptura: true, enquadrado: true };
+}

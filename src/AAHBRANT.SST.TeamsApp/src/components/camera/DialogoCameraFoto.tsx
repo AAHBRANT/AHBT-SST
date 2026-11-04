@@ -50,8 +50,11 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   // e não conseguia assinar — e, como a foto nem saía do aparelho, essas tentativas não apareciam no
   // registro de falhas do servidor. Agora a pessoa sempre pode capturar; se a foto não servir, o Azure
   // recusa com a mensagem do motivo e ela tenta de novo.
+  // Modo 'assinatura' (04/11): o oval vira só guia visual e o Capturar libera com 1 rosto no quadro;
+  // o enquadramento no oval vale apenas no cadastro da foto de referência.
   const mostrarGuiaRosto = modoCamera === 'user';
-  const detector = useDetectorRosto(videoRef, mostrarGuiaRosto && !!stream);
+  const modoAssinatura = captura.modoCaptura === 'assinatura';
+  const detector = useDetectorRosto(videoRef, mostrarGuiaRosto && !!stream, captura.modoCaptura);
   const avaliacao = detector.situacao === 'ativo' ? detector.avaliacao : null;
   const corQuadrado = avaliacao ? CORES_DETECTOR[avaliacao.tom] : CORES_DETECTOR.ok;
   // Captura sozinha depois de 1,5 s com o rosto aprovado (verde) e estável. Só onde a tela permite
@@ -166,8 +169,8 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                 ) : (
                   <Text size={200}>
                     {detector.situacao === 'carregando'
-                      ? 'Preparando o detector de rosto… O botão libera quando o rosto estiver inteiro dentro do círculo.'
-                      : 'Centralize o rosto dentro do círculo antes de capturar.'}
+                      ? (modoAssinatura ? 'Preparando o detector de rosto… Olhe para a câmera.' : 'Preparando o detector de rosto… O botão libera quando o rosto estiver inteiro dentro do círculo.')
+                      : (modoAssinatura ? 'Olhe para a câmera antes de capturar.' : 'Centralize o rosto dentro do círculo antes de capturar.')}
                   </Text>
                 )}
               </div>
