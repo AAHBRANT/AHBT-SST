@@ -98,7 +98,8 @@ export function FilaFacialDds({ ddsId, enviarFoto, titulo, subtitulo, totalInscr
   // Proporção real do vídeo da câmera (largura/altura), para a imagem ocupar a área sem faixas pretas.
   const [proporcao, setProporcao] = useState('16 / 9');
 
-  const detector = useDetectorRosto(videoRef, aberto && !!stream);
+  // Modo 'assinatura' (04/11): basta 1 rosto parado ~1 s no quadro; sem exigir centralização, tamanho ou luz.
+  const detector = useDetectorRosto(videoRef, aberto && !!stream, 'assinatura');
   const avaliacao = detector.situacao === 'ativo' ? detector.avaliacao : null;
 
   // Estado da fila fora do React (muda a cada ciclo do detector): "ocupada" enquanto envia/mostra o

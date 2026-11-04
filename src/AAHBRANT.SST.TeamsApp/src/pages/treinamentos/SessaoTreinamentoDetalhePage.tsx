@@ -522,6 +522,7 @@ export function SessaoTreinamentoDetalhePage() {
                 tamanho="medium"
                 variante="facialAzure"
                 modoCamera="user"
+                modoCaptura="assinatura"
                 exigirCamera
                 permitirCapturaAutomatica
               />
