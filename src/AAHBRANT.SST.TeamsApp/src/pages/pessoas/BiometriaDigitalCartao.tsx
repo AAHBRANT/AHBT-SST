@@ -242,6 +242,7 @@ export function BiometriaDigitalCartao({
             variante="facialAzure"
             modoCamera="user"
             cameraInicial="environment"
+            modoCaptura="cadastro"
             exigirCamera
             guiaAntesDeAbrir={pedirGuia}
           />

@@ -2311,6 +2311,21 @@ public static class NovidadesSeeder
                     "Quem não era funcionário (engenheiro ou instrutor PJ) não podia assinar pelo sistema, porque o usuário precisava estar vinculado a um cadastro de funcionário.",
                     "Em \"Funcionário vinculado\", a opção \"Prestador (PJ), não é funcionário\" cria o cadastro dele com CPF, obra base e função e já vincula o usuário. O prestador assina e dá curso, mas fica fora do efetivo, dos indicadores, do DDS e das pendências de ASO, treinamentos, EPI e biometria."),
             }),
+        new(
+            Versao: "5.128.0",
+            Titulo: "Assinatura facial sem precisar enquadrar o rosto",
+            DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Fila facial do DDS e do treinamento captura com o rosto em qualquer posição",
+                    "A fila só tirava a foto com o rosto inteiro dentro do oval e perto da câmera. No tablet, muitas vezes nada acontecia e a tela não dizia o motivo.",
+                    "Basta uma pessoa olhar para a câmera por cerca de 1 segundo, em qualquer lugar do quadro. Se não capturar, a tela avisa: \"Aproxime-se da câmera\" ou \"Mais de um rosto no quadro\"."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Botão Capturar liberado na assinatura e confirmação por facial",
+                    "Na assinatura (DDS, quiosque, entrega de EPI e uniforme, treinamento), o botão Capturar só liberava com o rosto inteiro dentro do círculo.",
+                    "Na assinatura, o círculo é só um guia e o botão libera assim que a câmera encontra um rosto. O enquadramento no círculo continua exigido apenas no cadastro da foto facial."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
