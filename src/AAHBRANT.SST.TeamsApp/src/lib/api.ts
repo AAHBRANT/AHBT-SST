@@ -4482,6 +4482,25 @@ async function enviarAudioAcidente<T>(caminho: string, audio: Blob, nomeArquivo:
   return (await response.json()) as T;
 }
 
+export interface ContatoEmailRelatorio { id: string; nome: string | null; email: string; padraoObra: boolean }
+export interface EnvioEmailInspecao { id: string; enviadoEmUtc: string; enviadoPorNome: string; destinatarios: string[]; falhas: string[]; mensagem: string | null }
+export interface EnvioEmailInspecaoPainel { podeEnviar: boolean; contatos: ContatoEmailRelatorio[]; envios: EnvioEmailInspecao[] }
+export interface EnviarEmailInspecaoRequest { emails: string[]; mensagem?: string | null; salvarEmails: string[]; salvarNaObra: boolean }
+
+// Igual a request, mas sem a fila offline — para ações que só fazem sentido com rede (ex.: enviar e-mail).
+async function requestOnline<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(await montarHeadersAuth()), ...init?.headers },
+  });
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  if (response.status === 204) return undefined as T;
+  return parsearJsonSeguro<T>(await response.text(), response);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const authHeaders = await montarHeadersAuth();
   const metodo = (init?.method ?? 'GET').toUpperCase();
@@ -6374,6 +6393,12 @@ export const api = {
     },
     removerFotoAdicional: (fotoId: string) => request<void>(`/api/inspecoes/fotos-adicionais/${fotoId}`, { method: 'DELETE' }),
     encerrar: (id: string) => request<void>(`/api/inspecoes/${id}/encerrar`, { method: 'POST' }),
+    // Envio do relatório por e-mail: sempre online (fetch direto), nunca entra na fila offline das inspeções.
+    envioEmail: (id: string) => requestOnline<EnvioEmailInspecaoPainel>(`/api/inspecoes/${id}/envio-email`),
+    enviarEmail: (id: string, corpo: EnviarEmailInspecaoRequest) =>
+      requestOnline<EnvioEmailInspecao>(`/api/inspecoes/${id}/enviar-email`, { method: 'POST', body: JSON.stringify(corpo) }),
+    removerContatoEmail: (contatoId: string) =>
+      requestOnline<void>(`/api/inspecoes/contatos-email/${contatoId}`, { method: 'DELETE' }),
     // Aguardando assinatura (sem nenhuma assinatura ainda) → Em andamento, para corrigir um erro.
     reabrir: (id: string) => request<void>(`/api/inspecoes/${id}/reabrir`, { method: 'POST' }),
     baixarPdf: async (id: string) => {

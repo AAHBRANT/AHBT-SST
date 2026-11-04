@@ -2285,6 +2285,17 @@ public static class NovidadesSeeder
                     "O carimbo ficava no canto superior da foto e o relatório recortava a imagem; em fotos tiradas com o celular em pé, o carimbo era cortado.",
                     "O carimbo passa para o canto inferior direito da foto. Nos relatórios de inspeção e de investigação de ocorrência a foto aparece inteira, sem recorte. Vale para as fotos tiradas daqui para frente; fotos antigas mantêm o carimbo em cima, mas também deixam de ser cortadas no PDF."),
             }),
+        new(
+            Versao: "5.126.0",
+            Titulo: "Inspeção: envio do relatório por e-mail",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Enviar o relatório da inspeção por e-mail",
+                    "Para mandar o relatório de uma inspeção, era preciso baixar o PDF e anexar num e-mail à parte.",
+                    "Depois de encerrada e assinada, a inspeção mostra o bloco \"Enviar relatório por e-mail\". Marque os contatos salvos (padrão da obra ou seus), digite outros e-mails se quiser e salve-os para as próximas vezes, escreva uma mensagem opcional e clique em Enviar relatório. O PDF assinado vai em anexo pela caixa sst@aahbrant.com, e a inspeção guarda o histórico de quem enviou, para quem e quando."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

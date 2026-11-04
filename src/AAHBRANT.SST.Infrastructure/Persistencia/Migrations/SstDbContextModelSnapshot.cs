@@ -2286,6 +2286,63 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("ContadoresDocumento");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ContatoEmailRelatorio", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Nome")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<Guid?>("ObraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("UsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ObraId", "Email")
+                        .IsUnique()
+                        .HasFilter("[Ativo] = 1 AND [ObraId] IS NOT NULL");
+
+                    b.HasIndex("UsuarioId", "Email")
+                        .IsUnique()
+                        .HasFilter("[Ativo] = 1 AND [UsuarioId] IS NOT NULL");
+
+                    b.ToTable("ContatosEmailRelatorio");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Contrato", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3845,6 +3902,66 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.HasIndex("TrabalhadorId", "DataEntrega");
 
                     b.ToTable("EntregasUniforme");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.EnvioEmailInspecao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Destinatarios")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime>("EnviadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EnviadoPorNome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Falhas")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<Guid>("InspecaoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Mensagem")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InspecaoId");
+
+                    b.ToTable("EnviosEmailInspecao");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Equipe", b =>
@@ -10899,6 +11016,23 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("ChecklistModelo");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ContatoEmailRelatorio", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Obra");
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Contrato", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Empresa", "Empresa")
@@ -11260,6 +11394,17 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("CatalogoUniforme");
 
                     b.Navigation("Trabalhador");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.EnvioEmailInspecao", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Inspecao", "Inspecao")
+                        .WithMany()
+                        .HasForeignKey("InspecaoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Inspecao");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.Equipe", b =>

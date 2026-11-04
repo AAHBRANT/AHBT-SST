@@ -1,4 +1,5 @@
 import { pendenciasFoto } from '../../lib/dadosFoto';
+import { EnvioEmailInspecaoCard } from './EnvioEmailInspecaoCard';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -633,6 +634,8 @@ export function InspecaoDetalhePage() {
       {rascunhos.length > 0 && (
         <FeedbackInline tom="info">{salvandoRascunho ? 'Salvando rascunho no tablet…' : 'Salvando automaticamente… Escolha o status do item para que ele seja salvo.'}</FeedbackInline>
       )}
+
+      {inspecao.status === StatusInspecao.Concluida && !sync.criacaoPendente && <EnvioEmailInspecaoCard inspecaoId={id} />}
 
       <Text weight="semibold">Pontos verificados</Text>
 

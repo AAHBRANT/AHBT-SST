@@ -120,6 +120,8 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Inspecao> Inspecoes => Set<Inspecao>();
     public DbSet<InspecaoItemResposta> InspecaoItemRespostas => Set<InspecaoItemResposta>();
     public DbSet<InspecaoItemFotoAdicional> InspecaoItemFotosAdicionais => Set<InspecaoItemFotoAdicional>();
+    public DbSet<ContatoEmailRelatorio> ContatosEmailRelatorio => Set<ContatoEmailRelatorio>();
+    public DbSet<EnvioEmailInspecao> EnviosEmailInspecao => Set<EnvioEmailInspecao>();
 
     public DbSet<Alojamento> Alojamentos => Set<Alojamento>();
     public DbSet<AlojamentoMorador> AlojamentoMoradores => Set<AlojamentoMorador>();
@@ -248,6 +250,11 @@ public class SstDbContext : DbContext, IAppDbContext
             d.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(d.ObraId)));
         modelBuilder.Entity<Inspecao>().HasQueryFilter(i =>
             i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
+        modelBuilder.Entity<EnvioEmailInspecao>().HasQueryFilter(e =>
+            e.Ativo && e.Inspecao!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.Inspecao.ObraId)));
+        // Contato pessoal (sem obra) sempre passa; o filtro por dono é feito na consulta.
+        modelBuilder.Entity<ContatoEmailRelatorio>().HasQueryFilter(c =>
+            c.Ativo && (c.ObraId == null || _usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(c.ObraId.Value)));
         modelBuilder.Entity<AcidenteFoto>().HasQueryFilter(f =>
             f.Ativo && f.Acidente!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(f.Acidente.ObraId)));
         modelBuilder.Entity<AcidenteEnvolvido>().HasQueryFilter(e =>
