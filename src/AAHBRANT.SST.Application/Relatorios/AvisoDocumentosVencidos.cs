@@ -155,7 +155,9 @@ public class EnviarAvisoDocumentosVencidosCommandHandler : IRequestHandler<Envia
         var trabalhadorIds = brutos.Where(b => b.Item.TrabalhadorId.HasValue).Select(b => b.Item.TrabalhadorId!.Value).Distinct().ToList();
         var desligados = (await db.Trabalhadores
             .Where(t => trabalhadorIds.Contains(t.Id))
-            .Where(t => t.Situacao == SituacaoTrabalhador.Desligado || (t.DataDemissao != null && t.DataDemissao <= hoje))
+            // Prestador PJ (04/11/2026) não é efetivo: documento dele não entra no aviso, como o de desligado.
+            .Where(t => t.Situacao == SituacaoTrabalhador.Desligado || (t.DataDemissao != null && t.DataDemissao <= hoje)
+                || t.Vinculo == Domain.Enums.TipoVinculo.PrestadorServico)
             .Select(t => t.Id)
             .ToListAsync(ct)).ToHashSet();
 

@@ -54,7 +54,7 @@ public class ExamesFuncaoAlertaProvider : IAlertaOrigemProvider
             var obras = exames.Select(e => e.ObraId).Distinct().ToList();
 
             var trabalhadores = await _db.Trabalhadores.AsNoTracking()
-                .Where(t => obras.Contains(t.ObraId))
+                .Where(t => obras.Contains(t.ObraId) && t.Vinculo != Domain.Enums.TipoVinculo.PrestadorServico)
                 .Select(t => new { t.Id, t.Nome, t.ObraId, t.FuncaoId, t.DataAdmissao })
                 .ToListAsync(ct);
             trabalhadores = trabalhadores.Where(t => porObraFuncao.Contains((t.ObraId, t.FuncaoId))).ToList();

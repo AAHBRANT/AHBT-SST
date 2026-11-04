@@ -121,6 +121,8 @@ export const TipoVinculo = {
   Terceirizado: 2,
   Autonomo: 3,
   Estagiario: 4,
+  // Profissional PJ que assina e dá curso, mas não é efetivo de obra (04/11/2026).
+  PrestadorServico: 5,
 } as const;
 
 export const tipoVinculoLabel: Record<number, string> = {
@@ -128,6 +130,7 @@ export const tipoVinculoLabel: Record<number, string> = {
   2: 'Terceirizado',
   3: 'Autônomo',
   4: 'Estagiário',
+  5: 'Prestador de serviço (PJ)',
 };
 
 // Quantos trabalhadores ativos podem trabalhar hoje (ASO e treinamentos da função em dia) e por que os demais não.
@@ -3063,7 +3066,7 @@ export interface ContatoEmergencia {
 export interface AssinanteGeracaoPgr {
   usuarioId?: string | null; nome?: string | null; registro?: string | null; aMao: boolean;
 }
-export interface AssinanteDisponivel { usuarioId: string; nome: string; vinculado: boolean }
+export interface AssinanteDisponivel { usuarioId: string; nome: string; vinculado: boolean; registro?: string | null }
 export interface AssinantesGeracaoPgr { tecnicos: AssinanteDisponivel[]; engenheiros: AssinanteDisponivel[] }
 // Dados da obra que o PGR exige e o sistema não tem em outro lugar: o técnico preenche uma vez.
 export interface DadosComplementaresPgr {
@@ -6247,6 +6250,9 @@ export const api = {
     atualizar: (id: string, usuario: AtualizarUsuarioPayload) =>
       request<void>(`/api/usuarios/${id}`, { method: 'PUT', body: JSON.stringify(usuario) }),
     excluir: (id: string) => request<void>(`/api/usuarios/${id}`, { method: 'DELETE' }),
+    // Usuário que não é funcionário: cria o cadastro de prestador (PJ), fora do efetivo, e já vincula.
+    criarPrestador: (id: string, corpo: { cpf: string; obraId: string; funcaoId: string }) =>
+      request<{ trabalhadorId: string }>(`/api/usuarios/${id}/prestador`, { method: 'POST', body: JSON.stringify(corpo) }),
     atribuirPerfilObra: (usuarioId: string, perfilAcessoId: string, obraId?: string | null) =>
       request<{ id: string }>('/api/usuarios/perfis-obra', {
         method: 'POST',

@@ -52,7 +52,8 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
 
         // Consultas simples sobre tabelas isoladas e junção em memória, de propósito: projetar pela
         // navegação obrigatória faria o INNER JOIN esconder a linha quando o pai está excluído (soft delete).
-        var trabalhadoresQuery = _db.Trabalhadores.Where(t => t.DataDemissao == null);
+        // Prestador PJ (04/11/2026) não é efetivo: sem ASO ele cairia como bloqueado.
+        var trabalhadoresQuery = _db.Trabalhadores.Where(t => t.DataDemissao == null && t.Vinculo != Domain.Enums.TipoVinculo.PrestadorServico);
         if (request.ObraId is { } obraId) trabalhadoresQuery = trabalhadoresQuery.Where(t => t.ObraId == obraId);
         var trabalhadores = await trabalhadoresQuery.Select(t => new { t.Id, t.Nome, t.ObraId, t.FuncaoId, t.Vinculo }).ToListAsync(ct);
         var ids = trabalhadores.Select(t => t.Id).ToList();

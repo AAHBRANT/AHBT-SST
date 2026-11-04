@@ -53,6 +53,8 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
             .Include(t => t.Funcao)
             .FirstOrDefaultAsync(t => t.Id == trabalhadorId, ct);
         if (trabalhador is null) return;
+        // Prestador PJ (04/11/2026) não é admitido na obra: sem kit de EPI nem plano de integração.
+        if (trabalhador.Vinculo == TipoVinculo.PrestadorServico) return;
 
         var agora = DateTime.UtcNow;
         var reservasAtivas = await _db.ReservasEpi
