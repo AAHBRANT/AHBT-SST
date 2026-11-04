@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Button,
   Dialog,
@@ -18,7 +19,7 @@ import { useDetectorRosto } from './useDetectorRosto';
 import { DURACAO_CAPTURA_AUTOMATICA_MS, useCapturaAutomatica } from './useCapturaAutomatica';
 import { QuadradoRosto, CORES_DETECTOR } from './QuadradoRosto';
 import { pendenciasFoto } from '../../lib/dadosFoto';
-import { OVAL_ALTURA_FRACAO, OVAL_PROPORCAO } from '../../lib/rosto/avaliarRosto';
+import { molduraEmPorcentagem } from '../../lib/rosto/moldura';
 import { FeedbackInline } from '@ui';
 
 interface DialogoCameraFotoProps {
@@ -50,8 +51,8 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   // e não conseguia assinar — e, como a foto nem saía do aparelho, essas tentativas não apareciam no
   // registro de falhas do servidor. Agora a pessoa sempre pode capturar; se a foto não servir, o Azure
   // recusa com a mensagem do motivo e ela tenta de novo.
-  // Modo 'assinatura' (04/11): o oval vira só guia visual e o Capturar libera com 1 rosto no quadro;
-  // o enquadramento no oval vale apenas no cadastro da foto de referência.
+  // 04/11: o oval virou uma moldura 3×4 em pé. No cadastro o Capturar só libera com o rosto inteiro
+  // dentro dela; na assinatura ela é guia. Nos dois a foto sai em 3×4 centralizada no rosto.
   const mostrarGuiaRosto = modoCamera === 'user';
   const modoAssinatura = captura.modoCaptura === 'assinatura';
   const detector = useDetectorRosto(videoRef, mostrarGuiaRosto && !!stream, captura.modoCaptura);
@@ -59,17 +60,18 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   const corQuadrado = avaliacao ? CORES_DETECTOR[avaliacao.tom] : CORES_DETECTOR.ok;
   // Captura sozinha depois de 1,5 s com o rosto aprovado (verde) e estável. Só onde a tela permite
   // (treinamento e DDS) e só quando o detector está ativo; começa desligada a cada abertura.
-  // O botão Capturar só libera com o rosto INTEIRO dentro do círculo (pedido do usuário, 03/11): foto
+  // O botão Capturar só libera com o rosto INTEIRO dentro da moldura (pedido do usuário, 03/11): foto
   // com rosto cortado ou fora do guia é a que o Azure recusa. Revê a decisão de 11/10 só no que é
   // geometria — luz e contraluz continuam apenas orientando. Se o detector não carregar
   // ('indisponivel'), não há como verificar e o botão fica liberado, para o cadastro não travar.
+  const [dimensoesVideo, setDimensoesVideo] = useState<{ largura: number; altura: number } | null>(null);
   const aguardandoEnquadramento =
     mostrarGuiaRosto && (detector.situacao === 'carregando' || (detector.situacao === 'ativo' && !avaliacao?.enquadrado));
   const oferecerAutomatica = mostrarGuiaRosto && captura.permitirCapturaAutomatica;
   const automatica = useCapturaAutomatica(
     stream,
     oferecerAutomatica && !!avaliacao?.liberaCaptura && !captura.processando,
-    () => void capturarFoto(),
+    () => void capturarFoto(detector.caixa),
   );
 
   return (
@@ -106,6 +108,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
             <div style={{ position: 'relative' }}>
               <video
                 ref={aoMontarVideo}
+                onLoadedMetadata={(e) => setDimensoesVideo({ largura: e.currentTarget.videoWidth, altura: e.currentTarget.videoHeight })}
                 autoPlay
                 playsInline
                 muted
@@ -116,32 +119,21 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                   transform: captura.espelharVideo ? 'scaleX(-1)' : undefined,
                 }}
               />
-              {mostrarGuiaRosto && (
+              {mostrarGuiaRosto && dimensoesVideo && (
                 <div
                   aria-hidden
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: 8,
-                    // Corta o escurecimento do entorno nas bordas do vídeo — sem isso o box-shadow
-                    // vazava por cima do seletor de câmera e do resto do diálogo.
-                    overflow: 'hidden',
-                    pointerEvents: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+                  style={{ position: 'absolute', inset: 0, borderRadius: 8, overflow: 'hidden', pointerEvents: 'none' }}
                 >
+                  {/* Moldura 3×4 em pé (04/11), no lugar do oval: mesma conta da verificação e do recorte.
+                      Verde quando o rosto está inteiro dentro dela (é quando o Capturar libera no cadastro). */}
                   <div
+                    data-testid="moldura-rosto"
                     style={{
-                      // Dimensionado pela ALTURA do vídeo: com largura fixa (55%) o oval ficava mais alto
-                      // que o vídeo horizontal do tablet/notebook e invadia o que está em volta.
-                      height: `${OVAL_ALTURA_FRACAO * 100}%`,
-                      aspectRatio: `${OVAL_PROPORCAO}`,
-                      borderRadius: '50%',
-                      // Verde quando o rosto está inteiro dentro do círculo (é quando o Capturar libera).
-                      border: `3px solid ${avaliacao?.enquadrado ? CORES_DETECTOR.ok : 'rgba(255, 255, 255, 0.85)'}`,
-                      boxShadow: '0 0 0 2000px rgba(0, 0, 0, 0.35)',
+                      position: 'absolute',
+                      ...molduraEmPorcentagem(dimensoesVideo.largura, dimensoesVideo.altura),
+                      borderRadius: 6,
+                      border: `3px solid ${avaliacao?.enquadrado ? CORES_DETECTOR.ok : 'rgba(255, 255, 255, 0.9)'}`,
+                      boxShadow: '0 0 0 2000px rgba(0, 0, 0, 0.45)',
                     }}
                   />
                 </div>
@@ -169,8 +161,8 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
                 ) : (
                   <Text size={200}>
                     {detector.situacao === 'carregando'
-                      ? (modoAssinatura ? 'Preparando o detector de rosto… Olhe para a câmera.' : 'Preparando o detector de rosto… O botão libera quando o rosto estiver inteiro dentro do círculo.')
-                      : (modoAssinatura ? 'Olhe para a câmera antes de capturar.' : 'Centralize o rosto dentro do círculo antes de capturar.')}
+                      ? (modoAssinatura ? 'Preparando o detector de rosto… Olhe para a câmera.' : 'Preparando o detector de rosto… O botão libera quando o rosto estiver inteiro dentro da moldura.')
+                      : (modoAssinatura ? 'Olhe para a câmera antes de capturar.' : 'Coloque o rosto inteiro dentro da moldura antes de capturar.')}
                   </Text>
                 )}
               </div>
@@ -199,7 +191,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
             <Button appearance="secondary" onClick={fecharCamera}>
               Cancelar
             </Button>
-            <Button appearance="primary" icon={<Camera24Regular />} onClick={capturarFoto} disabled={captura.processando || aguardandoEnquadramento}>
+            <Button appearance="primary" icon={<Camera24Regular />} onClick={() => void capturarFoto(detector.caixa)} disabled={captura.processando || aguardandoEnquadramento}>
               Capturar
             </Button>
           </DialogActions>
