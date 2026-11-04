@@ -16,8 +16,8 @@ public class CatalogosEpiController : ControllerBase
 
     [Authorize(Policy = "epi:ver")]
     [HttpGet]
-    public async Task<IActionResult> Listar(CancellationToken ct)
-        => Ok(await _mediator.Send(new ListarCatalogosEpiQuery(), ct));
+    public async Task<IActionResult> Listar([FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarCatalogosEpiQuery(obraId), ct));
 
     [Authorize(Policy = "epi:ver")]
     [HttpGet("{id:guid}")]

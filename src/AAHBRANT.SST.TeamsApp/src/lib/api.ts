@@ -1001,6 +1001,8 @@ export interface CatalogoEpi {
   certificadoAprovacaoNumero?: string | null;
   certificadoAprovacaoValidade?: string | null;
   vidaUtilEmMeses: number;
+  // Item da obra (04/11/2026). Vazio = item antigo, compartilhado por todas as obras.
+  obraId?: string | null;
   // Soma do estoque do EPI em todas as Obras (Fase 3) — somente leitura; não editável via
   // catálogo. Ver api.estoquesEpi para o estoque segmentado por Obra.
   saldoTotal: number;
@@ -5312,11 +5314,13 @@ export const api = {
       request<FuncaoInativaComTrabalhador[]>('/api/funcoes/inativas-com-trabalhador'),
     reativar: (id: string) => request<void>(`/api/funcoes/${id}/reativar`, { method: 'POST' }),
     listarSemTrabalhador: () => request<FuncaoSemTrabalhador[]>('/api/funcoes/sem-trabalhador'),
-    listarEpis: (funcaoId: string) => request<CatalogoEpi[]>(`/api/funcoes/${funcaoId}/epis`),
-    definirEpis: (funcaoId: string, catalogoEpiIds: string[]) =>
+    // Com obraId: a matriz que vale para a obra (a dela, ou a antiga enquanto ela não tiver a própria).
+    listarEpis: (funcaoId: string, obraId?: string) =>
+      request<CatalogoEpi[]>(`/api/funcoes/${funcaoId}/epis${obraId ? `?obraId=${encodeURIComponent(obraId)}` : ''}`),
+    definirEpis: (funcaoId: string, catalogoEpiIds: string[], obraId?: string) =>
       request<void>(`/api/funcoes/${funcaoId}/epis`, {
         method: 'PUT',
-        body: JSON.stringify({ catalogoEpiIds }),
+        body: JSON.stringify({ catalogoEpiIds, obraId: obraId || null }),
       }),
     listarTreinamentosObrigatorios: (funcaoId: string) =>
       request<CursoTreinamento[]>(`/api/funcoes/${funcaoId}/treinamentos-obrigatorios`),
@@ -5664,7 +5668,8 @@ export const api = {
       }),
   },
   catalogosEpi: {
-    listar: () => request<CatalogoEpi[]>('/api/catalogosepi'),
+    listar: (obraId?: string) =>
+      request<CatalogoEpi[]>(obraId ? `/api/catalogosepi?obraId=${encodeURIComponent(obraId)}` : '/api/catalogosepi'),
     criar: (epi: NovoCatalogoEpi) =>
       request<{ id: string }>('/api/catalogosepi', { method: 'POST', body: JSON.stringify(epi) }),
     atualizar: (epi: AtualizarCatalogoEpi) =>

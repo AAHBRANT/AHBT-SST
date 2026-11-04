@@ -99,14 +99,14 @@ public class FuncoesController : ControllerBase
 
     [Authorize(Policy = "organizacional:ver")]
     [HttpGet("{id:guid}/epis")]
-    public async Task<IActionResult> ListarEpis(Guid id, CancellationToken ct)
-        => Ok(await _mediator.Send(new ListarEpisPorFuncaoQuery(id), ct));
+    public async Task<IActionResult> ListarEpis(Guid id, [FromQuery] Guid? obraId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarEpisPorFuncaoQuery(id, obraId), ct));
 
     [Authorize(Policy = "organizacional:editar")]
     [HttpPut("{id:guid}/epis")]
     public async Task<IActionResult> DefinirEpis(Guid id, DefinirEpisRequest request, CancellationToken ct)
     {
-        await _mediator.Send(new DefinirMatrizEpiFuncaoCommand(id, request.CatalogoEpiIds), ct);
+        await _mediator.Send(new DefinirMatrizEpiFuncaoCommand(id, request.CatalogoEpiIds, request.ObraId), ct);
         return NoContent();
     }
 
@@ -137,6 +137,6 @@ public class FuncoesController : ControllerBase
     }
 }
 
-public record DefinirEpisRequest(List<Guid> CatalogoEpiIds);
+public record DefinirEpisRequest(List<Guid> CatalogoEpiIds, Guid? ObraId = null);
 public record DefinirTreinamentosObrigatoriosRequest(List<Guid> CursoTreinamentoIds);
 public record DefinirUniformesRequest(List<Guid> CatalogoUniformeIds);

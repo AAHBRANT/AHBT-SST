@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Funcoes;
 using AAHBRANT.SST.Application.Asos;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
@@ -136,7 +137,7 @@ public class ObterMinutaOrdemServicoQueryHandler : IRequestHandler<ObterMinutaOr
         }
 
         // EPIs da função (Matriz de EPI).
-        var epiIds = await _db.MatrizEpiFuncoes.Where(m => m.FuncaoId == t.FuncaoId).Select(m => m.CatalogoEpiId).ToListAsync(ct);
+        var epiIds = await _db.MatrizEpiFuncoes.ParaObra(t.ObraId).Where(m => m.FuncaoId == t.FuncaoId).Select(m => m.CatalogoEpiId).ToListAsync(ct);
         minuta.Epis = await _db.CatalogoEpis.Where(e => epiIds.Contains(e.Id))
             .OrderBy(e => e.Nome).Select(e => new EpiOsDto(e.Nome, e.CertificadoAprovacaoNumero)).ToListAsync(ct);
 
