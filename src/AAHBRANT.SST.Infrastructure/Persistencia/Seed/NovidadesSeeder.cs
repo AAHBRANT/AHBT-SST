@@ -2164,6 +2164,25 @@ public static class NovidadesSeeder
                     null,
                     "Em Administração > Pendências automáticas, o Administrador liga ou desliga cada aviso e escolhe se ele abre toda vez que a pessoa entra ou uma vez por dia, e se pode ser fechado."),
             }),
+        new(
+            Versao: "5.117.0",
+            Titulo: "Busca rápida e caminho de volta nas telas",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Busca rápida com Ctrl+K",
+                    "Para achar um funcionário, uma APR ou uma tela era preciso abrir o módulo e procurar na lista.",
+                    "Clique na lupa no topo ou aperte Ctrl+K e digite o nome, a matrícula, o CPF, o número da APR ou o nome da tela. A busca mostra só o que você já pode ver nas suas obras."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Caminho no topo das telas de detalhe",
+                    "Quem abria um registro por um alerta, e-mail ou QR code não sabia em que módulo estava.",
+                    "As telas de detalhe mostram no topo o módulo e a seção, por exemplo Operação › Inspeções. Um clique volta para a lista. No celular aparece \"Voltar para\" com o nome da lista."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Menu mostra a seção aberta",
+                    "O menu marcava só o módulo, sem dizer se você estava em DDS, EPI ou Inspeções.",
+                    "Com o menu expandido, o módulo aberto mostra suas seções com a atual em destaque. Com o menu recolhido, a dica do ícone diz a seção."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
