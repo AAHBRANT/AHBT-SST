@@ -118,7 +118,6 @@ public static class PendenciasGeracaoPgr
         {
             var resumo = a.Descricao.Length <= 40 ? a.Descricao : a.Descricao[..40] + "…";
             if (a.ResponsavelUsuarioId is null && string.IsNullOrWhiteSpace(a.ResponsavelNome)) p.Add($"Plano de ação \"{resumo}\" sem responsável.");
-            if (a.Prazo is null) p.Add($"Plano de ação \"{resumo}\" sem prazo.");
         }
         if (e.Ghes.Count == 0) p.Add("Nenhum GHE definido.");
 
