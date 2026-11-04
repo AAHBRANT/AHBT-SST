@@ -12,6 +12,7 @@ import {
   type Coluna,
 } from '@ui';
 import { api, type CatalogoEpi, type Funcao } from '../../lib/api';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
 
 // Matriz de EPI por função: define quais EPIs são obrigatórios para cada função (filtra o seletor de
 // EPI em Entregas). Piloto 3 da camada ui/ (spec §5.1, template §4.5): mantém expandir-linha, que o
@@ -21,6 +22,8 @@ import { api, type CatalogoEpi, type Funcao } from '../../lib/api';
 export function MatrizEpiTab() {
   const navigate = useNavigate();
   const { confirmar, dialogElement } = useConfirmar();
+  // Matriz por obra (04/11/2026): vale a da obra ativa; enquanto ela não tem a própria, aparece a antiga e, ao salvar, vira a dela.
+  const [obraId] = useFiltroObra();
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
   const [episCatalogo, setEpisCatalogo] = useState<CatalogoEpi[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -34,7 +37,7 @@ export function MatrizEpiTab() {
     try {
       setErro(null);
       setCarregando(true);
-      const [listaFuncoes, listaEpis] = await Promise.all([api.funcoes.listar(), api.catalogosEpi.listar()]);
+      const [listaFuncoes, listaEpis] = await Promise.all([api.funcoes.listar(), api.catalogosEpi.listar(obraId || undefined)]);
       setFuncoes(listaFuncoes);
       setEpisCatalogo(listaEpis);
     } catch (e) {
@@ -46,7 +49,8 @@ export function MatrizEpiTab() {
 
   useEffect(() => {
     carregar();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [obraId]);
 
   const alterado =
     expandidoId !== null &&
@@ -74,7 +78,7 @@ export function MatrizEpiTab() {
     }
     try {
       setErro(null);
-      const vinculados = await api.funcoes.listarEpis(funcao.id);
+      const vinculados = await api.funcoes.listarEpis(funcao.id, obraId || undefined);
       const ids = vinculados.map((e) => e.id);
       setVinculosSelecionados(ids);
       setVinculosOriginais(ids);
@@ -89,7 +93,7 @@ export function MatrizEpiTab() {
     try {
       setSalvando(true);
       setErro(null);
-      await api.funcoes.definirEpis(expandidoId, vinculosSelecionados);
+      await api.funcoes.definirEpis(expandidoId, vinculosSelecionados, obraId || undefined);
       setVinculosOriginais(vinculosSelecionados);
       setExpandidoId(null);
     } catch (e) {

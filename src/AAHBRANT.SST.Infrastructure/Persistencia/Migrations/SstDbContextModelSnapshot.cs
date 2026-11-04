@@ -1913,6 +1913,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<Guid?>("ObraId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("Origem")
                         .HasColumnType("int");
 
@@ -1931,6 +1934,8 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ObraId");
 
                     b.ToTable("CatalogoEpis");
                 });
@@ -6031,6 +6036,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<Guid>("FuncaoId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("ObraId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("Origem")
                         .HasColumnType("int");
 
@@ -6049,8 +6057,16 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("CatalogoEpiId");
 
+                    b.HasIndex("ObraId");
+
                     b.HasIndex("FuncaoId", "CatalogoEpiId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("IX_MatrizEpiFuncoes_FuncaoId_CatalogoEpiId_SemObra")
+                        .HasFilter("[ObraId] IS NULL");
+
+                    b.HasIndex("FuncaoId", "CatalogoEpiId", "ObraId")
+                        .IsUnique()
+                        .HasFilter("[ObraId] IS NOT NULL");
 
                     b.ToTable("MatrizEpiFuncoes");
                 });
@@ -10988,6 +11004,16 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Trabalhador");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.CatalogoEpi", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Obra");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ChecklistModelo", b =>
                 {
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.ChecklistModelo", "ChecklistModeloAnterior")
@@ -11867,9 +11893,16 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", "Obra")
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("CatalogoEpi");
 
                     b.Navigation("Funcao");
+
+                    b.Navigation("Obra");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.MatrizRiscoCelula", b =>

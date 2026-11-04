@@ -11,6 +11,12 @@ public class CatalogoEpi : AuditableEntity
     public DateTime? CertificadoAprovacaoValidade { get; set; }
     public int VidaUtilEmMeses { get; set; }
 
+    // Item por obra (pedido do usuário, 04/11/2026): cada obra tem o seu catálogo, com o seu CA e a sua foto.
+    // Nulo = item antigo, compartilhado por todas as obras (legado, nada foi movido na migração). Na obra, o item
+    // dela vale antes do compartilhado.
+    public Guid? ObraId { get; set; }
+    public Obra? Obra { get; set; }
+
     // Foto do item cadastrado (pedido do usuário, 03/09) — pra o trabalhador reconhecer visualmente
     // o que está recebendo na hora de assinar a ficha de entrega. Mesmo padrão de Obra.LogoConteudo/
     // Trabalhador.FotoConteudo: binário direto na coluna, sem storage próprio.
@@ -69,6 +75,10 @@ public class EntregaEpi : AuditableEntity
 
 public class MatrizEpiFuncao : AuditableEntity
 {
+    // Matriz por obra (04/11/2026), criada ao aprovar o PGR da obra. Nulo = matriz antiga, valendo para as obras
+    // que ainda não têm a própria.
+    public Guid? ObraId { get; set; }
+    public Obra? Obra { get; set; }
     public Guid FuncaoId { get; set; }
     public Funcao? Funcao { get; set; }
     public Guid CatalogoEpiId { get; set; }

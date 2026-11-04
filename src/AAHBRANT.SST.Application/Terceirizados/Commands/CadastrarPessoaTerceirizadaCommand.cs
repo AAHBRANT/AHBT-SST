@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Funcoes;
 using AAHBRANT.SST.Application.Alertas;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
@@ -77,7 +78,7 @@ public class CadastrarPessoaTerceirizadaCommandHandler : IRequestHandler<Cadastr
         _db.Trabalhadores.Add(trabalhador);
         vaga.QuantidadePreenchidas += 1;
 
-        var episObrigatorios = await _db.MatrizEpiFuncoes
+        var episObrigatorios = await _db.MatrizEpiFuncoes.ParaObra(contrato.ObraId)
             .Where(m => m.FuncaoId == request.FuncaoId)
             .Select(m => m.CatalogoEpiId)
             .ToListAsync(ct);

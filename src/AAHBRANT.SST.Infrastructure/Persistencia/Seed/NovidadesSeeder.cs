@@ -2341,6 +2341,21 @@ public static class NovidadesSeeder
                     "Uma ocorrência concluída (acidente, incidente, quase acidente ou não conformidade) ficava sem opção de assinatura.",
                     "Ao abrir uma ocorrência concluída que ainda não foi assinada, aparece no topo a faixa \"Falta a assinatura desta ocorrência\" com o botão \"Assinar ocorrência\". Ela leva à tela de assinatura por digital ou facial. Quem assina é o Técnico ou o Engenheiro de Segurança, uma vez só."),
             }),
+        new(
+            Versao: "5.130.0",
+            Titulo: "Catálogo e matriz de EPI por obra",
+            DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Cada obra tem o seu catálogo de EPI",
+                    "O catálogo de EPI era um só para todas as obras, e o CA e a foto de um item valiam em todo lugar.",
+                    "O item agora é cadastrado na obra ativa, com o CA e a foto dela. A lista mostra os itens da obra e os antigos, que continuam valendo para todas as obras enquanto a obra não tiver o seu. Para cadastrar, escolha a obra ativa no topo da tela."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "A aprovação do PGR monta a matriz de EPI da obra",
+                    "A matriz de EPI por função era montada à mão e valia para todas as obras.",
+                    "Ao aprovar o PGR, o sistema liga o tipo de EPI que o PGR exige para cada função ao item que já está no catálogo da obra. O que não tiver item correspondente não é criado: vira uma ação no plano do PGR pedindo para cadastrar o item da obra. A matriz de cada obra é independente das outras."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

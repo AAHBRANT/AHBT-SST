@@ -6,7 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Funcoes.Commands;
 
-public record DefinirMatrizEpiFuncaoCommand(Guid FuncaoId, List<Guid> CatalogoEpiIds) : IRequest;
+// ObraId: matriz da obra (04/11/2026). Nulo mantém o comportamento antigo (matriz compartilhada).
+public record DefinirMatrizEpiFuncaoCommand(Guid FuncaoId, List<Guid> CatalogoEpiIds, Guid? ObraId = null) : IRequest;
 
 public class DefinirMatrizEpiFuncaoCommandValidator : AbstractValidator<DefinirMatrizEpiFuncaoCommand>
 {
@@ -34,7 +35,7 @@ public class DefinirMatrizEpiFuncaoCommandHandler : IRequestHandler<DefinirMatri
         // para reativá-los em vez de tentar inserir duplicata e violar o índice único
         // (FuncaoId, CatalogoEpiId).
         var vinculosAtuais = await _db.MatrizEpiFuncoes.IgnoreQueryFilters()
-            .Where(m => m.FuncaoId == request.FuncaoId)
+            .Where(m => m.FuncaoId == request.FuncaoId && m.ObraId == request.ObraId)
             .ToListAsync(ct);
 
         var idsDesejados = request.CatalogoEpiIds.Distinct().ToHashSet();
@@ -48,6 +49,7 @@ public class DefinirMatrizEpiFuncaoCommandHandler : IRequestHandler<DefinirMatri
             _db.MatrizEpiFuncoes.Add(new MatrizEpiFuncao
             {
                 FuncaoId = request.FuncaoId,
+                ObraId = request.ObraId,
                 CatalogoEpiId = catalogoEpiId,
             });
         }

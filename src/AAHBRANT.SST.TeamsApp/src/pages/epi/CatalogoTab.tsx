@@ -20,6 +20,7 @@ import {
 } from '@ui';
 import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
 import { api, type CatalogoEpi, type NovoCatalogoEpi } from '../../lib/api';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { SlotFotoRemota } from '../../components/camera/SlotFotoRemota';
@@ -42,6 +43,8 @@ const epiVazio: NovoCatalogoEpi = {
 // painel isolado do erro da lista. Edição inline por linha preservada (clicar na linha edita nela
 // mesma, mesmo padrão de AsosTab.tsx/Task 12), só a criação de item novo é que muda de lugar.
 export function CatalogoTab() {
+  // Item por obra (04/11/2026): a lista mostra os itens da obra ativa e os antigos compartilhados; o cadastro vale para a obra ativa.
+  const [obraId] = useFiltroObra();
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   const [novoEpi, setNovoEpi] = useState<NovoCatalogoEpi>(epiVazio);
   const [fotoNovoEpi, setFotoNovoEpi] = useState<File | null>(null);
@@ -61,7 +64,7 @@ export function CatalogoTab() {
   async function carregar() {
     try {
       setErro(null);
-      setEpis(await api.catalogosEpi.listar());
+      setEpis(await api.catalogosEpi.listar(obraId || undefined));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar catálogo de EPI.');
     } finally {
@@ -71,7 +74,8 @@ export function CatalogoTab() {
 
   useEffect(() => {
     carregar();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [obraId]);
 
   // Todo caminho de fechar o painel limpa o erro e o rascunho — senão reabrir mostra dado/mensagem velha.
   function fecharPainel() {
@@ -85,8 +89,13 @@ export function CatalogoTab() {
     try {
       setCarregando(true);
       setErroPainel(null);
+      if (!obraId) {
+        setErroPainel('Escolha a obra ativa (no topo da tela) para cadastrar o item: cada obra tem o seu catálogo.');
+        return;
+      }
       const { id } = await api.catalogosEpi.criar({
         ...novoEpi,
+        obraId,
         certificadoAprovacaoValidade: novoEpi.certificadoAprovacaoValidade || null,
       });
       if (fotoNovoEpi) {

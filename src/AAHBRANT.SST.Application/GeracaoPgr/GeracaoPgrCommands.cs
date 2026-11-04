@@ -777,6 +777,7 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
         }
 
         var perigos = await _db.Perigos.ToDictionaryAsync(p => p.Nome, p => p, StringComparer.OrdinalIgnoreCase, ct);
+        var funcoesDaGeracao = new Dictionary<string, Funcao>();
         foreach (var gg in e.Ghes.OrderBy(x => x.Numero))
         {
             var ghe = new Ghe
@@ -791,7 +792,11 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             };
             _db.Ghes.Add(ghe);
             foreach (var f in gg.Funcoes)
-                ghe.Funcoes.Add(new GheFuncao { Funcao = Resolver(f), DescricaoAtividades = f.Descricao?.Trim() });
+            {
+                var funcaoDoGhe = Resolver(f);
+                funcoesDaGeracao[FuncaoSstClassifier.Normalizar(f.Nome)] = funcaoDoGhe;
+                ghe.Funcoes.Add(new GheFuncao { Funcao = funcaoDoGhe, DescricaoAtividades = f.Descricao?.Trim() });
+            }
 
             foreach (var a in gg.Atividades)
             {
@@ -845,6 +850,9 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             }
         }
 
+        // Matriz de EPI da obra a partir do PGR (04/11/2026): só liga ao catálogo que já existe; o que falta vira ação do plano.
+        var episSemItem = await MatrizEpiDoPgr.AplicarAsync(_db, e, g.ObraId, funcoesDaGeracao, ct);
+
         // Numa revisão o plano de ação que já existe fica (pode estar em andamento); só entram as ações que ainda não estão lá.
         var descricoesDoPlano = (await _db.PlanoAcaoItens.Where(x => x.PgrId == pgr.Id).Select(x => x.Descricao).ToListAsync(ct))
             .Select(FuncaoSstClassifier.Normalizar).ToHashSet();
@@ -856,6 +864,13 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
                 Descricao = Limitar(item.Descricao.Trim(), 500),
                 ResponsavelUsuarioId = item.ResponsavelUsuarioId,
                 Prazo = item.Prazo,
+                Status = StatusControleRisco.Pendente,
+            });
+        foreach (var acao in episSemItem.Where(a => descricoesDoPlano.Add(FuncaoSstClassifier.Normalizar(Limitar(a, 500)))))
+            _db.PlanoAcaoItens.Add(new PlanoAcaoItem
+            {
+                Pgr = pgr,
+                Descricao = Limitar(acao, 500),
                 Status = StatusControleRisco.Pendente,
             });
 

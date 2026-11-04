@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Funcoes;
 using AAHBRANT.SST.Application.Asos;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
@@ -52,7 +53,9 @@ public static class CalculadoraLiberacaoTerceirizado
             }
         }
 
-        var episObrigatorios = await db.MatrizEpiFuncoes
+        var obraDoTrabalhador = await db.Trabalhadores.IgnoreQueryFilters()
+            .Where(t => t.Id == trabalhadorId).Select(t => t.ObraId).FirstAsync(ct);
+        var episObrigatorios = await db.MatrizEpiFuncoes.ParaObra(obraDoTrabalhador)
             .Where(m => m.FuncaoId == funcaoId)
             .Select(m => new { m.CatalogoEpiId, Nome = m.CatalogoEpi!.Nome })
             .ToListAsync(ct);

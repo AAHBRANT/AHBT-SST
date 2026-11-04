@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Funcoes;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -84,7 +85,7 @@ public static class CalculadoraEstoqueEpi
             .Where(t => t.ObraId == obraId && t.Situacao != SituacaoTrabalhador.Desligado && t.DataDemissao == null && t.Vinculo != Domain.Enums.TipoVinculo.PrestadorServico)
             .Select(t => new { t.FuncaoId, t.DataAdmissao })
             .ToListAsync(ct);
-        var matriz = await db.MatrizEpiFuncoes.Select(m => new { m.FuncaoId, m.CatalogoEpiId }).ToListAsync(ct);
+        var matriz = await db.MatrizEpiFuncoes.ParaObra(obraId).Select(m => new { m.FuncaoId, m.CatalogoEpiId }).ToListAsync(ct);
         var funcoesPorEpi = matriz.GroupBy(m => m.CatalogoEpiId).ToDictionary(g => g.Key, g => g.Select(m => m.FuncaoId).ToHashSet());
         var limiteAdmissao = agora.Date.AddDays(-DiasAdmissoesRecentes);
 
