@@ -50,7 +50,10 @@ public enum TipoVinculo
     Clt = 1,
     Terceirizado = 2,
     Autonomo = 3,
-    Estagiario = 4
+    Estagiario = 4,
+    // Profissional PJ que usa o sistema e assina documentos (engenheiro, instrutor), mas não é efetivo de obra
+    // (04/11/2026): fica fora de efetivo, indicadores, pendências de ASO/treinamento/EPI/biometria e alertas.
+    PrestadorServico = 5
 }
 
 // Situação do vínculo, sincronizada do G-RH (fonte única de cadastro) — DataDemissao já cobre

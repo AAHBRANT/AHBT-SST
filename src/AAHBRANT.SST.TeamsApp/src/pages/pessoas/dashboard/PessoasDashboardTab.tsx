@@ -17,6 +17,7 @@ import { People24Regular, CheckmarkCircle24Regular, DismissCircle24Regular, Warn
 import {
   api,
   ResultadoAso,
+  TipoVinculo,
   type Aso,
   type CursoTreinamento,
   type Funcao,
@@ -97,7 +98,10 @@ export function PessoasDashboardTab() {
   const trabalhadoresFiltrados = useMemo(
     () =>
       trabalhadores.filter(
-        (t) => (obraId === '' || t.obraId === obraId) && (funcaoId === '' || t.funcaoId === funcaoId),
+        (t) =>
+          t.vinculo !== TipoVinculo.PrestadorServico &&
+          (obraId === '' || t.obraId === obraId) &&
+          (funcaoId === '' || t.funcaoId === funcaoId),
       ),
     [trabalhadores, obraId, funcaoId],
   );

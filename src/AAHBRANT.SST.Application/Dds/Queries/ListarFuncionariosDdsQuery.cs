@@ -16,7 +16,7 @@ public class ListarFuncionariosDdsQueryHandler(IAppDbContext db)
             ?? throw new KeyNotFoundException("DDS não encontrado.");
 
         return await db.Trabalhadores.AsNoTracking()
-            .Where(t => t.ObraId == dds.ObraId && t.Ativo && t.Situacao == SituacaoTrabalhador.Ativo
+            .Where(t => t.ObraId == dds.ObraId && t.Ativo && t.Situacao == SituacaoTrabalhador.Ativo && t.Vinculo != Domain.Enums.TipoVinculo.PrestadorServico
                 && (!t.DataDemissao.HasValue || t.DataDemissao.Value.Date > dds.Data.Date))
             .OrderBy(t => t.Nome)
             .Select(t => new DdsFuncionarioDto(t.Id, t.Nome, t.Matricula))

@@ -2296,6 +2296,21 @@ public static class NovidadesSeeder
                     "Para mandar o relatório de uma inspeção, era preciso baixar o PDF e anexar num e-mail à parte.",
                     "Depois de encerrada e assinada, a inspeção mostra o bloco \"Enviar relatório por e-mail\". Marque os contatos salvos (padrão da obra ou seus), digite outros e-mails se quiser e salve-os para as próximas vezes, escreva uma mensagem opcional e clique em Enviar relatório. O PDF assinado vai em anexo pela caixa sst@aahbrant.com, e a inspeção guarda o histórico de quem enviou, para quem e quando."),
             }),
+        new(
+            Versao: "5.127.0",
+            Titulo: "Registro profissional no usuário e prestador PJ",
+            DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Registro profissional na edição do usuário",
+                    "O registro profissional (MTE/CREA) do instrutor só era cadastrado dentro da turma, e no PGR era digitado a cada documento.",
+                    "Em Administração > Controle de acesso, o usuário passa a ter a seção Registro profissional (formação, conselho, número e UF). Com o número preenchido, a pessoa aparece na escolha de instrutor das turmas, o registro sai no certificado e vem preenchido no \"Quem assina\" do PGR."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Prestador de serviço (PJ) pode assinar",
+                    "Quem não era funcionário (engenheiro ou instrutor PJ) não podia assinar pelo sistema, porque o usuário precisava estar vinculado a um cadastro de funcionário.",
+                    "Em \"Funcionário vinculado\", a opção \"Prestador (PJ), não é funcionário\" cria o cadastro dele com CPF, obra base e função e já vincula o usuário. O prestador assina e dá curso, mas fica fora do efetivo, dos indicadores, do DDS e das pendências de ASO, treinamentos, EPI e biometria."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
