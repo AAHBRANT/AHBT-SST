@@ -33,6 +33,18 @@ public class RemoverGheGeracaoPgrTests
     }
 
     [Fact]
+    public void Os_ghes_seguintes_sao_renumerados_sem_buraco()
+    {
+        var e = new EstruturaGeracaoPgr { Ghes = { Ghe(1, "1", "Queda", "Guarda-corpo"), Ghe(2, "2", "Soterramento", "Escorar vala"), Ghe(3, "3", "Choque", "Aterrar"), Ghe(4, "4", "Ruído", "Enclausurar") } };
+
+        RemoverGheGeracaoPgrCommandHandler.Remover(e, 2, null, Matriz);
+
+        Assert.Equal(new[] { 1, 2, 3 }, e.Ghes.Select(g => g.Numero));
+        Assert.Equal(new[] { "Funcao 1", "Funcao 3", "Funcao 4" }, e.Ghes.Select(g => g.Funcoes.Single().Nome));
+        Assert.Equal(new[] { "1", "3", "4" }, e.Ghes.Select(g => g.Atividades.Single().CodigoEap));
+    }
+
+    [Fact]
     public void Descartando_as_atividades_saem_funcoes_riscos_e_a_acao_gerada_do_ghe()
     {
         var e = Estrutura();
