@@ -3051,6 +3051,8 @@ export interface AcaoPlanoGerada {
   descricao: string; responsavelUsuarioId?: string | null; responsavelNome?: string | null; inicio?: string | null; prazo?: string | null;
   // Acompanhamento e aferição (NR-01, item 1.5.5.2). acompanhamentoSugeridoPelaIa fica verdadeiro até alguém conferir.
   formaAcompanhamento?: string | null; periodicidadeAcompanhamento?: string | null; criterioAfericao?: string | null; acompanhamentoSugeridoPelaIa?: boolean;
+  // Texto com que a ação nasceu das medidas dos riscos (só as geradas). O servidor a usa ao remover um GHE; a tela só preserva.
+  descricaoGerada?: string | null;
 }
 export interface ContatoEmergencia {
   chave?: 'hospital' | 'samu' | 'bombeiros' | 'pm' | 'seguranca' | null;
@@ -5945,6 +5947,10 @@ export const api = {
     salvar: (id: string, passo: number, estrutura: EstruturaGeracaoPgr) =>
       request<void>(`/api/geracoes-pgr-eap/${id}`, { method: 'PUT', body: JSON.stringify({ passo, estrutura }) }),
     sugerirGhes: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/sugerir-ghes`, { method: 'POST' }),
+    // Remove o GHE do rascunho (funções, riscos e medidas saem com ele). destinoGheNumero: para onde vão as atividades;
+    // nulo descarta. Saem também as ações do plano geradas desses riscos e ainda intocadas. Salve o rascunho antes.
+    removerGhe: (id: string, gheNumero: number, destinoGheNumero: number | null) =>
+      request<{ funcoes: number; riscos: number; acoesRemovidas: number }>(`/api/geracoes-pgr-eap/${id}/remover-ghe`, { method: 'POST', body: JSON.stringify({ gheNumero, destinoGheNumero }) }),
     // Só preenche campo vazio das ações já salvas; devolve quantas ações receberam sugestão.
     sugerirAcoesMelhoria: (id: string) => request<{ acoes: number }>(`/api/geracoes-pgr-eap/${id}/sugerir-acoes-melhoria`, { method: 'POST' }),
     sugerirAcompanhamento: (id: string) => request<{ acoes: number }>(`/api/geracoes-pgr-eap/${id}/sugerir-acompanhamento`, { method: 'POST' }),

@@ -49,6 +49,21 @@ public class SugerirAcoesMelhoriaPlanoGeracaoPgrCommandHandler : IRequestHandler
             .Where(a => !string.IsNullOrWhiteSpace(a.Descricao))
             .Select(a => FuncaoSstClassifier.Normalizar(a.Descricao)).ToHashSet();
 
+        var novas = new List<AcaoPlanoGerada>();
+        foreach (var descricao in DescricoesDasMedidas(e, matriz))
+        {
+            if (novas.Count >= MaxAcoes) break;
+            // A mesma medida aparece em várias atividades e GHEs: entra uma vez só.
+            if (!existentes.Add(FuncaoSstClassifier.Normalizar(descricao))) continue;
+            novas.Add(new AcaoPlanoGerada { Descricao = descricao, DescricaoGerada = descricao });
+        }
+        return novas;
+    }
+
+    // Descrições das ações que a estrutura atual produziria, na ordem de prioridade e sem o limite total de ações.
+    // Usada também ao remover um GHE, para saber quais ações geradas deixaram de ter risco que as justifique.
+    public static List<string> DescricoesDasMedidas(EstruturaGeracaoPgr e, IReadOnlyList<(int P, int S, NivelRisco Nivel)> matriz)
+    {
         var candidatas = new List<(int Prioridade, int Peso, string Perigo, string Texto)>();
         foreach (var r in e.Ghes.SelectMany(gh => gh.Atividades).SelectMany(a => a.Riscos))
         {
@@ -74,16 +89,8 @@ public class SugerirAcoesMelhoriaPlanoGeracaoPgrCommandHandler : IRequestHandler
         candidatas = candidatas.GroupBy(x => FuncaoSstClassifier.Normalizar(x.Perigo))
             .SelectMany(g => g.OrderBy(x => x.Prioridade).Take(MaxPorPerigo)).ToList();
 
-        var novas = new List<AcaoPlanoGerada>();
-        foreach (var c in candidatas.OrderBy(x => x.Prioridade).ThenBy(x => x.Peso))
-        {
-            if (novas.Count >= MaxAcoes) break;
-            var descricao = Limitar($"{c.Texto} (risco: {c.Perigo})");
-            // A mesma medida aparece em várias atividades e GHEs: entra uma vez só.
-            if (!existentes.Add(FuncaoSstClassifier.Normalizar(descricao))) continue;
-            novas.Add(new AcaoPlanoGerada { Descricao = descricao });
-        }
-        return novas;
+        return candidatas.OrderBy(x => x.Prioridade).ThenBy(x => x.Peso)
+            .Select(c => Limitar($"{c.Texto} (risco: {c.Perigo})")).ToList();
     }
 
     private static string Limitar(string s) => s.Length <= MaxCaracteres ? s : s[..(MaxCaracteres - 1)] + "…";
