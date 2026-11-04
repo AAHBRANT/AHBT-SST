@@ -315,7 +315,8 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
         imagem.Mutate(x => x.Resize(new ResizeOptions
         {
             Size = new SixLabors.ImageSharp.Size(640, 480),
-            Mode = ResizeMode.Crop,
+            Mode = ResizeMode.Pad, // foto inteira: recortar cortava o carimbo de data/local
+            PadColor = SixLabors.ImageSharp.Color.ParseHex("F3F2F1"),
         }));
 
         using var saida = new MemoryStream();

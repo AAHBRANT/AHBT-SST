@@ -1,7 +1,7 @@
 import { api } from './api';
 
 // Carimbo de data, hora e local desenhado na própria foto, IDÊNTICO ao do G-QUALI (padrão Timestamp Camera):
-// texto branco no canto SUPERIOR DIREITO, alinhado à direita, todas as linhas do mesmo tamanho, sem faixa, com sombra
+// texto branco no canto INFERIOR DIREITO (rodapé da foto), alinhado à direita, todas as linhas do mesmo tamanho, sem faixa, com sombra
 // suave e contorno fino escuro para leitura em parede clara. Linhas: data e hora por extenso, endereço (quando houver),
 // latitude/longitude com grau, altitude e uma nota de identificação (obra e local). A evidência viaja junto com a imagem.
 // Só vale para foto tirada agora pela câmera; foto da galeria e foto do reconhecimento facial nunca são carimbadas.
@@ -25,7 +25,7 @@ export function desenharCarimbo(ctx: CanvasRenderingContext2D, largura: number, 
   ctx.font = `${fonte}px ${familia}`;
   const margem = Math.round(largura * 0.045);
   ctx.textAlign = 'right';
-  ctx.textBaseline = 'top';
+  ctx.textBaseline = 'bottom';
   ctx.lineJoin = 'round';
   ctx.lineWidth = Math.max(1, Math.round(fonte / 11));
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
@@ -34,11 +34,12 @@ export function desenharCarimbo(ctx: CanvasRenderingContext2D, largura: number, 
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = Math.max(1, Math.round(fonte / 16));
   ctx.fillStyle = '#ffffff';
-  let y = Math.round(fonte * 1.1);
-  for (const linha of linhas) {
+  // Desenha de baixo para cima: a última linha fica colada no rodapé, a ordem de leitura continua a mesma.
+  let y = altura - Math.round(fonte * 1.1);
+  for (const linha of [...linhas].reverse()) {
     ctx.strokeText(linha, largura - margem, y);
     ctx.fillText(linha, largura - margem, y);
-    y += alturaLinha();
+    y -= alturaLinha();
   }
   ctx.shadowColor = 'rgba(0, 0, 0, 0)';
   ctx.shadowBlur = 0;

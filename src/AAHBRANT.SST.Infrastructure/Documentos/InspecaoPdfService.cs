@@ -231,23 +231,18 @@ public class InspecaoPdfService : IInspecaoPdfService
         });
     }
 
-    // Proporção aproximada do slot de evidência (largura da coluna ÷ Height(140) acima) — fotos de
-    // celular vêm em proporções variadas e o antigo Image(foto).FitArea() só "contém" a imagem
-    // (letterbox), deixando faixas vazias quando a proporção não bate com a do slot. Recorta pelo
-    // centro na proporção do slot ANTES de desenhar, pra imagem preencher o quadro inteiro (mesmo
-    // princípio de object-fit: cover), sem depender de um modo "cover" nativo do QuestPDF (não existe
-    // nesta versão — só FitWidth/FitHeight/FitArea/FitUnproportionally). Usa SixLabors.ImageSharp
-    // (100% gerenciado, sem binário nativo) em vez de SkiaSharp puro — QuestPDF não expõe a
-    // SkiaSharp pública pro net8.0 (embute seu próprio wrapper interno), e adicionar SkiaSharp como
-    // dependência própria puxaria pacote de binário nativo por RID (Linux no container do Azure),
-    // risco maior do que o necessário só pra recortar uma foto.
+    // Ajusta a foto à proporção do slot (~16:9) SEM recortar: fotos de celular em pé perdiam topo e
+    // base no antigo recorte pelo centro, e com isso o carimbo de data, hora e local. Agora a foto
+    // entra inteira e o espaço que sobra vira faixa neutra. ImageSharp (100% gerenciado) em vez de
+    // SkiaSharp, que puxaria binário nativo por RID no container do Azure.
     private static byte[] RecortarParaPreencherSlot(byte[] foto)
     {
         using var imagem = AAHBRANT.SST.Infrastructure.Imagens.ImagemSegura.Carregar(foto);
         imagem.Mutate(x => x.Resize(new ResizeOptions
         {
             Size = new SixLabors.ImageSharp.Size(800, 450), // ~16:9, próximo da proporção real do slot
-            Mode = ResizeMode.Crop,
+            Mode = ResizeMode.Pad, // foto inteira: recortar cortava o carimbo de data/local
+            PadColor = SixLabors.ImageSharp.Color.ParseHex("F3F2F1"),
         }));
 
         using var saida = new MemoryStream();

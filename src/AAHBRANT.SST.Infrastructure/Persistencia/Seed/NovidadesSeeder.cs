@@ -2274,6 +2274,17 @@ public static class NovidadesSeeder
                     "Para tirar um GHE do rascunho era preciso pedir a sugestão de GHEs de novo, que trocava todos e perdia os ajustes.",
                     "No passo Funções e GHE, cada GHE tem o botão Remover GHE. Você escolhe mover as atividades para outro GHE (os riscos vão junto) ou descartá-las. As funções, os riscos e as ações do plano geradas desses riscos saem junto; ações escritas ou editadas por você, com responsável ou com prazo, ficam."),
             }),
+        new(
+            Versao: "5.125.0",
+            Titulo: "Carimbo da foto no rodapé e sem corte no relatório",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Data, hora e local da foto sempre visíveis no PDF",
+                    "O carimbo ficava no canto superior da foto e o relatório recortava a imagem; em fotos tiradas com o celular em pé, o carimbo era cortado.",
+                    "O carimbo passa para o canto inferior direito da foto. Nos relatórios de inspeção e de investigação de ocorrência a foto aparece inteira, sem recorte. Vale para as fotos tiradas daqui para frente; fotos antigas mantêm o carimbo em cima, mas também deixam de ser cortadas no PDF."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
