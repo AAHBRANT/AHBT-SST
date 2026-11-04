@@ -106,7 +106,7 @@ public class EncerrarInspecaoComItemSemFotoObrigatoriaTests
         await handler.Handle(new EncerrarInspecaoCommand(inspecao.Id), default);
 
         var atualizada = await db.Inspecoes.FirstAsync(i => i.Id == inspecao.Id);
-        Assert.Equal(StatusInspecao.Concluida, atualizada.Status);
+        Assert.Equal(StatusInspecao.AguardandoAssinatura, atualizada.Status);
     }
 
     [Fact]
@@ -152,6 +152,6 @@ public class EncerrarInspecaoComItemSemFotoObrigatoriaTests
         await handler.Handle(new EncerrarInspecaoCommand(inspecao.Id), default);
 
         var atualizada = await db.Inspecoes.FirstAsync(i => i.Id == inspecao.Id);
-        Assert.Equal(StatusInspecao.Concluida, atualizada.Status);
+        Assert.Equal(StatusInspecao.AguardandoAssinatura, atualizada.Status);
     }
 }

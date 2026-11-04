@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { recorteNoRosto } from '../../lib/rosto/moldura';
 import { comprimirImagem } from '../../lib/imagem';
 import { leituraParaLocalizacao, pendenciasFoto, vincularDadosFoto, type ContextoFoto, type DadosFoto, type LocalizacaoFoto } from '../../lib/dadosFoto';
 import { criarRastreadorFoto } from '../../lib/fontesLocalizacao';
 import { desenharCarimbo, enderecoDaPosicao, linhasCarimbo, observarEndereco, type ObservadorEndereco } from '../../lib/carimboFoto';
 import type { EstadoRastreio, Rastreador } from '../../lib/rastreadorLocalizacao';
+import type { ModoCapturaRosto } from '../../lib/rosto/avaliarRosto';
 
 // Quanto o clique em "capturar" espera pela posição quando ela ainda não está boa. O quadro já foi
 // congelado no clique; a posição que chegar nesse intervalo fica dentro da janela de 60 s.
@@ -36,6 +38,9 @@ export interface UseCapturaFotoOptions {
   // Mostra a chave "Captura automática" na câmera frontal (sempre começa desligada). Pedido do
   // usuário (11/10): só no treinamento e no DDS, onde várias pessoas confirmam presença em sequência.
   permitirCapturaAutomatica?: boolean;
+  // Câmera de rosto: 'cadastro' (padrão) exige o rosto inteiro dentro da moldura 3×4 para liberar o
+  // Capturar; 'assinatura' (04/11) usa a moldura só como guia e libera com 1 rosto inteiro na câmera. Ver avaliarRosto.ts.
+  modoCaptura?: ModoCapturaRosto;
 }
 
 // Lógica de captura/seleção de foto extraída de SeletorFotoCamera (14/09) para ser reaproveitada
@@ -79,6 +84,7 @@ export function useCapturaFoto({
   permitirCamera = true,
   exigirCamera = false,
   permitirCapturaAutomatica = false,
+  modoCaptura = 'cadastro',
   contextoFoto,
 }: UseCapturaFotoOptions) {
   const [localFoto, setLocalFoto] = useState(contextoFoto?.local ?? '');
@@ -329,14 +335,24 @@ export function useCapturaFoto({
     inputRef.current?.click();
   }
 
-  async function capturarFoto() {
+  // `rosto`: caixa do detector (fração 0–1 do vídeo), para centralizar o recorte 3×4 da foto de rosto.
+  async function capturarFoto(rosto: { x: number; y: number; largura: number; altura: number } | null = null) {
     const video = videoRef.current;
     if (!video || !video.videoWidth || processando) return;
     const capturadaEm = new Date();
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d')?.drawImage(video, 0, 0);
+    if (modoCamera === 'user') {
+      // Foto de rosto (04/11): salva um 3×4 em pé, centralizado no rosto, em qualquer orientação do
+      // aparelho — cadastro e assinatura saem sempre no mesmo padrão.
+      const m = recorteNoRosto(video.videoWidth, video.videoHeight, rosto);
+      canvas.width = m.largura;
+      canvas.height = m.altura;
+      canvas.getContext('2d')?.drawImage(video, m.x, m.y, m.largura, m.altura, 0, 0, m.largura, m.altura);
+    } else {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d')?.drawImage(video, 0, 0);
+    }
     // O rastreio roda desde a abertura, então a posição normalmente já está pronta. Se ainda não
     // estiver (GPS frio, precisão ruim), espera um pouco — o quadro já foi congelado acima, então a
     // hora da captura continua sendo a do clique.
@@ -400,6 +416,7 @@ export function useCapturaFoto({
     permitirCamera,
     exigirCamera,
     permitirCapturaAutomatica,
+    modoCaptura,
     dispositivosVideo,
     dispositivoAtualId,
     abrirCamera,

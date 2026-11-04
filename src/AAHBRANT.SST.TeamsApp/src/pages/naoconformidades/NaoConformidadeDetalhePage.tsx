@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Signature24Regular } from '@fluentui/react-icons';
 import {
-  Button, Field, Input, Select, Textarea, CampoData,
+  BotaoAcao, FaixaAssinatura, Button, Field, Input, Select, Textarea, CampoData,
   DetailPageLayout, WorkflowActions, Card, StatusChip, FormSection, FormGrid, Campo, FormRodape,
   DataTable, FeedbackInline, SeletorPesquisavel, Carregando,
   type AcaoWorkflow, type Coluna, type Tom,
@@ -15,7 +16,9 @@ import {
   tipoAcaoPlanoLabel,
   StatusNaoConformidade,
   StatusAcaoPlano,
+  StatusDocumentoAssinatura,
   type AcaoPlano,
+  type DocumentoAssinatura,
   type NaoConformidadeDetalhe,
   type NovaAcaoPlano,
   type Usuario,
@@ -56,6 +59,8 @@ const tomAcaoPlano: Record<number, Tom> = {
 // veio, no FeedbackInline único acima do conteúdo (ver api.ts request()).
 export function NaoConformidadeDetalhePage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [documentoAssinatura, setDocumentoAssinatura] = useState<DocumentoAssinatura | null>(null);
   const [detalhe, setDetalhe] = useState<NaoConformidadeDetalhe | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [novaAcao, setNovaAcao] = useState(novaAcaoInicial());
@@ -77,6 +82,13 @@ export function NaoConformidadeDetalhePage() {
       ]);
       setDetalhe(det);
       setUsuarios(listaUsuarios);
+      // Só ocorrência encerrada pode ser assinada. Sem documento ainda (encerrada antes do Motor de
+      // Assinatura) também conta como "falta assinar": a tela de assinatura cria o documento.
+      if (det.naoConformidade.status === StatusNaoConformidade.Encerrada) {
+        setDocumentoAssinatura(await api.assinatura.obter('NaoConformidade', id).catch(() => null));
+      } else {
+        setDocumentoAssinatura(null);
+      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar não conformidade.');
     }
@@ -389,6 +401,20 @@ export function NaoConformidadeDetalhePage() {
     );
   }
 
+  const faltaAssinar =
+    nc.status === StatusNaoConformidade.Encerrada &&
+    (documentoAssinatura === null || documentoAssinatura.status === StatusDocumentoAssinatura.EmAndamento);
+  const botaoAssinar = (
+    <BotaoAcao
+      tom="assinar"
+      icon={<Signature24Regular />}
+      aria-label="Assinar ocorrência"
+      onClick={() => navigate(`/nao-conformidades/${id}/assinar`)}
+    >
+      Assinar ocorrência
+    </BotaoAcao>
+  );
+
   return (
     <DetailPageLayout
       cabecalho={{
@@ -428,6 +454,10 @@ export function NaoConformidadeDetalhePage() {
         </>
       }
     >
+      {faltaAssinar && (
+        <FaixaAssinatura acao={botaoAssinar}>Falta a assinatura desta ocorrência.</FaixaAssinatura>
+      )}
+
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
 
       <Card

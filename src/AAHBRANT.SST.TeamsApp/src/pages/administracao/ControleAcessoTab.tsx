@@ -36,11 +36,16 @@ import {
 } from '@fluentui/react-icons';
 import {
   api,
+  ConselhoInstrutor,
+  FormacaoInstrutor,
+  TipoVinculo,
   statusUsuarioLabel,
   StatusUsuario,
   escopoAcessoLabel,
   EscopoAcesso,
+  type Funcao,
   type ItemPermissaoPerfil,
+  type PerfilInstrutor,
   type NovoPerfilAcesso,
   type NovoUsuario,
   type Obra,
@@ -53,6 +58,9 @@ import {
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 const usuarioVazio: NovoUsuario = { email: '', nome: '', trabalhadorId: '' };
+// Opção do "Funcionário vinculado" para quem não é funcionário (engenheiro ou instrutor PJ, 04/11/2026): ao salvar,
+// o sistema cria o cadastro de prestador, fora do efetivo da obra, e vincula o usuário.
+const OPCAO_PRESTADOR = '__prestador';
 const perfilVazio: NovoPerfilAcesso = { nome: '', descricao: '' };
 const escopos = [EscopoAcesso.Global, EscopoAcesso.Unidade, EscopoAcesso.Obra, EscopoAcesso.Proprio];
 
@@ -88,6 +96,11 @@ export function ControleAcessoTab() {
   const [nomeEdicao, setNomeEdicao] = useState('');
   const [statusEdicao, setStatusEdicao] = useState<number>(StatusUsuario.Ativo);
   const [trabalhadorIdEdicao, setTrabalhadorIdEdicao] = useState('');
+  const [funcoes, setFuncoes] = useState<Funcao[]>([]);
+  const [perfisInstrutor, setPerfisInstrutor] = useState<PerfilInstrutor[]>([]);
+  const [prestador, setPrestador] = useState({ cpf: '', obraId: '', funcaoId: '' });
+  // Registro profissional (sai no certificado e é sugerido no "Quem assina" do PGR): fica no perfil de instrutor do cadastro vinculado.
+  const [registro, setRegistro] = useState({ formacao: 1, conselho: 1, numero: '', uf: '', outrasObras: false });
   const [perfilParaAtribuir, setPerfilParaAtribuir] = useState('');
   const [obraParaAtribuir, setObraParaAtribuir] = useState('');
 
@@ -118,6 +131,12 @@ export function ControleAcessoTab() {
       setObras(obs);
       setPerfis(prf);
       setPermissoes(perm);
+      const [fns, instr] = await Promise.all([
+        api.funcoes.listar().catch(() => [] as Funcao[]),
+        api.instrutores.listar().catch(() => [] as PerfilInstrutor[]),
+      ]);
+      setFuncoes(fns);
+      setPerfisInstrutor(instr);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar controle de acesso.');
     } finally {
@@ -194,6 +213,28 @@ export function ControleAcessoTab() {
     setNomeEdicao(usuario.nome);
     setStatusEdicao(usuario.status);
     setTrabalhadorIdEdicao(usuario.trabalhadorId ?? '');
+    setPrestador({ cpf: '', obraId: '', funcaoId: '' });
+    const perfilInstr = perfisInstrutor.find((p) => p.trabalhadorId === usuario.trabalhadorId);
+    const engenheiro = usuario.perfisPorObra.some((p) => /engenheir/i.test(p.perfilAcessoNome));
+    setRegistro(
+      perfilInstr
+        ? {
+            formacao: perfilInstr.formacao,
+            conselho:
+              perfilInstr.conselho ??
+              (perfilInstr.formacao === FormacaoInstrutor.EngenheiroSegurancaTrabalho ? ConselhoInstrutor.Crea : ConselhoInstrutor.Mte),
+            numero: perfilInstr.numeroRegistro ?? '',
+            uf: perfilInstr.ufRegistro ?? '',
+            outrasObras: perfilInstr.podeAssinarEmOutrasObras,
+          }
+        : {
+            formacao: engenheiro ? FormacaoInstrutor.EngenheiroSegurancaTrabalho : FormacaoInstrutor.TecnicoSegurancaTrabalho,
+            conselho: engenheiro ? ConselhoInstrutor.Crea : ConselhoInstrutor.Mte,
+            numero: '',
+            uf: '',
+            outrasObras: false,
+          },
+    );
     setPerfilParaAtribuir('');
     setObraParaAtribuir('');
   }
@@ -229,12 +270,33 @@ export function ControleAcessoTab() {
     if (!usuarioSelecionado) return;
     try {
       setErro(null);
+      let trabalhadorId: string | null = trabalhadorIdEdicao || null;
+      if (trabalhadorIdEdicao === OPCAO_PRESTADOR) {
+        const cpf = prestador.cpf.replace(/\D/g, '');
+        if (cpf.length !== 11 || !prestador.obraId || !prestador.funcaoId) {
+          setErro('Para cadastrar como prestador, informe o CPF (11 dígitos), a obra base e a função.');
+          return;
+        }
+        trabalhadorId = (
+          await api.usuarios.criarPrestador(usuarioSelecionado.id, { cpf, obraId: prestador.obraId, funcaoId: prestador.funcaoId })
+        ).trabalhadorId;
+      }
       await api.usuarios.atualizar(usuarioSelecionado.id, {
         id: usuarioSelecionado.id,
         nome: nomeEdicao,
         status: statusEdicao,
-        trabalhadorId: trabalhadorIdEdicao || null,
+        trabalhadorId,
       });
+      if (trabalhadorId && registro.numero.trim()) {
+        await api.instrutores.salvar({
+          trabalhadorId,
+          formacao: registro.formacao,
+          conselho: registro.conselho,
+          numeroRegistro: registro.numero.trim(),
+          ufRegistro: registro.uf.trim() || null,
+          podeAssinarEmOutrasObras: registro.outrasObras,
+        });
+      }
       await carregar();
       sucessoToast('Usuário atualizado com sucesso.');
     } catch (e) {
@@ -472,15 +534,124 @@ export function ControleAcessoTab() {
                     <Field label="Funcionário vinculado">
                       <Select value={trabalhadorIdEdicao} onChange={(_, d) => setTrabalhadorIdEdicao(d.value)}>
                         <option value="">Nenhum</option>
+                        {!usuarioSelecionado.trabalhadorId && (
+                          <option value={OPCAO_PRESTADOR}>Prestador (PJ), não é funcionário</option>
+                        )}
                         {trabalhadores.map((t) => (
                           <option key={t.id} value={t.id}>
                             {t.nome}
+                            {t.vinculo === TipoVinculo.PrestadorServico ? ' (Prestador PJ)' : ''}
                           </option>
                         ))}
                       </Select>
                     </Field>
                   </Campo>
                 </FormGrid>
+                {trabalhadorIdEdicao === OPCAO_PRESTADOR && (
+                  <>
+                    <FeedbackInline tom="info">
+                      Ao salvar, o sistema cria o cadastro de prestador de serviço (PJ) com o nome deste usuário, fora do efetivo da
+                      obra (sem ASO, treinamentos obrigatórios, EPI, DDS ou pendências), e já vincula o usuário a ele.
+                    </FeedbackInline>
+                    <FormGrid>
+                      <Campo span={4}>
+                        <Field label="CPF do prestador" required>
+                          <Input
+                            value={prestador.cpf}
+                            inputMode="numeric"
+                            placeholder="Somente números"
+                            onChange={(_, d) => setPrestador({ ...prestador, cpf: d.value })}
+                          />
+                        </Field>
+                      </Campo>
+                      <Campo span={4}>
+                        <Field label="Obra base" required hint="O alcance continua sendo o dos perfis por obra.">
+                          <Select value={prestador.obraId} onChange={(_, d) => setPrestador({ ...prestador, obraId: d.value })}>
+                            <option value="">Selecione</option>
+                            {obras.map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {o.nome}
+                              </option>
+                            ))}
+                          </Select>
+                        </Field>
+                      </Campo>
+                      <Campo span={4}>
+                        <Field label="Função" required>
+                          <Select value={prestador.funcaoId} onChange={(_, d) => setPrestador({ ...prestador, funcaoId: d.value })}>
+                            <option value="">Selecione</option>
+                            {funcoes.map((f) => (
+                              <option key={f.id} value={f.id}>
+                                {f.nome}
+                              </option>
+                            ))}
+                          </Select>
+                        </Field>
+                      </Campo>
+                    </FormGrid>
+                  </>
+                )}
+                <Text weight="semibold" style={{ display: 'block', margin: '16px 0 4px' }}>
+                  Registro profissional
+                </Text>
+                <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
+                  Sai no certificado das turmas e vem preenchido no "Quem assina" do PGR. Com o número preenchido, a pessoa aparece na
+                  escolha de instrutor das turmas.{!trabalhadorIdEdicao && ' Escolha o vínculo acima para poder salvar o registro.'}
+                </Text>
+                <FormGrid>
+                  <Campo span={4}>
+                    <Field label="Formação">
+                      <Select
+                        value={String(registro.formacao)}
+                        disabled={!trabalhadorIdEdicao}
+                        onChange={(_, d) => setRegistro({ ...registro, formacao: Number(d.value) })}
+                      >
+                        <option value={FormacaoInstrutor.TecnicoSegurancaTrabalho}>Técnico de Segurança do Trabalho</option>
+                        <option value={FormacaoInstrutor.EngenheiroSegurancaTrabalho}>Engenheiro de Segurança do Trabalho</option>
+                      </Select>
+                    </Field>
+                  </Campo>
+                  <Campo span={2}>
+                    <Field label="Conselho">
+                      <Select
+                        value={String(registro.conselho)}
+                        disabled={!trabalhadorIdEdicao}
+                        onChange={(_, d) => setRegistro({ ...registro, conselho: Number(d.value) })}
+                      >
+                        <option value={ConselhoInstrutor.Mte}>MTE</option>
+                        <option value={ConselhoInstrutor.Crea}>CREA</option>
+                      </Select>
+                    </Field>
+                  </Campo>
+                  <Campo span={4}>
+                    <Field label="Número do registro">
+                      <Input
+                        value={registro.numero}
+                        disabled={!trabalhadorIdEdicao}
+                        onChange={(_, d) => setRegistro({ ...registro, numero: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={2}>
+                    <Field label="UF">
+                      <Input
+                        value={registro.uf}
+                        maxLength={2}
+                        disabled={!trabalhadorIdEdicao}
+                        onChange={(_, d) => setRegistro({ ...registro, uf: d.value.toUpperCase() })}
+                      />
+                    </Field>
+                  </Campo>
+                </FormGrid>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={registro.outrasObras}
+                    disabled={!trabalhadorIdEdicao}
+                    onChange={(e) => setRegistro({ ...registro, outrasObras: e.target.checked })}
+                  />
+                  <Text size={300}>Pode assinar como instrutor em outras obras (libera a digital dele nos leitores das outras obras)</Text>
+                </label>
                 <FormRodape>
                   <Button appearance="primary" icon={<Save24Regular />} onClick={salvarEdicaoUsuario}>
                     Salvar

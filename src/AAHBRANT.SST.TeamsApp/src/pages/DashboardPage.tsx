@@ -26,6 +26,7 @@ import {
   TipoOcorrencia,
   type Acidente,
   type Alerta,
+  TipoVinculo,
   type Aso,
   type AptidaoCurso,
   type LiberacaoTrabalho,
@@ -311,7 +312,11 @@ export function DashboardPage() {
   );
   const obrasEmAndamento = obrasAtivas.filter((o) => o.status === StatusObra.EmAndamento).length;
 
-  const trabalhadoresAtivos = useMemo(() => trabalhadoresFiltrados.filter((t) => !t.dataDemissao), [trabalhadoresFiltrados]);
+  // Prestador PJ (04/11/2026) usa o sistema mas não é efetivo: fora de funcionários ativos e da rosca de ASO.
+  const trabalhadoresAtivos = useMemo(
+    () => trabalhadoresFiltrados.filter((t) => !t.dataDemissao && t.vinculo !== TipoVinculo.PrestadorServico),
+    [trabalhadoresFiltrados],
+  );
   const admitidosNoPeriodo = trabalhadoresAtivos.filter((t) => noPeriodoSelecionado(t.dataAdmissao)).length;
 
   // EPIs entregues hoje (28/10/2026, no lugar de "Trabalhadores com EPI vencido"): soma das

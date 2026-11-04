@@ -61,6 +61,14 @@ public class UsuariosController : ControllerBase
         return CreatedAtAction(nameof(ObterPorId), new { id }, id);
     }
 
+    // Usuário que não é funcionário (PJ): cria o cadastro de prestador, fora do efetivo, e já vincula o usuário a ele.
+    public record CriarPrestadorRequest(string Cpf, Guid ObraId, Guid FuncaoId);
+
+    [Authorize(Policy = "usuario:editar")]
+    [HttpPost("{id:guid}/prestador")]
+    public async Task<IActionResult> CriarPrestador(Guid id, CriarPrestadorRequest corpo, CancellationToken ct)
+        => Ok(new { trabalhadorId = await _mediator.Send(new CriarPrestadorUsuarioCommand(id, corpo.Cpf, corpo.ObraId, corpo.FuncaoId), ct) });
+
     [Authorize(Policy = "usuario:editar")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Atualizar(Guid id, AtualizarUsuarioCommand command)

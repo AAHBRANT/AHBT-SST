@@ -1,5 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react';
-import { avaliarRostos, type AvaliacaoRosto, type CaixaRosto } from '../../lib/rosto/avaliarRosto';
+import { avaliarPresencaRosto, avaliarRostos, type AvaliacaoRosto, type CaixaRosto, type ModoCapturaRosto } from '../../lib/rosto/avaliarRosto';
 import { detectarRostos, obterDetectorRosto } from '../../lib/rosto/detectorRosto';
 import { medirLuz } from '../../lib/rosto/medirLuz';
 
@@ -17,7 +17,13 @@ const INICIAL: EstadoDetectorRosto = { situacao: 'carregando', avaliacao: null, 
 
 // Roda o detector sobre o vídeo da câmera enquanto `ativo`. Ele só orienta o operador: o Azure Face
 // continua sendo quem valida a foto no servidor.
-export function useDetectorRosto(videoRef: RefObject<HTMLVideoElement | null>, ativo: boolean): EstadoDetectorRosto {
+// `modo` 'assinatura' só exige 1 rosto no quadro (ver avaliarPresencaRosto); 'cadastro' (padrão)
+// mantém todas as regras de enquadramento e luz.
+export function useDetectorRosto(
+  videoRef: RefObject<HTMLVideoElement | null>,
+  ativo: boolean,
+  modo: ModoCapturaRosto = 'cadastro',
+): EstadoDetectorRosto {
   const [estado, setEstado] = useState<EstadoDetectorRosto>(INICIAL);
 
   useEffect(() => {
@@ -37,8 +43,9 @@ export function useDetectorRosto(videoRef: RefObject<HTMLVideoElement | null>, a
         if (video && video.readyState >= 2 && video.videoWidth > 0) {
           try {
             const caixas: CaixaRosto[] = detectarRostos(detector, video, performance.now());
-            const luz = caixas.length === 1 ? medirLuz(video, caixas[0]) : null;
-            const avaliacao = avaliarRostos(caixas, video.videoWidth, video.videoHeight, luz);
+            const avaliacao = modo === 'assinatura'
+              ? avaliarPresencaRosto(caixas, video.videoWidth, video.videoHeight)
+              : avaliarRostos(caixas, video.videoWidth, video.videoHeight, caixas.length === 1 ? medirLuz(video, caixas[0]) : null);
             const c = caixas.length === 1 ? caixas[0] : null;
             setEstado({
               situacao: 'ativo',
@@ -65,7 +72,7 @@ export function useDetectorRosto(videoRef: RefObject<HTMLVideoElement | null>, a
       // Zera ao fechar a câmera, para a próxima abertura não mostrar o quadro da vez anterior.
       setEstado(INICIAL);
     };
-  }, [videoRef, ativo]);
+  }, [videoRef, ativo, modo]);
 
   return ativo ? estado : INICIAL;
 }

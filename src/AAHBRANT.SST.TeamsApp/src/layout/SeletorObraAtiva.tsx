@@ -119,12 +119,20 @@ export function SeletorObraAtiva() {
     else if (obra.nome !== obraAtivaNome) definirObraAtiva(obra.id, obra.nome);
   }, [obraAtivaId, obraAtivaNome, obras, definirObraAtiva]);
 
+  // Quem tem acesso a uma obra só não escolhe nada: ela é a obra ativa e o seletor nem aparece.
+  const obraUnica = obras.length === 1 ? obras[0] : null;
+  useEffect(() => {
+    if (obraUnica && obraAtivaId !== obraUnica.id) definirObraAtiva(obraUnica.id, obraUnica.nome);
+  }, [obraUnica, obraAtivaId, definirObraAtiva]);
+
   // A pílula pisca de leve sempre que a obra muda (escolha aqui ou em qualquer tela).
   useEffect(() => {
     setPulsando(true);
     const id = window.setTimeout(() => setPulsando(false), 1900);
     return () => window.clearTimeout(id);
   }, [obraAtivaId]);
+
+  if (obraUnica) return null;
 
   const nome = obraAtivaId ? obras.find((o) => o.id === obraAtivaId)?.nome ?? obraAtivaNome : 'Todas as obras';
 

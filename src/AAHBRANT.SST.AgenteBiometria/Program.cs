@@ -14,6 +14,11 @@ public static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        // Instância única: a tarefa "vigia" do Agendador abre o agente a cada 5 min; se já há um aberto, sai.
+        using var instancia = new Mutex(initiallyOwned: true, @"Local\AAHBRANT.SST.AgenteBiometria", out var primeira);
+        if (!primeira)
+            return;
+
         var app = CriarApp(args);
         _ = app.RunAsync();
 

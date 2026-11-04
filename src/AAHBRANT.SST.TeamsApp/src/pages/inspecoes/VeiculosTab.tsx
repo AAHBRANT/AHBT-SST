@@ -28,6 +28,7 @@ import {
   Eye24Regular,
   Open24Regular,
   Send24Regular,
+  Signature24Regular,
   VehicleTruckProfile24Regular,
 } from '@fluentui/react-icons';
 import {
@@ -470,6 +471,8 @@ export function VeiculosTab() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
           {doTipo.map((veiculo) => {
             const ultima = veiculo.ultimaInspecaoConcluida;
+            // Inspeção já finalizada que espera assinatura: ocupa a vaga do veículo.
+            const aguardando = veiculo.historicoInspecoes.find((i) => i.status === StatusInspecao.AguardandoAssinatura);
             return (
               <Card key={veiculo.id}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -501,12 +504,19 @@ export function VeiculosTab() {
                       {rotuloStatus(veiculo.statusUltimaInspecao, veiculo.diasDesdeUltimaInspecao)}
                     </StatusChip>
                     {veiculo.inspecaoEmAndamento && <StatusChip tom="info">Inspeção em andamento</StatusChip>}
+                    {aguardando && <StatusChip tom="atencao">Aguardando assinatura</StatusChip>}
                   </div>
                   <SeloProximaInspecao
                     proximaEm={veiculo.proximaInspecaoEm}
                     dias={veiculo.periodicidadeInspecaoDias}
                     responsavelNome={veiculo.responsavelInspecaoNome}
                   />
+
+                  {aguardando && (
+                    <div style={{ fontSize: 12 }}>
+                      Finalizada em {formatarData(aguardando.data)} · {aguardando.itensNaoConformes} não conformidade(s). Falta só a assinatura.
+                    </div>
+                  )}
 
                   {ultima && (
                     <div style={{ fontSize: 12 }}>
@@ -521,9 +531,20 @@ export function VeiculosTab() {
                   )}
 
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-                    <Button appearance="primary" icon={<ClipboardTaskListLtr24Regular />} onClick={() => abrirInspecao(veiculo.id)}>
-                      {veiculo.inspecaoEmAndamento ? 'Continuar inspeção' : 'Nova inspeção'}
-                    </Button>
+                    {aguardando ? (
+                      <BotaoAcao
+                        tom="assinar"
+                        icon={<Signature24Regular />}
+                        onClick={() => navigate(`/prevencao/inspecoes/${aguardando.id}/assinar`)}
+                        aria-label="Assinar inspeção"
+                      >
+                        Assinar inspeção
+                      </BotaoAcao>
+                    ) : (
+                      <Button appearance="primary" icon={<ClipboardTaskListLtr24Regular />} onClick={() => abrirInspecao(veiculo.id)}>
+                        {veiculo.inspecaoEmAndamento ? 'Continuar inspeção' : 'Nova inspeção'}
+                      </Button>
+                    )}
                     {ultima && (
                       <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={() => visualizarPdfInspecao(veiculo, ultima)} aria-label="Visualizar última inspeção">
                         Visualizar última
@@ -607,10 +628,10 @@ export function VeiculosTab() {
                                   }
                                   aria-label="Abrir inspeção"
                                 />
-                                {concluida && (
+                                {inspecao.status !== StatusInspecao.EmAndamento && (
                                   <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={() => visualizarPdfInspecao(veiculo, inspecao)} aria-label="Visualizar PDF" />
                                 )}
-                                {concluida && (
+                                {inspecao.status !== StatusInspecao.EmAndamento && (
                                   <BotaoAcao
                                     tom="baixar"
                                     icon={<ArrowDownload24Regular />}

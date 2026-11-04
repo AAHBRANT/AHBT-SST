@@ -121,6 +121,8 @@ export const TipoVinculo = {
   Terceirizado: 2,
   Autonomo: 3,
   Estagiario: 4,
+  // Profissional PJ que assina e dá curso, mas não é efetivo de obra (04/11/2026).
+  PrestadorServico: 5,
 } as const;
 
 export const tipoVinculoLabel: Record<number, string> = {
@@ -128,6 +130,7 @@ export const tipoVinculoLabel: Record<number, string> = {
   2: 'Terceirizado',
   3: 'Autônomo',
   4: 'Estagiário',
+  5: 'Prestador de serviço (PJ)',
 };
 
 // Quantos trabalhadores ativos podem trabalhar hoje (ASO e treinamentos da função em dia) e por que os demais não.
@@ -998,6 +1001,8 @@ export interface CatalogoEpi {
   certificadoAprovacaoNumero?: string | null;
   certificadoAprovacaoValidade?: string | null;
   vidaUtilEmMeses: number;
+  // Item da obra (04/11/2026). Vazio = item antigo, compartilhado por todas as obras.
+  obraId?: string | null;
   // Soma do estoque do EPI em todas as Obras (Fase 3) — somente leitura; não editável via
   // catálogo. Ver api.estoquesEpi para o estoque segmentado por Obra.
   saldoTotal: number;
@@ -1025,6 +1030,8 @@ export const tipoMovimentacaoEstoqueEpiLabel: Record<number, string> = {
   3: 'Ajuste manual',
   5: 'Transferência (saída)',
   6: 'Transferência (entrada)',
+  7: 'Correção de lançamento (saída)',
+  8: 'Correção de lançamento (entrada)',
 };
 
 // Painel da aba Estoque (especificação 21/10/2026, Módulos 2 e 3) — tudo calculado no servidor
@@ -2690,11 +2697,14 @@ export const statusItemChecklistLabel: Record<number, string> = {
 export const StatusInspecao = {
   EmAndamento: 1,
   Concluida: 2,
+  // "Finalizar" leva para cá; só a assinatura torna a inspeção Concluída.
+  AguardandoAssinatura: 3,
 } as const;
 
 export const statusInspecaoLabel: Record<number, string> = {
   1: 'Em andamento',
   2: 'Concluída',
+  3: 'Aguardando assinatura',
 };
 
 export interface ChecklistModelo {
@@ -2977,6 +2987,29 @@ export interface AtividadeOs {
   autorizacoes: string[];
 }
 
+// OS emitida (03/11/2026): o funcionário assina primeiro (digital/facial), depois o técnico de segurança.
+export type SituacaoOrdemServico = 'AguardandoFuncionario' | 'AguardandoTecnico' | 'Valida';
+
+export interface AssinaturaOs {
+  nome: string;
+  funcao?: string | null;
+  assinadoEm: string;
+  metodo: number;
+}
+
+export interface OrdemServicoEmitida {
+  id: string;
+  numero: string;
+  revisao: number;
+  emitidaEm: string;
+  obraId: string;
+  documentoAssinaturaId?: string | null;
+  situacao: SituacaoOrdemServico;
+  vigente: boolean;
+  funcionario?: AssinaturaOs | null;
+  tecnico?: AssinaturaOs | null;
+}
+
 export interface MinutaOrdemServico {
   trabalhadorId: string;
   podeEmitir: boolean;
@@ -3023,6 +3056,8 @@ export interface AcaoPlanoGerada {
   descricao: string; responsavelUsuarioId?: string | null; responsavelNome?: string | null; inicio?: string | null; prazo?: string | null;
   // Acompanhamento e aferição (NR-01, item 1.5.5.2). acompanhamentoSugeridoPelaIa fica verdadeiro até alguém conferir.
   formaAcompanhamento?: string | null; periodicidadeAcompanhamento?: string | null; criterioAfericao?: string | null; acompanhamentoSugeridoPelaIa?: boolean;
+  // Texto com que a ação nasceu das medidas dos riscos (só as geradas). O servidor a usa ao remover um GHE; a tela só preserva.
+  descricaoGerada?: string | null;
 }
 export interface ContatoEmergencia {
   chave?: 'hospital' | 'samu' | 'bombeiros' | 'pm' | 'seguranca' | null;
@@ -3033,7 +3068,7 @@ export interface ContatoEmergencia {
 export interface AssinanteGeracaoPgr {
   usuarioId?: string | null; nome?: string | null; registro?: string | null; aMao: boolean;
 }
-export interface AssinanteDisponivel { usuarioId: string; nome: string; vinculado: boolean }
+export interface AssinanteDisponivel { usuarioId: string; nome: string; vinculado: boolean; registro?: string | null }
 export interface AssinantesGeracaoPgr { tecnicos: AssinanteDisponivel[]; engenheiros: AssinanteDisponivel[] }
 // Dados da obra que o PGR exige e o sistema não tem em outro lugar: o técnico preenche uma vez.
 export interface DadosComplementaresPgr {
@@ -4452,6 +4487,25 @@ async function enviarAudioAcidente<T>(caminho: string, audio: Blob, nomeArquivo:
   return (await response.json()) as T;
 }
 
+export interface ContatoEmailRelatorio { id: string; nome: string | null; email: string; padraoObra: boolean }
+export interface EnvioEmailInspecao { id: string; enviadoEmUtc: string; enviadoPorNome: string; destinatarios: string[]; falhas: string[]; mensagem: string | null }
+export interface EnvioEmailInspecaoPainel { podeEnviar: boolean; contatos: ContatoEmailRelatorio[]; envios: EnvioEmailInspecao[] }
+export interface EnviarEmailInspecaoRequest { emails: string[]; mensagem?: string | null; salvarEmails: string[]; salvarNaObra: boolean }
+
+// Igual a request, mas sem a fila offline — para ações que só fazem sentido com rede (ex.: enviar e-mail).
+async function requestOnline<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(await montarHeadersAuth()), ...init?.headers },
+  });
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  if (response.status === 204) return undefined as T;
+  return parsearJsonSeguro<T>(await response.text(), response);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const authHeaders = await montarHeadersAuth();
   const metodo = (init?.method ?? 'GET').toUpperCase();
@@ -5260,11 +5314,13 @@ export const api = {
       request<FuncaoInativaComTrabalhador[]>('/api/funcoes/inativas-com-trabalhador'),
     reativar: (id: string) => request<void>(`/api/funcoes/${id}/reativar`, { method: 'POST' }),
     listarSemTrabalhador: () => request<FuncaoSemTrabalhador[]>('/api/funcoes/sem-trabalhador'),
-    listarEpis: (funcaoId: string) => request<CatalogoEpi[]>(`/api/funcoes/${funcaoId}/epis`),
-    definirEpis: (funcaoId: string, catalogoEpiIds: string[]) =>
+    // Com obraId: a matriz que vale para a obra (a dela, ou a antiga enquanto ela não tiver a própria).
+    listarEpis: (funcaoId: string, obraId?: string) =>
+      request<CatalogoEpi[]>(`/api/funcoes/${funcaoId}/epis${obraId ? `?obraId=${encodeURIComponent(obraId)}` : ''}`),
+    definirEpis: (funcaoId: string, catalogoEpiIds: string[], obraId?: string) =>
       request<void>(`/api/funcoes/${funcaoId}/epis`, {
         method: 'PUT',
-        body: JSON.stringify({ catalogoEpiIds }),
+        body: JSON.stringify({ catalogoEpiIds, obraId: obraId || null }),
       }),
     listarTreinamentosObrigatorios: (funcaoId: string) =>
       request<CursoTreinamento[]>(`/api/funcoes/${funcaoId}/treinamentos-obrigatorios`),
@@ -5612,7 +5668,8 @@ export const api = {
       }),
   },
   catalogosEpi: {
-    listar: () => request<CatalogoEpi[]>('/api/catalogosepi'),
+    listar: (obraId?: string) =>
+      request<CatalogoEpi[]>(obraId ? `/api/catalogosepi?obraId=${encodeURIComponent(obraId)}` : '/api/catalogosepi'),
     criar: (epi: NovoCatalogoEpi) =>
       request<{ id: string }>('/api/catalogosepi', { method: 'POST', body: JSON.stringify(epi) }),
     atualizar: (epi: AtualizarCatalogoEpi) =>
@@ -5703,7 +5760,7 @@ export const api = {
       request<{ aplicados: number }>(`/api/estoquesepi/obra/${obraId}/minimos/aplicar-sugestoes`, { method: 'POST' }),
     definirPrazoReposicao: (obraId: string, dias: number) =>
       request<void>(`/api/estoquesepi/obra/${obraId}/prazo-reposicao`, { method: 'PUT', body: JSON.stringify({ dias }) }),
-    transferir: (dados: { catalogoEpiId: string; obraOrigemId: string; obraDestinoId: string; quantidade: number; observacao?: string | null }) =>
+    transferir: (dados: { catalogoEpiId: string; obraOrigemId: string; obraDestinoId: string; quantidade: number; observacao?: string | null; correcao?: boolean }) =>
       request<void>('/api/estoquesepi/transferencia', { method: 'POST', body: JSON.stringify(dados) }),
     listarSolicitacoesReposicao: (obraId: string) =>
       request<SolicitacaoReposicaoEpiResumo[]>(`/api/estoquesepi/obra/${obraId}/solicitacoes-reposicao`),
@@ -5898,7 +5955,12 @@ export const api = {
     salvar: (id: string, passo: number, estrutura: EstruturaGeracaoPgr) =>
       request<void>(`/api/geracoes-pgr-eap/${id}`, { method: 'PUT', body: JSON.stringify({ passo, estrutura }) }),
     sugerirGhes: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}/sugerir-ghes`, { method: 'POST' }),
+    // Remove o GHE do rascunho (funções, riscos e medidas saem com ele). destinoGheNumero: para onde vão as atividades;
+    // nulo descarta. Saem também as ações do plano geradas desses riscos e ainda intocadas. Salve o rascunho antes.
+    removerGhe: (id: string, gheNumero: number, destinoGheNumero: number | null) =>
+      request<{ funcoes: number; riscos: number; acoesRemovidas: number }>(`/api/geracoes-pgr-eap/${id}/remover-ghe`, { method: 'POST', body: JSON.stringify({ gheNumero, destinoGheNumero }) }),
     // Só preenche campo vazio das ações já salvas; devolve quantas ações receberam sugestão.
+    sugerirAcoesMelhoria: (id: string) => request<{ acoes: number }>(`/api/geracoes-pgr-eap/${id}/sugerir-acoes-melhoria`, { method: 'POST' }),
     sugerirAcompanhamento: (id: string) => request<{ acoes: number }>(`/api/geracoes-pgr-eap/${id}/sugerir-acompanhamento`, { method: 'POST' }),
     // Locais, rotas e recomendação da IA a partir do endereço da obra; não grava nada.
     sugerirEmergencia: (id: string) => request<SugestaoEmergencia>(`/api/geracoes-pgr-eap/${id}/sugerir-emergencia`, { method: 'POST' }),
@@ -6193,6 +6255,9 @@ export const api = {
     atualizar: (id: string, usuario: AtualizarUsuarioPayload) =>
       request<void>(`/api/usuarios/${id}`, { method: 'PUT', body: JSON.stringify(usuario) }),
     excluir: (id: string) => request<void>(`/api/usuarios/${id}`, { method: 'DELETE' }),
+    // Usuário que não é funcionário: cria o cadastro de prestador (PJ), fora do efetivo, e já vincula.
+    criarPrestador: (id: string, corpo: { cpf: string; obraId: string; funcaoId: string }) =>
+      request<{ trabalhadorId: string }>(`/api/usuarios/${id}/prestador`, { method: 'POST', body: JSON.stringify(corpo) }),
     atribuirPerfilObra: (usuarioId: string, perfilAcessoId: string, obraId?: string | null) =>
       request<{ id: string }>('/api/usuarios/perfis-obra', {
         method: 'POST',
@@ -6339,6 +6404,14 @@ export const api = {
     },
     removerFotoAdicional: (fotoId: string) => request<void>(`/api/inspecoes/fotos-adicionais/${fotoId}`, { method: 'DELETE' }),
     encerrar: (id: string) => request<void>(`/api/inspecoes/${id}/encerrar`, { method: 'POST' }),
+    // Envio do relatório por e-mail: sempre online (fetch direto), nunca entra na fila offline das inspeções.
+    envioEmail: (id: string) => requestOnline<EnvioEmailInspecaoPainel>(`/api/inspecoes/${id}/envio-email`),
+    enviarEmail: (id: string, corpo: EnviarEmailInspecaoRequest) =>
+      requestOnline<EnvioEmailInspecao>(`/api/inspecoes/${id}/enviar-email`, { method: 'POST', body: JSON.stringify(corpo) }),
+    removerContatoEmail: (contatoId: string) =>
+      requestOnline<void>(`/api/inspecoes/contatos-email/${contatoId}`, { method: 'DELETE' }),
+    // Aguardando assinatura (sem nenhuma assinatura ainda) → Em andamento, para corrigir um erro.
+    reabrir: (id: string) => request<void>(`/api/inspecoes/${id}/reabrir`, { method: 'POST' }),
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/inspecoes/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {
@@ -6431,6 +6504,17 @@ export const api = {
   },
   ordensServico: {
     obterMinuta: (trabalhadorId: string) => request<MinutaOrdemServico>(`/api/trabalhadores/${trabalhadorId}/ordem-servico/minuta`),
+    listar: (trabalhadorId: string) => request<OrdemServicoEmitida[]>(`/api/trabalhadores/${trabalhadorId}/ordem-servico`),
+    emitir: (trabalhadorId: string) =>
+      request<OrdemServicoEmitida>(`/api/trabalhadores/${trabalhadorId}/ordem-servico`, { method: 'POST' }),
+    baixarPdf: async (trabalhadorId: string, ordemServicoId: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${trabalhadorId}/ordem-servico/${ordemServicoId}/pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
   },
   materiaisApoio: {
     listar: (categoria?: string) =>

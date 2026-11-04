@@ -368,14 +368,15 @@ export function DdsSemanalDetalhePage() {
                     </Legenda>
                   </>
                 ) : (
-                  <Button
-                    appearance="primary"
+                  <BotaoAcao
+                    tom="assinar"
                     icon={<Signature24Regular />}
                     onClick={() => assinarCampo(campo)}
                     disabled={assinando !== null}
+                    aria-label={`Assinar como ${rotulo}`}
                   >
                     {assinando === campo ? 'Assinando…' : `Assinar como ${rotulo}`}
-                  </Button>
+                  </BotaoAcao>
                 )}
               </div>
             ))}

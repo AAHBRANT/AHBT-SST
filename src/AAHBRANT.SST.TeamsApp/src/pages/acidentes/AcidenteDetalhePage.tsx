@@ -1,9 +1,10 @@
 import { pendenciasGrade } from '../../lib/dadosFoto';
 import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   BotaoAcao,
+  FaixaAssinatura,
   Dialog,
   DialogActions,
   DialogBody,
@@ -33,7 +34,7 @@ import {
   type Tom,
   Legenda,
 } from '@ui';
-import { ArrowDownload24Regular, Eye24Regular, Save24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Eye24Regular, Save24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { MapaCorporal } from '../../components/mapaCorporal/MapaCorporal';
 import { CartaoReuniaoAnalise } from './CartaoReuniaoAnalise';
 import { CampoComoSeResolve, payloadResolucao, pendenciaResolucao, resolucaoVazia, type ResolucaoEmEdicao } from './CampoComoSeResolve';
@@ -49,6 +50,8 @@ import {
   tipoOcorrenciaLabel,
   StatusAcaoPlano,
   StatusAcidente,
+  StatusDocumentoAssinatura,
+  type DocumentoAssinatura,
   TipoOcorrencia,
   type AcaoPlano,
   type Acidente,
@@ -88,6 +91,8 @@ const tomPorStatusAcaoPlano: Record<number, Tom> = {
 // AprDetalhePage.tsx/PgrDetalhePage.tsx/InspecaoDetalhePage.tsx).
 export function AcidenteDetalhePage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [documentoAssinatura, setDocumentoAssinatura] = useState<DocumentoAssinatura | null>(null);
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [detalhe, setDetalhe] = useState<AcidenteDetalhe | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -103,6 +108,9 @@ export function AcidenteDetalhePage() {
   const [resolucaoNova, setResolucaoNova] = useState<ResolucaoEmEdicao>(resolucaoVazia());
   const [acaoAlterando, setAcaoAlterando] = useState<AcaoPlano | null>(null);
   const [resolucaoAlterando, setResolucaoAlterando] = useState<ResolucaoEmEdicao>(resolucaoVazia());
+  // "Resolvido": qualquer ação pode ser marcada como resolvida à mão, descrevendo como foi resolvida.
+  const [acaoResolvendo, setAcaoResolvendo] = useState<AcaoPlano | null>(null);
+  const [comoResolvido, setComoResolvido] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
@@ -132,6 +140,13 @@ export function AcidenteDetalhePage() {
       setMetodologia(det.acidente.metodologiaInvestigacao ? String(det.acidente.metodologiaInvestigacao) : '');
       setCausas(det.acidente.causas ?? '');
       setRegioesCorpo(det.acidente.regioesCorpo ?? []);
+      // Só ocorrência concluída pode ser assinada. Sem documento ainda também conta como "falta assinar":
+      // a tela de assinatura cria o documento ao abrir.
+      if (det.acidente.status === StatusAcidente.Concluido) {
+        setDocumentoAssinatura(await api.assinatura.obter('Acidente', id).catch(() => null));
+      } else {
+        setDocumentoAssinatura(null);
+      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar acidente.');
     }
@@ -296,6 +311,33 @@ export function AcidenteDetalhePage() {
     }
   }
 
+  function abrirResolver(acao: AcaoPlano) {
+    setErro(null);
+    setComoResolvido('');
+    setAcaoResolvendo(acao);
+  }
+
+  async function salvarResolvido() {
+    if (!acaoResolvendo) return;
+    const texto = comoResolvido.trim();
+    if (!texto) {
+      setErro('Descreva como a ação foi resolvida.');
+      return;
+    }
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.acidentes.concluirAcao(acaoResolvendo.id, texto);
+      setAcaoResolvendo(null);
+      await carregar();
+      sucessoToast('Ação marcada como resolvida.');
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao marcar a ação como resolvida.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
   async function reabrirAcao(acao: AcaoPlano) {
     const ok = await confirmar({
       titulo: 'Reabrir ação?',
@@ -321,7 +363,7 @@ export function AcidenteDetalhePage() {
     const ok = await confirmar({
       titulo: 'Reabrir ações concluídas sem execução?',
       mensagem:
-        'Reabre todas as ações do plano que foram concluídas sem o fato que as resolve: concluídas à mão, treinamento ou inspeção que não aconteceu, DDS ou reunião ainda não realizados. As que foram concluídas pelo fato real ficam como estão.',
+        'Reabre todas as ações do plano que foram concluídas sem o fato que as resolve: concluídas à mão, treinamento ou inspeção que não aconteceu, DDS ou reunião ainda não realizados. As que foram concluídas pelo fato real ficam como estão. Atenção: isso também reabre as que foram marcadas como resolvidas à mão.',
       rotuloConfirmar: 'Reabrir ações',
       tom: 'neutro',
     });
@@ -425,12 +467,12 @@ export function AcidenteDetalhePage() {
           <span>
             <StatusChip tom={acao.tipoResolucaoAutomatica ? 'info' : 'atencao'}>{acao.tipoResolucaoAutomatica ? 'Automática' : 'Sem vínculo'}</StatusChip>
           </span>
-          {acao.tipoResolucaoAutomatica ? (
+          {acao.status === StatusAcaoPlano.Concluido && acao.descricaoConclusao ? (
+            <Legenda>Como foi resolvido: "{acao.descricaoConclusao}"</Legenda>
+          ) : acao.tipoResolucaoAutomatica ? (
             <Legenda>{acao.resolucaoAutomatica}</Legenda>
-          ) : acao.status === StatusAcaoPlano.Concluido ? (
-            acao.descricaoConclusao && <Legenda>"{acao.descricaoConclusao}"</Legenda>
-          ) : (
-            <Legenda>Defina como se resolve (Alterar). Sem isso a ação não conclui.</Legenda>
+          ) : acao.status === StatusAcaoPlano.Concluido ? null : (
+            <Legenda>Defina como se resolve (Alterar) ou marque como Resolvido.</Legenda>
           )}
         </div>
       ),
@@ -468,6 +510,10 @@ export function AcidenteDetalhePage() {
       },
     },
   ];
+
+  const faltaAssinar =
+    a.status === StatusAcidente.Concluido &&
+    (documentoAssinatura === null || documentoAssinatura.status === StatusDocumentoAssinatura.EmAndamento);
 
   return (
     <DetailPageLayout
@@ -563,6 +609,23 @@ export function AcidenteDetalhePage() {
         </>
       }
     >
+      {faltaAssinar && (
+        <FaixaAssinatura
+          acao={
+            <BotaoAcao
+              tom="assinar"
+              icon={<Signature24Regular />}
+              aria-label="Assinar ocorrência"
+              onClick={() => navigate(`/acidentes/${id}/assinar`)}
+            >
+              Assinar ocorrência
+            </BotaoAcao>
+          }
+        >
+          Falta a assinatura desta ocorrência.
+        </FaixaAssinatura>
+      )}
+
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}
@@ -732,9 +795,13 @@ export function AcidenteDetalhePage() {
                   Reabrir
                 </Button>
               );
-            // DDS e reunião se resolvem pelo próprio fluxo; não têm botão.
-            if (acao.tipoResolucaoAutomatica === 'Dds' || acao.tipoResolucaoAutomatica === 'Reuniao') return null;
+            const podeAlterar = acao.tipoResolucaoAutomatica !== 'Dds' && acao.tipoResolucaoAutomatica !== 'Reuniao';
             return (
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <Button appearance="secondary" size="small" onClick={() => abrirResolver(acao)} disabled={processando}>
+                Resolvido
+              </Button>
+              {podeAlterar && (
               <Button
                 appearance={acao.tipoResolucao ? 'subtle' : 'primary'}
                 size="small"
@@ -743,11 +810,44 @@ export function AcidenteDetalhePage() {
               >
                 {acao.tipoResolucao ? 'Alterar' : 'Definir como se resolve'}
               </Button>
+              )}
+              </div>
             );
           }}
         />
       </Card>
       {dialogoConfirmacao}
+      <Dialog open={!!acaoResolvendo} onOpenChange={(_, d) => { if (!d.open) setAcaoResolvendo(null); }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Marcar ação como resolvida</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'grid', gap: 10 }}>
+                <Text>"{acaoResolvendo?.descricao}"</Text>
+                <Field label="Como foi resolvido?" required>
+                  <Textarea
+                    value={comoResolvido}
+                    onChange={(_, d) => setComoResolvido(d.value)}
+                    rows={4}
+                    maxLength={1000}
+                    placeholder="Descreva o que foi feito (ex.: andaimes reinspecionados, sapatas repostas)."
+                  />
+                </Field>
+                <Legenda>Fica registrado com seu nome e a data. Se precisar, use Reabrir para desfazer.</Legenda>
+                {erro && acaoResolvendo && <FeedbackInline tom="erro">{erro}</FeedbackInline>}
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setAcaoResolvendo(null)} disabled={processando}>
+                Cancelar
+              </Button>
+              <Button appearance="primary" onClick={() => void salvarResolvido()} disabled={processando}>
+                Marcar como resolvida
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
       <Dialog open={!!acaoAlterando} onOpenChange={(_, d) => { if (!d.open) setAcaoAlterando(null); }}>
         <DialogSurface>
           <DialogBody>

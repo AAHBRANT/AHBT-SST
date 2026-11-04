@@ -1,4 +1,5 @@
 import { pendenciasFoto } from '../../lib/dadosFoto';
+import { EnvioEmailInspecaoCard } from './EnvioEmailInspecaoCard';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -67,6 +68,7 @@ function edicaoInicial(): EdicaoResposta {
 const tomPorStatusInspecao: Record<number, Tom> = {
   [StatusInspecao.EmAndamento]: 'info',
   [StatusInspecao.Concluida]: 'ok',
+  [StatusInspecao.AguardandoAssinatura]: 'atencao',
 };
 
 // Cor do status do ponto verificado — mesmo esquema verde/amarelo da planilha "Patrulha de Segurança do
@@ -365,6 +367,22 @@ export function InspecaoDetalhePage() {
     }
   }
 
+  // Aguardando assinatura → Em andamento (só enquanto ninguém assinou; o servidor recusa depois disso).
+  async function reabrir() {
+    if (!id) return false;
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.inspecoes.reabrir(id);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao reabrir a inspeção.');
+      return false;
+    } finally {
+      setProcessando(false);
+    }
+  }
+
   async function baixarPdf() {
     if (!id || !detalhe) return;
     try {
@@ -460,10 +478,20 @@ export function InspecaoDetalhePage() {
         if (r.temFotoDepois && r.dadosFotoDepois) p.push(...pendenciasFoto(r.dadosFotoDepois).map(d => 'foto posterior: ' + d));
         return p.length ? [r.descricao + ': ' + p.join('; ')] : [];
       })],
-      descricao: 'Confira se todos os itens foram respondidos antes de encerrar.',
+      descricao: 'Ao finalizar, a inspeção vai para assinatura. Ela só fica concluída depois de assinada.',
       tom: 'primario',
       habilitada: true,
       aoExecutar: encerrar,
+    });
+  }
+  if (inspecao.status === StatusInspecao.AguardandoAssinatura) {
+    acoes.push({
+      chave: 'reabrir',
+      rotulo: 'Reabrir para ajustes',
+      descricao: 'Use se encontrou um erro. A inspeção volta para Em andamento. Depois de assinada, não é possível reabrir.',
+      tom: 'neutro',
+      habilitada: true,
+      aoExecutar: reabrir,
     });
   }
 
@@ -489,14 +517,15 @@ export function InspecaoDetalhePage() {
               Baixar PDF
             </BotaoAcao>
             {dialogoVisualizador}
-            {inspecao.status === StatusInspecao.Concluida && (
-              <Button
-                appearance="primary"
+            {inspecao.status === StatusInspecao.AguardandoAssinatura && (
+              <BotaoAcao
+                tom="assinar"
                 icon={<Signature24Regular />}
                 onClick={() => navigate(`/prevencao/inspecoes/${id}/assinar`)}
+                aria-label="Assinar inspeção"
               >
                 Assinar inspeção
-              </Button>
+              </BotaoAcao>
             )}
           </>
         ),
@@ -575,6 +604,12 @@ export function InspecaoDetalhePage() {
         </>
       }
     >
+      {inspecao.status === StatusInspecao.AguardandoAssinatura && (
+        <FeedbackInline tom="aviso">
+          Falta só a assinatura de um Técnico ou Engenheiro de Segurança. Esta inspeção só será concluída depois de assinada.
+        </FeedbackInline>
+      )}
+
       {avisoRetomada && (
         <FeedbackInline tom="info" aoFechar={() => setAvisoRetomada(null)}>
           {avisoRetomada}
@@ -600,6 +635,8 @@ export function InspecaoDetalhePage() {
       {rascunhos.length > 0 && (
         <FeedbackInline tom="info">{salvandoRascunho ? 'Salvando rascunho no tablet…' : 'Salvando automaticamente… Escolha o status do item para que ele seja salvo.'}</FeedbackInline>
       )}
+
+      {inspecao.status === StatusInspecao.Concluida && !sync.criacaoPendente && <EnvioEmailInspecaoCard inspecaoId={id} />}
 
       <Text weight="semibold">Pontos verificados</Text>
 

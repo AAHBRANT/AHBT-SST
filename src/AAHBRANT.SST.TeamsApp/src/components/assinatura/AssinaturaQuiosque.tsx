@@ -19,6 +19,7 @@ import {
 } from '@fluentui/react-components';
 import { Checkmark24Filled, LockClosed24Regular, Warning24Regular } from '@fluentui/react-icons';
 import { BotaoBiometriaDigital } from './BotaoBiometriaDigital';
+import { AssinaturaConfirmadaTelaCheia } from './AssinaturaConfirmadaTelaCheia';
 import { api, metodoAutenticacaoAssinaturaLabel, StatusDocumentoAssinatura, type DocumentoAssinatura } from '../../lib/api';
 import { capturarDigitalLocal, credencialLeitura, estaAgenteLocalDisponivel, obterDispositivoLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
@@ -131,7 +132,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
   // são finalizados sozinhos (assinatura única / encerramento do DDS) — finalizar um DDS no meio barraria
   // os participantes que ainda vão chegar, por isso o botão não aparece para eles.
   const finalizado = documento?.status === StatusDocumentoAssinatura.Finalizado;
-  const podeFinalizar = !finalizado && entidadeTipo !== 'Inspecao' && entidadeTipo !== 'Dds' && (documento?.signatarios.length ?? 0) > 0;
+  const podeFinalizar = !finalizado && entidadeTipo !== 'Inspecao' && entidadeTipo !== 'Dds' && entidadeTipo !== 'OrdemServico' && (documento?.signatarios.length ?? 0) > 0;
 
   async function finalizar() {
     if (!documento) return;
@@ -171,6 +172,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
 
   return (
     <div>
+      <AssinaturaConfirmadaTelaCheia nome={ultimoAssinante} />
       {erro && <Text className={estilos.erro}>{erro}</Text>}
 
       {finalizado ? (
@@ -238,6 +240,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
             tamanho="medium"
             variante="facialAzure"
             modoCamera="user"
+            modoCaptura="assinatura"
             exigirCamera
           />
         </div>

@@ -273,6 +273,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
         tamanho="medium"
         variante="facialAzure"
         modoCamera="user"
+        modoCaptura="assinatura"
         exigirCamera
         permitirCapturaAutomatica
       />

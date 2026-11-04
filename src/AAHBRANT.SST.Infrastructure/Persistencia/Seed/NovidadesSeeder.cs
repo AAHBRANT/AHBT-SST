@@ -1,4 +1,4 @@
-﻿using AAHBRANT.SST.Domain.Entidades;
+﻿﻿using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -2165,9 +2165,220 @@ public static class NovidadesSeeder
                     "Em Administração > Pendências automáticas, o Administrador liga ou desliga cada aviso e escolhe se ele abre toda vez que a pessoa entra ou uma vez por dia, e se pode ser fechado."),
             }),
         new(
-            Versao: "5.117.0",
-            Titulo: "Busca rápida e caminho de volta nas telas",
+            Versao: "5.118.0",
+            Titulo: "Confirmação de assinatura em tela cheia",
             DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Tela verde com o nome de quem assinou",
+                    "Depois da digital ou do facial aparecia só uma linha pequena \"Assinatura registrada\", difícil de ver de longe.",
+                    "A tela fica verde por 2,5 segundos com o ✓ e o nome do funcionário em letra grande, no quiosque e na assinatura em lote de EPI e de uniforme. Depois some sozinha para o próximo."),
+            }),
+        new(
+            Versao: "5.119.0",
+            Titulo: "Biometria num lugar só no perfil do funcionário",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Facial junto das digitais",
+                    "A digital e a facial podiam ser cadastradas em dois lugares diferentes do perfil.",
+                    "O card Biometria, na coluna da esquerda do perfil, reúne os dois indicadores e a captura facial. A aba Assinaturas fica só com o cofre e os termos."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Card de biometria inteiro no tablet",
+                    "No tablet, o fim do card de biometria ficava cortado.",
+                    "A coluna da esquerda agora rola junto com a página e o card aparece inteiro."),
+            }),
+        new(
+            Versao: "5.120.0",
+            Titulo: "Cronograma de DDS: cliente sempre Supervisão",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Cliente do cronograma mensal de DDS",
+                    "O PDF mostrava \"Cliente / Fiscalização\" com o cliente do cadastro da obra.",
+                    "O PDF do cronograma mensal de DDS agora mostra sempre \"Cliente: Supervisão\"."),
+            }),        new(
+            Versao: "5.121.0",
+            Titulo: "Inspeções: só ficam concluídas depois de assinadas",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Finalizar inspeção leva direto para a assinatura",
+                    "A inspeção ficava Concluída assim que era finalizada, e a assinatura podia ficar para depois ou nunca acontecer.",
+                    "Ao clicar em \"Finalizar inspeção\", quem realizou a inspeção assina automaticamente, em um clique, e a inspeção fica \"Concluída\". Se não for possível assinar na hora (o usuário não é Técnico ou Engenheiro de Segurança, ou outra pessoa fez a inspeção), ela fica \"Aguardando assinatura\", com o checklist travado e o botão \"Assinar inspeção\". Vale para inspeções de alojamento, veículo, tema e demais tipos."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Reabrir para ajustes antes de assinar",
+                    "Se alguém finalizasse com um erro, não havia como corrigir.",
+                    "Enquanto ninguém assinou, o botão \"Reabrir para ajustes\" devolve a inspeção para \"Em andamento\". Depois da primeira assinatura não é mais possível reabrir. Enquanto uma inspeção aguarda assinatura, o alojamento, veículo ou item não abre outra, e o cartão mostra \"Assinar inspeção\"."),
+            }),
+        new(
+            Versao: "5.121.0",
+            Titulo: "Atribuir perfil a usuário voltou a funcionar",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Erro ao atribuir de novo um perfil já removido",
+                    "Atribuir a um usuário um perfil que já tinha sido removido dele na mesma obra mostrava \"Ocorreu um erro inesperado\".",
+                    "O perfil é atribuído normalmente, inclusive quando já foi removido antes."),
+            }),
+        new(
+            Versao: "5.122.0",
+            Titulo: "PGR pela EAP: plano de ação com melhorias",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Ações de melhoria no plano de ação",
+                    "O plano de ação do PGR só tinha o que o técnico digitava, além do cronograma de treinamentos.",
+                    "Ao gerar o inventário, o plano já sai com as ações de melhoria tiradas das medidas dos riscos de nível alto ou acima. Defina responsável e prazo. O botão \"Sugerir ações de melhoria\" atualiza a lista."),
+            }),
+        new(
+            Versao: "5.123.0",
+            Titulo: "Ordem de Serviço emitida e assinada",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Emitir a OS com número e assinaturas",
+                    "A aba Ordem de Serviço mostrava só a minuta e as pendências; o botão Emitir OS ainda não funcionava.",
+                    "Sem pendências, Emitir OS gera o número (OS-2026-0001) e abre a assinatura: primeiro o funcionário, por digital ou facial; depois o técnico de segurança, com o próprio login. A OS só fica Válida com as duas."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "PDF da OS com a logo da obra",
+                    null,
+                    "O PDF tem a logo cadastrada na obra no cabeçalho, as nove seções da OS e os dois carimbos de assinatura. O histórico da aba lista cada OS emitida com a situação e o botão Ver PDF."),
+            }),
+        new(
+            Versao: "5.124.0",
+            Titulo: "Ações do plano: marcar como resolvido",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Botão \"Resolvido\" nas ações do plano da ocorrência",
+                    "Ações automáticas ou sem vínculo só concluíam quando o fato vinculado acontecia.",
+                    "Toda ação pode ser marcada como resolvida, descrevendo como foi resolvida; o texto, o nome e a data ficam registrados."),
+            }),
+        new(
+            Versao: "5.125.0",
+            Titulo: "PGR pela EAP: remover um GHE do rascunho",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Remover um GHE sem refazer todos",
+                    "Para tirar um GHE do rascunho era preciso pedir a sugestão de GHEs de novo, que trocava todos e perdia os ajustes.",
+                    "No passo Funções e GHE, cada GHE tem o botão Remover GHE. Você escolhe mover as atividades para outro GHE (os riscos vão junto) ou descartá-las. As funções, os riscos e as ações do plano geradas desses riscos saem junto; ações escritas ou editadas por você, com responsável ou com prazo, ficam."),
+            }),
+        new(
+            Versao: "5.125.0",
+            Titulo: "Carimbo da foto no rodapé e sem corte no relatório",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Data, hora e local da foto sempre visíveis no PDF",
+                    "O carimbo ficava no canto superior da foto e o relatório recortava a imagem; em fotos tiradas com o celular em pé, o carimbo era cortado.",
+                    "O carimbo passa para o canto inferior direito da foto. Nos relatórios de inspeção e de investigação de ocorrência a foto aparece inteira, sem recorte. Vale para as fotos tiradas daqui para frente; fotos antigas mantêm o carimbo em cima, mas também deixam de ser cortadas no PDF."),
+            }),
+        new(
+            Versao: "5.126.0",
+            Titulo: "Inspeção: envio do relatório por e-mail",
+            DataPublicacao: new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Enviar o relatório da inspeção por e-mail",
+                    "Para mandar o relatório de uma inspeção, era preciso baixar o PDF e anexar num e-mail à parte.",
+                    "Depois de encerrada e assinada, a inspeção mostra o bloco \"Enviar relatório por e-mail\". Marque os contatos salvos (padrão da obra ou seus), digite outros e-mails se quiser e salve-os para as próximas vezes, escreva uma mensagem opcional e clique em Enviar relatório. O PDF assinado vai em anexo pela caixa sst@aahbrant.com, e a inspeção guarda o histórico de quem enviou, para quem e quando."),
+            }),
+        new(
+            Versao: "5.127.0",
+            Titulo: "Registro profissional no usuário e prestador PJ",
+            DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Registro profissional na edição do usuário",
+                    "O registro profissional (MTE/CREA) do instrutor só era cadastrado dentro da turma, e no PGR era digitado a cada documento.",
+                    "Em Administração > Controle de acesso, o usuário passa a ter a seção Registro profissional (formação, conselho, número e UF). Com o número preenchido, a pessoa aparece na escolha de instrutor das turmas, o registro sai no certificado e vem preenchido no \"Quem assina\" do PGR."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Prestador de serviço (PJ) pode assinar",
+                    "Quem não era funcionário (engenheiro ou instrutor PJ) não podia assinar pelo sistema, porque o usuário precisava estar vinculado a um cadastro de funcionário.",
+                    "Em \"Funcionário vinculado\", a opção \"Prestador (PJ), não é funcionário\" cria o cadastro dele com CPF, obra base e função e já vincula o usuário. O prestador assina e dá curso, mas fica fora do efetivo, dos indicadores, do DDS e das pendências de ASO, treinamentos, EPI e biometria."),
+            }),
+        new(
+            Versao: "5.128.0",
+            Titulo: "Assinatura facial sem precisar enquadrar o rosto",
+            DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Fila facial do DDS e do treinamento captura com o rosto em qualquer posição",
+                    "A fila só tirava a foto com o rosto inteiro dentro do oval e perto da câmera. No tablet, muitas vezes nada acontecia e a tela não dizia o motivo.",
+                    "Basta uma pessoa olhar para a câmera por cerca de 1 segundo, em qualquer lugar do quadro. Se não capturar, a tela avisa: \"Aproxime-se da câmera\" ou \"Mais de um rosto no quadro\"."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Botão Capturar liberado na assinatura e confirmação por facial",
+                    "Na assinatura (DDS, quiosque, entrega de EPI e uniforme, treinamento), o botão Capturar só liberava com o rosto inteiro dentro do círculo.",
+                    "Na assinatura, o círculo é só um guia e o botão libera assim que a câmera encontra um rosto. O enquadramento no círculo continua exigido apenas no cadastro da foto facial."),
+            }),
+        new(
+            Versao: "5.129.0",
+            Titulo: "Botão Assinar em destaque e assinatura da ocorrência",
+            DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Botão Assinar em vinho, fácil de achar",
+                    "O botão de assinar era igual aos outros e muita gente não o encontrava.",
+                    "Em todas as telas onde dá para assinar (inspeção, DDS, APR, PT, treinamento, entrega de EPI e de uniforme), o botão agora é vinho e se destaca dos demais, que são verdes. Nas telas de detalhe ele é maior e pulsa de leve; nas listas fica no tamanho normal da linha."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Assinar a ocorrência depois de concluída",
+                    "Uma ocorrência concluída (acidente, incidente, quase acidente ou não conformidade) ficava sem opção de assinatura.",
+                    "Ao abrir uma ocorrência concluída que ainda não foi assinada, aparece no topo a faixa \"Falta a assinatura desta ocorrência\" com o botão \"Assinar ocorrência\". Ela leva à tela de assinatura por digital ou facial. Quem assina é o Técnico ou o Engenheiro de Segurança, uma vez só."),
+            }),
+        new(
+            Versao: "5.130.0",
+            Titulo: "Foto facial no padrão 3×4",
+            DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Moldura 3×4 no lugar do círculo",
+                    "A câmera do reconhecimento facial mostrava um círculo, e a foto saía deitada e em tamanhos diferentes conforme o aparelho.",
+                    "A câmera agora mostra uma moldura 3×4 em pé, no padrão de foto de documento. No cadastro da foto facial, o botão Capturar só libera com o rosto inteiro dentro da moldura. Na assinatura (DDS, fila facial, quiosque, entrega de EPI e uniforme, treinamento), a moldura é um guia: basta um rosto só na câmera."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Foto sempre em 3×4, centralizada no rosto",
+                    "No tablet deitado, a foto do rosto ficava pequena e com espaço sobrando dos lados.",
+                    "Toda foto facial é salva em 3×4 em pé, centralizada no rosto, com o tablet deitado no teclado, o celular em pé ou deitado e o notebook."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Fotos maiores no PDF da Ficha de EPI",
+                    "Na página de evidências da assinatura facial, a foto saía pequena e a marca d'água \"CONFIDENCIAL\" ficava fora dela.",
+                    "As fotos de cadastro e da assinatura aparecem lado a lado em 3×4 em pé, do mesmo tamanho, com a marca d'água sobre a foto. As fotos antigas, salvas deitadas, são cortadas no centro."),
+            }),
+        new(
+            Versao: "5.131.0",
+            Titulo: "Catálogo e matriz de EPI por obra",
+            DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Cada obra tem o seu catálogo de EPI",
+                    "O catálogo de EPI era um só para todas as obras, e o CA e a foto de um item valiam em todo lugar.",
+                    "O item agora é cadastrado na obra ativa, com o CA e a foto dela. A lista mostra os itens da obra e os antigos, que continuam valendo para todas as obras enquanto a obra não tiver o seu. Para cadastrar, escolha a obra ativa no topo da tela."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "A aprovação do PGR monta a matriz de EPI da obra",
+                    "A matriz de EPI por função era montada à mão e valia para todas as obras.",
+                    "Ao aprovar o PGR, o sistema liga o tipo de EPI que o PGR exige para cada função ao item que já está no catálogo da obra. O que não tiver item correspondente não é criado: vira uma ação no plano do PGR pedindo para cadastrar o item da obra. A matriz de cada obra é independente das outras."),
+            }),
+        new(
+            Versao: "5.132.0",
+            Titulo: "Busca rápida e caminho de volta nas telas",
+            DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
             {
                 new NovidadeSeedItem(CategoriaNovidade.Novidade,

@@ -1,4 +1,5 @@
-﻿using AAHBRANT.SST.Api.Autorizacao;
+﻿using AAHBRANT.SST.Application.Inspecoes.EnvioEmail;
+using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.Inspecoes.Commands;
 using AAHBRANT.SST.Application.Inspecoes.Queries;
 using AAHBRANT.SST.Application.NaoConformidades.Commands;
@@ -132,6 +133,19 @@ public class InspecoesController : ControllerBase
     public async Task<IActionResult> Encerrar(Guid id, CancellationToken ct)
     {
         await _mediator.Send(new EncerrarInspecaoCommand(id), ct);
+        // Quem realizou a inspeção assina na hora (um clique, sessão logada) e a inspeção vira Concluída.
+        // Se não puder (outro usuário, função fora de Técnico/Engenheiro de Segurança), fica aguardando.
+        var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var assinatura = await _mediator.Send(new AssinarInspecaoAoFinalizarCommand(id, azureAdObjectId), ct);
+        return Ok(assinatura);
+    }
+
+    // Volta uma inspeção "Aguardando assinatura" (ainda sem assinatura) para "Em andamento".
+    [Authorize(Policy = "inspecao:encerrar")]
+    [HttpPost("{id:guid}/reabrir")]
+    public async Task<IActionResult> Reabrir(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new ReabrirInspecaoCommand(id), ct);
         return NoContent();
     }
 
@@ -142,6 +156,32 @@ public class InspecoesController : ControllerBase
         var pdf = await _mediator.Send(new ExportarInspecaoPdfQuery(id), ct);
         return pdf is null ? NotFound() : File(pdf, "application/pdf", $"inspecao-{id}.pdf");
     }
+
+    // Envio do relatório por e-mail (03/11/2026): contatos salvos (obra + meus) e histórico de envios.
+    [Authorize(Policy = "inspecao:ver")]
+    [HttpGet("{id:guid}/envio-email")]
+    public async Task<IActionResult> ObterEnvioEmail(Guid id, CancellationToken ct)
+    {
+        var painel = await _mediator.Send(new ObterEnvioEmailInspecaoQuery(id, ObjectIdUsuario()), ct);
+        return painel is null ? NotFound() : Ok(painel);
+    }
+
+    [Authorize(Policy = "inspecao:ver")]
+    [HttpPost("{id:guid}/enviar-email")]
+    public async Task<IActionResult> EnviarEmail(Guid id, EnviarEmailInspecaoRequestBody body, CancellationToken ct)
+        => Ok(await _mediator.Send(new EnviarEmailInspecaoCommand(id, body.Emails ?? new(), body.Mensagem,
+            body.SalvarEmails ?? new(), body.SalvarNaObra, ObjectIdUsuario(), User.FindFirst("name")?.Value), ct));
+
+    [Authorize(Policy = "inspecao:ver")]
+    [HttpDelete("contatos-email/{contatoId:guid}")]
+    public async Task<IActionResult> RemoverContatoEmail(Guid contatoId, CancellationToken ct)
+    {
+        await _mediator.Send(new RemoverContatoEmailCommand(contatoId, ObjectIdUsuario()), ct);
+        return NoContent();
+    }
+
+    private string? ObjectIdUsuario() =>
+        User.FindFirst("oid")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
     // Procedimento de Inspeção Técnica de Campo (§6.2) — gerar ocorrência a partir de um item do
     // checklist marcado como não conforme. Fica em InspecoesController (não em
@@ -166,6 +206,8 @@ public class InspecoesController : ControllerBase
         return NoContent();
     }
 }
+
+public record EnviarEmailInspecaoRequestBody(List<string>? Emails, string? Mensagem, List<string>? SalvarEmails, bool SalvarNaObra);
 
 public record AlterarResponsavelInspecaoRequestBody(Guid ResponsavelUsuarioId);
 

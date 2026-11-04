@@ -50,7 +50,7 @@ public class AnexarFotoAdicionalItemInspecaoCommandHandler : IRequestHandler<Ane
         var resposta = await _db.InspecaoItemRespostas.Include(r => r.Inspecao).FirstOrDefaultAsync(r => r.Id == request.RespostaId, ct)
             ?? throw new KeyNotFoundException($"Resposta {request.RespostaId} não encontrada.");
         await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "Inspecao", resposta.InspecaoId, ct);
-        if (resposta.Inspecao!.Status == StatusInspecao.Concluida)
+        if (resposta.Inspecao!.Status != StatusInspecao.EmAndamento)
             throw new InvalidOperationException("A inspeção já foi finalizada.");
         if (resposta.FotoConteudo.Length == 0)
             throw new InvalidOperationException("Registre a foto principal do item antes das fotos extras.");
@@ -88,7 +88,7 @@ public class RemoverFotoAdicionalItemInspecaoCommandHandler : IRequestHandler<Re
             .FirstOrDefaultAsync(f => f.Id == request.FotoId, ct)
             ?? throw new KeyNotFoundException("Foto não encontrada.");
         await ProtecaoDocumentoAssinado.GarantirEditavelAsync(_db, "Inspecao", foto.InspecaoItemResposta!.InspecaoId, ct);
-        if (foto.InspecaoItemResposta.Inspecao!.Status == StatusInspecao.Concluida)
+        if (foto.InspecaoItemResposta.Inspecao!.Status != StatusInspecao.EmAndamento)
             throw new InvalidOperationException("A inspeção já foi finalizada.");
         foto.Ativo = false;
         await _db.SaveChangesAsync(ct);

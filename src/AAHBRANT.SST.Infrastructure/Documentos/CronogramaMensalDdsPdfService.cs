@@ -30,7 +30,7 @@ public class CronogramaMensalDdsPdfService : ICronogramaMensalDdsPdfService
                 c.Spacing(8);
                 c.Item().Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(6).Row(r =>
                 {
-                    r.RelativeItem().Text($"Cliente / Fiscalização: {modelo.Cliente ?? "Não informado"}").FontSize(8);
+                    r.RelativeItem().Text($"Cliente: {modelo.Cliente ?? "Supervisão"}").FontSize(8);
                     r.RelativeItem().Text($"Competência: {inicio.ToString("MMMM/yyyy", CultureInfo.GetCultureInfo("pt-BR"))}").FontSize(8);
                     r.RelativeItem().Text($"Elaborado por: {modelo.Responsavel}").FontSize(8);
                 });

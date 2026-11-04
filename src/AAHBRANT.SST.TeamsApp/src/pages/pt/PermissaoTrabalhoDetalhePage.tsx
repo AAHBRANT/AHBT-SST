@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Abas,
   BotaoAcao,
-  Button,
   Campo,
   Card,
   Carregando,
@@ -261,13 +260,14 @@ export function PermissaoTrabalhoDetalhePage() {
         rotuloVoltar: 'Voltar para PT',
         acoes: (
           <>
-            <Button
-              appearance="secondary"
+            <BotaoAcao
+              tom="assinar"
               icon={<Signature24Regular />}
               onClick={() => navigate(`/operacao/pt/${id}/assinar`)}
+              aria-label="Assinar PT (ciência da equipe)"
             >
               Assinar PT (ciência da equipe)
-            </Button>
+            </BotaoAcao>
             <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
               Visualizar PDF
             </BotaoAcao>

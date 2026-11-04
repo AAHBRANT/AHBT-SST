@@ -53,7 +53,7 @@ function LinhaAssinante({ titulo, rotuloRegistro, lista, valor, editavel, altera
           disabled={!editavel || aMao}
           onChange={(_, d) => {
             const u = lista?.find((x) => x.usuarioId === d.value);
-            alterar(u ? { usuarioId: u.usuarioId, nome: u.nome, registro: valor?.registro ?? null, aMao: false } : null);
+            alterar(u ? { usuarioId: u.usuarioId, nome: u.nome, registro: valor?.registro || u.registro || null, aMao: false } : null);
           }}
         >
           <option value="">Escolha a pessoa…</option>

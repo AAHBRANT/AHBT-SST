@@ -1,6 +1,7 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.CatalogosEpi.Commands;
 
@@ -9,7 +10,8 @@ public record CriarCatalogoEpiCommand(
     string? Fabricante,
     string? CertificadoAprovacaoNumero,
     DateTime? CertificadoAprovacaoValidade,
-    int VidaUtilEmMeses) : IRequest<Guid>;
+    int VidaUtilEmMeses,
+    Guid? ObraId = null) : IRequest<Guid>;
 
 public class CriarCatalogoEpiCommandValidator : AbstractValidator<CriarCatalogoEpiCommand>
 {
@@ -27,8 +29,13 @@ public class CriarCatalogoEpiCommandHandler : IRequestHandler<CriarCatalogoEpiCo
 
     public async Task<Guid> Handle(CriarCatalogoEpiCommand request, CancellationToken ct)
     {
+        // Item da obra (04/11/2026): a obra precisa existir e estar no escopo de quem cadastra (o filtro de obra já cuida disso).
+        if (request.ObraId is { } obraId && !await _db.Obras.AnyAsync(o => o.Id == obraId, ct))
+            throw new KeyNotFoundException("Obra não encontrada ou sem acesso.");
+
         var epi = new Domain.Entidades.CatalogoEpi
         {
+            ObraId = request.ObraId,
             Nome = request.Nome,
             Fabricante = request.Fabricante,
             CertificadoAprovacaoNumero = request.CertificadoAprovacaoNumero,

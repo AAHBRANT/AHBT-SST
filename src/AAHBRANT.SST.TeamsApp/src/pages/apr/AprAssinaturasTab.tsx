@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BotaoAcao,
   Button,
   Campo,
   Card,
@@ -88,9 +89,14 @@ export function AprAssinaturasTab({ aprId }: { aprId: string }) {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <span>Assine a APR com a digital (leitor) ou o reconhecimento facial; o registro de ciência abaixo continua disponível.</span>
-        <Button appearance="primary" icon={<Fingerprint24Regular />} onClick={() => navigate(`/operacao/apr/${aprId}/assinar`)}>
+        <BotaoAcao
+          tom="assinar"
+          icon={<Fingerprint24Regular />}
+          onClick={() => navigate(`/operacao/apr/${aprId}/assinar`)}
+          aria-label="Assinar com digital ou facial"
+        >
           Assinar com digital ou facial
-        </Button>
+        </BotaoAcao>
       </div>
 
       <FormSection titulo="Nova assinatura" numero={1} primeira>

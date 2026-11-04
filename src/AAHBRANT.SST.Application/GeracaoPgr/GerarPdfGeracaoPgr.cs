@@ -122,7 +122,7 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
         var funcoesCadastro = await _db.Funcoes.Select(f => new { f.Id, f.Nome, f.CboCodigo }).ToListAsync(ct);
         var porNome = new Dictionary<string, (Guid Id, string? Cbo)>();
         foreach (var f in funcoesCadastro) porNome.TryAdd(FuncaoSstClassifier.Normalizar(f.Nome), (f.Id, f.CboCodigo));
-        var expostosPorFuncao = (await _db.Trabalhadores.Where(t => t.ObraId == g.ObraId && t.DataDemissao == null)
+        var expostosPorFuncao = (await _db.Trabalhadores.Where(t => t.ObraId == g.ObraId && t.DataDemissao == null && t.Vinculo != Domain.Enums.TipoVinculo.PrestadorServico)
                 .Select(t => t.FuncaoId).ToListAsync(ct))
             .GroupBy(id => id).ToDictionary(x => x.Key, x => x.Count());
         // CBO da tabela oficial escolhido no PGR (29/10/2026), sempre como 0000-00; fora da tabela sai "—". Sem a tabela

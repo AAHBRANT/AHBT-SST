@@ -4,14 +4,23 @@ import {
   Button, Card, Carregando, Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle,
   FeedbackInline, StatusChip, Text, designTokens, type Tom,
 } from '@ui';
-import { api, nivelRiscoLabel, type MinutaOrdemServico, type PendenciaOs } from '../../lib/api';
+import { api, metodoAutenticacaoAssinaturaLabel, nivelRiscoLabel, type MinutaOrdemServico, type OrdemServicoEmitida, type PendenciaOs } from '../../lib/api';
+import { AssinaturaOrdemServicoDialog } from '../../components/assinatura/AssinaturaOrdemServicoDialog';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const tomPorNivel: Record<number, Tom> = { 1: 'ok', 2: 'info', 3: 'atencao', 4: 'alerta', 5: 'alerta' };
 const data = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
+const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+const situacaoOs: Record<OrdemServicoEmitida['situacao'], { tom: Tom; texto: string }> = {
+  AguardandoFuncionario: { tom: 'atencao', texto: 'Aguardando funcionário' },
+  AguardandoTecnico: { tom: 'atencao', texto: 'Aguardando técnico' },
+  Valida: { tom: 'ok', texto: 'Válida' },
+};
 
 // Aba "Ordem de Serviço" do perfil do trabalhador (20/10/2026): minuta da OS na obra dele, montada
 // só com conteúdo validado, e as pendências que bloqueiam a emissão. Uma OS por trabalhador por obra.
-// A emissão com número e assinatura é a próxima etapa.
+// Emitir (03/11) gera número e cópia congelada da OS; assinam o funcionário (digital/facial) e depois o
+// técnico de segurança. O histórico lista as OS emitidas com a situação de cada uma e o PDF.
 export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
   trabalhadorId: string;
   aoIrParaAba: (aba: 'geral' | 'treinamentos') => void;
@@ -20,8 +29,38 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
   const [erro, setErro] = useState<string | null>(null);
   const [popAberto, setPopAberto] = useState(false);
   const [previaAberta, setPreviaAberta] = useState(false);
-  const [avisoEmissao, setAvisoEmissao] = useState(false);
+  const [emitidas, setEmitidas] = useState<OrdemServicoEmitida[]>([]);
+  const [emitindo, setEmitindo] = useState(false);
+  const [erroEmissao, setErroEmissao] = useState<string | null>(null);
+  const [assinando, setAssinando] = useState<OrdemServicoEmitida | null>(null);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const navigate = useNavigate();
+
+  async function carregarEmitidas() {
+    try {
+      setEmitidas(await api.ordensServico.listar(trabalhadorId));
+    } catch {
+      // O histórico é complementar: a minuta continua na tela mesmo se ele falhar.
+    }
+  }
+
+  async function emitir() {
+    try {
+      setEmitindo(true);
+      setErroEmissao(null);
+      const os = await api.ordensServico.emitir(trabalhadorId);
+      await carregarEmitidas();
+      setAssinando(os);
+    } catch (e) {
+      setErroEmissao(e instanceof Error ? e.message : 'Falha ao emitir a Ordem de Serviço.');
+    } finally {
+      setEmitindo(false);
+    }
+  }
+
+  function verPdf(os: OrdemServicoEmitida) {
+    void visualizar({ titulo: `Ordem de Serviço ${os.numero}`, nomeArquivo: `${os.numero}.pdf`, obter: () => api.ordensServico.baixarPdf(trabalhadorId, os.id) });
+  }
 
   useEffect(() => {
     void (async () => {
@@ -34,6 +73,8 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
         setErro(e instanceof Error ? e.message : 'Falha ao montar a Ordem de Serviço.');
       }
     })();
+    void carregarEmitidas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trabalhadorId]);
 
   if (!minuta) return erro ? <FeedbackInline tom="erro">{erro}</FeedbackInline> : <Carregando variante="detalhe" linhas={6} />;
@@ -112,16 +153,15 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
             <Button onClick={() => setPreviaAberta(true)}>Ver prévia</Button>
             <Button
               appearance="primary"
-              onClick={() => (minuta.podeEmitir ? setAvisoEmissao(true) : setPopAberto(true))}
+              disabled={emitindo}
+              onClick={() => (minuta.podeEmitir ? void emitir() : setPopAberto(true))}
             >
-              Emitir OS
+              {emitindo ? 'Emitindo…' : 'Emitir OS'}
             </Button>
           </div>
         </div>
-        {avisoEmissao && (
-          <FeedbackInline tom="info" aoFechar={() => setAvisoEmissao(false)}>
-            A emissão com número e assinatura do trabalhador entra na próxima etapa.
-          </FeedbackInline>
+        {erroEmissao && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroEmissao(null)}>{erroEmissao}</FeedbackInline>
         )}
       </Card>
 
@@ -152,9 +192,41 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
         </Card>
 
         <Card titulo="Histórico de OS emitidas">
-          <Text size={200}>Nenhuma OS emitida ainda. A emissão com número e assinatura vem na próxima etapa.</Text>
+          {emitidas.length === 0 && <Text size={200}>Nenhuma OS emitida ainda.</Text>}
+          {emitidas.map((os) => (
+            <div key={os.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--colorNeutralStroke2)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Text weight="semibold">{os.numero} · rev. {os.revisao} · {data(os.emitidaEm)}</Text>
+                <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+                  <StatusChip tom={situacaoOs[os.situacao].tom}>{situacaoOs[os.situacao].texto}</StatusChip>
+                  {!os.vigente && <StatusChip tom="neutro">Substituída</StatusChip>}
+                </span>
+              </div>
+              <Text size={200}>
+                Funcionário: {os.funcionario ? `${os.funcionario.nome} — ${dataHora(os.funcionario.assinadoEm)} (${metodoAutenticacaoAssinaturaLabel[os.funcionario.metodo]})` : 'aguardando'}
+              </Text>
+              <Text size={200}>
+                Técnico de segurança: {os.tecnico ? `${os.tecnico.nome} — ${dataHora(os.tecnico.assinadoEm)}` : 'aguardando'}
+              </Text>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {os.situacao !== 'Valida' && <Button size="small" appearance="primary" onClick={() => setAssinando(os)}>Assinar</Button>}
+                <Button size="small" onClick={() => verPdf(os)}>Ver PDF</Button>
+              </div>
+            </div>
+          ))}
         </Card>
       </div>
+
+      {assinando && (
+        <AssinaturaOrdemServicoDialog
+          open
+          ordemServico={assinando}
+          trabalhadorId={trabalhadorId}
+          trabalhadorNome={minuta.trabalhador.nome}
+          onClose={() => { setAssinando(null); void carregarEmitidas(); }}
+        />
+      )}
+      {dialogoVisualizador}
 
       <Dialog open={popAberto} onOpenChange={(_, d) => setPopAberto(d.open)}>
         <DialogSurface style={{ maxWidth: 640 }}>

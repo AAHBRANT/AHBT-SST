@@ -59,17 +59,19 @@ public class InspecaoConfiguracao : IEntityTypeConfiguration<Inspecao>
         // alojamento). StatusInspecao.EmAndamento = 1 (ver Enums.cs). "Ativo = 1" é obrigatório:
         // excluir inspeção é soft delete e mantém Status = 1; sem isso a linha excluída ocupava a
         // vaga e impedia abrir uma nova inspeção (duplicate key → 500, 05/10/2026).
+        // Status 3 = AguardandoAssinatura: enquanto a inspeção espera assinatura, ela ainda ocupa a vaga
+        // (não se abre outra no mesmo alojamento/veículo).
         builder.HasIndex(i => i.AlojamentoId)
             .IsUnique()
-            .HasFilter("[AlojamentoId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
-        // Idem para veículos: uma única inspeção em andamento por veículo, garantida no banco.
+            .HasFilter("[AlojamentoId] IS NOT NULL AND [Status] IN (1, 3) AND [Ativo] = 1");
+        // Idem para veículos: uma única inspeção em andamento/aguardando assinatura por veículo, garantida no banco.
         builder.HasIndex(i => i.VeiculoId)
             .IsUnique()
-            .HasFilter("[VeiculoId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
-        // Idem para itens de tema: uma única inspeção em andamento por item.
+            .HasFilter("[VeiculoId] IS NOT NULL AND [Status] IN (1, 3) AND [Ativo] = 1");
+        // Idem para itens de tema: uma única inspeção em andamento/aguardando assinatura por item.
         builder.HasIndex(i => i.ItemInspecionavelId)
             .IsUnique()
-            .HasFilter("[ItemInspecionavelId] IS NOT NULL AND [Status] = 1 AND [Ativo] = 1");
+            .HasFilter("[ItemInspecionavelId] IS NOT NULL AND [Status] IN (1, 3) AND [Ativo] = 1");
         builder.HasQueryFilter(i => i.Ativo);
     }
 }
@@ -105,5 +107,32 @@ public class InspecaoItemFotoAdicionalConfiguracao : IEntityTypeConfiguration<In
             .OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(f => f.InspecaoItemRespostaId);
         builder.HasQueryFilter(f => f.Ativo);
+    }
+}
+
+// Filtros de query (com escopo por obra) ficam no SstDbContext, como o da Inspeção.
+public class ContatoEmailRelatorioConfiguracao : IEntityTypeConfiguration<ContatoEmailRelatorio>
+{
+    public void Configure(EntityTypeBuilder<ContatoEmailRelatorio> builder)
+    {
+        builder.Property(c => c.Nome).HasMaxLength(150);
+        builder.Property(c => c.Email).IsRequired().HasMaxLength(200);
+        builder.HasOne(c => c.Usuario).WithMany().HasForeignKey(c => c.UsuarioId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(c => c.Obra).WithMany().HasForeignKey(c => c.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(c => new { c.UsuarioId, c.Email }).IsUnique().HasFilter("[Ativo] = 1 AND [UsuarioId] IS NOT NULL");
+        builder.HasIndex(c => new { c.ObraId, c.Email }).IsUnique().HasFilter("[Ativo] = 1 AND [ObraId] IS NOT NULL");
+    }
+}
+
+public class EnvioEmailInspecaoConfiguracao : IEntityTypeConfiguration<EnvioEmailInspecao>
+{
+    public void Configure(EntityTypeBuilder<EnvioEmailInspecao> builder)
+    {
+        builder.Property(e => e.EnviadoPorNome).IsRequired().HasMaxLength(200);
+        builder.Property(e => e.Destinatarios).IsRequired().HasMaxLength(4000);
+        builder.Property(e => e.Falhas).HasMaxLength(4000);
+        builder.Property(e => e.Mensagem).HasMaxLength(2000);
+        builder.HasOne(e => e.Inspecao).WithMany().HasForeignKey(e => e.InspecaoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(e => e.InspecaoId);
     }
 }

@@ -1001,7 +1001,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           acoesLinha={(e) => (
             <>
               <BotaoAcao
-                tom="ver"
+                tom="assinar"
                 icon={<Signature24Regular />}
                 onClick={() => navigate(`/epi/${e.id}/assinar`)}
                 aria-label="Assinar esta entrega"

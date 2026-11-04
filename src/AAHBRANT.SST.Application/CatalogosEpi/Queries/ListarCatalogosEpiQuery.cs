@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.CatalogosEpi.Queries;
 
-public record ListarCatalogosEpiQuery : IRequest<List<CatalogoEpiDto>>;
+// Com ObraId: os itens daquela obra e os antigos, compartilhados (ObraId nulo) — o item da obra vale antes do compartilhado de mesmo
+// nome. Sem ObraId: os compartilhados e os das obras que o usuário enxerga (o filtro de escopo de Obra já restringe).
+public record ListarCatalogosEpiQuery(Guid? ObraId = null) : IRequest<List<CatalogoEpiDto>>;
 
 public class ListarCatalogosEpiQueryHandler : IRequestHandler<ListarCatalogosEpiQuery, List<CatalogoEpiDto>>
 {
@@ -12,8 +14,17 @@ public class ListarCatalogosEpiQueryHandler : IRequestHandler<ListarCatalogosEpi
     public ListarCatalogosEpiQueryHandler(IAppDbContext db) => _db = db;
 
     public async Task<List<CatalogoEpiDto>> Handle(ListarCatalogosEpiQuery request, CancellationToken ct)
-        => await _db.CatalogoEpis
+    {
+        var itens = _db.CatalogoEpis.AsQueryable();
+        if (request.ObraId is { } obraId)
+            itens = itens.Where(x => x.ObraId == obraId
+                || (x.ObraId == null && !_db.CatalogoEpis.Any(o => o.ObraId == obraId && o.Nome == x.Nome)));
+        else
+            itens = itens.Where(x => x.ObraId == null || _db.Obras.Any(o => o.Id == x.ObraId));
+
+        return await itens
             .OrderBy(x => x.Nome)
-            .Select(x => new CatalogoEpiDto(x.Id, x.Nome, x.Fabricante, x.CertificadoAprovacaoNumero, x.CertificadoAprovacaoValidade, x.VidaUtilEmMeses, x.Estoques.Sum(e => (int?)e.Saldo) ?? 0, x.FotoConteudo != null))
+            .Select(x => new CatalogoEpiDto(x.Id, x.Nome, x.Fabricante, x.CertificadoAprovacaoNumero, x.CertificadoAprovacaoValidade, x.VidaUtilEmMeses, x.Estoques.Sum(e => (int?)e.Saldo) ?? 0, x.FotoConteudo != null, x.ObraId))
             .ToListAsync(ct);
+    }
 }

@@ -8,4 +8,5 @@ public record CatalogoEpiDto(
     DateTime? CertificadoAprovacaoValidade,
     int VidaUtilEmMeses,
     int SaldoTotal,
-    bool TemFoto);
+    bool TemFoto,
+    Guid? ObraId = null);

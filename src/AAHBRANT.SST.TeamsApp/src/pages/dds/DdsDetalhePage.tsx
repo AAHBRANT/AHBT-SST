@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   BotaoAcao,
-  Button,
   Field,
   Input,
   Card,
@@ -198,9 +197,14 @@ export function DdsDetalhePage() {
         rotuloVoltar: 'Voltar para a semana',
         acoes: (
           <>
-            <Button icon={<Signature24Regular />} onClick={() => navigate(`/prevencao/dds/dia/${id}/assinar`)}>
+            <BotaoAcao
+              tom="assinar"
+              icon={<Signature24Regular />}
+              onClick={() => navigate(`/prevencao/dds/dia/${id}/assinar`)}
+              aria-label="Assinar DDS"
+            >
               Assinar DDS
-            </Button>
+            </BotaoAcao>
             <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
               Visualizar PDF
             </BotaoAcao>

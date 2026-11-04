@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Funcoes.Queries;
 
-public record ListarEpisPorFuncaoQuery(Guid FuncaoId) : IRequest<List<CatalogoEpiDto>>;
+// ObraId: a matriz que vale para a obra (a dela, ou a antiga enquanto ela não tiver a própria).
+public record ListarEpisPorFuncaoQuery(Guid FuncaoId, Guid? ObraId = null) : IRequest<List<CatalogoEpiDto>>;
 
 public class ListarEpisPorFuncaoQueryHandler : IRequestHandler<ListarEpisPorFuncaoQuery, List<CatalogoEpiDto>>
 {
@@ -13,7 +14,7 @@ public class ListarEpisPorFuncaoQueryHandler : IRequestHandler<ListarEpisPorFunc
     public ListarEpisPorFuncaoQueryHandler(IAppDbContext db) => _db = db;
 
     public async Task<List<CatalogoEpiDto>> Handle(ListarEpisPorFuncaoQuery request, CancellationToken ct)
-        => await _db.MatrizEpiFuncoes
+        => await (request.ObraId is { } obraId ? _db.MatrizEpiFuncoes.ParaObra(obraId) : _db.MatrizEpiFuncoes.Where(m => m.ObraId == null))
             .Where(m => m.FuncaoId == request.FuncaoId)
             .OrderBy(m => m.CatalogoEpi!.Nome)
             .Select(m => new CatalogoEpiDto(
@@ -24,6 +25,7 @@ public class ListarEpisPorFuncaoQueryHandler : IRequestHandler<ListarEpisPorFunc
                 m.CatalogoEpi!.CertificadoAprovacaoValidade,
                 m.CatalogoEpi!.VidaUtilEmMeses,
                 m.CatalogoEpi!.Estoques.Sum(e => (int?)e.Saldo) ?? 0,
-                m.CatalogoEpi!.FotoConteudo != null))
+                m.CatalogoEpi!.FotoConteudo != null,
+                m.CatalogoEpi!.ObraId))
             .ToListAsync(ct);
 }

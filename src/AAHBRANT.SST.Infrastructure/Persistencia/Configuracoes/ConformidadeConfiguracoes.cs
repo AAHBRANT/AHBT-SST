@@ -103,6 +103,9 @@ public class CatalogoEpiConfiguracao : IEntityTypeConfiguration<CatalogoEpi>
         builder.Property(c => c.Nome).IsRequired().HasMaxLength(150);
         builder.Property(c => c.Fabricante).HasMaxLength(150);
         builder.Property(c => c.CertificadoAprovacaoNumero).HasMaxLength(20);
+        builder.HasOne(c => c.Obra).WithMany()
+            .HasForeignKey(c => c.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(c => c.ObraId);
         builder.HasQueryFilter(c => c.Ativo);
 
         // Mesmo bug já corrigido para Acidentes (ver migration CorrigirRowVersionAcidentes): sem
@@ -203,7 +206,12 @@ public class MatrizEpiFuncaoConfiguracao : IEntityTypeConfiguration<MatrizEpiFun
             .HasForeignKey(m => m.FuncaoId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(m => m.CatalogoEpi).WithMany()
             .HasForeignKey(m => m.CatalogoEpiId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasIndex(m => new { m.FuncaoId, m.CatalogoEpiId }).IsUnique();
+        builder.HasOne(m => m.Obra).WithMany()
+            .HasForeignKey(m => m.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(m => new { m.FuncaoId, m.CatalogoEpiId, m.ObraId }).IsUnique();
+        // Matriz antiga (sem obra): o índice acima não a cobre, porque o SQL Server só o aplica a ObraId preenchido.
+        builder.HasIndex(m => new { m.FuncaoId, m.CatalogoEpiId }).IsUnique()
+            .HasFilter("[ObraId] IS NULL").HasDatabaseName("IX_MatrizEpiFuncoes_FuncaoId_CatalogoEpiId_SemObra");
         builder.HasQueryFilter(m => m.Ativo);
 
         // Entidade nova, sem coluna varbinary legada — diferente do resto do arquivo (que corrige

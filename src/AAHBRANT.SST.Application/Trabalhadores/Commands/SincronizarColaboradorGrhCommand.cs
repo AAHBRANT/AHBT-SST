@@ -126,6 +126,13 @@ public class SincronizarColaboradorGrhCommandHandler : IRequestHandler<Sincroniz
         var hash = _cpfHash.CalcularHash(request.Cpf);
         var trabalhador = await _db.Trabalhadores.IgnoreQueryFilters()
             .FirstOrDefaultAsync(t => t.CpfHash == hash, ct);
+        // Prestador PJ cadastrado no SST (04/11/2026) com o mesmo CPF de alguém no G-RH: o sync sobrescreveria nome,
+        // função, obra e situação (e, com "Desligado", apagaria a biometria que ele usa para assinar). Não mexe.
+        if (trabalhador is { Vinculo: TipoVinculo.PrestadorServico })
+        {
+            _logger.LogInformation("G-RH: CPF de prestador de serviço cadastrado no SST ({TrabalhadorId}); sincronização ignorada.", trabalhador.Id);
+            return trabalhador.Id;
+        }
 
         var funcao = await _db.Funcoes.FirstOrDefaultAsync(f => f.Nome == request.CargoNome, ct);
         // O CBO da função não vem mais do RH: a fonte é a tabela oficial da CBO, escolhida no PGR (decisão do usuário,

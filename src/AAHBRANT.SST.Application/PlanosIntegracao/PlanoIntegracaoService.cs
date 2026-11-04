@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Funcoes;
 using System.Globalization;
 using System.Text;
 using AAHBRANT.SST.Application.Alertas;
@@ -53,6 +54,8 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
             .Include(t => t.Funcao)
             .FirstOrDefaultAsync(t => t.Id == trabalhadorId, ct);
         if (trabalhador is null) return;
+        // Prestador PJ (04/11/2026) não é admitido na obra: sem kit de EPI nem plano de integração.
+        if (trabalhador.Vinculo == TipoVinculo.PrestadorServico) return;
 
         var agora = DateTime.UtcNow;
         var reservasAtivas = await _db.ReservasEpi
@@ -78,7 +81,7 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
         // confirmação, ver CadastrarPessoaTerceirizadaCommand) — reservar de novo seria em dobro.
         var kitPeloContrato = trabalhador.Vinculo == TipoVinculo.Terceirizado;
 
-        var episDaFuncao = await _db.MatrizEpiFuncoes
+        var episDaFuncao = await _db.MatrizEpiFuncoes.ParaObra(trabalhador.ObraId)
             .Where(m => m.FuncaoId == trabalhador.FuncaoId)
             .Select(m => new { m.CatalogoEpiId, Nome = m.CatalogoEpi!.Nome })
             .ToListAsync(ct);

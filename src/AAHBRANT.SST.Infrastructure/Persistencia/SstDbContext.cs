@@ -120,11 +120,14 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Inspecao> Inspecoes => Set<Inspecao>();
     public DbSet<InspecaoItemResposta> InspecaoItemRespostas => Set<InspecaoItemResposta>();
     public DbSet<InspecaoItemFotoAdicional> InspecaoItemFotosAdicionais => Set<InspecaoItemFotoAdicional>();
+    public DbSet<ContatoEmailRelatorio> ContatosEmailRelatorio => Set<ContatoEmailRelatorio>();
+    public DbSet<EnvioEmailInspecao> EnviosEmailInspecao => Set<EnvioEmailInspecao>();
 
     public DbSet<Alojamento> Alojamentos => Set<Alojamento>();
     public DbSet<AlojamentoMorador> AlojamentoMoradores => Set<AlojamentoMorador>();
     public DbSet<ConfiguracaoAlojamento> ConfiguracoesAlojamento => Set<ConfiguracaoAlojamento>();
     public DbSet<Veiculo> Veiculos => Set<Veiculo>();
+    public DbSet<OrdemServico> OrdensServico => Set<OrdemServico>();
     public DbSet<TemaInspecao> TemasInspecao => Set<TemaInspecao>();
     public DbSet<ItemInspecionavel> ItensInspecionaveis => Set<ItemInspecionavel>();
 
@@ -247,6 +250,11 @@ public class SstDbContext : DbContext, IAppDbContext
             d.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(d.ObraId)));
         modelBuilder.Entity<Inspecao>().HasQueryFilter(i =>
             i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
+        modelBuilder.Entity<EnvioEmailInspecao>().HasQueryFilter(e =>
+            e.Ativo && e.Inspecao!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.Inspecao.ObraId)));
+        // Contato pessoal (sem obra) sempre passa; o filtro por dono é feito na consulta.
+        modelBuilder.Entity<ContatoEmailRelatorio>().HasQueryFilter(c =>
+            c.Ativo && (c.ObraId == null || _usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(c.ObraId.Value)));
         modelBuilder.Entity<AcidenteFoto>().HasQueryFilter(f =>
             f.Ativo && f.Acidente!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(f.Acidente.ObraId)));
         modelBuilder.Entity<AcidenteEnvolvido>().HasQueryFilter(e =>
@@ -305,6 +313,8 @@ public class SstDbContext : DbContext, IAppDbContext
             p.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(p.ObraId)));
         modelBuilder.Entity<Veiculo>().HasQueryFilter(v =>
             v.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(v.ObraId)));
+        modelBuilder.Entity<OrdemServico>().HasQueryFilter(o =>
+            o.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(o.ObraId)));
         modelBuilder.Entity<ItemInspecionavel>().HasQueryFilter(i =>
             i.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(i.ObraId)));
         // ASO NÃO tem filtro global por obra (tentado em #115 e revertido): o ASO só chega à obra pelo

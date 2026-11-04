@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { recorteNoRosto } from '../../lib/rosto/moldura';
 import { Dialog, DialogSurface } from '@fluentui/react-components';
 import { Checkmark24Filled, Dismiss24Regular, Info24Regular, Person24Regular, ScanCamera24Regular } from '@fluentui/react-icons';
 import { api } from '../../lib/api';
@@ -43,7 +44,9 @@ function iniciais(nome: string): string {
 const CICLOS_ESTAVEL = 6;
 // Lado mínimo do rosto, em pixels do vídeo, para valer a pena mandar ao Azure. Bem abaixo dos 200 px do
 // cadastro: aqui só se identifica, e o usuário (29/10) não quer exigir posição nem luz na fila.
-const LADO_MINIMO_ROSTO_FILA_PX = 120;
+// 04/11: 120 → 80 px — a câmera frontal de tablet (640x480) só passava de 120 px com o rosto colado nela,
+// e a fila ficava parada sem dizer nada. Se a foto for ruim demais, o Azure recusa com a mensagem.
+const LADO_MINIMO_ROSTO_FILA_PX = 80;
 // Quanto o resultado fica na tela antes de a fila aceitar a próxima pessoa.
 const RESULTADO_MS = { ok: 2200, info: 2200, erro: 3200 } as const;
 // Depois do resultado, a próxima captura só arma quando o rosto sai do quadro (ciclos sem rosto)...
@@ -58,9 +61,12 @@ function rostoServeParaFila(
   caixa: { largura: number; altura: number } | null,
   video: HTMLVideoElement | null,
 ): boolean {
-  if (!estado || estado === 'nenhum' || estado === 'varios' || estado === 'fora' || !caixa || !video?.videoWidth) return false;
-  const lado = Math.min(caixa.largura * video.videoWidth, caixa.altura * video.videoHeight);
-  return lado >= LADO_MINIMO_ROSTO_FILA_PX;
+  if (!estado || estado === 'nenhum' || estado === 'varios' || !caixa || !video?.videoWidth) return false;
+  return !rostoPequenoParaFila(caixa, video);
+}
+
+function rostoPequenoParaFila(caixa: { largura: number; altura: number }, video: HTMLVideoElement): boolean {
+  return Math.min(caixa.largura * video.videoWidth, caixa.altura * video.videoHeight) < LADO_MINIMO_ROSTO_FILA_PX;
 }
 
 function mensagemDoErro(e: unknown): string {
@@ -98,7 +104,8 @@ export function FilaFacialDds({ ddsId, enviarFoto, titulo, subtitulo, totalInscr
   // Proporção real do vídeo da câmera (largura/altura), para a imagem ocupar a área sem faixas pretas.
   const [proporcao, setProporcao] = useState('16 / 9');
 
-  const detector = useDetectorRosto(videoRef, aberto && !!stream);
+  // Modo 'assinatura' (04/11): basta 1 rosto parado ~1 s no quadro; sem exigir centralização, tamanho ou luz.
+  const detector = useDetectorRosto(videoRef, aberto && !!stream, 'assinatura');
   const avaliacao = detector.situacao === 'ativo' ? detector.avaliacao : null;
 
   // Estado da fila fora do React (muda a cada ciclo do detector): "ocupada" enquanto envia/mostra o
@@ -146,6 +153,10 @@ export function FilaFacialDds({ ddsId, enviarFoto, titulo, subtitulo, totalInscr
     if (videoRef.current && stream) videoRef.current.srcObject = stream;
   }, [stream, aberto]);
 
+  // Última caixa do rosto, lida na hora da captura para centralizar o recorte 3×4.
+  const caixaRef = useRef(detector.caixa);
+  caixaRef.current = detector.caixa;
+
   const capturarEEnviar = useCallback(async () => {
     const video = videoRef.current;
     if (!video || !video.videoWidth) return;
@@ -154,10 +165,12 @@ export function FilaFacialDds({ ddsId, enviarFoto, titulo, subtitulo, totalInscr
     ciclosBons.current = 0;
     ciclosSemRosto.current = 0;
 
+    // 04/11: mesmo padrão das outras assinaturas — foto 3×4 em pé, centralizada no rosto.
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d')?.drawImage(video, 0, 0);
+    const m = recorteNoRosto(video.videoWidth, video.videoHeight, caixaRef.current);
+    canvas.width = m.largura;
+    canvas.height = m.altura;
+    canvas.getContext('2d')?.drawImage(video, m.x, m.y, m.largura, m.altura, 0, 0, m.largura, m.altura);
     let novo: Resultado;
     try {
       const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.92));
@@ -213,10 +226,18 @@ export function FilaFacialDds({ ddsId, enviarFoto, titulo, subtitulo, totalInscr
       : detector.situacao === 'carregando' || !stream
         ? 'Preparando a câmera…'
         : null);
+  // Motivo de a fila não capturar (04/11): antes a tela ficava muda e a pessoa não sabia o que fazer.
+  const motivoEspera = mensagemGuia || resultado || !avaliacao
+    ? null
+    : avaliacao.estado === 'varios'
+      ? 'Mais de um rosto no quadro. Fique só uma pessoa na frente da câmera.'
+      : detector.caixa && videoRef.current?.videoWidth && rostoPequenoParaFila(detector.caixa, videoRef.current)
+        ? 'Aproxime-se um pouco da câmera.'
+        : null;
   const totalInscritosFila = totalNaAbertura || undefined;
   const progresso = totalInscritosFila ? Math.min(100, Math.round((confirmadas / totalInscritosFila) * 100)) : 0;
 
-  // Pop-up (mockup aprovado em 30/10): faixa marsala no topo, câmera com guia oval à esquerda e a lista de
+  // Pop-up (mockup aprovado em 30/10): faixa marsala no topo, câmera com moldura 3×4 à esquerda e a lista de
   // quem já foi confirmado nesta fila à direita. Em tela estreita a lista desce para baixo da câmera.
   return (
     <Dialog open={aberto} onOpenChange={(_, d) => !d.open && aoFechar()}>
@@ -270,8 +291,9 @@ export function FilaFacialDds({ ddsId, enviarFoto, titulo, subtitulo, totalInscr
               <div
                 aria-hidden
                 style={{
-                  position: 'absolute', left: '50%', top: '46%', height: '62%', aspectRatio: '3 / 4', transform: 'translate(-50%, -50%)',
-                  borderRadius: '50%', border: `${resultado ? 4 : 3}px ${resultado ? 'solid' : 'dashed'} ${corOval}`,
+                  // Moldura 3×4 em pé (04/11), no lugar do oval — só guia; a foto é recortada no rosto.
+                  position: 'absolute', left: '50%', top: '50%', height: '88%', aspectRatio: '3 / 4', transform: 'translate(-50%, -50%)',
+                  borderRadius: 8, border: `${resultado ? 4 : 3}px ${resultado ? 'solid' : 'dashed'} ${corOval}`,
                   boxShadow: '0 0 0 2000px rgba(0,0,0,0.35)', transition: 'border-color 150ms', pointerEvents: 'none',
                 }}
               />
@@ -300,9 +322,9 @@ export function FilaFacialDds({ ddsId, enviarFoto, titulo, subtitulo, totalInscr
             <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderRadius: 14, background: '#f7f6ea', border: '1px solid #e3e0b8', color: MARSALA }}>
               <Person24Regular />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: 18, fontWeight: 700 }}>{mensagemGuia ?? 'Próximo, por favor'}</span>
-                {!mensagemGuia && (
-                  <span style={{ fontSize: 14, color: '#4a4a4a' }}>Olhe para a câmera com o rosto dentro do oval. A presença é confirmada sozinha.</span>
+                <span style={{ fontSize: 18, fontWeight: 700 }}>{mensagemGuia ?? motivoEspera ?? 'Próximo, por favor'}</span>
+                {!mensagemGuia && !motivoEspera && (
+                  <span style={{ fontSize: 14, color: '#4a4a4a' }}>Olhe para a câmera. A presença é confirmada sozinha.</span>
                 )}
               </div>
             </div>

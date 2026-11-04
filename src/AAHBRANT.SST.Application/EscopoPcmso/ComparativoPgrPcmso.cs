@@ -66,7 +66,7 @@ public class ObterComparativoPgrPcmsoQueryHandler : IRequestHandler<ObterCompara
         var gheFuncoes = await _db.GheFuncoes.Where(f => idsGhes.Contains(f.GheId)).Select(f => new { f.GheId, f.FuncaoId }).ToListAsync(ct);
         var examesPorFuncao = (await _db.ExamesFuncaoObra.Where(e => e.ObraId == obra.Id).Select(e => e.FuncaoId).ToListAsync(ct))
             .GroupBy(id => id).ToDictionary(g => g.Key, g => g.Count());
-        var trabalhadoresPorFuncao = (await _db.Trabalhadores.Where(t => t.ObraId == obra.Id && t.DataDemissao == null)
+        var trabalhadoresPorFuncao = (await _db.Trabalhadores.Where(t => t.ObraId == obra.Id && t.DataDemissao == null && t.Vinculo != Domain.Enums.TipoVinculo.PrestadorServico)
                 .Select(t => t.FuncaoId).ToListAsync(ct))
             .GroupBy(id => id).ToDictionary(g => g.Key, g => g.Count());
 
