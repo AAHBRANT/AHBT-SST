@@ -4,7 +4,7 @@ import type { CaixaRosto } from './avaliarRosto';
 // Detector de rosto que roda DENTRO do aparelho (MediaPipe BlazeFace): nenhuma imagem sai por causa
 // dele. Carregado só quando a câmera facial abre pela primeira vez; o arquivo .wasm tem ~13 MB (cerca
 // de 3,8 MB comprimido, ver nginx.conf) e depois fica em cache. Se não carregar (sem rede, aparelho
-// antigo), devolve null e a câmera segue como antes, só com o oval, sem bloquear a captura.
+// antigo), devolve null e a câmera segue como antes, só com a moldura, sem bloquear a captura.
 
 // SIMD é suportado pela maioria dos aparelhos atuais; sem ele existe uma versão menor do runtime.
 const BYTES_TESTE_SIMD = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11]);
@@ -37,7 +37,7 @@ async function criar(): Promise<FaceDetector | null> {
   }
 }
 
-// Tempo que a câmera espera o detector carregar antes de seguir só com o oval. O carregamento pode
+// Tempo que a câmera espera o detector carregar antes de seguir só com a moldura. O carregamento pode
 // travar sem dar erro (rede lenta, WebView do Teams), e sem este limite a tela ficava presa em
 // "Preparando o detector…" para sempre. O carregamento continua em segundo plano: se terminar depois,
 // a próxima abertura da câmera já encontra o detector pronto.

@@ -103,6 +103,17 @@ public static class PendenciasGeracaoPgr
         return usadas.Count > 0 ? usadas : e.Itens.Where(i => i.Usar).ToList();
     }
 
+    // Atividade marcada na EAP que não está em nenhum GHE sai do PGR sozinha (GHE removido não deixa rastro e o
+    // engenheiro não precisa devolver). Devolve se mudou algo.
+    public static bool DesmarcarAtividadesSemGhe(EstruturaGeracaoPgr e)
+    {
+        if (e.Ghes.Count == 0) return false;
+        var noGhe = e.Ghes.SelectMany(g => g.Atividades.Select(a => a.CodigoEap)).ToHashSet();
+        var sobras = AtividadesDaEap(e).Where(i => !noGhe.Contains(i.Codigo)).ToList();
+        foreach (var i in sobras) i.Usar = false;
+        return sobras.Count > 0;
+    }
+
     // epis: EPIs do catálogo usados nas medidas, para conferir o CA (NR-06). Sem o dicionário, o CA não é conferido.
     public static List<string> Calcular(EstruturaGeracaoPgr e, int maxP, int maxS, IReadOnlyDictionary<Guid, CatalogoEpiInfo>? epis = null)
     {
@@ -118,7 +129,6 @@ public static class PendenciasGeracaoPgr
         {
             var resumo = a.Descricao.Length <= 40 ? a.Descricao : a.Descricao[..40] + "…";
             if (a.ResponsavelUsuarioId is null && string.IsNullOrWhiteSpace(a.ResponsavelNome)) p.Add($"Plano de ação \"{resumo}\" sem responsável.");
-            if (a.Prazo is null) p.Add($"Plano de ação \"{resumo}\" sem prazo.");
         }
         if (e.Ghes.Count == 0) p.Add("Nenhum GHE definido.");
 
@@ -195,6 +205,11 @@ public class ObterGeracaoPgrEapQueryHandler : IRequestHandler<ObterGeracaoPgrEap
         // chamadas seguintes (gerar riscos por GHE) falarem do mesmo número. Aprovado ou em aprovação não é tocado.
         if (g.Status is StatusGeracaoPgrEap.Rascunho or StatusGeracaoPgrEap.Devolvido
             && RemoverGheGeracaoPgrCommandHandler.RenumerarSemBuraco(estrutura))
+        {
+            g.EstruturaJson = SerializacaoGeracao.Gravar(estrutura);
+            await _db.SaveChangesAsync(ct);
+        }
+        if (g.Status == StatusGeracaoPgrEap.AguardandoAprovacao && PendenciasGeracaoPgr.DesmarcarAtividadesSemGhe(estrutura))
         {
             g.EstruturaJson = SerializacaoGeracao.Gravar(estrutura);
             await _db.SaveChangesAsync(ct);
@@ -682,6 +697,7 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
         var e = SerializacaoGeracao.Ler(g.EstruturaJson);
         var matriz = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).VigenteMaisRecente().FirstOrDefaultAsync(ct)
             ?? throw new InvalidOperationException("Nenhuma matriz de risco cadastrada.");
+        PendenciasGeracaoPgr.DesmarcarAtividadesSemGhe(e);
         var pendencias = PendenciasGeracaoPgr.Calcular(e, matriz.NumNiveisProbabilidade, matriz.NumNiveisSeveridade,
             await SerializacaoGeracao.CarregarEpisAsync(_db, e, ct));
         await AjudanteGeral.UnificarAsync(_db, e, ct);

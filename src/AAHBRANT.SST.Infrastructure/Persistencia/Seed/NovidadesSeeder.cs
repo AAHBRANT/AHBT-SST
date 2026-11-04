@@ -2343,6 +2343,25 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.130.0",
+            Titulo: "Foto facial no padrão 3×4",
+            DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Moldura 3×4 no lugar do círculo",
+                    "A câmera do reconhecimento facial mostrava um círculo, e a foto saía deitada e em tamanhos diferentes conforme o aparelho.",
+                    "A câmera agora mostra uma moldura 3×4 em pé, no padrão de foto de documento. No cadastro da foto facial, o botão Capturar só libera com o rosto inteiro dentro da moldura. Na assinatura (DDS, fila facial, quiosque, entrega de EPI e uniforme, treinamento), a moldura é um guia: basta um rosto só na câmera."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Foto sempre em 3×4, centralizada no rosto",
+                    "No tablet deitado, a foto do rosto ficava pequena e com espaço sobrando dos lados.",
+                    "Toda foto facial é salva em 3×4 em pé, centralizada no rosto, com o tablet deitado no teclado, o celular em pé ou deitado e o notebook."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Fotos maiores no PDF da Ficha de EPI",
+                    "Na página de evidências da assinatura facial, a foto saía pequena e a marca d'água \"CONFIDENCIAL\" ficava fora dela.",
+                    "As fotos de cadastro e da assinatura aparecem lado a lado em 3×4 em pé, do mesmo tamanho, com a marca d'água sobre a foto. As fotos antigas, salvas deitadas, são cortadas no centro."),
+            }),
+        new(
+            Versao: "5.131.0",
             Titulo: "Catálogo e matriz de EPI por obra",
             DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]

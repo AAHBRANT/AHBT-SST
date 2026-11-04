@@ -339,7 +339,7 @@ public class GeracaoPgrEapTests
 
         Assert.Contains(pendencias, p => p.Contains("término da vigência"));
         Assert.Contains(pendencias, p => p.Contains("sem responsável"));
-        Assert.Contains(pendencias, p => p.Contains("sem prazo"));
+        Assert.DoesNotContain(pendencias, p => p.Contains("sem prazo")); // prazo não trava a aprovação
         Assert.Contains(pendencias, p => p.Contains("sem classificação"));
         Assert.Contains(pendencias, p => p.Contains("CNAE"));
         Assert.Contains(pendencias, p => p.Contains("grau de risco"));
@@ -1181,4 +1181,28 @@ internal static class SerializacaoGeracaoTeste
 {
     public static EstruturaGeracaoPgr Ler(string json) =>
         System.Text.Json.JsonSerializer.Deserialize<EstruturaGeracaoPgr>(json, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
+
+}
+
+public class AtividadeDaEapSemGheTests
+{
+    [Fact]
+    public void AtividadeDaEapSemGhe_SaiSozinha_SemPendencia()
+    {
+        var e = new EstruturaGeracaoPgr
+        {
+            Itens = new()
+            {
+                new ItemEapGerado { Codigo = "1.1", Nome = "Laje", Nivel = 2 },
+                new ItemEapGerado { Codigo = "1.3", Nome = "Rede de Esgoto", Nivel = 2 },
+            },
+            Ghes = new() { new GheGerado { Numero = 1, Nome = "Estrutura", Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" } } } },
+        };
+
+        Assert.True(PendenciasGeracaoPgr.DesmarcarAtividadesSemGhe(e));
+        Assert.True(e.Itens.Single(i => i.Codigo == "1.1").Usar);
+        Assert.False(e.Itens.Single(i => i.Codigo == "1.3").Usar);
+        Assert.DoesNotContain(PendenciasGeracaoPgr.Calcular(e, 5, 5), p => p.Contains("sem GHE"));
+        Assert.False(PendenciasGeracaoPgr.DesmarcarAtividadesSemGhe(e));
+    }
 }
