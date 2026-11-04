@@ -191,6 +191,14 @@ public class ObterGeracaoPgrEapQueryHandler : IRequestHandler<ObterGeracaoPgrEap
     {
         var g = await SerializacaoGeracao.CarregarAsync(_db, request.Id, ct);
         var estrutura = SerializacaoGeracao.Ler(g.EstruturaJson);
+        // Rascunho que ficou com buraco na numeração (GHE 01, 03...) é acertado ao abrir e gravado, para a tela e as
+        // chamadas seguintes (gerar riscos por GHE) falarem do mesmo número. Aprovado ou em aprovação não é tocado.
+        if (g.Status is StatusGeracaoPgrEap.Rascunho or StatusGeracaoPgrEap.Devolvido
+            && RemoverGheGeracaoPgrCommandHandler.RenumerarSemBuraco(estrutura))
+        {
+            g.EstruturaJson = SerializacaoGeracao.Gravar(estrutura);
+            await _db.SaveChangesAsync(ct);
+        }
         var matriz = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).VigenteMaisRecente().FirstOrDefaultAsync(ct);
         var maxP = matriz?.NumNiveisProbabilidade ?? 5;
         var maxS = matriz?.NumNiveisSeveridade ?? 5;
