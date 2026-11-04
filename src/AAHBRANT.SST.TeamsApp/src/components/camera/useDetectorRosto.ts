@@ -44,7 +44,7 @@ export function useDetectorRosto(
           try {
             const caixas: CaixaRosto[] = detectarRostos(detector, video, performance.now());
             const avaliacao = modo === 'assinatura'
-              ? avaliarPresencaRosto(caixas)
+              ? avaliarPresencaRosto(caixas, video.videoWidth, video.videoHeight)
               : avaliarRostos(caixas, video.videoWidth, video.videoHeight, caixas.length === 1 ? medirLuz(video, caixas[0]) : null);
             const c = caixas.length === 1 ? caixas[0] : null;
             setEstado({

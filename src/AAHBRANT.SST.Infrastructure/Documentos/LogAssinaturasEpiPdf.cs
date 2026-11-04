@@ -1,3 +1,4 @@
+using SixLabors.ImageSharp.Processing;
 using System.Globalization;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.EntregasEpi;
@@ -189,10 +190,10 @@ internal static class LogAssinaturasEpiPdf
                 {
                     r.RelativeItem().Element(c => CelulaImagem(c, item.FotoCadastro, "Foto de cadastro (referência)",
                         item.FotoCadastroEmUtc is { } d ? $"Capturada em {Data(d)}\nSHA-256 {HashCurto(item.FotoCadastroHash) ?? "—"}" : null,
-                        "Sem foto de cadastro vigente na data", dataHora));
+                        "Sem foto de cadastro vigente na data", dataHora, retrato34: true));
                     r.RelativeItem().Element(c => CelulaImagem(c, item.EvidenciaAssinatura, "Foto da assinatura",
                         $"Capturada em {dataHora}\nSHA-256 {HashCurto(item.EvidenciaAssinaturaHash) ?? "—"}",
-                        "Foto não registrada (anterior à implantação)", dataHora));
+                        "Foto não registrada (anterior à implantação)", dataHora, retrato34: true));
                 });
             }
             else if (item.Metodo == MetodoAutenticacaoAssinatura.Biometria)
@@ -217,15 +218,44 @@ internal static class LogAssinaturasEpiPdf
         });
     }
 
-    private static void CelulaImagem(IContainer container, byte[]? imagem, string titulo, string? legenda, string textoAusente, string dataHora)
+    // Corta o centro da foto no formato 3×4 em pé. Foto que já está em 3×4 (capturada na moldura) volta
+    // sem mudança. Se não der para ler a imagem, devolve a original.
+    private static byte[] CortarCentro34(byte[] imagem)
     {
+        try
+        {
+            using var img = SixLabors.ImageSharp.Image.Load(imagem);
+            var largura = img.Width;
+            var altura = img.Height;
+            var alvoLargura = (int)Math.Round(altura * 3.0 / 4.0);
+            if (Math.Abs(alvoLargura - largura) <= 2) return imagem;
+            var corte = alvoLargura <= largura
+                ? new SixLabors.ImageSharp.Rectangle((largura - alvoLargura) / 2, 0, alvoLargura, altura)
+                : new SixLabors.ImageSharp.Rectangle(0, (altura - (int)Math.Round(largura * 4.0 / 3.0)) / 2, largura, (int)Math.Round(largura * 4.0 / 3.0));
+            img.Mutate(x => x.Crop(corte));
+            using var saida = new MemoryStream();
+            img.Save(saida, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 90 });
+            return saida.ToArray();
+        }
+        catch
+        {
+            return imagem;
+        }
+    }
+
+    private static void CelulaImagem(IContainer container, byte[]? imagem, string titulo, string? legenda, string textoAusente, string dataHora, bool retrato34 = false)
+    {
+        // Digital: caixa em pé 104 × 132. Foto facial (04/11): caixa 3×4 em pé 104 × 139, no padrão da
+        // moldura da câmera; fotos antigas, salvas deitadas, são cortadas no centro para o 3×4.
+        var altura = retrato34 ? 139f : 132f;
+        if (retrato34 && imagem is { Length: > 0 } && EhImagem(imagem)) imagem = CortarCentro34(imagem);
         container.Padding(6).Column(c =>
         {
             c.Spacing(3);
             if (imagem is { Length: > 0 } && EhImagem(imagem))
-                c.Item().AlignCenter().Width(104).Height(132).Element(x => ImagemComMarca(x, imagem, dataHora, pequena: false));
+                c.Item().AlignCenter().Width(104).Height(altura).Element(x => ImagemComMarca(x, imagem, dataHora, pequena: false));
             else
-                c.Item().AlignCenter().Width(104).Height(132).Border(0.6f).BorderColor(CorLinha).Background(CorFundoSuave)
+                c.Item().AlignCenter().Width(104).Height(altura).Border(0.6f).BorderColor(CorLinha).Background(CorFundoSuave)
                     .AlignCenter().AlignMiddle().Padding(6).Text(textoAusente).FontSize(7).FontColor(CorSuave).AlignCenter();
             c.Item().AlignCenter().Text(titulo).FontSize(7.5f).Bold();
             if (legenda is not null) c.Item().AlignCenter().Text(legenda).FontSize(6.5f).FontColor(CorSuave).AlignCenter();
