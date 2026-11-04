@@ -307,7 +307,7 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
           acoesLinha={(t) => (
             <>
               <BotaoAcao
-                tom="ver"
+                tom="assinar"
                 icon={<Signature24Regular />}
                 onClick={() => navigate(`/treinamentos/${t.id}/assinar`)}
                 aria-label="Assinar certificado"

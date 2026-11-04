@@ -564,7 +564,7 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
           acoesLinha={(e) => (
             <>
               <BotaoAcao
-                tom="ver"
+                tom="assinar"
                 icon={<Signature24Regular />}
                 onClick={() =>
                   setLoteParaAssinar({

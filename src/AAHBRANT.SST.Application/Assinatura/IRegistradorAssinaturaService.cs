@@ -138,6 +138,18 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
                 throw new InvalidOperationException("Apenas Técnico de Segurança ou Engenheiro de Segurança podem assinar inspeções.");
         }
 
+        // Ocorrência (acidente, incidente, quase acidente): quem assina é o Técnico ou o Engenheiro de Segurança, uma vez só
+        // (pedido do usuário, 04/11) — a assinatura fecha o documento, como na inspeção.
+        if (documento.EntidadeTipo == "Acidente")
+        {
+            var jaAssinada = await _db.DocumentoSignatarios.AnyAsync(s => s.DocumentoAssinaturaId == documento.Id, ct);
+            if (jaAssinada)
+                throw new InvalidOperationException("Esta ocorrência já foi assinada.");
+
+            if (!FuncaoPodeAssinarInspecao(trabalhador.Funcao?.Nome))
+                throw new InvalidOperationException("Apenas Técnico de Segurança ou Engenheiro de Segurança podem assinar a ocorrência.");
+        }
+
         if (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura)
             await GarantirOrdemAssinaturaOsAsync(documento, resultado, trabalhador, ct);
 
@@ -192,6 +204,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         // Inspeção aceita uma assinatura só: assinada, está concluída — fecha o documento na hora. A OS
         // fecha com a assinatura do técnico, que é sempre a última.
         var fechaAgora = documento.EntidadeTipo == nameof(Inspecao)
+            || documento.EntidadeTipo == "Acidente"
             || (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura && resultado.Metodo == MetodoAutenticacaoAssinatura.SessaoLogada);
         if (fechaAgora && _mediator is not null)
             await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, documento.Id, ct);

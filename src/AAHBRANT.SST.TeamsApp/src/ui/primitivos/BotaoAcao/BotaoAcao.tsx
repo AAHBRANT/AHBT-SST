@@ -8,6 +8,7 @@ import { designTokens, tokensUi } from '../../tokens/tokens';
 //   baixar    → vinho sólido         (Baixar, Exportar PDF)
 //   excluir   → vermelho sólido      (Excluir — só Administrador vê)
 //   atencao   → âmbar sólido         (Anexar arquivo que está faltando)
+//   assinar   → vinho sólido, maior e com pulso suave (Assinar — única ação que não é verde)
 // Cores de marca vêm de --sst-acao-marca-* (index.css): no tema escuro (padrão do app) o vinho
 // #670000 puro sumiria sobre o fundo, então lá o sólido e o contorno clareiam.
 const MARCA_FUNDO = 'var(--sst-acao-marca-fundo)';
@@ -15,7 +16,7 @@ const MARCA_FUNDO_HOVER = 'var(--sst-acao-marca-fundo-hover)';
 const MARCA_TINTA = 'var(--sst-acao-marca-tinta)';
 const MARCA_WASH = 'var(--sst-acao-marca-wash)';
 
-export type TomBotaoAcao = 'ver' | 'baixar' | 'excluir' | 'atencao';
+export type TomBotaoAcao = 'ver' | 'baixar' | 'excluir' | 'atencao' | 'assinar';
 
 const useStyles = makeStyles({
   // Formato do padrão de botão (Proposta B, 21/10/2026): pílula e Montserrat. O BotaoAcao fica fora do
@@ -61,6 +62,45 @@ const useStyles = makeStyles({
     ':hover': { backgroundColor: tokensUi.status.atencao.tinta, color: designTokens.colorWhite, filter: 'brightness(0.9)' },
     ':hover:active': { backgroundColor: tokensUi.status.atencao.tinta, color: designTokens.colorWhite, filter: 'brightness(0.8)' },
   },
+  // Assinar (pedido do usuário, 04/11/2026 — "todos têm dificuldade de encontrar"): maior que as demais
+  // e com pulso suave. Com "reduzir movimento" no sistema vira só um contorno fixo.
+  assinar: {
+    minHeight: '42px',
+    fontSize: '15px',
+    paddingLeft: '20px',
+    paddingRight: '20px',
+    backgroundColor: 'var(--sst-acao-assinar-fundo)',
+    color: designTokens.colorWhite,
+    border: '1px solid var(--sst-acao-assinar-fundo)',
+    animationName: {
+      '0%': { boxShadow: '0 0 0 0 var(--sst-acao-assinar-halo)' },
+      '70%': { boxShadow: '0 0 0 10px transparent' },
+      '100%': { boxShadow: '0 0 0 0 transparent' },
+    },
+    animationDuration: '2.4s',
+    animationIterationCount: 'infinite',
+    animationTimingFunction: 'ease-out',
+    '@media (prefers-reduced-motion: reduce)': {
+      animationName: 'none',
+      boxShadow: '0 0 0 3px var(--sst-acao-assinar-halo)',
+    },
+    ':hover': {
+      backgroundColor: 'var(--sst-acao-assinar-fundo-hover)',
+      color: designTokens.colorWhite,
+      border: '1px solid var(--sst-acao-assinar-fundo-hover)',
+    },
+    ':hover:active': { backgroundColor: 'var(--sst-acao-assinar-fundo-hover)', color: designTokens.colorWhite, filter: 'brightness(0.9)' },
+  },
+  // Em linha de tabela (só ícone) ou botão pequeno: mesma cor, sem aumentar a altura nem pulsar,
+  // para não desalinhar nem poluir listas com várias linhas.
+  assinarCompacto: {
+    minHeight: '34px',
+    fontSize: 'inherit',
+    paddingLeft: '16px',
+    paddingRight: '16px',
+    animationName: 'none',
+    boxShadow: '0 0 0 2px var(--sst-acao-assinar-halo)',
+  },
   desabilitado: { opacity: 0.45 },
 });
 
@@ -90,7 +130,14 @@ export function BotaoAcao({ tom, className, children, title, disabled, ...resto 
       title={title ?? resto['aria-label']}
       appearance="secondary"
       data-botao="livre"
-      className={mergeClasses(e.base, !children && e.soIcone, e[tom], disabled && e.desabilitado, className)}
+      className={mergeClasses(
+        e.base,
+        !children && e.soIcone,
+        e[tom],
+        tom === 'assinar' && (!children || resto.size === 'small') && e.assinarCompacto,
+        disabled && e.desabilitado,
+        className,
+      )}
     >
       {children}
     </Button>

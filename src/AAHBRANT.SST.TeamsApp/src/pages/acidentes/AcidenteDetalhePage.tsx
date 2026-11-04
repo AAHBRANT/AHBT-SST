@@ -1,9 +1,10 @@
 import { pendenciasGrade } from '../../lib/dadosFoto';
 import { GradeFotosEvidencia } from '../../components/GradeFotosEvidencia';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   BotaoAcao,
+  FaixaAssinatura,
   Dialog,
   DialogActions,
   DialogBody,
@@ -33,7 +34,7 @@ import {
   type Tom,
   Legenda,
 } from '@ui';
-import { ArrowDownload24Regular, Eye24Regular, Save24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Eye24Regular, Save24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { MapaCorporal } from '../../components/mapaCorporal/MapaCorporal';
 import { CartaoReuniaoAnalise } from './CartaoReuniaoAnalise';
 import { CampoComoSeResolve, payloadResolucao, pendenciaResolucao, resolucaoVazia, type ResolucaoEmEdicao } from './CampoComoSeResolve';
@@ -49,6 +50,8 @@ import {
   tipoOcorrenciaLabel,
   StatusAcaoPlano,
   StatusAcidente,
+  StatusDocumentoAssinatura,
+  type DocumentoAssinatura,
   TipoOcorrencia,
   type AcaoPlano,
   type Acidente,
@@ -88,6 +91,8 @@ const tomPorStatusAcaoPlano: Record<number, Tom> = {
 // AprDetalhePage.tsx/PgrDetalhePage.tsx/InspecaoDetalhePage.tsx).
 export function AcidenteDetalhePage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [documentoAssinatura, setDocumentoAssinatura] = useState<DocumentoAssinatura | null>(null);
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [detalhe, setDetalhe] = useState<AcidenteDetalhe | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -135,6 +140,13 @@ export function AcidenteDetalhePage() {
       setMetodologia(det.acidente.metodologiaInvestigacao ? String(det.acidente.metodologiaInvestigacao) : '');
       setCausas(det.acidente.causas ?? '');
       setRegioesCorpo(det.acidente.regioesCorpo ?? []);
+      // Só ocorrência concluída pode ser assinada. Sem documento ainda também conta como "falta assinar":
+      // a tela de assinatura cria o documento ao abrir.
+      if (det.acidente.status === StatusAcidente.Concluido) {
+        setDocumentoAssinatura(await api.assinatura.obter('Acidente', id).catch(() => null));
+      } else {
+        setDocumentoAssinatura(null);
+      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar acidente.');
     }
@@ -499,6 +511,10 @@ export function AcidenteDetalhePage() {
     },
   ];
 
+  const faltaAssinar =
+    a.status === StatusAcidente.Concluido &&
+    (documentoAssinatura === null || documentoAssinatura.status === StatusDocumentoAssinatura.EmAndamento);
+
   return (
     <DetailPageLayout
       cabecalho={{
@@ -593,6 +609,23 @@ export function AcidenteDetalhePage() {
         </>
       }
     >
+      {faltaAssinar && (
+        <FaixaAssinatura
+          acao={
+            <BotaoAcao
+              tom="assinar"
+              icon={<Signature24Regular />}
+              aria-label="Assinar ocorrência"
+              onClick={() => navigate(`/acidentes/${id}/assinar`)}
+            >
+              Assinar ocorrência
+            </BotaoAcao>
+          }
+        >
+          Falta a assinatura desta ocorrência.
+        </FaixaAssinatura>
+      )}
+
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}

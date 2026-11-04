@@ -61,6 +61,7 @@ export { ListaSelecaoMultipla, type ListaSelecaoMultiplaProps } from './primitiv
 export { SeletorPesquisavel, type SeletorPesquisavelProps, type OpcaoSeletor } from './primitivos/SeletorPesquisavel/SeletorPesquisavel';
 export { useConfirmar, type OpcoesConfirmacao } from './primitivos/ConfirmDialog/useConfirmar';
 export { BotaoAcao, type BotaoAcaoProps, type TomBotaoAcao } from './primitivos/BotaoAcao/BotaoAcao';
+export { FaixaAssinatura, type FaixaAssinaturaProps } from './primitivos/FaixaAssinatura/FaixaAssinatura';
 export { BotaoVoltar, type BotaoVoltarProps } from './primitivos/BotaoVoltar/BotaoVoltar';
 
 export { PainelLateral, type PainelLateralProps } from './compostos/PainelLateral/PainelLateral';

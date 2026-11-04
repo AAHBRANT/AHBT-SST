@@ -1,4 +1,4 @@
-﻿using AAHBRANT.SST.Domain.Entidades;
+﻿﻿using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -2295,6 +2295,21 @@ public static class NovidadesSeeder
                     "Enviar o relatório da inspeção por e-mail",
                     "Para mandar o relatório de uma inspeção, era preciso baixar o PDF e anexar num e-mail à parte.",
                     "Depois de encerrada e assinada, a inspeção mostra o bloco \"Enviar relatório por e-mail\". Marque os contatos salvos (padrão da obra ou seus), digite outros e-mails se quiser e salve-os para as próximas vezes, escreva uma mensagem opcional e clique em Enviar relatório. O PDF assinado vai em anexo pela caixa sst@aahbrant.com, e a inspeção guarda o histórico de quem enviou, para quem e quando."),
+            }),
+        new(
+            Versao: "5.127.0",
+            Titulo: "Botão Assinar em destaque e assinatura da ocorrência",
+            DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Botão Assinar em vinho, fácil de achar",
+                    "O botão de assinar era igual aos outros e muita gente não o encontrava.",
+                    "Em todas as telas onde dá para assinar (inspeção, DDS, APR, PT, treinamento, entrega de EPI e de uniforme), o botão agora é vinho e se destaca dos demais, que são verdes. Nas telas de detalhe ele é maior e pulsa de leve; nas listas fica no tamanho normal da linha."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Assinar a ocorrência depois de concluída",
+                    "Uma ocorrência concluída (acidente, incidente, quase acidente ou não conformidade) ficava sem opção de assinatura.",
+                    "Ao abrir uma ocorrência concluída que ainda não foi assinada, aparece no topo a faixa \"Falta a assinatura desta ocorrência\" com o botão \"Assinar ocorrência\". Ele leva à tela de assinatura por digital ou facial."),
             }),
     };
 
