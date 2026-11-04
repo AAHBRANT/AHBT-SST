@@ -339,7 +339,7 @@ public class GeracaoPgrEapTests
 
         Assert.Contains(pendencias, p => p.Contains("término da vigência"));
         Assert.Contains(pendencias, p => p.Contains("sem responsável"));
-        Assert.Contains(pendencias, p => p.Contains("sem prazo"));
+        Assert.DoesNotContain(pendencias, p => p.Contains("sem prazo")); // prazo não trava a aprovação
         Assert.Contains(pendencias, p => p.Contains("sem classificação"));
         Assert.Contains(pendencias, p => p.Contains("CNAE"));
         Assert.Contains(pendencias, p => p.Contains("grau de risco"));

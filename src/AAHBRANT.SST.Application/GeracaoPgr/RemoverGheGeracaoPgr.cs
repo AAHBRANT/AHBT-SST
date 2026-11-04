@@ -63,6 +63,14 @@ public class RemoverGheGeracaoPgrCommandHandler : IRequestHandler<RemoverGheGera
             riscos = 0;
         }
         e.Ghes.Remove(ghe);
+        // Sem destino, as atividades saem do PGR junto com o GHE: desmarca na EAP o que não está em outro GHE,
+        // senão volta como pendência "Atividade da EAP sem GHE".
+        if (destino is null)
+        {
+            var emOutros = e.Ghes.SelectMany(x => x.Atividades.Select(a => a.CodigoEap)).ToHashSet();
+            var codigos = ghe.Atividades.Select(a => a.CodigoEap).Where(c => !emOutros.Contains(c)).ToHashSet();
+            foreach (var i in e.Itens.Where(i => codigos.Contains(i.Codigo))) i.Usar = false;
+        }
         RenumerarSemBuraco(e);
 
         var removidas = 0;
