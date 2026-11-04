@@ -10,8 +10,8 @@ namespace AAHBRANT.SST.Application.GeracaoPgr;
 // Remove um GHE do rascunho do PGR (03/11/2026). As funções, os riscos e as medidas moram dentro do GHE e saem com ele.
 // As atividades da EAP vão para o GHE de destino (com os riscos) ou são descartadas; descartadas, voltam a aparecer
 // como "sem GHE" nas pendências. Depois, as ações do plano que nasceram das medidas e deixaram de ter risco que as
-// justifique também saem: ação escrita à mão, com texto editado, com responsável ou com datas fica. A numeração dos
-// outros GHEs não muda, para não confundir com o que o técnico já revisou.
+// justifique também saem: ação escrita à mão, com texto editado, com responsável ou com datas fica. Os GHEs que
+// ficam são renumerados em sequência (04/11/2026): remover o GHE 02 de 4 faz o 03 virar 02 e o 04 virar 03, sem buraco.
 public record RemoverGheGeracaoPgrCommand(Guid Id, int GheNumero, int? DestinoGheNumero) : IRequest<RemoverGheResultado>;
 
 public record RemoverGheResultado(int Funcoes, int Riscos, int AcoesRemovidas);
@@ -63,6 +63,8 @@ public class RemoverGheGeracaoPgrCommandHandler : IRequestHandler<RemoverGheGera
             riscos = 0;
         }
         e.Ghes.Remove(ghe);
+        var proximo = 1;
+        foreach (var restante in e.Ghes.OrderBy(x => x.Numero)) restante.Numero = proximo++;
 
         var removidas = 0;
         if (matriz is not null)
