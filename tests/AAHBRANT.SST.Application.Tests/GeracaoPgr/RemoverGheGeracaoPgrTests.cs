@@ -33,6 +33,17 @@ public class RemoverGheGeracaoPgrTests
     }
 
     [Fact]
+    public void Rascunho_que_ja_tem_buraco_na_numeracao_e_acertado()
+    {
+        var e = new EstruturaGeracaoPgr { Ghes = { Ghe(1, "1", "Queda", "Guarda-corpo"), Ghe(3, "3", "Choque", "Aterrar"), Ghe(4, "4", "Ruído", "Enclausurar") } };
+
+        Assert.True(RemoverGheGeracaoPgrCommandHandler.RenumerarSemBuraco(e));
+        Assert.Equal(new[] { 1, 2, 3 }, e.Ghes.Select(g => g.Numero));
+        Assert.Equal(new[] { "1", "3", "4" }, e.Ghes.Select(g => g.Atividades.Single().CodigoEap));
+        Assert.False(RemoverGheGeracaoPgrCommandHandler.RenumerarSemBuraco(e));
+    }
+
+    [Fact]
     public void Os_ghes_seguintes_sao_renumerados_sem_buraco()
     {
         var e = new EstruturaGeracaoPgr { Ghes = { Ghe(1, "1", "Queda", "Guarda-corpo"), Ghe(2, "2", "Soterramento", "Escorar vala"), Ghe(3, "3", "Choque", "Aterrar"), Ghe(4, "4", "Ruído", "Enclausurar") } };

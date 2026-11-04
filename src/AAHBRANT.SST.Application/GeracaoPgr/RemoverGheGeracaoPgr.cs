@@ -63,8 +63,7 @@ public class RemoverGheGeracaoPgrCommandHandler : IRequestHandler<RemoverGheGera
             riscos = 0;
         }
         e.Ghes.Remove(ghe);
-        var proximo = 1;
-        foreach (var restante in e.Ghes.OrderBy(x => x.Numero)) restante.Numero = proximo++;
+        RenumerarSemBuraco(e);
 
         var removidas = 0;
         if (matriz is not null)
@@ -74,6 +73,19 @@ public class RemoverGheGeracaoPgrCommandHandler : IRequestHandler<RemoverGheGera
             removidas = e.AcoesPlano.RemoveAll(a => AcaoSoGerada(a) && !vigentes.Contains(FuncaoSstClassifier.Normalizar(a.Descricao)));
         }
         return new RemoverGheResultado(funcoes, riscos, removidas);
+    }
+
+    // Numera os GHEs 1, 2, 3... pela ordem atual. Devolve se alguma numeração mudou (rascunho que ficou com buraco).
+    public static bool RenumerarSemBuraco(EstruturaGeracaoPgr e)
+    {
+        var mudou = false;
+        var proximo = 1;
+        foreach (var ghe in e.Ghes.OrderBy(x => x.Numero))
+        {
+            if (ghe.Numero != proximo) mudou = true;
+            ghe.Numero = proximo++;
+        }
+        return mudou;
     }
 
     private static bool AcaoSoGerada(AcaoPlanoGerada a)
