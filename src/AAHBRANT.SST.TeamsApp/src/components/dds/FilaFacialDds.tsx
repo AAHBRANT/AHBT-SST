@@ -43,7 +43,9 @@ function iniciais(nome: string): string {
 const CICLOS_ESTAVEL = 6;
 // Lado mínimo do rosto, em pixels do vídeo, para valer a pena mandar ao Azure. Bem abaixo dos 200 px do
 // cadastro: aqui só se identifica, e o usuário (29/10) não quer exigir posição nem luz na fila.
-const LADO_MINIMO_ROSTO_FILA_PX = 120;
+// 04/11: 120 → 80 px — a câmera frontal de tablet (640x480) só passava de 120 px com o rosto colado nela,
+// e a fila ficava parada sem dizer nada. Se a foto for ruim demais, o Azure recusa com a mensagem.
+const LADO_MINIMO_ROSTO_FILA_PX = 80;
 // Quanto o resultado fica na tela antes de a fila aceitar a próxima pessoa.
 const RESULTADO_MS = { ok: 2200, info: 2200, erro: 3200 } as const;
 // Depois do resultado, a próxima captura só arma quando o rosto sai do quadro (ciclos sem rosto)...
@@ -58,9 +60,12 @@ function rostoServeParaFila(
   caixa: { largura: number; altura: number } | null,
   video: HTMLVideoElement | null,
 ): boolean {
-  if (!estado || estado === 'nenhum' || estado === 'varios' || estado === 'fora' || !caixa || !video?.videoWidth) return false;
-  const lado = Math.min(caixa.largura * video.videoWidth, caixa.altura * video.videoHeight);
-  return lado >= LADO_MINIMO_ROSTO_FILA_PX;
+  if (!estado || estado === 'nenhum' || estado === 'varios' || !caixa || !video?.videoWidth) return false;
+  return !rostoPequenoParaFila(caixa, video);
+}
+
+function rostoPequenoParaFila(caixa: { largura: number; altura: number }, video: HTMLVideoElement): boolean {
+  return Math.min(caixa.largura * video.videoWidth, caixa.altura * video.videoHeight) < LADO_MINIMO_ROSTO_FILA_PX;
 }
 
 function mensagemDoErro(e: unknown): string {
@@ -214,6 +219,14 @@ export function FilaFacialDds({ ddsId, enviarFoto, titulo, subtitulo, totalInscr
       : detector.situacao === 'carregando' || !stream
         ? 'Preparando a câmera…'
         : null);
+  // Motivo de a fila não capturar (04/11): antes a tela ficava muda e a pessoa não sabia o que fazer.
+  const motivoEspera = mensagemGuia || resultado || !avaliacao
+    ? null
+    : avaliacao.estado === 'varios'
+      ? 'Mais de um rosto no quadro. Fique só uma pessoa na frente da câmera.'
+      : detector.caixa && videoRef.current?.videoWidth && rostoPequenoParaFila(detector.caixa, videoRef.current)
+        ? 'Aproxime-se um pouco da câmera.'
+        : null;
   const totalInscritosFila = totalNaAbertura || undefined;
   const progresso = totalInscritosFila ? Math.min(100, Math.round((confirmadas / totalInscritosFila) * 100)) : 0;
 
@@ -301,9 +314,9 @@ export function FilaFacialDds({ ddsId, enviarFoto, titulo, subtitulo, totalInscr
             <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderRadius: 14, background: '#f7f6ea', border: '1px solid #e3e0b8', color: MARSALA }}>
               <Person24Regular />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: 18, fontWeight: 700 }}>{mensagemGuia ?? 'Próximo, por favor'}</span>
-                {!mensagemGuia && (
-                  <span style={{ fontSize: 14, color: '#4a4a4a' }}>Olhe para a câmera com o rosto dentro do oval. A presença é confirmada sozinha.</span>
+                <span style={{ fontSize: 18, fontWeight: 700 }}>{mensagemGuia ?? motivoEspera ?? 'Próximo, por favor'}</span>
+                {!mensagemGuia && !motivoEspera && (
+                  <span style={{ fontSize: 14, color: '#4a4a4a' }}>Olhe para a câmera. A presença é confirmada sozinha.</span>
                 )}
               </div>
             </div>
