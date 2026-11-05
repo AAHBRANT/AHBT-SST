@@ -36,6 +36,10 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
                     coluna.Item().Element(c => TabelaPresenca(c, modelo));
                     if (modelo.Fotos.Count > 0)
                         coluna.Item().Element(c => GradeDeFotos(c, modelo.Fotos));
+                    // 05/11: assinatura do instrutor no fim, no bloco padrão (selo vinho + linha + nome).
+                    if (modelo.Instrutor is { } instrutor)
+                        coluna.Item().PaddingTop(14).AlignCenter().Width(260).Element(c => AssinaturaPdfPadrao.Bloco(
+                            c, "Instrutor", instrutor.Nome, instrutor.CargoRegistro, instrutor.AssinadoEm, instrutor.Metodo, instrutor.Hash));
                 });
 
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(

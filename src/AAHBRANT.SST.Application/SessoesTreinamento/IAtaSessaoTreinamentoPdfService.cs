@@ -30,7 +30,17 @@ public record AtaSessaoTreinamentoPdfModelo(
     string UrlValidacaoPublica,
     byte[] QrCodePng,
     // 05/11: Certificado de Assinaturas Eletrônicas no fim da lista (modelo único, compacto).
-    CertificadoAssinaturasModelo? Certificado = null);
+    CertificadoAssinaturasModelo? Certificado = null,
+    // 05/11: bloco de assinatura do instrutor no fim da lista. Nulo = sem instrutor identificado.
+    AssinaturaInstrutorAtaPdf? Instrutor = null);
+
+public record AssinaturaInstrutorAtaPdf(
+    string Nome,
+    // Ex.: "Técnico de Segurança do Trabalho · MTE-0123056/SP".
+    string? CargoRegistro,
+    DateTime? AssinadoEm,
+    AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? Metodo,
+    string? Hash);
 
 public interface IAtaSessaoTreinamentoPdfService
 {

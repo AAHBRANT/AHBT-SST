@@ -130,7 +130,9 @@ public class CertificadoAssinaturasPdfTests
             "CONSORCIO PONTE RIO CUIA", null, "NR-35 Trabalho em Altura", "NR-35", new DateTime(2026, 11, 5), 8,
             "Gilton Miranda · Técnico de Segurança · MTE-0123056/SP", "2026-0142", new DateTime(2026, 11, 5, 15, 0, 0),
             participantes, new List<byte[]> { foto, foto },
-            cert.ConteudoHash, cert.UrlValidacaoPublica, cert.QrCodePng, cert);
+            cert.ConteudoHash, cert.UrlValidacaoPublica, cert.QrCodePng, cert,
+            new AAHBRANT.SST.Application.SessoesTreinamento.AssinaturaInstrutorAtaPdf("Gilton Miranda", "Técnico de Segurança do Trabalho · MTE-0123056/SP",
+                t0.AddMinutes(6), MetodoAutenticacaoAssinatura.SessaoLogada, "7E11A90F0C5AA3FCB5A8F3E020737434"));
 
         var pdf = new AtaSessaoTreinamentoPdfService().Gerar(ata);
 
