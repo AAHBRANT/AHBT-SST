@@ -240,6 +240,7 @@ export function TrabalhadorDetalhePage() {
             )}
             {aba === 'treinamentos' && (
               <div style={estiloPilha}>
+                <TreinamentosTab trabalhadorId={id} obraId={perfil.obraId} />
                 <Card>
                   {perfil.assiduidadeDds.totalRealizados === 0 ? (
                     <Text>Nenhum DDS realizado na obra desde a admissão.</Text>
@@ -265,7 +266,6 @@ export function TrabalhadorDetalhePage() {
                   )}
                 </Card>
                 {perfil.assiduidadeDds.totalRealizados > 0 && <ParticipacoesDdsCard trabalhadorId={perfil.id} />}
-                <TreinamentosTab trabalhadorId={id} obraId={perfil.obraId} />
               </div>
             )}
             {aba === 'riscos' && (
