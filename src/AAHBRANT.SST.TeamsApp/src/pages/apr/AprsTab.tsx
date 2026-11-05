@@ -330,6 +330,37 @@ export function AprsTab() {
                 </FormGrid>
               )}
             </Campo>
+            {/* 05/11: quem elabora e quem supervisiona — assinam por biometria, como os envolvidos. */}
+            <Campo span={6}>
+              <Field label="Elaboração (técnico / encarregado)">
+                <Select
+                  value={novaApr.elaboradorTrabalhadorId ?? ''}
+                  onChange={(_, d) => setNovaApr((atual) => ({ ...atual, elaboradorTrabalhadorId: d.value || null }))}
+                >
+                  <option value="">Selecione</option>
+                  {trabalhadores.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+            <Campo span={6}>
+              <Field label="Supervisão">
+                <Select
+                  value={novaApr.supervisorTrabalhadorId ?? ''}
+                  onChange={(_, d) => setNovaApr((atual) => ({ ...atual, supervisorTrabalhadorId: d.value || null }))}
+                >
+                  <option value="">Selecione</option>
+                  {trabalhadores.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nome}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
             <Campo span={12}>
               <Field label="Responsáveis">
                 <ListaSelecaoMultipla

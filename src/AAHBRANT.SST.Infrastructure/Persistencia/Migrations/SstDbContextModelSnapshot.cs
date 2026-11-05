@@ -628,6 +628,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<DateTime?>("DataAprovacao")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("ElaboradorTrabalhadorId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("EquipeId")
                         .HasColumnType("uniqueidentifier");
 
@@ -663,6 +666,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("SupervisorTrabalhadorId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -678,7 +684,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("AtividadeId");
 
+                    b.HasIndex("ElaboradorTrabalhadorId");
+
                     b.HasIndex("EquipeId");
+
+                    b.HasIndex("SupervisorTrabalhadorId");
 
                     b.ToTable("Aprs");
                 });
@@ -10771,16 +10781,30 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Elaborador")
+                        .WithMany()
+                        .HasForeignKey("ElaboradorTrabalhadorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Equipe", "Equipe")
                         .WithMany()
                         .HasForeignKey("EquipeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Supervisor")
+                        .WithMany()
+                        .HasForeignKey("SupervisorTrabalhadorId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("AprovadoPorUsuario");
 
                     b.Navigation("Atividade");
 
+                    b.Navigation("Elaborador");
+
                     b.Navigation("Equipe");
+
+                    b.Navigation("Supervisor");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.AprAssinatura", b =>

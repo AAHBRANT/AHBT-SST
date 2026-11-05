@@ -1,3 +1,5 @@
+using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
@@ -20,6 +22,8 @@ public class ObterAprDetalheQueryHandler : IRequestHandler<ObterAprDetalheQuery,
             .Include(a => a.Atividade!).ThenInclude(at => at.Obra)
             .Include(a => a.Equipe)
             .Include(a => a.AprovadoPorUsuario)
+            .Include(a => a.Elaborador)
+            .Include(a => a.Supervisor)
             .FirstOrDefaultAsync(a => a.Id == request.Id, ct);
         if (apr is null) return null;
 
@@ -38,6 +42,27 @@ public class ObterAprDetalheQueryHandler : IRequestHandler<ObterAprDetalheQuery,
             .Where(s => s.AprId == apr.Id)
             .Include(s => s.Trabalhador!).ThenInclude(t => t.Funcao)
             .OrderByDescending(s => s.DataAssinatura)
+            .ToListAsync(ct);
+
+        // 05/11: assinaturas biométricas do quiosque (Motor de Assinatura, documento "Apr") entram na mesma
+        // lista, com o papel da APR — o PDF e a aba Assinaturas preferem elas ao registro antigo por clique.
+        var biometricas = await _db.DocumentoSignatarios.AsNoTracking()
+            .Where(x => x.DocumentoAssinatura!.EntidadeTipo == nameof(Apr) && x.DocumentoAssinatura.EntidadeId == apr.Id
+                && x.DocumentoAssinatura.Status != StatusDocumentoAssinatura.Cancelado)
+            .Select(x => new AprAssinaturaDto
+            {
+                Id = x.Id,
+                AprId = apr.Id,
+                TrabalhadorId = x.TrabalhadorId,
+                TrabalhadorNome = x.Trabalhador != null ? x.Trabalhador.Nome : string.Empty,
+                TrabalhadorFuncaoNome = x.Trabalhador != null && x.Trabalhador.Funcao != null ? x.Trabalhador.Funcao.Nome : null,
+                Papel = x.Papel == PapelAssinatura.AprElaboracao ? PapelAssinaturaApr.Elaboracao
+                    : x.Papel == PapelAssinatura.AprSupervisao ? PapelAssinaturaApr.Supervisao
+                    : PapelAssinaturaApr.Envolvido,
+                DataAssinatura = x.AssinadoEm,
+                MetodoAutenticacao = x.MetodoAutenticacao,
+                Biometrica = true,
+            })
             .ToListAsync(ct);
 
         return new AprDetalheDto
@@ -61,7 +86,11 @@ public class ObterAprDetalheQueryHandler : IRequestHandler<ObterAprDetalheQuery,
                 AprovadoPorUsuarioId = apr.AprovadoPorUsuarioId,
                 AprovadoPorUsuarioNome = apr.AprovadoPorUsuario?.Nome,
                 DataAprovacao = apr.DataAprovacao,
-                MotivoReprovacao = apr.MotivoReprovacao
+                MotivoReprovacao = apr.MotivoReprovacao,
+                ElaboradorTrabalhadorId = apr.ElaboradorTrabalhadorId,
+                ElaboradorNome = apr.Elaborador?.Nome,
+                SupervisorTrabalhadorId = apr.SupervisorTrabalhadorId,
+                SupervisorNome = apr.Supervisor?.Nome,
             },
             Etapas = etapas.Select(e => new AprEtapaDto
             {
@@ -105,7 +134,7 @@ public class ObterAprDetalheQueryHandler : IRequestHandler<ObterAprDetalheQuery,
                 Papel = s.Papel,
                 DataAssinatura = s.DataAssinatura,
                 MetodoAutenticacao = s.MetodoAutenticacao
-            }).ToList()
+            }).Concat(biometricas).OrderByDescending(s => s.DataAssinatura).ToList()
         };
     }
 }

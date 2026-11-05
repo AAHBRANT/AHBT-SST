@@ -2065,6 +2065,11 @@ export interface Apr {
   aprovadoPorUsuarioNome?: string | null;
   dataAprovacao?: string | null;
   motivoReprovacao?: string | null;
+  // 05/11: quem elabora e quem supervisiona (assinam por biometria).
+  elaboradorTrabalhadorId?: string | null;
+  elaboradorNome?: string | null;
+  supervisorTrabalhadorId?: string | null;
+  supervisorNome?: string | null;
 }
 
 export interface NovaApr {
@@ -2076,6 +2081,8 @@ export interface NovaApr {
   data: string;
   validade?: string | null;
   responsaveisIds: string[];
+  elaboradorTrabalhadorId?: string | null;
+  supervisorTrabalhadorId?: string | null;
 }
 
 export type AtualizarAprPayload = NovaApr & { id: string };
@@ -2128,6 +2135,10 @@ export interface AprAssinatura {
   trabalhadorNome: string;
   papel: number;
   dataAssinatura: string;
+  trabalhadorFuncaoNome?: string | null;
+  metodoAutenticacao?: number;
+  // 05/11: true = assinatura por digital/facial no quiosque; false = registro antigo por clique.
+  biometrica?: boolean;
 }
 
 export interface NovaAprAssinatura {
@@ -6153,6 +6164,12 @@ export const api = {
   aprs: {
     listar: (atividadeId?: string) => request<Apr[]>(`/api/aprs${atividadeId ? `?atividadeId=${atividadeId}` : ''}`),
     obterDetalhe: (id: string) => request<AprDetalhe>(`/api/aprs/${id}`),
+    // 05/11: quem elabora e quem supervisiona a APR (assinam por biometria).
+    definirResponsaveisAssinatura: (id: string, elaboradorTrabalhadorId: string | null, supervisorTrabalhadorId: string | null) =>
+      request<void>(`/api/aprs/${id}/responsaveis-assinatura`, {
+        method: 'PUT',
+        body: JSON.stringify({ elaboradorTrabalhadorId, supervisorTrabalhadorId }),
+      }),
     criar: (apr: NovaApr) => request<{ id: string }>('/api/aprs', { method: 'POST', body: JSON.stringify(apr) }),
     atualizar: (id: string, apr: AtualizarAprPayload) =>
       request<void>(`/api/aprs/${id}`, { method: 'PUT', body: JSON.stringify(apr) }),
@@ -6161,6 +6178,17 @@ export const api = {
     aprovar: (id: string) => request<void>(`/api/aprs/${id}/aprovar`, { method: 'POST' }),
     reprovar: (id: string, motivo: string) =>
       request<void>(`/api/aprs/${id}/reprovar`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+    // 05/11: Certificado de Assinaturas Eletrônicas da APR, em PDF à parte.
+    certificadoAssinaturasPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/aprs/${id}/certificado-assinaturas-pdf`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
     exportarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/aprs/${id}/pdf`, {
         headers: await montarHeadersAuth(),

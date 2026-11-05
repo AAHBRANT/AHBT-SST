@@ -2510,6 +2510,21 @@ public static class NovidadesSeeder
                     "A presença no DDS guardava a foto ou a digital, mas não onde o aparelho estava.",
                     "A localização do aparelho passa a ir junto com a presença, como na entrega de EPI. Se o aparelho não autorizar, a presença é registrada mesmo assim."),
             }),
+        new(
+            Versao: "5.141.0",
+            Titulo: "APR assinada por biometria",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Todo mundo assina a APR com digital ou facial",
+                    "Na APR, a assinatura dos envolvidos, da elaboração e da supervisão era um registro feito por clique, sem prova de quem estava presente.",
+                    "Na aba Assinaturas, defina quem elabora e quem supervisiona; cada pessoa assina com a digital ou o reconhecimento facial e o sistema grava o papel dela. Quem não está na APR é recusado. O registro por clique saiu; os antigos continuam, marcados como \"sem biometria\"."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "PDF da APR com selo e certificado de assinaturas",
+                    "O PDF da APR mostrava só \"Assinado\" ou \"Pendente\" na lista de envolvidos.",
+                    "Cada envolvido tem função, CBO e o selo ASSINADO ELETRONICAMENTE; elaboração e supervisão saem com o selo da assinatura biométrica; o Certificado de Assinaturas Eletrônicas, com a biometria cadastrada ao lado da capturada e um QR por assinatura, fica no botão Certificado de assinaturas, à parte da APR."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

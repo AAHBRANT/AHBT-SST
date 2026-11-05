@@ -105,6 +105,11 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
 
         // Instrutor da turma (papel Instrutor): só quem tem perfil de instrutor ativo pode assinar assim, e ele
         // pode ser de outra obra — o filtro de escopo do Trabalhador esconderia quem não é da obra de quem opera.
+        // APR (05/11): todos assinam por biometria no quiosque; o papel sai do cadastro da APR (elaboração,
+        // supervisão ou envolvido) e quem não está na APR é recusado.
+        if (documento.EntidadeTipo == nameof(Apr) && papel is null && resultado.Metodo != MetodoAutenticacaoAssinatura.SessaoLogada)
+            papel = await PapelNaAprAsync(documento.EntidadeId, resultado.TrabalhadorId, ct);
+
         var comoInstrutor = papel == PapelAssinatura.Instrutor;
         if (comoInstrutor && !await _db.PerfisInstrutor.AnyAsync(p => p.TrabalhadorId == resultado.TrabalhadorId, ct))
             throw new InvalidOperationException("Este trabalhador não tem perfil de instrutor cadastrado.");
@@ -214,6 +219,30 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, documento.Id, ct);
 
         return new DocumentoSignatarioDto(trabalhador.Id, trabalhador.Nome, signatario.MetodoAutenticacao, signatario.AssinadoEm, signatario.IpAddress);
+    }
+
+    // Papel da pessoa na APR, na ordem: elaboração, supervisão, envolvido — o primeiro que ela ainda não
+    // assinou (a mesma pessoa pode elaborar e estar na equipe). Fora da APR: recusa.
+    private async Task<PapelAssinatura?> PapelNaAprAsync(Guid aprId, Guid trabalhadorId, CancellationToken ct)
+    {
+        var apr = await _db.Aprs.AsNoTracking().IgnoreQueryFilters()
+            .Where(a => a.Id == aprId)
+            .Select(a => new { a.ElaboradorTrabalhadorId, a.SupervisorTrabalhadorId })
+            .FirstOrDefaultAsync(ct)
+            ?? throw new KeyNotFoundException("APR não encontrada.");
+        var envolvido = await _db.AprResponsaveis.AnyAsync(r => r.AprId == aprId && r.TrabalhadorId == trabalhadorId, ct);
+        var papeis = new List<PapelAssinatura?>();
+        if (apr.ElaboradorTrabalhadorId == trabalhadorId) papeis.Add(PapelAssinatura.AprElaboracao);
+        if (apr.SupervisorTrabalhadorId == trabalhadorId) papeis.Add(PapelAssinatura.AprSupervisao);
+        if (envolvido) papeis.Add(null);
+        if (papeis.Count == 0)
+            throw new InvalidOperationException("Esta pessoa não está entre os responsáveis ou envolvidos desta APR — a assinatura não foi registrada.");
+
+        var jaAssinados = await _db.DocumentoSignatarios
+            .Where(s => s.DocumentoAssinatura!.EntidadeTipo == nameof(Apr) && s.DocumentoAssinatura.EntidadeId == aprId && s.TrabalhadorId == trabalhadorId)
+            .Select(s => s.Papel)
+            .ToListAsync(ct);
+        return papeis.FirstOrDefault(p => !jaAssinados.Contains(p), papeis[0]);
     }
 
     private async Task<Guid?> ObterOperadorAsync(CancellationToken ct)

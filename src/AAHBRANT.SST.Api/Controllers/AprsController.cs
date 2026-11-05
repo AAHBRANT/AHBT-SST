@@ -41,6 +41,15 @@ public class AprsController : ControllerBase
         return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
     }
 
+    // 05/11: quem elabora e quem supervisiona (assinam por biometria no quiosque).
+    [Authorize(Policy = "apr:editar")]
+    [HttpPut("{id:guid}/responsaveis-assinatura")]
+    public async Task<IActionResult> DefinirResponsaveisAssinatura(Guid id, DefinirResponsaveisAssinaturaAprRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new DefinirResponsaveisAssinaturaAprCommand(id, body.ElaboradorTrabalhadorId, body.SupervisorTrabalhadorId), ct);
+        return NoContent();
+    }
+
     [Authorize(Policy = "apr:editar")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Atualizar(Guid id, AtualizarAprCommand command, CancellationToken ct)
@@ -85,6 +94,18 @@ public class AprsController : ControllerBase
         if (pdf is null) return NotFound();
         return File(pdf, "application/pdf", $"apr-{id}.pdf");
     }
+
+    // 05/11: Certificado de Assinaturas Eletrônicas da APR, à parte (a APR sai sem ele). 404 = ninguém
+    // assinou por biometria ainda.
+    [Authorize(Policy = "apr:ver")]
+    [HttpGet("{id:guid}/certificado-assinaturas-pdf")]
+    public async Task<IActionResult> ObterCertificadoAssinaturas(Guid id, CancellationToken ct)
+    {
+        var pdf = await _mediator.Send(new ExportarAprPdfQuery(id, CertificadoAssinaturas: true), ct);
+        if (pdf is null) return NotFound(new { erro = "Nenhuma assinatura por digital ou facial nesta APR ainda." });
+        return File(pdf, "application/pdf", $"apr-{id}-certificado-assinaturas.pdf");
+    }
 }
 
 public record ReprovarAprRequestBody(string Motivo);
+public record DefinirResponsaveisAssinaturaAprRequestBody(Guid? ElaboradorTrabalhadorId, Guid? SupervisorTrabalhadorId);

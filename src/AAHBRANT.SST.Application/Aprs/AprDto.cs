@@ -22,6 +22,11 @@ public class AprDto
     public string? AprovadoPorUsuarioNome { get; set; }
     public DateTime? DataAprovacao { get; set; }
     public string? MotivoReprovacao { get; set; }
+    // 05/11: quem elabora e quem supervisiona (assinam por biometria).
+    public Guid? ElaboradorTrabalhadorId { get; set; }
+    public string? ElaboradorNome { get; set; }
+    public Guid? SupervisorTrabalhadorId { get; set; }
+    public string? SupervisorNome { get; set; }
 }
 
 public class AprEtapaRiscoDto
@@ -70,6 +75,9 @@ public class AprAssinaturaDto
     public PapelAssinaturaApr Papel { get; set; }
     public DateTime DataAssinatura { get; set; }
     public MetodoAutenticacaoAssinatura MetodoAutenticacao { get; set; }
+    // 05/11: true = assinatura biométrica pelo quiosque (Motor de Assinatura); false = registro antigo de
+    // ciência por clique.
+    public bool Biometrica { get; set; }
 }
 
 // Composição por query, não por tabela nova — mesmo princípio já usado em PgrDetalheDto:
