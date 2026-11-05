@@ -186,7 +186,7 @@ export function SessaoTreinamentoDetalhePage() {
       setMensagemPresenca({ tipo: 'info', texto: `${participante.trabalhadorNome} já teve a presença confirmada.` });
       return;
     }
-    await api.sessoesTreinamento.registrarPresenca(id, trabalhadorId, credencialLeitura(leitor, captura.leituras[0]), captura.score);
+    await api.sessoesTreinamento.registrarPresenca(id, trabalhadorId, credencialLeitura(leitor, captura.leituras[0]), captura.score, captura.imagemPng);
     tocarBipeAssinaturaAceita();
     setMensagemPresenca({ tipo: 'success', texto: `Presença de ${participante.trabalhadorNome} confirmada.` });
     await carregar();

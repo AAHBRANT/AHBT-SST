@@ -50,7 +50,10 @@ public interface IRegistradorAssinaturaService
         byte[]? fotoEvidenciaConteudo = null,
         string? fotoEvidenciaContentType = null,
         PapelAssinatura? papel = null,
-        LocalizacaoAssinatura? localizacao = null);
+        LocalizacaoAssinatura? localizacao = null,
+        // Aparelho de onde veio a captura, quando a assinatura é registrada depois (encerramento da turma
+        // com a evidência guardada na presença). Nulo = o da requisição em andamento.
+        string? userAgent = null);
 }
 
 public class RegistradorAssinaturaService : IRegistradorAssinaturaService
@@ -80,7 +83,8 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         byte[]? fotoEvidenciaConteudo = null,
         string? fotoEvidenciaContentType = null,
         PapelAssinatura? papel = null,
-        LocalizacaoAssinatura? localizacao = null)
+        LocalizacaoAssinatura? localizacao = null,
+        string? userAgent = null)
     {
         var documento = await _db.DocumentosAssinatura.FirstOrDefaultAsync(d => d.Id == documentoAssinaturaId, ct);
         if (documento is null)
@@ -165,7 +169,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             // requisição em andamento: o IP é parte da evidência e não pode ficar em branco.
             IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? _clienteIp?.ObterIp() : ipAddress,
             DispositivoAgenteId = resultado.DispositivoAgenteId,
-            UserAgent = Truncar(_clienteIp?.ObterUserAgent(), 300),
+            UserAgent = Truncar(string.IsNullOrWhiteSpace(userAgent) ? _clienteIp?.ObterUserAgent() : userAgent, 300),
             ValidacaoModelo = Truncar(resultado.ValidacaoModelo, 60),
             ValidacaoGrupoId = Truncar(resultado.ValidacaoGrupoId, 80),
             ValidacaoRequisicaoId = Truncar(resultado.ValidacaoRequisicaoId, 80),

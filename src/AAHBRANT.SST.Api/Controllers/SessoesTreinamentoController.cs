@@ -72,7 +72,7 @@ public class SessoesTreinamentoController : ControllerBase
     public async Task<IActionResult> RegistrarPresenca(Guid id, RegistrarPresencaSessaoTreinamentoRequestBody body, CancellationToken ct)
     {
         var command = new RegistrarPresencaSessaoTreinamentoCommand(id, body.TrabalhadorId, body.DispositivoId, body.SegredoDispositivo, body.Score,
-            body.Desafio, body.AssinaturaLeitura);
+            body.Desafio, body.AssinaturaLeitura, body.ImagemDigital, body.Localizacao?.ParaDominio());
         await _mediator.Send(command, ct);
         return NoContent();
     }
@@ -87,7 +87,8 @@ public class SessoesTreinamentoController : ControllerBase
 
         try
         {
-            var trabalhadorId = await _mediator.Send(new RegistrarPresencaFacialSessaoTreinamentoCommand(id, body.ObraId, stream.ToArray()), ct);
+            var trabalhadorId = await _mediator.Send(new RegistrarPresencaFacialSessaoTreinamentoCommand(id, body.ObraId, stream.ToArray(), body.Foto.ContentType,
+                body.LocalizacaoStatus is { } status ? new AAHBRANT.SST.Application.Assinatura.LocalizacaoAssinatura(status, body.Latitude, body.Longitude, body.PrecisaoMetros) : null), ct);
             return Ok(new { trabalhadorId });
         }
         catch (AAHBRANT.SST.Application.Assinatura.Commands.RejeicaoFacialException ex)
@@ -176,12 +177,20 @@ public class RegistrarPresencaSessaoTreinamentoRequestBody
     // Leitura assinada pelo agente (ver FutronicAutenticacaoStrategy).
     public string? Desafio { get; set; }
     public string? AssinaturaLeitura { get; set; }
+    // 05/11: evidência da presença — imagem lida pelo leitor e localização do aparelho.
+    public byte[]? ImagemDigital { get; set; }
+    public AssinaturaController.LocalizacaoAssinaturaBody? Localizacao { get; set; }
 }
 
 public class RegistrarPresencaFacialSessaoTreinamentoRequestBody
 {
     public Guid ObraId { get; set; }
     public IFormFile Foto { get; set; } = null!;
+    // 05/11: localização do aparelho na presença (campos do formulário, como na assinatura facial).
+    public AAHBRANT.SST.Domain.Enums.StatusLocalizacaoAssinatura? LocalizacaoStatus { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public double? PrecisaoMetros { get; set; }
 }
 
 public class AnexarFotoEvidenciaSessaoTreinamentoRequestBody

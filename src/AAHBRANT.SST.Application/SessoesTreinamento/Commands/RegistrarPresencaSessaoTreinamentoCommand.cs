@@ -18,7 +18,10 @@ public record RegistrarPresencaSessaoTreinamentoCommand(
     string SegredoDispositivo,
     double Score,
     string? Desafio = null,
-    string? AssinaturaLeitura = null) : IRequest;
+    string? AssinaturaLeitura = null,
+    // 05/11: evidência da presença (imagem lida pelo leitor e localização), como na assinatura de EPI.
+    byte[]? ImagemDigital = null,
+    LocalizacaoAssinatura? Localizacao = null) : IRequest;
 
 public class RegistrarPresencaSessaoTreinamentoCommandValidator : AbstractValidator<RegistrarPresencaSessaoTreinamentoCommand>
 {
@@ -38,11 +41,14 @@ public class RegistrarPresencaSessaoTreinamentoCommandHandler : IRequestHandler<
 {
     private readonly IAppDbContext _db;
     private readonly IAutenticacaoBiometriaLocalService _autenticacao;
+    private readonly IClienteIpProvider? _clienteIp;
 
-    public RegistrarPresencaSessaoTreinamentoCommandHandler(IAppDbContext db, IAutenticacaoBiometriaLocalService autenticacao)
+    public RegistrarPresencaSessaoTreinamentoCommandHandler(IAppDbContext db, IAutenticacaoBiometriaLocalService autenticacao,
+        IClienteIpProvider? clienteIp = null)
     {
         _db = db;
         _autenticacao = autenticacao;
+        _clienteIp = clienteIp;
     }
 
     public async Task Handle(RegistrarPresencaSessaoTreinamentoCommand request, CancellationToken ct)
@@ -54,13 +60,14 @@ public class RegistrarPresencaSessaoTreinamentoCommandHandler : IRequestHandler<
         if (participante.PresencaConfirmadaEm is not null)
             throw new InvalidOperationException("Presença já confirmada para este participante.");
 
-        await _autenticacao.AutenticarPorMatchLocalAsync(
+        var resultado = await _autenticacao.AutenticarPorMatchLocalAsync(
             request.DispositivoId, request.SegredoDispositivo, request.TrabalhadorId, request.Score,
             LeituraDo(request.Desafio, request.AssinaturaLeitura), ct);
 
         participante.PresencaConfirmadaEm = DateTime.UtcNow;
         participante.ScoreConfianca = request.Score;
         participante.MetodoPresenca = MetodoAutenticacaoAssinatura.Biometria;
+        EvidenciaPresencaTreinamento.Aplicar(participante, resultado, request.ImagemDigital, "image/png", request.Localizacao, _clienteIp);
 
         await _db.SaveChangesAsync(ct);
     }

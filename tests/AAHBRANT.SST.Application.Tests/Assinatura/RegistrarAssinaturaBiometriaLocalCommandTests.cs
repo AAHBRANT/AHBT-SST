@@ -33,7 +33,7 @@ public class RegistradorAssinaturaFalso : IRegistradorAssinaturaService
         byte[]? fotoEvidenciaConteudo = null,
         string? fotoEvidenciaContentType = null,
         PapelAssinatura? papel = null,
-        LocalizacaoAssinatura? localizacao = null)
+        LocalizacaoAssinatura? localizacao = null, string? userAgent = null)
     {
         DocumentoIdRecebido = documentoAssinaturaId;
         IpAddressRecebido = ipAddress;

@@ -66,6 +66,23 @@ public class ParticipanteSessaoTreinamento : AuditableEntity
     // presenças anteriores à coluna, quando o método não era gravado: a Ata mostra só data e hora.
     public MetodoAutenticacaoAssinatura? MetodoPresenca { get; set; }
 
+    // Evidência da presença (05/11, pedido do usuário): o que foi capturado na hora, como na entrega de EPI.
+    // Fica aqui só até o encerramento da turma, quando vai para a assinatura do certificado
+    // (DocumentoSignatario) e a imagem é apagada daqui — o hash continua, para conferência.
+    public byte[]? EvidenciaConteudo { get; set; }
+    public string? EvidenciaContentType { get; set; }
+    public string? EvidenciaHash { get; set; }
+    public string? IpAddress { get; set; }
+    public string? UserAgent { get; set; }
+    public StatusLocalizacaoAssinatura LocalizacaoStatus { get; set; } = StatusLocalizacaoAssinatura.NaoInformada;
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public double? PrecisaoMetros { get; set; }
+    public Guid? DispositivoAgenteId { get; set; }
+    public string? ValidacaoModelo { get; set; }
+    public string? ValidacaoGrupoId { get; set; }
+    public string? ValidacaoRequisicaoId { get; set; }
+
     public Guid? TreinamentoGeradoId { get; set; }
     public Treinamento? TreinamentoGerado { get; set; }
 }

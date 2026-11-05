@@ -5606,16 +5606,25 @@ export const api = {
     // Presença exclusivamente por biometria (mesmo padrão de api.dds.registrarParticipante) —
     // dispositivoId/segredoDispositivo vêm do agente local, score é o resultado do match 1:N já
     // feito por ele (ver capturarDigitalLocal).
-    registrarPresenca: (sessaoId: string, trabalhadorId: string, credencial: CredencialLeitura, score: number) =>
-      request<void>(`/api/sessoestreinamento/${sessaoId}/presenca`, {
+    // 05/11: a imagem lida e a localização do aparelho vão junto (evidência da presença, como no EPI).
+    registrarPresenca: async (sessaoId: string, trabalhadorId: string, credencial: CredencialLeitura, score: number, imagemDigital?: string | null) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<void>(`/api/sessoestreinamento/${sessaoId}/presenca`, {
         method: 'POST',
-        body: JSON.stringify({ trabalhadorId, ...credencial, score }),
-      }),
+        body: JSON.stringify({ trabalhadorId, ...credencial, score, imagemDigital: imagemDigital ?? null, localizacao }),
+      });
+    },
     registrarPresencaFacial: async (sessaoId: string, obraId: string, foto: File) => {
       const formData = new FormData();
       formData.append('obraId', obraId);
       formData.append('foto', foto);
       anexarDadosFoto(formData, foto);
+      // 05/11: localização do aparelho na presença (evidência, como na assinatura facial de EPI).
+      const localizacao = await obterLocalizacaoAssinatura();
+      formData.append('localizacaoStatus', String(localizacao.status));
+      if (localizacao.latitude != null) formData.append('latitude', String(localizacao.latitude));
+      if (localizacao.longitude != null) formData.append('longitude', String(localizacao.longitude));
+      if (localizacao.precisaoMetros != null) formData.append('precisaoMetros', String(localizacao.precisaoMetros));
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<{ trabalhadorId: string }>(
         `/api/sessoestreinamento/${sessaoId}/presenca/facial`,

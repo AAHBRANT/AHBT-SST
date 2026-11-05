@@ -84,7 +84,7 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
         // mesmo número. Prefixo pela NR (AAH-NR35-2026-0001) para identificar de qual norma é.
         var nr = CatalogoNormasRegulamentadoras.NormalizarNumero(sessao.CursoTreinamento!.NormaReferencia);
         var prefixoCertificado = nr is null ? "AAH-CERT" : $"AAH-{nr.Replace("-", string.Empty)}";
-        var geradosParaAssinar = new List<(Guid TreinamentoId, Guid TrabalhadorId)>();
+        var geradosParaAssinar = new List<(Guid TreinamentoId, ParticipanteSessaoTreinamento Participante)>();
         foreach (var participante in participantes.Where(p => p.PresencaConfirmadaEm is not null && p.TreinamentoGeradoId is null))
         {
             var treinamento = new Treinamento
@@ -103,7 +103,7 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
             };
             _db.Treinamentos.Add(treinamento);
             participante.TreinamentoGeradoId = treinamento.Id;
-            geradosParaAssinar.Add((treinamento.Id, participante.TrabalhadorId));
+            geradosParaAssinar.Add((treinamento.Id, participante));
         }
 
         sessao.Status = StatusSessaoTreinamento.Concluida;
@@ -115,8 +115,9 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
         var ocorrencias = await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.OcorrenciasComTreinamentoAsync(_db, sessao.CursoTreinamentoId, ct);
         await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.ConcluirAtendidasAsync(_db, ocorrencias, ct);
 
-        foreach (var (treinamentoId, trabalhadorId) in geradosParaAssinar)
+        foreach (var (treinamentoId, participante) in geradosParaAssinar)
         {
+            var trabalhadorId = participante.TrabalhadorId;
             Guid? documentoId = null;
             try
             {
@@ -130,8 +131,27 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
 
             try
             {
-                var resultadoTrabalhador = new ResultadoAutenticacaoAssinatura(trabalhadorId, MetodoAutenticacaoAssinatura.Biometria);
-                await _registrador.RegistrarAsync(documentoId.Value, resultadoTrabalhador, ipAddress: null, ct);
+                // 05/11: a assinatura leva o método real da presença (antes era sempre "digital") e a
+                // evidência guardada na hora — imagem, IP, aparelho, localização e validação —, não os
+                // dados de quem está encerrando a turma. A imagem sai do participante depois de copiada.
+                var resultadoTrabalhador = new ResultadoAutenticacaoAssinatura(
+                    trabalhadorId,
+                    participante.MetodoPresenca ?? MetodoAutenticacaoAssinatura.Biometria,
+                    participante.DispositivoAgenteId,
+                    participante.ValidacaoModelo,
+                    participante.ValidacaoGrupoId,
+                    participante.ValidacaoRequisicaoId,
+                    participante.ScoreConfianca,
+                    participante.PresencaConfirmadaEm);
+                var localizacao = new LocalizacaoAssinatura(participante.LocalizacaoStatus, participante.Latitude, participante.Longitude, participante.PrecisaoMetros);
+                await _registrador.RegistrarAsync(documentoId.Value, resultadoTrabalhador, participante.IpAddress, ct,
+                    participante.EvidenciaConteudo, participante.EvidenciaContentType,
+                    localizacao: localizacao, userAgent: participante.UserAgent);
+                if (participante.EvidenciaConteudo is not null)
+                {
+                    participante.EvidenciaConteudo = null;
+                    await _db.SaveChangesAsync(ct);
+                }
             }
             catch (Exception ex)
             {
