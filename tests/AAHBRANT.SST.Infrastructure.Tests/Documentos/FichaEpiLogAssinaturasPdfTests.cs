@@ -123,14 +123,15 @@ public class FichaEpiLogAssinaturasPdfTests
     }
 
     [Fact]
-    public void Gerar_ComLog_AcrescentaPaginaDoCertificadoMaisUmaPorAssinatura()
+    public void Gerar_ComLog_AcrescentaUmaPaginaPorAssinatura()
     {
         var servico = new EntregaEpiPdfService();
         var semLog = ContarPaginas(servico.Gerar(Modelo(null, null)));
 
         var comLog = ContarPaginas(servico.Gerar(Modelo(LogCompleto(), null)));
 
-        Assert.Equal(semLog + 1 + 3, comLog);
+        // 05/11: sem página de resumo separada — o cabeçalho do certificado vai na 1ª evidência.
+        Assert.Equal(semLog + 3, comLog);
     }
 
     [Fact]
