@@ -1,7 +1,10 @@
 import { FaixaObraAtiva, SeletorObraAtiva } from './SeletorObraAtiva';
+import { TrilhaNavegacao } from './TrilhaNavegacao';
+import { BuscaGlobal } from './BuscaGlobal';
+import { localizarNaNavegacao, rotaDaSecao } from './mapaNavegacao';
 import type { ComponentType, ReactElement, ReactNode, SVGProps } from 'react';
 import { useEffect, useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   makeStyles,
   mergeClasses,
@@ -257,6 +260,29 @@ const useStyles = makeStyles({
     fontSize: '15px',
     fontWeight: 500,
     flex: 1,
+  },
+  subitens: {
+    display: 'flex',
+    flexDirection: 'column',
+    margin: '2px 8px 6px 30px',
+    borderLeft: `1px solid ${designTokens.colorRailBorder}`,
+    flexShrink: 0,
+  },
+  subitem: {
+    padding: '6px 12px',
+    fontSize: '13px',
+    color: designTokens.colorRailInkMuted,
+    textDecoration: 'none',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    ':hover': { color: designTokens.colorRailInk },
+    ':focus-visible': { outline: '2px solid var(--sst-color-primary)', outlineOffset: '-2px' },
+  },
+  subitemAtivo: {
+    color: designTokens.colorRailInk,
+    fontWeight: 600,
+    boxShadow: 'inset 2px 0 0 var(--sst-color-primary)',
   },
   navSeparador: {
     width: '28px',
@@ -728,33 +754,68 @@ function ItemRail({
   aoNavegar?: () => void;
 }) {
   const estilos = useStyles();
+  const location = useLocation();
+  // Seção ativa no rail (melhoria 3 da proposta de navegação, 03/11/2026): telas de detalhe fora da
+  // rota do módulo (/prevencao/inspecoes/:id, /acidentes/:id) também acendem o módulo dono, e o
+  // módulo aberto mostra suas seções `?secao=` com a atual em destaque.
+  const local = localizarNaNavegacao(location.pathname, location.search);
+  const moduloAtual = local?.modulo.rota === rota ? local : null;
+  const fecharGavetaMobile = () => {
+    // Abaixo de 680px o rail é a gaveta mobile (ver `rail`/`fundoRailMobile`) — navegar deve
+    // fechá-la, senão ela continua cobrindo a página seguinte até o usuário tocar no fundo.
+    if (window.innerWidth <= 680) aoNavegar?.();
+  };
   const link = (
     <NavLink
       to={rota}
       end={rota === '/'}
       aria-label={rotulo}
-      // Abaixo de 680px o rail é a gaveta mobile (ver `rail`/`fundoRailMobile`) — navegar deve
-      // fechá-la, senão ela continua cobrindo a página seguinte até o usuário tocar no fundo.
-      onClick={() => {
-        if (window.innerWidth <= 680) aoNavegar?.();
-      }}
-      className={({ isActive }) =>
-        mergeClasses(
+      onClick={fecharGavetaMobile}
+      className={({ isActive }) => {
+        const ativo = isActive || !!moduloAtual;
+        return mergeClasses(
           estilos.navItem,
           expandido && estilos.navItemExpandido,
-          !isActive && estilos.navItemHover,
-          isActive && !destaque && estilos.navItemActive,
+          !ativo && estilos.navItemHover,
+          ativo && !destaque && estilos.navItemActive,
           destaque && estilos.itemAdministracaoBotao,
-        )
-      }
+        );
+      }}
     >
       <Icone />
       {expandido && <span className={estilos.navRotulo}>{rotulo}</span>}
     </NavLink>
   );
+  if (expandido) {
+    const secoes = moduloAtual?.modulo.secoes;
+    if (!moduloAtual || !secoes) return link;
+    return (
+      <>
+        {link}
+        <div className={estilos.subitens} role="group" aria-label={`Seções de ${rotulo}`}>
+          {secoes.map((secao) => {
+            const ativa = moduloAtual.secao?.valor === secao.valor;
+            return (
+              <Link
+                key={secao.valor}
+                to={rotaDaSecao(moduloAtual.modulo, secao)}
+                aria-current={ativa ? 'page' : undefined}
+                onClick={fecharGavetaMobile}
+                className={mergeClasses(estilos.subitem, ativa && estilos.subitemAtivo)}
+              >
+                {secao.rotulo}
+              </Link>
+            );
+          })}
+        </div>
+      </>
+    );
+  }
   // Tooltip só é útil quando colapsado (ícone sem rótulo visível) — expandido já mostra o texto.
-  return expandido ? link : (
-    <Tooltip content={rotulo} relationship="label" positioning="after">
+  // No módulo aberto ele diz também a seção ("Operação · DDS"), já que os subitens não cabem no ícone.
+  const dica = moduloAtual?.secao ? `${rotulo} · ${moduloAtual.secao.rotulo}` : rotulo;
+  return (
+    <Tooltip content={dica} relationship="label" positioning="after">
       {link}
     </Tooltip>
   );
@@ -1034,6 +1095,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <div className={estilos.topoDireita}>
+          {/* Instância única: o atalho Ctrl+K é global e abriria dois diálogos com duas cópias. */}
+          <BuscaGlobal />
           <div className={estilos.acoesTopoCompactas} aria-label="Ações globais (compacto)">
             <SeletorObraAtiva />
             <SyncStatusBadge />
@@ -1255,6 +1318,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className={estilos.content}>
         <FaixaObraAtiva />
+        <TrilhaNavegacao />
         {children}
       </main>
       <Toaster toasterId={ID_TOASTER_GLOBAL} />
