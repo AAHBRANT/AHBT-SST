@@ -2424,6 +2424,17 @@ public static class NovidadesSeeder
                     "O seletor de obra do topo não mudava telas como Requisitos legais e Documentos, e a busca Ctrl+K pouco ajudava.",
                     "Os dois saíram do topo. Para ver uma obra específica, use o filtro Obra de cada painel."),
             }),
+        new(
+            Versao: "5.135.0",
+            Titulo: "Lista de presença dos treinamentos no perfil",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Lista de presença no perfil",
+                    "A lista de presença assinada do treinamento só abria dentro da turma.",
+                    "Na aba Treinamentos do perfil, os treinamentos feitos por turma têm o botão Lista de presença, que abre o PDF com as assinaturas. Os treinamentos agora ficam no topo da aba, antes dos DDS."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
