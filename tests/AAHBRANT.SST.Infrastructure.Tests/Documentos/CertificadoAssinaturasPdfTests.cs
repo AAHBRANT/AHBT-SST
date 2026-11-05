@@ -46,7 +46,7 @@ public class CertificadoAssinaturasPdfTests
         return new QRCoder.PngByteQRCode(d).GetGraphic(10);
     }
 
-    private static CertificadoAssinaturasModelo ModeloTreinamento()
+    internal static CertificadoAssinaturasModelo ModeloTreinamento()
     {
         var face = Environment.GetEnvironmentVariable("SST_FOTO_TESTE") is { Length: > 0 } f ? File.ReadAllBytes(f) : Png(400, 300, new Rgba32(91, 107, 120));
         var digital = Environment.GetEnvironmentVariable("SST_DIGITAL_TESTE") is { Length: > 0 } d ? File.ReadAllBytes(d) : Png(144, 216, new Rgba32(20, 20, 20));
@@ -106,5 +106,36 @@ public class CertificadoAssinaturasPdfTests
             CertificadoAssinaturasPdf.Adicionar(c, modelo);
         }).GeneratePdf();
         Assert.True(pdf.Length > 100);
+    }
+
+    // 05/11: lista de presença completa — dados da turma, tabela com selo na linha, fotos da turma e o
+    // certificado de assinaturas no fim.
+    [Fact]
+    public void ListaPresenca_Completa_ComSeloECertificado()
+    {
+        var cert = ModeloTreinamento();
+        var foto = Environment.GetEnvironmentVariable("SST_FOTO_TESTE") is { Length: > 0 } f ? File.ReadAllBytes(f) : Png(400, 300, new Rgba32(91, 107, 120));
+        var t0 = new DateTime(2026, 11, 5, 10, 12, 0, DateTimeKind.Utc);
+        var participantes = new List<AAHBRANT.SST.Application.SessoesTreinamento.AtaSessaoTreinamentoPdfParticipanteModelo>
+        {
+            new("Alan Franklin dos Santos", "30", t0, MetodoAutenticacaoAssinatura.ReconhecimentoFacial, "Ajudante Geral · CBO 7170-20",
+                new SeloAssinaturaPdf("Alan Franklin dos Santos", "Ajudante Geral · CBO 7170-20", "4B88D0A1C93E7F20A1B2C3D4E5F60718")),
+            new("Carlos Souza Lima", "41", t0.AddMinutes(2), MetodoAutenticacaoAssinatura.Biometria, "Pedreiro · CBO 7152-10",
+                new SeloAssinaturaPdf("Carlos Souza Lima", "Pedreiro · CBO 7152-10", "B02C11AA7E11B02C11AA7E11")),
+            new("José Pereira", "57", t0.AddMinutes(4), MetodoAutenticacaoAssinatura.ReconhecimentoFacial, "Carpinteiro · CBO 7155-05",
+                new SeloAssinaturaPdf("José Pereira", "Carpinteiro · CBO 7155-05", "A71E09D4A71E09D4A71E09D4")),
+            new("Marcos Vieira", "63", null, null, "Armador · CBO 7153-15", null),
+        };
+        var ata = new AAHBRANT.SST.Application.SessoesTreinamento.AtaSessaoTreinamentoPdfModelo(
+            "CONSORCIO PONTE RIO CUIA", null, "NR-35 Trabalho em Altura", "NR-35", new DateTime(2026, 11, 5), 8,
+            "Gilton Miranda · Técnico de Segurança · MTE-0123056/SP", "2026-0142", new DateTime(2026, 11, 5, 15, 0, 0),
+            participantes, new List<byte[]> { foto, foto },
+            cert.ConteudoHash, cert.UrlValidacaoPublica, cert.QrCodePng, cert);
+
+        var pdf = new AtaSessaoTreinamentoPdfService().Gerar(ata);
+
+        Assert.True(pdf.Length > 1000);
+        var pasta = Environment.GetEnvironmentVariable("FICHA_PDF_SAIDA");
+        if (!string.IsNullOrEmpty(pasta)) { Directory.CreateDirectory(pasta); File.WriteAllBytes(Path.Combine(pasta, "lista-presenca-treinamento-completa.pdf"), pdf); }
     }
 }

@@ -303,51 +303,10 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
     private static IContainer Celula(IContainer container) =>
         container.Padding(3).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten1).DefaultTextStyle(t => t.FontSize(7.5f));
 
-    // "Assinado digitalmente" + legenda miúda (corpo 6) com data/hora e método de identificação —
-    // pedido do usuário (02/10) para toda assinatura de documento; corpo pequeno para não esticar a linha.
+    // 05/11: selo compacto na linha (AssinaturaPdfPadrao.SeloLinha, comum a todas as listas).
     private static void CelulaAssinatura(IContainer container, DateTime? assinadoEm, bool assinado, MetodoAutenticacaoAssinatura? metodo,
-        SeloAssinaturaPdf? selo = null)
-    {
-        if (!assinado)
-        {
-            // 05/11: quadro tracejado no lugar do selo enquanto ninguém assinou.
-            container.Border(0.5f).BorderColor(Colors.Grey.Lighten1).PaddingVertical(6).AlignCenter()
-                .Text("Aguardando assinatura").FontSize(6.5f).Italic().FontColor(Colors.Grey.Darken1);
-            return;
-        }
-
-        // 05/11: selo compacto "ASSINADO ELETRONICAMENTE" na linha, no desenho do selo do técnico.
-        if (selo is not null && assinadoEm is { } em)
-        {
-            container.Border(0.6f).BorderColor(CorMarca).PaddingVertical(3).PaddingHorizontal(4).Column(c =>
-            {
-                // 3 linhas: selo + data · nome + registro · método + código.
-                c.Item().Text(t =>
-                {
-                    t.Span("ASSINADO ELETRONICAMENTE").Bold().FontSize(5.5f).FontColor(CorMarca);
-                    t.Span($" · {HorarioBrasilia.De(em):dd/MM/yyyy HH:mm}").FontSize(5.5f);
-                });
-                c.Item().Text(t =>
-                {
-                    t.Span(selo.Nome).SemiBold().FontSize(6.5f);
-                    if (!string.IsNullOrWhiteSpace(selo.Registro)) t.Span($" · {selo.Registro}").FontSize(5.5f);
-                });
-                var metodoTexto = metodo == MetodoAutenticacaoAssinatura.SessaoLogada ? "Sessão no sistema"
-                    : metodo is { } m ? char.ToUpper(DescricaoMetodoAssinatura.Texto(m)[0]) + DescricaoMetodoAssinatura.Texto(m)[1..] : "Assinatura eletrônica";
-                c.Item().Text(string.IsNullOrWhiteSpace(selo.Codigo) ? metodoTexto : $"{metodoTexto} · Cód. {CodigoCurto(selo.Codigo)}")
-                    .FontSize(5.5f).FontColor(Colors.Grey.Darken2);
-            });
-            return;
-        }
-
-        container.Column(c =>
-        {
-            c.Item().Text("Assinado digitalmente").FontSize(6);
-            if (assinadoEm is { } quando)
-                c.Item().Text(DescricaoMetodoAssinatura.LegendaCurta(HorarioBrasilia.De(quando), metodo))
-                    .FontSize(6).FontColor(Colors.Grey.Darken2);
-        });
-    }
+        SeloAssinaturaPdf? selo = null) =>
+        AssinaturaPdfPadrao.SeloLinha(container, assinado ? assinadoEm : null, metodo, selo);
 
     private static string MotivoLabel(MotivoEntregaEpi? motivo, string? observacao)
     {
@@ -362,8 +321,6 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
         };
         return string.IsNullOrWhiteSpace(observacao) ? rotulo : $"{rotulo} ({observacao})";
     }
-
-    private static string CodigoCurto(string codigo) => codigo.Length <= 10 ? codigo : $"{codigo[..4]}…{codigo[^4..]}";
 
     // Miniatura do EPI (foto do catálogo) antes do nome; sem foto, quadro vazio para manter o alinhamento.
     private static void NomeComMiniatura(IContainer container, string nome, byte[]? foto)

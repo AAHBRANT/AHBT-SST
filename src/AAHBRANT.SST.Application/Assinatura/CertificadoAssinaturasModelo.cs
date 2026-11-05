@@ -75,3 +75,7 @@ public record SecaoPainelCertificado(
 public record LinhaPainelCertificado(string Rotulo, string Valor);
 
 public record ItemPainelCertificado(string Nome, List<string> Detalhes, byte[]? Foto = null);
+
+// Selo "ASSINADO ELETRONICAMENTE" dentro da linha das listas (05/11, mesmo desenho do selo do técnico):
+// nome, registro (funcionário: função · CBO; técnico: MTE/CREA) e o código da assinatura.
+public record SeloAssinaturaPdf(string Nome, string? Registro, string? Codigo);

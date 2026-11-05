@@ -85,4 +85,44 @@ public static class AssinaturaPdfPadrao
         var n = Math.Min(16, h.Length);
         return string.Join('-', Enumerable.Range(0, (n + 3) / 4).Select(i => h.Substring(i * 4, Math.Min(4, n - i * 4))));
     }
+
+    // Selo compacto na linha das listas (05/11, mesmo desenho do selo do técnico), em 3 linhas:
+    // "ASSINADO ELETRONICAMENTE · data" / nome · registro / método · código. Sem selo (registros antigos)
+    // cai na legenda "Assinado digitalmente"; sem assinatura, quadro "Aguardando assinatura".
+    public static void SeloLinha(IContainer container, DateTime? assinadoEm, MetodoAutenticacaoAssinatura? metodo, SeloAssinaturaPdf? selo,
+        string textoPendente = "Aguardando assinatura")
+    {
+        if (assinadoEm is not { } em)
+        {
+            container.Border(0.5f).BorderColor(Colors.Grey.Lighten1).PaddingVertical(6).AlignCenter()
+                .Text(textoPendente).FontSize(6.5f).Italic().FontColor(Colors.Grey.Darken1);
+            return;
+        }
+
+        if (selo is null)
+        {
+            container.Column(c => Legenda(c, em, metodo));
+            return;
+        }
+
+        container.Border(0.6f).BorderColor("#670000").PaddingVertical(3).PaddingHorizontal(4).Column(c =>
+        {
+            c.Item().Text(t =>
+            {
+                t.Span("ASSINADO ELETRONICAMENTE").Bold().FontSize(5.5f).FontColor("#670000");
+                t.Span($" · {HorarioBrasilia.De(em):dd/MM/yyyy HH:mm}").FontSize(5.5f);
+            });
+            c.Item().Text(t =>
+            {
+                t.Span(selo.Nome).SemiBold().FontSize(6.5f);
+                if (!string.IsNullOrWhiteSpace(selo.Registro)) t.Span($" · {selo.Registro}").FontSize(5.5f);
+            });
+            var metodoTexto = metodo == MetodoAutenticacaoAssinatura.SessaoLogada ? "Sessão no sistema"
+                : metodo is { } m ? char.ToUpper(DescricaoMetodoAssinatura.Texto(m)[0]) + DescricaoMetodoAssinatura.Texto(m)[1..] : "Assinatura eletrônica";
+            c.Item().Text(string.IsNullOrWhiteSpace(selo.Codigo) ? metodoTexto : $"{metodoTexto} · Cód. {CodigoCurto(selo.Codigo)}")
+                .FontSize(5.5f).FontColor(Colors.Grey.Darken2);
+        });
+    }
+
+    private static string CodigoCurto(string codigo) => codigo.Length <= 10 ? codigo : $"{codigo[..4]}…{codigo[^4..]}";
 }

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Domain.Enums;
 
 using AAHBRANT.SST.Application.TermosCompromissoEpi;
@@ -121,9 +122,6 @@ public record LinhaEntregaEpiPdf(
     SeloAssinaturaPdf? SeloEmpregado = null,
     SeloAssinaturaPdf? SeloResponsavel = null);
 
-// Selo "ASSINADO ELETRONICAMENTE" dentro da linha das listas (05/11, mesmo desenho do selo do técnico):
-// nome, registro (funcionário: função · CBO; técnico: MTE/CREA) e o código da assinatura.
-public record SeloAssinaturaPdf(string Nome, string? Registro, string? Codigo);
 
 public record LinhaDevolucaoEpiPdf(
     int NumeroReferenciaEntrega,

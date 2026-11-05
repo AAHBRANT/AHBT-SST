@@ -33,7 +33,7 @@ public class ExportarAtaSessaoTreinamentoQueryHandler : IRequestHandler<Exportar
             .Include(p => p.Trabalhador)
             .OrderBy(p => p.Trabalhador!.Nome)
             .Select(p => new AtaSessaoTreinamentoPdfParticipanteModelo(
-                p.Trabalhador!.Nome, p.Trabalhador.Matricula, p.PresencaConfirmadaEm, p.MetodoPresenca))
+                p.Trabalhador!.Nome, p.Trabalhador.Matricula, p.PresencaConfirmadaEm, p.MetodoPresenca, null, null))
             .ToListAsync(ct);
 
         var fotos = await _db.FotosEvidenciaSessaoTreinamento
