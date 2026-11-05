@@ -92,15 +92,17 @@ public class DdsPdfService : IDdsPdfService
                     {
                         tabela.ColumnsDefinition(c =>
                         {
-                            c.ConstantColumn(36);
-                            c.RelativeColumn(1.2f);
+                            c.ConstantColumn(28);
                             c.RelativeColumn(1.3f);
+                            c.RelativeColumn(1.1f);
+                            c.RelativeColumn(1.6f);
                         });
 
                         tabela.Header(h =>
                         {
                             h.Cell().Background(CorMarca).Padding(4).AlignCenter().Text("Nº").FontColor(Colors.White).SemiBold();
                             h.Cell().Background(CorMarca).Padding(4).Text("Nome").FontColor(Colors.White).SemiBold();
+                            h.Cell().Background(CorMarca).Padding(4).Text("Função · CBO").FontColor(Colors.White).SemiBold();
                             h.Cell().Background(CorMarca).Padding(4).AlignCenter().Text("Assinatura").FontColor(Colors.White).SemiBold();
                         });
 
@@ -109,11 +111,10 @@ public class DdsPdfService : IDdsPdfService
                         {
                             tabela.Cell().Border(0.5f).BorderColor(GradeDocumentoPadrao.CorLinha).Padding(4).AlignCenter().AlignMiddle().Text($"{numero++}");
                             tabela.Cell().Border(0.5f).BorderColor(GradeDocumentoPadrao.CorLinha).Padding(4).AlignMiddle().Text(participante.Nome);
-                            tabela.Cell().Border(0.5f).BorderColor(GradeDocumentoPadrao.CorLinha).Padding(4).AlignMiddle().Column(assinatura =>
-                            {
-                                if (participante.AssinadoEm is { } quando)
-                                    AssinaturaPdfPadrao.Legenda(assinatura, quando, participante.Metodo);
-                            });
+                            tabela.Cell().Border(0.5f).BorderColor(GradeDocumentoPadrao.CorLinha).Padding(4).AlignMiddle().Text(participante.FuncaoComCbo ?? "—").FontSize(9);
+                            // 05/11: selo na linha (AssinaturaPdfPadrao.SeloLinha).
+                            tabela.Cell().Border(0.5f).BorderColor(GradeDocumentoPadrao.CorLinha).Padding(3).AlignMiddle()
+                                .Element(c => AssinaturaPdfPadrao.SeloLinha(c, participante.AssinadoEm, participante.Metodo, participante.Selo));
                         }
                     });
 
@@ -170,6 +171,10 @@ public class DdsPdfService : IDdsPdfService
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
                     coluna, "DDS", modelo.Protocolo, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, modelo.TemAssinatura));
             });
+
+            // 05/11: certificado de assinaturas no fim (evidências de cada participante e do responsável).
+            if (modelo.Certificado is { } certificado)
+                CertificadoAssinaturasPdf.Adicionar(container, certificado);
         });
 
         return documento.GeneratePdf();
