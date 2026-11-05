@@ -2446,6 +2446,17 @@ public static class NovidadesSeeder
                     "Na lista de presença do treinamento, os dados da turma ficavam soltos em linhas de texto.",
                     "Curso, data, carga horária, certificado, instrutor e status agora ficam em uma grade com bordas, no mesmo padrão dos outros documentos. A tabela de participantes também ganhou bordas em todas as células."),
             }),
+        new(
+            Versao: "5.137.0",
+            Titulo: "Documentos com dados em grade",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Mesmo padrão de grade nos PDFs",
+                    "No DDS, na Inspeção, na Permissão de Trabalho, nas atas da CIPA e na Solicitação de reposição de EPI, os dados de identificação ficavam soltos em linhas de texto.",
+                    "Agora todos usam a mesma grade com bordas: o nome do campo em letra pequena em cima e o valor embaixo. Os temas do DDS, os itens da inspeção, as deliberações e a lista de presença da reunião da CIPA também ficaram em grade."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

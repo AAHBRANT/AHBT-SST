@@ -14,8 +14,7 @@ namespace AAHBRANT.SST.Infrastructure.Documentos;
 public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
 {
     private const string CorMarca = "#670000";
-    private const string CorLinha = "#CFC9C4";
-    private const string CorRotulo = "#5C5652";
+    private const string CorLinha = GradeDocumentoPadrao.CorLinha;
 
     public byte[] Gerar(AtaSessaoTreinamentoPdfModelo modelo)
     {
@@ -58,31 +57,14 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
             ? $"Concluída em {modelo.DataEncerramento:dd/MM/yyyy HH:mm}"
             : "Em andamento";
 
-        container.Table(tabela =>
+        GradeDocumentoPadrao.Desenhar(container, new GradeDocumentoPadrao.Campo[]
         {
-            tabela.ColumnsDefinition(c =>
-            {
-                c.RelativeColumn(); c.RelativeColumn(); c.RelativeColumn(); c.RelativeColumn();
-            });
-
-            CampoGrade(tabela, "Curso", curso, 4, destaque: true);
-            CampoGrade(tabela, "Data de realização", modelo.DataRealizacao.ToString("dd/MM/yyyy"), 1);
-            CampoGrade(tabela, "Carga horária", $"{modelo.CargaHorariaRealizada} h", 1);
-            CampoGrade(tabela, "Nº do certificado", Valor(modelo.NumeroCertificado), 2);
-            CampoGrade(tabela, "Instrutor / instituição", Valor(modelo.InstituicaoInstrutor), 2);
-            CampoGrade(tabela, "Status", status, 2);
-        });
-    }
-
-    private static string Valor(string? texto) => string.IsNullOrWhiteSpace(texto) ? "—" : texto;
-
-    private static void CampoGrade(TableDescriptor tabela, string rotulo, string valor, int colunas, bool destaque = false)
-    {
-        tabela.Cell().ColumnSpan((uint)colunas).Border(0.5f).BorderColor(CorLinha).PaddingVertical(3).PaddingHorizontal(6).Column(celula =>
-        {
-            celula.Item().Text(rotulo.ToUpperInvariant()).FontSize(6.5f).FontColor(CorRotulo).LetterSpacing(0.04f);
-            var texto = celula.Item().Text(valor).SemiBold();
-            if (destaque) texto.FontColor(CorMarca);
+            new("Curso", curso, 4, Destaque: true),
+            new("Data de realização", modelo.DataRealizacao.ToString("dd/MM/yyyy"), 1),
+            new("Carga horária", $"{modelo.CargaHorariaRealizada} h", 1),
+            new("Nº do certificado", modelo.NumeroCertificado, 2),
+            new("Instrutor / instituição", modelo.InstituicaoInstrutor, 2),
+            new("Status", status, 2),
         });
     }
 

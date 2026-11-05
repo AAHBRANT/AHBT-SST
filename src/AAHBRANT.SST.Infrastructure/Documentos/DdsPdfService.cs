@@ -27,50 +27,40 @@ public class DdsPdfService : IDdsPdfService
                 {
                     coluna.Spacing(8);
 
-                    coluna.Item().Row(linha =>
+                    coluna.Item().Element(c => GradeDocumentoPadrao.Desenhar(c, new GradeDocumentoPadrao.Campo[]
                     {
-                        linha.RelativeItem().Text(t =>
-                        {
-                            t.Span("Obra: ").SemiBold();
-                            t.Span(modelo.ObraNome);
-                        });
-                        linha.RelativeItem().Text(t =>
-                        {
-                            t.Span("Data: ").SemiBold();
-                            t.Span(modelo.Data.ToString("dd/MM/yyyy"));
-                        });
-                    });
-
-                    coluna.Item().Text(t =>
-                    {
-                        t.Span("Responsável: ").SemiBold();
-                        t.Span(modelo.ResponsavelNome);
-                    });
+                        new("Obra", modelo.ObraNome, 2),
+                        new("Data", modelo.Data.ToString("dd/MM/yyyy"), 1),
+                        new("Responsável", modelo.ResponsavelNome, 1),
+                    }));
 
                     if (modelo.Temas.Count > 0)
                     {
                         coluna.Item().PaddingTop(8).Text("Temas do dia").FontSize(13).Bold();
                         foreach (var tema in modelo.Temas)
                         {
-                            coluna.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(6).Column(bloco =>
+                            coluna.Item().Column(bloco =>
                             {
-                                bloco.Spacing(2);
-                                bloco.Item().Text(tema.AtividadeNome).Bold().FontColor(CorMarca);
                                 if (tema.PerigoNome is null)
                                 {
-                                    bloco.Item().Text("Nenhum risco cadastrado para esta atividade — revisar Matriz de Riscos.");
+                                    bloco.Item().Element(c => GradeDocumentoPadrao.Desenhar(c, new GradeDocumentoPadrao.Campo[]
+                                    {
+                                        new("Atividade", tema.AtividadeNome, 4, Destaque: true),
+                                        new("Riscos", "Nenhum risco cadastrado para esta atividade — revisar Matriz de Riscos.", 4),
+                                    }));
                                 }
                                 else
                                 {
-                                    bloco.Item().Text(t => { t.Span("Perigo: ").SemiBold(); t.Span(tema.PerigoNome); });
-                                    if (!string.IsNullOrWhiteSpace(tema.PerigoDescricao))
-                                        bloco.Item().Text(t => { t.Span("Descrição: ").SemiBold(); t.Span(tema.PerigoDescricao); });
-                                    if (!string.IsNullOrWhiteSpace(tema.Consequencia))
-                                        bloco.Item().Text(t => { t.Span("Consequência: ").SemiBold(); t.Span(tema.Consequencia); });
-                                    if (!string.IsNullOrWhiteSpace(tema.ControlesExistentes))
-                                        bloco.Item().Text(t => { t.Span("Controles existentes: ").SemiBold(); t.Span(tema.ControlesExistentes); });
-                                    if (!string.IsNullOrWhiteSpace(tema.ControlesAdicionais))
-                                        bloco.Item().Text(t => { t.Span("Controles adicionais: ").SemiBold(); t.Span(tema.ControlesAdicionais); });
+                                    var campos = new List<GradeDocumentoPadrao.Campo>
+                                    {
+                                        new("Atividade", tema.AtividadeNome, 2, Destaque: true),
+                                        new("Perigo", tema.PerigoNome, 2),
+                                    };
+                                    if (!string.IsNullOrWhiteSpace(tema.PerigoDescricao)) campos.Add(new("Descrição", tema.PerigoDescricao, 4));
+                                    if (!string.IsNullOrWhiteSpace(tema.Consequencia)) campos.Add(new("Consequência", tema.Consequencia, 4));
+                                    if (!string.IsNullOrWhiteSpace(tema.ControlesExistentes)) campos.Add(new("Controles existentes", tema.ControlesExistentes, 4));
+                                    if (!string.IsNullOrWhiteSpace(tema.ControlesAdicionais)) campos.Add(new("Controles adicionais", tema.ControlesAdicionais, 4));
+                                    bloco.Item().Element(c => GradeDocumentoPadrao.Desenhar(c, campos));
                                 }
                             });
                         }
@@ -78,12 +68,11 @@ public class DdsPdfService : IDdsPdfService
 
                     if (modelo.TemaLivreNome is not null)
                     {
-                        coluna.Item().PaddingTop(4).Border(1).BorderColor(Colors.Grey.Lighten2).Padding(6).Column(bloco =>
+                        coluna.Item().PaddingTop(4).Element(c => GradeDocumentoPadrao.Desenhar(c, new GradeDocumentoPadrao.Campo[]
                         {
-                            bloco.Item().Text(t => { t.Span("Tema livre: ").SemiBold().FontColor(CorMarca); t.Span(modelo.TemaLivreNome); });
-                            if (!string.IsNullOrWhiteSpace(modelo.TemaLivreDescricao))
-                                bloco.Item().Text(modelo.TemaLivreDescricao);
-                        });
+                            new("Tema livre", modelo.TemaLivreNome, 4, Destaque: true),
+                            new("Descrição", modelo.TemaLivreDescricao, 4),
+                        }));
                     }
 
                     // Pedido do usuário (30/09): o documento do DDS traz só os temas e a lista de
@@ -118,9 +107,9 @@ public class DdsPdfService : IDdsPdfService
                         var numero = 1;
                         foreach (var participante in assinantes)
                         {
-                            tabela.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).AlignCenter().AlignMiddle().Text($"{numero++}");
-                            tabela.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).AlignMiddle().Text(participante.Nome);
-                            tabela.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).AlignMiddle().Column(assinatura =>
+                            tabela.Cell().Border(0.5f).BorderColor(GradeDocumentoPadrao.CorLinha).Padding(4).AlignCenter().AlignMiddle().Text($"{numero++}");
+                            tabela.Cell().Border(0.5f).BorderColor(GradeDocumentoPadrao.CorLinha).Padding(4).AlignMiddle().Text(participante.Nome);
+                            tabela.Cell().Border(0.5f).BorderColor(GradeDocumentoPadrao.CorLinha).Padding(4).AlignMiddle().Column(assinatura =>
                             {
                                 if (participante.AssinadoEm is { } quando)
                                     AssinaturaPdfPadrao.Legenda(assinatura, quando, participante.Metodo);

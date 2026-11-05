@@ -89,16 +89,13 @@ public class InspecaoPdfService : IInspecaoPdfService
         {
             if (modelo.IdentificacaoVeiculo is { Count: > 0 })
                 coluna.Item().Text(string.Join("   |   ", modelo.IdentificacaoVeiculo)).SemiBold();
-            coluna.Item().Row(linha =>
+            coluna.Item().Element(c => GradeDocumentoPadrao.Desenhar(c, new GradeDocumentoPadrao.Campo[]
             {
-                linha.RelativeItem().Text(t => { t.Span("Checklist: ").SemiBold(); t.Span($"{modelo.ChecklistNome} (v{modelo.ChecklistVersao})"); });
-                linha.RelativeItem().Text(t => { t.Span("Data: ").SemiBold(); t.Span(modelo.Data.ToString("dd/MM/yyyy")); });
-            });
-            coluna.Item().Row(linha =>
-            {
-                linha.RelativeItem().Text(t => { t.Span("Responsável: ").SemiBold(); t.Span(modelo.ResponsavelNome); });
-                linha.RelativeItem().Text(t => { t.Span("Status: ").SemiBold(); t.Span(modelo.Status); });
-            });
+                new("Checklist", $"{modelo.ChecklistNome} (v{modelo.ChecklistVersao})", 2),
+                new("Data", modelo.Data.ToString("dd/MM/yyyy"), 1),
+                new("Status", modelo.Status, 1),
+                new("Responsável", modelo.ResponsavelNome, 4),
+            }));
         });
     }
 
@@ -120,7 +117,7 @@ public class InspecaoPdfService : IInspecaoPdfService
             if (evidenciaUnicaSoNaoConforme)
             {
                 if (!string.IsNullOrWhiteSpace(item.Observacao))
-                    coluna.Item().Text(t => { t.Span("OBS: ").SemiBold(); t.Span(item.Observacao); });
+                    coluna.Item().Element(c => GradeDocumentoPadrao.Desenhar(c, new GradeDocumentoPadrao.Campo[] { new("Observação", item.Observacao, 4) }, tamanhoValor: 9));
 
                 // Veículos/Temas: 1 foto por item. Sai no PDF sempre que existir — em Tema a foto é
                 // tirada também nos itens Conformes, e antes ficava de fora do relatório (30/10/2026).
@@ -141,18 +138,15 @@ public class InspecaoPdfService : IInspecaoPdfService
                 return;
             }
 
-            coluna.Item().Row(linha =>
+            var campos = new List<GradeDocumentoPadrao.Campo>
             {
-                linha.RelativeItem().Text(t => { t.Span("Local: ").SemiBold(); t.Span(item.Local ?? "não informado"); });
-                linha.RelativeItem().Text(t => { t.Span("Responsável: ").SemiBold(); t.Span(item.ResponsavelNome ?? "não informado"); });
-                linha.RelativeItem().Text(t => { t.Span("Prazo: ").SemiBold(); t.Span(item.Prazo.HasValue ? item.Prazo.Value.ToString("dd/MM/yyyy") : "não informado"); });
-            });
-
-            if (!string.IsNullOrWhiteSpace(item.Observacao))
-                coluna.Item().Text(t => { t.Span("OBS: ").SemiBold(); t.Span(item.Observacao); });
-
-            if (!string.IsNullOrWhiteSpace(item.PlanoDeAcao))
-                coluna.Item().Text(t => { t.Span("Plano de ação: ").SemiBold(); t.Span(item.PlanoDeAcao); });
+                new("Local", item.Local ?? "não informado", 2),
+                new("Responsável", item.ResponsavelNome ?? "não informado", 1),
+                new("Prazo", item.Prazo?.ToString("dd/MM/yyyy") ?? "não informado", 1),
+            };
+            if (!string.IsNullOrWhiteSpace(item.Observacao)) campos.Add(new("Observação", item.Observacao, 4));
+            if (!string.IsNullOrWhiteSpace(item.PlanoDeAcao)) campos.Add(new("Plano de ação", item.PlanoDeAcao, 4));
+            coluna.Item().Element(c => GradeDocumentoPadrao.Desenhar(c, campos, tamanhoValor: 9));
 
             coluna.Item().PaddingTop(4).Row(linha =>
             {
