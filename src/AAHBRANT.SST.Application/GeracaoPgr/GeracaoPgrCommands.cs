@@ -763,6 +763,11 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
         else
         {
             await RegistrarRevisaoAsync(pgr, g, aprovador, request.UsuarioId, agora, ct);
+            // Leitura com IA ainda não cadastrada é do PDF anterior: revisá-la agora cadastraria dados antigos por cima do
+            // PGR que acabou de ser aprovado (05/11/2026). Sai como descartada.
+            foreach (var leitura in await _db.LeiturasDocumentoIa.Where(l => l.Documento == DocumentoLeituraIa.Pgr && l.DocumentoId == pgr.Id
+                && (l.Status == StatusLeituraIa.Pendente || l.Status == StatusLeituraIa.Lendo || l.Status == StatusLeituraIa.Concluida)).ToListAsync(ct))
+                leitura.Status = StatusLeituraIa.Descartada;
             pgr.DataProximaRevisao = g.DataProximaRevisao;
             pgr.DataTermino = e.DataTermino;
             pgr.ResponsavelUsuarioId = request.UsuarioId;
