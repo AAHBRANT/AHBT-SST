@@ -2480,6 +2480,21 @@ public static class NovidadesSeeder
                     "O cofre de assinaturas mostrava uma miniatura pequena e deitada.",
                     "Cada assinatura mostra a biometria cadastrada (foto facial ou digital) ao lado da capturada na assinatura, em 3×4."),
             }),
+        new(
+            Versao: "5.139.0",
+            Titulo: "Presença no treinamento com prova completa",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Presença guarda a foto ou a digital",
+                    "A presença na turma confirmava a pessoa, mas não guardava a foto do rosto nem a imagem da digital, e o certificado saía como \"digital\" para todos.",
+                    "A presença passa a guardar a imagem capturada, o IP, o aparelho e a localização, como na entrega de EPI. Ao encerrar a turma, a assinatura do certificado sai com o método certo (facial ou digital) e com essa evidência."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Lista de presença com selo e certificado de assinaturas",
+                    "A lista de presença mostrava só \"Assinado digitalmente\" em cada linha.",
+                    "Cada participante tem o selo ASSINADO ELETRONICAMENTE com função e CBO, o instrutor assina no fim da lista e o PDF termina com o Certificado de Assinaturas Eletrônicas, com a biometria cadastrada ao lado da capturada na presença."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
