@@ -75,11 +75,20 @@ public class EscopoPorObraMiddleware
             .Select(a => a.Policy).Where(p => !string.IsNullOrEmpty(p)).Distinct() ?? [];
         foreach (var politica in politicas)
         {
-            if (politica is PoliticasAutorizacao.SomenteAdministrador
-                or PoliticasAutorizacao.QualquerUsuarioAutenticado or "suporte-ia:usar" or "novidades:usar") continue;
+            if (!RestringeEscopo(politica!)) continue;
             escopo = escopo.Intersectar(await acesso.ObterEscopoAsync(azureAdObjectId, politica!, contexto.RequestAborted));
         }
         usuarioAtual.DefinirEscopo(escopo.Global, escopo.Obras);
         await _proximo(contexto);
     }
+
+    // Só política que é código de permissão (cadastrada em Permissoes) restringe as obras. Regra fixa por perfil
+    // (Administrador, Engenheiro de Segurança) ou por login não tem linha em Permissoes: cruzar com ela zerava o escopo,
+    // e o engenheiro aprovando o PGR deixava de enxergar o próprio cadastro de trabalhador para assinar (05/11/2026).
+    public static bool RestringeEscopo(string politica) => politica is not (
+        PoliticasAutorizacao.SomenteAdministrador
+        or PoliticasAutorizacao.SomenteEngenheiroSeguranca
+        or PoliticasAutorizacao.QualquerUsuarioAutenticado
+        or "suporte-ia:usar"
+        or "novidades:usar");
 }
