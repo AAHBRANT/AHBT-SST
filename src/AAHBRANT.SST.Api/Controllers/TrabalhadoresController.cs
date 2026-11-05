@@ -51,6 +51,15 @@ public class TrabalhadoresController : ControllerBase
         return perfil is null ? NotFound() : Ok(perfil);
     }
 
+    // Histórico de DDS do trabalhador (presença ou falta em cada DDS da obra desde a admissão).
+    [Authorize(Policy = "trabalhador:ver")]
+    [HttpGet("{id:guid}/participacoes-dds")]
+    public async Task<IActionResult> ListarParticipacoesDds(Guid id, CancellationToken ct)
+    {
+        var lista = await _mediator.Send(new ListarParticipacoesDdsTrabalhadorQuery(id), ct);
+        return lista is null ? NotFound() : Ok(lista);
+    }
+
     [Authorize(Policy = "trabalhador:ver")]
     [HttpGet("{id:guid}/relatorio-pdf")]
     public async Task<IActionResult> ObterRelatorioFiscalizacao(Guid id, CancellationToken ct)

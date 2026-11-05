@@ -728,6 +728,8 @@ export interface Treinamento {
   // certificado no modelo próprio. Externo = curso feito por terceiro, só registrado aqui — a
   // emissão do modelo AAHBRANT é recusada pela API e o que se baixa é o arquivo anexado.
   origemCertificado?: OrigemCertificadoTreinamento;
+  // Turma (sessão) de onde o treinamento foi gerado, quando houver — link no perfil.
+  sessaoTreinamentoId?: string | null;
 }
 
 export const OrigemCertificadoTreinamento = {
@@ -4378,6 +4380,24 @@ export interface AssinaturaPerfil {
   fotoEvidenciaHash?: string | null;
 }
 
+// Histórico de DDS no perfil: cada DDS da obra desde a admissão, com presença ou falta.
+export interface ParticipacaoDds {
+  ddsId: string;
+  data: string;
+  numeroDocumento?: string | null;
+  tema: string;
+  responsavelNome?: string | null;
+  status: number;
+  semExpediente: boolean;
+  motivoSemExpediente?: string | null;
+  quantidadeAtividades: number;
+  quantidadeParticipantes: number;
+  presente: boolean;
+  metodoPresenca?: number | null;
+  scoreConfianca?: number | null;
+  presencaRegistradaEm?: string | null;
+}
+
 export interface PerfilCompletoTrabalhador {
   id: string;
   nome: string;
@@ -5230,6 +5250,8 @@ export const api = {
       request<CadastroFacialFraco[]>(`/api/trabalhadores/cadastros-faciais-fracos${obraId ? `?obraId=${obraId}` : ''}`),
     obterStatusCadastroBiometrico: (id: string) =>
       request<StatusCadastroBiometrico>(`/api/trabalhadores/${id}/assinatura/status-cadastro`),
+    listarParticipacoesDds: (id: string) =>
+      request<ParticipacaoDds[]>(`/api/trabalhadores/${id}/participacoes-dds`),
     obterPerfilCompleto: (id: string) =>
       request<PerfilCompletoTrabalhador>(`/api/trabalhadores/${id}/perfil-completo`),
     baixarRelatorioFiscalizacao: async (id: string) => {

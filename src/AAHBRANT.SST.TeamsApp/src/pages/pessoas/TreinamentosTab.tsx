@@ -53,6 +53,13 @@ function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
 // nivelVencimento/tomDeVencimento/rotuloDeVencimento de @ui (guia de conversão, "Badge→StatusChip"),
 // mantendo a data crua ao lado do chip (aprendizado do piloto 1: chip nunca substitui sozinho um
 // valor de auditoria). obraId propaga pro AssinaturaCertificadoTreinamentoDialog (AssinaturaQuiosque).
+// Datas vêm como ISO sem fuso (só a parte da data importa): dd/mm/aaaa sem conversão de fuso.
+function dataBr(iso?: string | null) {
+  return iso ? iso.slice(0, 10).split('-').reverse().join('/') : '—';
+}
+
+const estiloSecundario = { fontSize: 12, color: 'var(--sst-color-neutral-medium)' } as const;
+
 export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: string; obraId: string }) {
   const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
@@ -165,7 +172,7 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
 
   const colunas: Coluna<Treinamento>[] = [
     { chave: 'curso', rotulo: 'Curso', render: (t) => nomeCurso(t.cursoTreinamentoId) },
-    { chave: 'realizacao', rotulo: 'Realização', render: (t) => t.dataRealizacao?.slice(0, 10) },
+    { chave: 'realizacao', rotulo: 'Realização', render: (t) => <span style={{ whiteSpace: 'nowrap' }}>{dataBr(t.dataRealizacao)}</span> },
     {
       chave: 'validade',
       rotulo: 'Validade',
@@ -173,11 +180,38 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
         const nivel = nivelVencimento(t.dataValidade);
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>{t.dataValidade?.slice(0, 10) ?? '—'}</span>
+            <span style={{ whiteSpace: 'nowrap' }}>{dataBr(t.dataValidade)}</span>
             {nivel && <StatusChip tom={tomDeVencimento(nivel)}>{rotuloDeVencimento(nivel)}</StatusChip>}
           </div>
         );
       },
+    },
+    {
+      chave: 'carga',
+      rotulo: 'Carga',
+      alinhar: 'direita',
+      render: (t) => (t.cargaHorariaRealizada ? `${t.cargaHorariaRealizada} h` : '—'),
+    },
+    {
+      chave: 'instrutor',
+      rotulo: 'Instrutor e local',
+      render: (t) => (
+        <div>
+          <div>{t.instituicaoInstrutor ?? '—'}</div>
+          {t.instrutorRegistroProfissional && <div style={estiloSecundario}>{t.instrutorRegistroProfissional}</div>}
+          {t.local && <div style={estiloSecundario}>{t.local}</div>}
+          {t.sessaoTreinamentoId && (
+            <Button
+              appearance="transparent"
+              size="small"
+              style={{ padding: 0, minWidth: 0, height: 'auto' }}
+              onClick={() => navigate(`/treinamentos/turma/${t.sessaoTreinamentoId}`)}
+            >
+              Ver turma
+            </Button>
+          )}
+        </div>
+      ),
     },
     { chave: 'certificado', rotulo: 'Certificado', render: (t) => t.numeroCertificado },
   ];
