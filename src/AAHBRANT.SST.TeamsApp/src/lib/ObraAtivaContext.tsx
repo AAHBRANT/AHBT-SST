@@ -1,6 +1,10 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
-// Obra ativa do sistema inteiro (pedido do usuário, 28/10/2026): o usuário escolhe a obra uma vez,
+// 05/11/2026: o seletor de obra do cabeçalho foi removido a pedido do usuário. A obra agora é
+// escolhida só no filtro de cada painel, vale durante a sessão e não fica mais gravada no navegador
+// (a chave antiga é apagada ao abrir o app, para ninguém ficar preso numa obra sem ver o seletor).
+//
+// Histórico — obra ativa do sistema inteiro (pedido do usuário, 28/10/2026): o usuário escolhe a obra uma vez,
 // no cabeçalho, e ela vale para o Início e para todos os painéis e telas que filtram por obra. A
 // escolha fica lembrada neste navegador para o próximo acesso. Vazio ('') = todas as obras.
 //
@@ -26,13 +30,9 @@ const Contexto = createContext<ObraAtivaContexto | null>(null);
 
 function lerSalva(): ObraAtiva {
   try {
-    const bruto = window.localStorage.getItem(CHAVE);
-    if (bruto) {
-      const salvo = JSON.parse(bruto) as Partial<ObraAtiva>;
-      if (typeof salvo.id === 'string') return { id: salvo.id, nome: typeof salvo.nome === 'string' ? salvo.nome : '' };
-    }
+    window.localStorage.removeItem(CHAVE);
   } catch {
-    // localStorage indisponível ou valor corrompido: começa em "Todas as obras".
+    // Sem localStorage: nada a limpar.
   }
   return { id: '', nome: '' };
 }
@@ -42,13 +42,7 @@ export function ObraAtivaProvider({ children }: { children: ReactNode }) {
 
   const definirObraAtiva = useCallback((id: string, nome = '') => {
     setObra((atual) => {
-      const nova = { id, nome: id ? nome || (atual.id === id ? atual.nome : '') : '' };
-      try {
-        window.localStorage.setItem(CHAVE, JSON.stringify(nova));
-      } catch {
-        // Segue só em memória se o navegador não deixar gravar.
-      }
-      return nova;
+      return { id, nome: id ? nome || (atual.id === id ? atual.nome : '') : '' };
     });
   }, []);
 
