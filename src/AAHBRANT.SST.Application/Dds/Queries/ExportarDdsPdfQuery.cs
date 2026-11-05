@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Dds.Queries;
 
-public record ExportarDdsPdfQuery(Guid Id) : IRequest<byte[]?>;
+// SomenteTrabalhadorId (dossiê, LGPD): o certificado traz só a evidência desse funcionário.
+public record ExportarDdsPdfQuery(Guid Id, Guid? SomenteTrabalhadorId = null) : IRequest<byte[]?>;
 
 public class ExportarDdsPdfQueryHandler : IRequestHandler<ExportarDdsPdfQuery, byte[]?>
 {
@@ -108,7 +109,8 @@ public class ExportarDdsPdfQueryHandler : IRequestHandler<ExportarDdsPdfQuery, b
             }),
         });
         var certificado = documento is null ? null : await MontadorCertificadoAssinaturas.MontarAsync(
-            _db, _cripto, _qrCode, documento, assinaturas, signatarios,
+            _db, _cripto, _qrCode, documento,
+            request.SomenteTrabalhadorId is { } so ? assinaturas.Where(a => a.TrabalhadorId == so).ToList() : assinaturas, signatarios,
             s => s.TrabalhadorId == trabalhadorResponsavelId ? "DDS — assinatura do responsável" : "DDS — presença do participante",
             "DDS", $"DDS · {detalhe.Dds.Data:dd/MM/yyyy} · {detalhe.Dds.ObraNome}",
             detalhe.Dds.ObraNome, logoConteudo, rastreio, painel, compacto: true, ct);

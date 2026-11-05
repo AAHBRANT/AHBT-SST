@@ -92,6 +92,10 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
                             coluna.Item().Text($"• {ocorrencia.Data:dd/MM/yyyy} — {ocorrencia.Tipo}, gravidade {ocorrencia.Gravidade}" + (ocorrencia.HouveAfastamento ? $", {ocorrencia.DiasAfastamento ?? 0} dia(s) de afastamento" : ""));
 
                     coluna.Item().PaddingTop(6).EnsureSpace(80).Text("Cofre de assinaturas").FontSize(13).Bold().FontColor(CorMarca);
+                    // Faixa de sigilo (29/10): a seção traz biometria, IP e hash de quem assinou.
+                    coluna.Item().PaddingBottom(4).Background(CorMarca).PaddingVertical(3).PaddingHorizontal(6)
+                        .Text("CONFIDENCIAL · DADO BIOMÉTRICO · USO RESTRITO À FISCALIZAÇÃO (LGPD)")
+                        .FontSize(8).SemiBold().FontColor(Colors.White);
                     if (perfil.Assinaturas.Count == 0)
                         coluna.Item().Text("Nenhuma assinatura registrada.").Italic();
                     else

@@ -2536,6 +2536,17 @@ public static class NovidadesSeeder
                     "A ciência da equipe na PT mostrava só \"Assinado\" ou \"Pendente\".",
                     "Cada executante aparece com função, CBO e o selo ASSINADO ELETRONICAMENTE com o método e o código da assinatura. Na tela da PT, o botão Certificado de assinaturas abre as evidências de cada assinatura (biometria cadastrada ao lado da capturada e QR), à parte da PT."),
             }),
+        new(
+            Versao: "5.143.0",
+            Titulo: "Dossiê completo do funcionário",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Baixar dossiê completo",
+                    "Para reunir os documentos de um funcionário era preciso baixar um por um.",
+                    "No perfil do funcionário, o botão Baixar dossiê completo gera um único PDF com o Relatório de Fiscalização, um índice e todos os documentos na íntegra (certificados, listas de presença, DDS, APR, PT, Ficha de EPI e ASO), cada um com o seu Certificado de Assinaturas Eletrônicas trazendo só as evidências desse funcionário."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

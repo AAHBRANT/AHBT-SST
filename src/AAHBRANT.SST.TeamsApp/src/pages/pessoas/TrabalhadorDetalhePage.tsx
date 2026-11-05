@@ -130,9 +130,10 @@ export function TrabalhadorDetalhePage() {
     try {
       setBaixandoRelatorio(true);
       setErro(null);
-      salvarBlob(await api.trabalhadores.baixarRelatorioFiscalizacao(id), `relatorio-fiscalizacao-${id}.pdf`);
+      // Dossiê (29/10): relatório + índice + todos os documentos do funcionário num PDF só.
+      salvarBlob(await api.trabalhadores.baixarDossie(id), `dossie-funcionario-${id}.pdf`);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao gerar o relatório de fiscalização.');
+      setErro(e instanceof Error ? e.message : 'Falha ao gerar o dossiê do funcionário.');
     } finally {
       setBaixandoRelatorio(false);
     }
