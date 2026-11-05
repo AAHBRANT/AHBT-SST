@@ -5101,6 +5101,15 @@ export interface PlanoIntegracao {
   kit: ItemKitEpi[];
 }
 
+// 05/11: localização do aparelho na presença por facial (campos do formulário). Nunca bloqueia.
+async function anexarLocalizacaoPresenca(formData: FormData) {
+  const localizacao = await obterLocalizacaoAssinatura();
+  formData.append('LocalizacaoStatus', String(localizacao.status));
+  if (localizacao.latitude != null) formData.append('Latitude', String(localizacao.latitude));
+  if (localizacao.longitude != null) formData.append('Longitude', String(localizacao.longitude));
+  if (localizacao.precisaoMetros != null) formData.append('PrecisaoMetros', String(localizacao.precisaoMetros));
+}
+
 export const api = {
   fotos: {
     // Endereço por extenso do carimbo da foto (Azure Maps). Lista vazia quando o serviço está desligado.
@@ -6612,17 +6621,21 @@ export const api = {
     // Presença exclusivamente por biometria (2026-08-31, pedido do usuário) — dispositivoId/
     // segredoDispositivo vêm do agente local (fetch a /api/dispositivo), nunca de localStorage;
     // score é o resultado do match 1:N já feito pelo agente (ver capturarDigitalLocal).
-    registrarParticipante: (ddsId: string, trabalhadorId: string, credencial: CredencialLeitura, score: number, imagemDigital?: string | null) =>
-      request<{ id: string }>(`/api/dds/${ddsId}/participantes`, {
+    // 05/11: a localização do aparelho vai junto (evidência da assinatura, como no EPI).
+    registrarParticipante: async (ddsId: string, trabalhadorId: string, credencial: CredencialLeitura, score: number, imagemDigital?: string | null) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<{ id: string }>(`/api/dds/${ddsId}/participantes`, {
         method: 'POST',
-        body: JSON.stringify({ trabalhadorId, ...credencial, score, imagemDigital: imagemDigital ?? null }),
-      }),
+        body: JSON.stringify({ trabalhadorId, ...credencial, score, imagemDigital: imagemDigital ?? null, localizacao }),
+      });
+    },
     // Presença por reconhecimento facial: a foto é identificada no servidor (grupo da obra do DDS) e o
     // rosto precisa ser do funcionário informado. Erros de rejeição vêm como { erro, motivo } no corpo.
     registrarParticipanteFacial: async (ddsId: string, trabalhadorId: string, foto: File) => {
       const formData = new FormData();
       formData.append('TrabalhadorId', trabalhadorId);
       formData.append('Foto', foto);
+      await anexarLocalizacaoPresenca(formData);
       const response = await fetch(`${API_BASE_URL}/api/dds/${ddsId}/participantes/facial`, {
         method: 'POST',
         headers: await montarHeadersAuth(),
@@ -6639,6 +6652,7 @@ export const api = {
     registrarParticipanteFacialFila: async (ddsId: string, foto: File) => {
       const formData = new FormData();
       formData.append('Foto', foto);
+      await anexarLocalizacaoPresenca(formData);
       const response = await fetch(`${API_BASE_URL}/api/dds/${ddsId}/participantes/facial-fila`, {
         method: 'POST',
         headers: await montarHeadersAuth(),

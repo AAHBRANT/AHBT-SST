@@ -15,7 +15,9 @@ namespace AAHBRANT.SST.Application.Dds.Commands;
 // (senão a presença de A poderia ser gravada com o rosto de B) e se aplicam as mesmas regras da digital.
 // A foto capturada fica guardada como evidência da presença (FotoTipo = Facial) e a mesma identificação
 // vale como assinatura do DDS (melhor esforço), igual à digital.
-public record RegistrarParticipanteFacialCommand(Guid DdsId, Guid TrabalhadorId, byte[] FotoJpeg) : IRequest<Guid>;
+public record RegistrarParticipanteFacialCommand(Guid DdsId, Guid TrabalhadorId, byte[] FotoJpeg,
+    // 05/11: localização do aparelho na presença (evidência da assinatura).
+    LocalizacaoAssinatura? Localizacao = null) : IRequest<Guid>;
 
 public class RegistrarParticipanteFacialCommandValidator : AbstractValidator<RegistrarParticipanteFacialCommand>
 {
@@ -90,7 +92,7 @@ public class RegistrarParticipanteFacialCommandHandler : IRequestHandler<Registr
         try
         {
             var documentoId = await _mediator.Send(new CriarDocumentoAssinaturaCommand(nameof(Domain.Entidades.Dds), request.DdsId), ct);
-            await _registrador.RegistrarAsync(documentoId, resultado, ipAddress: null, ct, request.FotoJpeg, "image/jpeg");
+            await _registrador.RegistrarAsync(documentoId, resultado, ipAddress: null, ct, request.FotoJpeg, "image/jpeg", localizacao: request.Localizacao);
         }
         catch (Exception ex)
         {

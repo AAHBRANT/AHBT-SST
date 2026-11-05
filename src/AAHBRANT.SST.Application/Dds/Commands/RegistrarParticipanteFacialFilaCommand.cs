@@ -15,7 +15,9 @@ namespace AAHBRANT.SST.Application.Dds.Commands;
 // identificação exige margem sobre o segundo colocado: dois candidatos próximos são recusados e o
 // funcionário usa a digital. Mesmas regras da digital: DDS em andamento, funcionário da obra, e a
 // presença já confirmada não é gravada de novo (devolve JaConfirmado para a tela avisar).
-public record RegistrarParticipanteFacialFilaCommand(Guid DdsId, byte[] FotoJpeg) : IRequest<ResultadoPresencaFacialFila>;
+public record RegistrarParticipanteFacialFilaCommand(Guid DdsId, byte[] FotoJpeg,
+    // 05/11: localização do aparelho na presença (evidência da assinatura).
+    LocalizacaoAssinatura? Localizacao = null) : IRequest<ResultadoPresencaFacialFila>;
 
 public record ResultadoPresencaFacialFila(Guid TrabalhadorId, string TrabalhadorNome, bool JaConfirmado, double? Confianca);
 
@@ -89,7 +91,7 @@ public class RegistrarParticipanteFacialFilaCommandHandler : IRequestHandler<Reg
         try
         {
             var documentoId = await _mediator.Send(new CriarDocumentoAssinaturaCommand(nameof(Domain.Entidades.Dds), request.DdsId), ct);
-            await _registrador.RegistrarAsync(documentoId, resultado, ipAddress: null, ct, request.FotoJpeg, "image/jpeg");
+            await _registrador.RegistrarAsync(documentoId, resultado, ipAddress: null, ct, request.FotoJpeg, "image/jpeg", localizacao: request.Localizacao);
         }
         catch (Exception ex)
         {

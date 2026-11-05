@@ -28,7 +28,9 @@ public record RegistrarParticipanteCommand(
     double Score,
     byte[]? ImagemDigital = null,
     string? Desafio = null,
-    string? AssinaturaLeitura = null) : IRequest<Guid>;
+    string? AssinaturaLeitura = null,
+    // 05/11: localização do aparelho na presença (evidência da assinatura, como no EPI).
+    LocalizacaoAssinatura? Localizacao = null) : IRequest<Guid>;
 
 public class RegistrarParticipanteCommandValidator : AbstractValidator<RegistrarParticipanteCommand>
 {
@@ -105,7 +107,7 @@ public class RegistrarParticipanteCommandHandler : IRequestHandler<RegistrarPart
         {
             var documentoId = await _mediator.Send(new CriarDocumentoAssinaturaCommand(nameof(Domain.Entidades.Dds), request.DdsId), ct);
             await _registrador.RegistrarAsync(documentoId, resultado, ipAddress: null, ct,
-                request.ImagemDigital, request.ImagemDigital is null ? null : "image/png");
+                request.ImagemDigital, request.ImagemDigital is null ? null : "image/png", localizacao: request.Localizacao);
         }
         catch (Exception ex)
         {

@@ -2495,6 +2495,21 @@ public static class NovidadesSeeder
                     "A lista de presença mostrava só \"Assinado digitalmente\" em cada linha.",
                     "Cada participante tem o selo ASSINADO ELETRONICAMENTE com função e CBO, o instrutor assina no fim da lista e o PDF termina com o Certificado de Assinaturas Eletrônicas, com a biometria cadastrada ao lado da capturada na presença."),
             }),
+        new(
+            Versao: "5.140.0",
+            Titulo: "DDS com selo de assinatura e certificado",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Lista de presença do DDS com selo",
+                    "A lista de presença do DDS mostrava só \"Assinado digitalmente\" com a data.",
+                    "Cada participante tem o selo ASSINADO ELETRONICAMENTE com função e CBO, e o PDF do DDS termina com o Certificado de Assinaturas Eletrônicas: a biometria cadastrada ao lado da capturada na presença, com um QR para validar cada assinatura."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Presença no DDS guarda a localização",
+                    "A presença no DDS guardava a foto ou a digital, mas não onde o aparelho estava.",
+                    "A localização do aparelho passa a ir junto com a presença, como na entrega de EPI. Se o aparelho não autorizar, a presença é registrada mesmo assim."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
