@@ -2457,6 +2457,29 @@ public static class NovidadesSeeder
                     "No DDS, na Inspeção, na Permissão de Trabalho, nas atas da CIPA e na Solicitação de reposição de EPI, os dados de identificação ficavam soltos em linhas de texto.",
                     "Agora todos usam a mesma grade com bordas: o nome do campo em letra pequena em cima e o valor embaixo. Os temas do DDS, os itens da inspeção, as deliberações e a lista de presença da reunião da CIPA também ficaram em grade."),
             }),
+        new(
+            Versao: "5.138.0",
+            Titulo: "Ficha de EPI e Relatório de Fiscalização com prova de assinatura mais clara",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Selo de assinatura em cada linha da ficha",
+                    "As linhas de entrega e devolução diziam só \"Assinado digitalmente\" com a data.",
+                    "Cada linha mostra o selo ASSINADO ELETRONICAMENTE com o nome, a função e o CBO do funcionário (ou o registro MTE do técnico), a data, o método e o código da assinatura. A função na identificação traz o CBO."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Foto do EPI na ficha",
+                    "A ficha listava os EPIs só pelo nome.",
+                    "As tabelas de entrega e devolução mostram a miniatura do EPI, tirada do catálogo, antes do nome."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Certificado de Assinaturas Eletrônicas",
+                    "O certificado no fim da ficha tinha uma página de resumo que repetia as evidências e se chamava Certificado de Conclusão.",
+                    "Agora é o Certificado de Assinaturas Eletrônicas: uma página por assinatura, com o resumo dela no topo, as imagens cadastrada e da assinatura lado a lado e um QR code para validar aquela assinatura."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Biometria lado a lado no Relatório de Fiscalização",
+                    "O cofre de assinaturas mostrava uma miniatura pequena e deitada.",
+                    "Cada assinatura mostra a biometria cadastrada (foto facial ou digital) ao lado da capturada na assinatura, em 3×4."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

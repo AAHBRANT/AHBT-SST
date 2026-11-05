@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.EntregasEpi;
 using AAHBRANT.SST.Infrastructure.Documentos;
 using SixLabors.ImageSharp;
@@ -65,6 +66,39 @@ public class FichaEpiFoto3x4Tests
     }
 
     // Para conferência visual: FICHA_PDF_SAIDA=<pasta> grava os PDFs gerados.
+    // 05/11: miniatura do EPI antes do nome no Controle de Entrega; sem foto ou foto inválida não quebra.
+    [Fact]
+    public void Gerar_ControleEntrega_ComMiniaturaDoEpi()
+    {
+        var foto = FotoSintetica(300, 300);
+        LinhaEntregaEpiPdf Linha(int n, string nome, string ca, byte[]? img) => new(n, nome, ca, AAHBRANT.SST.Domain.Enums.MotivoEntregaEpi.Inicial,
+            null, 1, new DateTime(2026, 10, n), true, n != 3, new DateTime(2026, 10, n, 11, 0, 0), n == 3 ? null : new DateTime(2026, 10, n, 11, 5, 0),
+            AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura.Biometria, AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura.SessaoLogada, img,
+            new SeloAssinaturaPdf("Augusto Inácio Felipe", "Ajudante Geral · CBO 7170-20", "0C5AA3FCB5A8F3E0207374346A3CB3F8"),
+            n == 3 ? null : new SeloAssinaturaPdf("Gilton Miranda", "MTE-0123056/SP", "7E11A90F0C5AA3FCB5A8F3E020737434"));
+        var modelo = Modelo(FotoSintetica(640, 480)) with
+        {
+            TrabalhadorFuncaoCbo = "7170-20",
+            Entregas = new List<LinhaEntregaEpiPdf>
+            {
+                Linha(1, "RESPIRADOR PURIFICADOR DE AR", "38503", foto),
+                Linha(2, "LUVA DE PROTEÇÃO - LATEX", "41414", null),
+                Linha(3, "LUVA DE PROTEÇÃO - SAFETY", "41415", new byte[] { 1, 2, 3 }),
+            },
+            Devolucoes = new List<LinhaDevolucaoEpiPdf>
+            {
+                new(1, "RESPIRADOR PURIFICADOR DE AR", 1, new DateTime(2026, 10, 20), true, new DateTime(2026, 10, 20, 11, 0, 0), "Técnico",
+                    AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura.ReconhecimentoFacial, foto,
+                    new SeloAssinaturaPdf("Augusto Inácio Felipe", "Ajudante Geral · CBO 7170-20", "A71E09D4A71E09D4A71E09D4")),
+                new(2, "LUVA DE PROTEÇÃO - LATEX", 1, new DateTime(2026, 10, 21), true, new DateTime(2026, 10, 21, 11, 0, 0), null, null, null),
+                new(3, "LUVA DE PROTEÇÃO - SAFETY", 1, new DateTime(2026, 10, 22), false, null, null),
+            },
+        };
+        var pdf = new EntregaEpiPdfService().Gerar(modelo);
+        Assert.True(pdf.Length > 1000);
+        SalvarSeSolicitado(pdf, "controle-entrega-miniatura");
+    }
+
     private static void SalvarSeSolicitado(byte[] pdf, string nome)
     {
         var pasta = Environment.GetEnvironmentVariable("FICHA_PDF_SAIDA");

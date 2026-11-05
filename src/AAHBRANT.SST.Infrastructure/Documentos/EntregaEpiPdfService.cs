@@ -78,7 +78,7 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                     CelulaIdentificacao(tabela, "Nome completo", modelo.TrabalhadorNome, colSpan: 2);
                     CelulaIdentificacao(tabela, "CPF", modelo.TrabalhadorCpf ?? modelo.TrabalhadorCpfMascarado);
                     CelulaIdentificacao(tabela, "Matrícula", modelo.TrabalhadorMatricula);
-                    CelulaIdentificacao(tabela, "Função", modelo.TrabalhadorFuncaoNome);
+                    CelulaIdentificacao(tabela, "Função", string.IsNullOrWhiteSpace(modelo.TrabalhadorFuncaoCbo) ? modelo.TrabalhadorFuncaoNome : $"{modelo.TrabalhadorFuncaoNome} · CBO {modelo.TrabalhadorFuncaoCbo}");
                     CelulaIdentificacao(tabela, "Data de admissão", modelo.TrabalhadorDataAdmissao.ToString("dd/MM/yyyy"));
                     CelulaIdentificacao(tabela, "Obra / Frente de trabalho", modelo.ObraNome, colSpan: 3);
                     CelulaIdentificacao(tabela, "Empresa contratante", modelo.ObraNome, colSpan: 2);
@@ -213,13 +213,13 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                 table.ColumnsDefinition(columns =>
                 {
                     columns.ConstantColumn(20);
-                    columns.RelativeColumn(3);
-                    columns.RelativeColumn(1.4f);
-                    columns.RelativeColumn(2);
-                    columns.ConstantColumn(30);
-                    columns.RelativeColumn(1.6f);
-                    columns.RelativeColumn(2.2f);
-                    columns.RelativeColumn(2.2f);
+                    columns.RelativeColumn(3.4f);
+                    columns.RelativeColumn(1.1f);
+                    columns.RelativeColumn(1.5f);
+                    columns.ConstantColumn(26);
+                    columns.RelativeColumn(1.5f);
+                    columns.RelativeColumn(2.9f);
+                    columns.RelativeColumn(2.9f);
                 });
 
                 table.Header(header =>
@@ -237,13 +237,14 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                 foreach (var linha in modelo.Entregas)
                 {
                     table.Cell().Element(Celula).Text(linha.Numero.ToString());
-                    table.Cell().Element(Celula).Text(linha.EpiNome);
+                    // 05/11: miniatura do EPI (foto do catálogo) antes do nome.
+                    table.Cell().Element(Celula).Element(c => NomeComMiniatura(c, linha.EpiNome, linha.EpiFoto));
                     table.Cell().Element(Celula).Text(linha.CertificadoAprovacaoNumero ?? "-");
                     table.Cell().Element(Celula).Text(MotivoLabel(linha.MotivoTipo, linha.MotivoObservacao));
                     table.Cell().Element(Celula).Text(linha.Quantidade.ToString());
                     table.Cell().Element(Celula).Text(linha.DataEntrega.ToString("dd/MM/yyyy"));
-                    table.Cell().Element(Celula).Element(c => CelulaAssinatura(c, linha.AssinadoPeloEmpregadoEm, linha.AssinadoPeloEmpregado, linha.MetodoEmpregado));
-                    table.Cell().Element(Celula).Element(c => CelulaAssinatura(c, linha.AssinadoPeloResponsavelEm, linha.AssinadoPeloResponsavel, linha.MetodoResponsavel));
+                    table.Cell().Element(Celula).Element(c => CelulaAssinatura(c, linha.AssinadoPeloEmpregadoEm, linha.AssinadoPeloEmpregado, linha.MetodoEmpregado, linha.SeloEmpregado));
+                    table.Cell().Element(Celula).Element(c => CelulaAssinatura(c, linha.AssinadoPeloResponsavelEm, linha.AssinadoPeloResponsavel, linha.MetodoResponsavel, linha.SeloResponsavel));
                 }
             });
         });
@@ -266,10 +267,10 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                 table.ColumnsDefinition(columns =>
                 {
                     columns.ConstantColumn(50);
-                    columns.RelativeColumn(3);
-                    columns.RelativeColumn(1.4f);
+                    columns.RelativeColumn(3.6f);
+                    columns.RelativeColumn(1.1f);
                     columns.RelativeColumn(1.6f);
-                    columns.RelativeColumn(2.2f);
+                    columns.RelativeColumn(2.9f);
                     columns.RelativeColumn(2);
                 });
 
@@ -286,10 +287,10 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                 foreach (var linha in modelo.Devolucoes)
                 {
                     table.Cell().Element(Celula).Text(linha.NumeroReferenciaEntrega.ToString());
-                    table.Cell().Element(Celula).Text(linha.EpiNome);
+                    table.Cell().Element(Celula).Element(c => NomeComMiniatura(c, linha.EpiNome, linha.EpiFoto));
                     table.Cell().Element(Celula).Text(linha.QuantidadeDevolvida.ToString());
                     table.Cell().Element(Celula).Text(linha.DataDevolucao.ToString("dd/MM/yyyy"));
-                    table.Cell().Element(Celula).Element(c => CelulaAssinatura(c, linha.AssinadoPeloEmpregadoEm, linha.AssinadoPeloEmpregado, linha.MetodoEmpregado));
+                    table.Cell().Element(Celula).Element(c => CelulaAssinatura(c, linha.AssinadoPeloEmpregadoEm, linha.AssinadoPeloEmpregado, linha.MetodoEmpregado, linha.SeloEmpregado));
                     table.Cell().Element(Celula).Text(linha.VistoResponsavel ?? "-");
                 }
             });
@@ -302,24 +303,10 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
     private static IContainer Celula(IContainer container) =>
         container.Padding(3).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten1).DefaultTextStyle(t => t.FontSize(7.5f));
 
-    // "Assinado digitalmente" + legenda miúda (corpo 6) com data/hora e método de identificação —
-    // pedido do usuário (02/10) para toda assinatura de documento; corpo pequeno para não esticar a linha.
-    private static void CelulaAssinatura(IContainer container, DateTime? assinadoEm, bool assinado, MetodoAutenticacaoAssinatura? metodo)
-    {
-        if (!assinado)
-        {
-            container.Text("Pendente");
-            return;
-        }
-
-        container.Column(c =>
-        {
-            c.Item().Text("Assinado digitalmente").FontSize(6);
-            if (assinadoEm is { } quando)
-                c.Item().Text(DescricaoMetodoAssinatura.LegendaCurta(HorarioBrasilia.De(quando), metodo))
-                    .FontSize(6).FontColor(Colors.Grey.Darken2);
-        });
-    }
+    // 05/11: selo compacto na linha (AssinaturaPdfPadrao.SeloLinha, comum a todas as listas).
+    private static void CelulaAssinatura(IContainer container, DateTime? assinadoEm, bool assinado, MetodoAutenticacaoAssinatura? metodo,
+        SeloAssinaturaPdf? selo = null) =>
+        AssinaturaPdfPadrao.SeloLinha(container, assinado ? assinadoEm : null, metodo, selo);
 
     private static string MotivoLabel(MotivoEntregaEpi? motivo, string? observacao)
     {
@@ -333,5 +320,27 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
             _ => "não informado",
         };
         return string.IsNullOrWhiteSpace(observacao) ? rotulo : $"{rotulo} ({observacao})";
+    }
+
+    // Miniatura do EPI (foto do catálogo) antes do nome; sem foto, quadro vazio para manter o alinhamento.
+    private static void NomeComMiniatura(IContainer container, string nome, byte[]? foto)
+    {
+        container.AlignTop().Row(r =>
+        {
+            var caixa = r.ConstantItem(26).Height(26).Border(0.4f).BorderColor(Colors.Grey.Lighten2);
+            if (foto is { Length: > 0 } && EhImagemValida(foto))
+                caixa.Padding(1).Image(foto).FitArea();
+            else
+                caixa.Background(Colors.Grey.Lighten4);
+            r.ConstantItem(5);
+            r.RelativeItem().Height(26).AlignMiddle().Text(nome);
+        });
+    }
+
+    // Foto do catálogo inválida não pode derrubar a ficha inteira.
+    private static bool EhImagemValida(byte[] bytes)
+    {
+        try { return SixLabors.ImageSharp.Image.DetectFormat(bytes) is not null; }
+        catch { return false; }
     }
 }

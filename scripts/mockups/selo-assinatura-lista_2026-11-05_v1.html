@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Selo nas Listas</title>
+<style>
+:root{--vinho:#670000;--linha:#d9d3c9;--suave:#6f6666;--fundo:#f3f1ec;--papel:#fff;--texto:#1d1b1b;--cinza:#ececec}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--fundo:#1b1919}}
+:root[data-theme="dark"]{--fundo:#1b1919}
+body{margin:0;background:var(--fundo);font:14px/1.45 "Segoe UI",Lato,Arial,sans-serif;color:var(--texto)}
+main{max-width:980px;margin:0 auto;padding:24px 16px 60px}
+h1{color:var(--vinho);font-size:22px;margin:0 0 4px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) h1,:root:not([data-theme="light"]) h2,:root:not([data-theme="light"]) .sub{color:#ebe9ad}}
+h2{color:var(--vinho);font-size:17px;margin:30px 0 8px}
+.sub{color:var(--suave);margin:0 0 14px}
+.folha{background:var(--papel);box-shadow:0 2px 10px rgba(0,0,0,.08);padding:22px 22px;border-radius:2px;overflow-x:auto}
+.titulo{color:var(--vinho);font-weight:700;font-size:15px;margin:0 0 6px}
+table{width:100%;border-collapse:collapse;font-size:11px;min-width:820px}
+th{background:var(--cinza);text-align:left;padding:5px 6px;font-weight:700;border-bottom:1.5px solid var(--vinho)}
+td{padding:6px;border-bottom:1px solid var(--linha);vertical-align:middle}
+.epi{display:flex;align-items:center;gap:6px}
+.mini{width:26px;height:26px;border:1px solid var(--linha);background:#4a5a78;flex:none;display:flex;align-items:center;justify-content:center}
+.mini i{width:10px;height:13px;border-radius:50%;background:#c99b7a;display:block}
+.mini.vazio{background:#f5f5f5}
+/* selo compacto da linha */
+.selo{border:1px solid var(--vinho);border-radius:2px;padding:4px 6px;line-height:1.25;min-width:150px}
+.selo .t{color:var(--vinho);font-weight:700;font-size:7.5px;letter-spacing:.4px}
+.selo .n{font-size:9.5px;font-weight:600}
+.selo .r{font-size:8px}
+.selo .d{font-size:8px}
+.selo .m{font-size:7.5px;color:var(--suave)}
+.pend{border:1px dashed #bbb;border-radius:2px;padding:8px 6px;color:#999;font-size:8px;font-style:italic;text-align:center}
+.ref{background:var(--papel);padding:16px;display:inline-block;margin-top:6px}
+.ref .grande{border:1.5px solid var(--vinho);padding:12px 16px;width:300px}
+.ref .grande .t{color:var(--vinho);font-weight:700;font-size:13px}
+.ref .grande .n{font-size:17px}
+.ref .grande .s{color:var(--suave);font-size:12px}
+.nota{background:var(--papel);border-left:4px solid var(--vinho);padding:10px 14px;margin-top:10px;font-size:13px}
+</style>
+</head>
+<body><main>
+<h1>Selo de assinatura nas listas</h1>
+<p class="sub">Modelo 05/11/2026 · v1 · cada linha da lista leva um selo compacto, no mesmo desenho do selo do técnico</p>
+
+<h2>Referência (selo do técnico, já em uso)</h2>
+<div class="ref"><div class="grande"><div class="t">ASSINADO ELETRONICAMENTE</div><div class="n">Gilton Miranda</div><div>MTE-0123056/SP</div><div>Em 04/11/2026 às 16:53 (Brasília)</div><div class="s">Autenticação por sessão no sistema AAHBRANT SST<br>Código 0C5AA3FCB5A8F3E0207374346A3CB3F8</div></div></div>
+
+<h2>1 · Ficha de EPI — Controle de Entrega</h2>
+<div class="folha">
+<p class="titulo">2. Controle de Entrega de EPI</p>
+<table>
+<tr><th>Nº</th><th>EPI</th><th>CA</th><th>Observação</th><th>Qtd.</th><th>Data</th><th>Assin. empregado</th><th>Assin. responsável</th></tr>
+<tr><td>1</td><td><div class="epi"><span class="mini"><i></i></span>RESPIRADOR PURIFICADOR DE AR</div></td><td>38503</td><td>Inicial</td><td>1</td><td>01/10/2026</td>
+<td><div class="selo"><div class="t">ASSINADO ELETRONICAMENTE</div><div class="n">Augusto Inácio Felipe</div><div class="r">Ajudante Geral · CBO 7170-20</div><div class="d">Em 01/10/2026 às 08:51 (Brasília)</div><div class="m">Biometria digital · Cód. 0C5A…B3F8</div></div></td>
+<td><div class="selo"><div class="t">ASSINADO ELETRONICAMENTE</div><div class="n">Gilton Miranda</div><div class="r">MTE-0123056/SP</div><div class="d">Em 01/10/2026 às 08:51 (Brasília)</div><div class="m">Sessão no sistema · Cód. 7E11…A90F</div></div></td></tr>
+<tr><td>2</td><td><div class="epi"><span class="mini vazio"></span>LUVA DE PROTEÇÃO - LATEX</div></td><td>41414</td><td>Inicial</td><td>1</td><td>02/10/2026</td>
+<td><div class="selo"><div class="t">ASSINADO ELETRONICAMENTE</div><div class="n">Augusto Inácio Felipe</div><div class="r">Ajudante Geral · CBO 7170-20</div><div class="d">Em 02/10/2026 às 10:30 (Brasília)</div><div class="m">Biometria facial · Cód. A71E…09D4</div></div></td>
+<td><div class="pend">Aguardando assinatura</div></td></tr>
+</table>
+</div>
+
+<h2>2 · Lista de presença (treinamento / DDS / APR / PT / reunião)</h2>
+<div class="folha">
+<p class="titulo">Lista de Presença</p>
+<table>
+<tr><th>Nº</th><th>Nome</th><th>Função</th><th>Matrícula</th><th>Assinatura</th></tr>
+<tr><td>1</td><td>Augusto Inácio Felipe</td><td>Ajudante Geral</td><td>29</td>
+<td><div class="selo"><div class="t">ASSINADO ELETRONICAMENTE</div><div class="n">Augusto Inácio Felipe</div><div class="r">Ajudante Geral · CBO 7170-20</div><div class="d">Em 05/11/2026 às 07:12 (Brasília)</div><div class="m">Biometria facial · Cód. 3F9A…C21B</div></div></td></tr>
+<tr><td>2</td><td>Carlos Souza Lima</td><td>Pedreiro</td><td>41</td>
+<td><div class="selo"><div class="t">ASSINADO ELETRONICAMENTE</div><div class="n">Carlos Souza Lima</div><div class="r">Pedreiro · CBO 7152-10</div><div class="d">Em 05/11/2026 às 07:13 (Brasília)</div><div class="m">Biometria digital · Cód. B02C…7E11</div></div></td></tr>
+<tr><td>3</td><td>José Pereira</td><td>Carpinteiro</td><td>57</td><td><div class="pend">Aguardando assinatura</div></td></tr>
+</table>
+</div>
+
+<div class="nota"><b>Regras deste modelo:</b> o selo fica na própria linha, sem página extra. O funcionário leva <b>função + CBO</b>; o técnico leva o <b>registro MTE</b>. O código da assinatura aparece abreviado (início…fim); o código completo continua nas páginas do certificado. Quem ainda não assinou fica com o quadro tracejado.</div>
+</main></body></html>

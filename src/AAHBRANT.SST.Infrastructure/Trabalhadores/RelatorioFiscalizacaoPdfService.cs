@@ -96,7 +96,8 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
                         coluna.Item().Text("Nenhuma assinatura registrada.").Italic();
                     else
                         foreach (var assinatura in perfil.Assinaturas)
-                            coluna.Item().Element(c => DesenharAssinaturaCofre(c, assinatura));
+                            coluna.Item().Element(c => DesenharAssinaturaCofre(c, assinatura,
+                                identificacao?.ReferenciasAssinatura?.GetValueOrDefault(assinatura.SignatarioId)));
 
                     coluna.Item().PaddingTop(12).Text("Documento gerado para fins de fiscalização, consolidando os registros de SST do trabalhador na data de emissão.").FontSize(9).Italic();
 
@@ -138,7 +139,7 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
         _ => resultado.ToString(),
     };
 
-    private static void DesenharAssinaturaCofre(IContainer container, AssinaturaPerfilDto assinatura)
+    private static void DesenharAssinaturaCofre(IContainer container, AssinaturaPerfilDto assinatura, byte[]? referencia)
     {
         container.PaddingBottom(6).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingBottom(5).Row(row =>
         {
@@ -159,9 +160,28 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
 
             if (assinatura.FotoEvidenciaConteudo is { Length: > 0 })
             {
-                row.ConstantItem(58).Height(58).Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(2)
-                    .Image(assinatura.FotoEvidenciaConteudo).FitArea();
+                // 05/11: comparação lado a lado, como na Ficha de EPI — biometria cadastrada (vigente na data)
+                // × captura da assinatura. Facial em 3×4 em pé (antigas deitadas cortadas no centro só na
+                // exibição); digital em pé como veio do leitor.
+                var digital = assinatura.Metodo == MetodoAutenticacaoAssinatura.Biometria;
+                row.ConstantItem(70).PaddingRight(6).Element(c => FotoComparacao(c, referencia,
+                    digital ? "Digital cadastrada" : "Facial cadastrada", cortar34: !digital));
+                row.ConstantItem(64).Element(c => FotoComparacao(c, assinatura.FotoEvidenciaConteudo,
+                    digital ? "Digital da assinatura" : "Facial da assinatura", cortar34: !digital));
             }
+        });
+    }
+
+    private static void FotoComparacao(IContainer container, byte[]? foto, string legenda, bool cortar34)
+    {
+        container.Column(c =>
+        {
+            var caixa = c.Item().Width(64).Height(85).Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(2);
+            if (foto is { Length: > 0 })
+                caixa.Image(cortar34 ? FotoRetrato34.Cortar(foto) : foto).FitArea();
+            else
+                caixa.AlignCenter().AlignMiddle().Text("Cadastro não localizado").FontSize(6.5f).FontColor(Colors.Grey.Darken1).AlignCenter();
+            c.Item().Width(64).AlignCenter().Text(legenda).FontSize(7).FontColor(Colors.Grey.Darken1);
         });
     }
 }

@@ -36,11 +36,19 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
                     coluna.Item().Element(c => TabelaPresenca(c, modelo));
                     if (modelo.Fotos.Count > 0)
                         coluna.Item().Element(c => GradeDeFotos(c, modelo.Fotos));
+                    // 05/11: assinatura do instrutor no fim, no bloco padrão (selo vinho + linha + nome).
+                    if (modelo.Instrutor is { } instrutor)
+                        coluna.Item().PaddingTop(14).AlignCenter().Width(260).Element(c => AssinaturaPdfPadrao.Bloco(
+                            c, "Instrutor", instrutor.Nome, instrutor.CargoRegistro, instrutor.AssinadoEm, instrutor.Metodo, instrutor.Hash));
                 });
 
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
                     coluna, "Lista de Presença de Treinamento", modelo.NumeroCertificado, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, temAssinatura: false));
             });
+
+            // 05/11: certificado de assinaturas no fim (evidências de cada participante).
+            if (modelo.Certificado is { } certificado)
+                CertificadoAssinaturasPdf.Adicionar(container, certificado);
         });
 
         return documento.GeneratePdf();
@@ -79,30 +87,33 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
             {
                 tabela.ColumnsDefinition(colunas =>
                 {
-                    colunas.RelativeColumn(3);
-                    colunas.RelativeColumn(1);
-                    colunas.RelativeColumn(2);
+                    colunas.ConstantColumn(20);
+                    colunas.RelativeColumn(2.6f);
+                    colunas.RelativeColumn(2.2f);
+                    colunas.RelativeColumn(0.9f);
+                    colunas.RelativeColumn(3.2f);
                 });
 
                 tabela.Header(cabecalho =>
                 {
+                    CelulaCabecalho(cabecalho.Cell(), "Nº");
                     CelulaCabecalho(cabecalho.Cell(), "Nome");
+                    CelulaCabecalho(cabecalho.Cell(), "Função · CBO");
                     CelulaCabecalho(cabecalho.Cell(), "Matrícula");
                     CelulaCabecalho(cabecalho.Cell(), "Assinatura");
                 });
 
+                var numero = 0;
                 foreach (var participante in modelo.Participantes)
                 {
+                    numero++;
+                    Celula(tabela.Cell(), numero.ToString());
                     Celula(tabela.Cell(), participante.TrabalhadorNome);
+                    Celula(tabela.Cell(), participante.FuncaoComCbo ?? "—");
                     Celula(tabela.Cell(), participante.TrabalhadorMatricula ?? string.Empty);
-                    // Padrão único de assinatura (AssinaturaPdfPadrao); ausente = sem assinatura.
-                    tabela.Cell().Border(0.5f).BorderColor(CorLinha).Padding(4).AlignMiddle().Column(assinatura =>
-                    {
-                        if (participante.PresencaConfirmadaEm is { } quando)
-                            AssinaturaPdfPadrao.Legenda(assinatura, quando, participante.Metodo);
-                        else
-                            assinatura.Item().AlignCenter().Text("Ausente").FontSize(8).Italic().FontColor(Colors.Grey.Darken1);
-                    });
+                    // 05/11: selo na linha (AssinaturaPdfPadrao.SeloLinha); sem presença = "Ausente".
+                    tabela.Cell().Border(0.5f).BorderColor(CorLinha).Padding(3).AlignMiddle()
+                        .Element(c => AssinaturaPdfPadrao.SeloLinha(c, participante.PresencaConfirmadaEm, participante.Metodo, participante.Selo, "Ausente"));
                 }
             });
         });

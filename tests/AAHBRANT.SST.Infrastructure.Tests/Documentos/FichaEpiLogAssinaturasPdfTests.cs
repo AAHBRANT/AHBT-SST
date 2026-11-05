@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.EntregasEpi;
 using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Infrastructure.Documentos;
@@ -123,14 +124,15 @@ public class FichaEpiLogAssinaturasPdfTests
     }
 
     [Fact]
-    public void Gerar_ComLog_AcrescentaPaginaDoCertificadoMaisUmaPorAssinatura()
+    public void Gerar_ComLog_AcrescentaUmaPaginaPorAssinatura()
     {
         var servico = new EntregaEpiPdfService();
         var semLog = ContarPaginas(servico.Gerar(Modelo(null, null)));
 
         var comLog = ContarPaginas(servico.Gerar(Modelo(LogCompleto(), null)));
 
-        Assert.Equal(semLog + 1 + 3, comLog);
+        // 05/11: sem página de resumo separada — o cabeçalho do certificado vai na 1ª evidência.
+        Assert.Equal(semLog + 3, comLog);
     }
 
     [Fact]
@@ -161,5 +163,54 @@ public class FichaEpiLogAssinaturasPdfTests
     public void Equipamento_DescreveNavegadorESistema(string? userAgent, string esperado)
     {
         Assert.Equal(esperado, LogAssinaturasEpiPdf.Equipamento(userAgent));
+    }
+
+    // 05/11: ficha completa para conferência visual — selos nas linhas, CBO na função e o certificado
+    // de assinaturas no fim. Grava o PDF só quando FICHA_PDF_SAIDA estiver definida.
+    [Fact]
+    public void Gerar_FichaCompleta_ComSelosECertificado()
+    {
+        var face = Environment.GetEnvironmentVariable("SST_FOTO_TESTE") is { Length: > 0 } f ? File.ReadAllBytes(f) : Rosto(new Rgba32(91, 107, 120));
+        var digital = Environment.GetEnvironmentVariable("SST_DIGITAL_TESTE") is { Length: > 0 } d ? File.ReadAllBytes(d) : Digital(2);
+        var t0 = new DateTime(2026, 10, 1, 11, 51, 14, DateTimeKind.Utc);
+        var cupom = new CupomEntregaEpi(new DateTime(2026, 10, 1), "Entrega inicial", null, "2026-0087", new DateTime(2026, 9, 15), "Gilton Miranda",
+            new List<ItemCupomEpi> { new("Respirador purificador de ar", "3M", 1, "38503", new DateTime(2028, 5, 10), new DateTime(2027, 1, 1), Quadrado(new Rgba32(201, 161, 107))) });
+        var log = new LogAssinaturasFichaEpi(Guid.NewGuid().ToString(), DateTime.UtcNow, 2, t0, t0,
+            new List<LogAssinaturaEpiItem>
+            {
+                Item(TipoLogAssinaturaEpi.Entrega, "Entrega de EPI — 1 item", MetodoAutenticacaoAssinatura.Biometria, t0, cupom,
+                    evidencia: digital, digitalCad: digital, loc: StatusLocalizacaoAssinatura.Capturada) with { QrValidacaoPng = Qr("https://sst.exemplo/#/validar/entrega1") },
+                Item(TipoLogAssinaturaEpi.Devolucao, "Devolução de EPI — Respirador (qtd 1)", MetodoAutenticacaoAssinatura.ReconhecimentoFacial, t0.AddDays(19),
+                    evidencia: face, fotoCad: face, modelo: "recognition_04", grupo: "obra-a1b2c3d4", req: "7f3c91ae-0000-4b1f-9c2d-aaaaaaaab204") with { QrValidacaoPng = Qr("https://sst.exemplo/#/validar/devolucao1") },
+            });
+        var empregado = new SeloAssinaturaPdf("Alan Franklin dos Santos", "Ajudante Geral · CBO 7170-20", "4B88D0A1C93E7F20A1B2C3D4E5F60718");
+        var modelo = Modelo(log, face) with
+        {
+            TrabalhadorFuncaoCbo = "7170-20",
+            Entregas = new List<LinhaEntregaEpiPdf>
+            {
+                new(1, "RESPIRADOR PURIFICADOR DE AR", "38503", MotivoEntregaEpi.Inicial, null, 1, new DateTime(2026, 10, 1), true, true,
+                    t0, t0.AddMinutes(3), MetodoAutenticacaoAssinatura.Biometria, MetodoAutenticacaoAssinatura.SessaoLogada,
+                    Quadrado(new Rgba32(201, 161, 107)), empregado, new SeloAssinaturaPdf("Gilton Miranda", "MTE-0123056/SP", "7E11A90F0C5AA3FCB5A8F3E020737434")),
+            },
+            Devolucoes = new List<LinhaDevolucaoEpiPdf>
+            {
+                new(1, "RESPIRADOR PURIFICADOR DE AR", 1, new DateTime(2026, 10, 20), true, t0.AddDays(19), "Gilton Miranda",
+                    MetodoAutenticacaoAssinatura.ReconhecimentoFacial, Quadrado(new Rgba32(201, 161, 107)), empregado),
+            },
+        };
+
+        var pdf = new EntregaEpiPdfService().Gerar(modelo);
+
+        Assert.True(pdf.Length > 1000);
+        var pasta = Environment.GetEnvironmentVariable("FICHA_PDF_SAIDA");
+        if (!string.IsNullOrEmpty(pasta)) { Directory.CreateDirectory(pasta); File.WriteAllBytes(Path.Combine(pasta, "ficha-completa-com-certificado.pdf"), pdf); }
+    }
+
+    private static byte[] Qr(string url)
+    {
+        using var g = new QRCoder.QRCodeGenerator();
+        using var d = g.CreateQrCode(url, QRCoder.QRCodeGenerator.ECCLevel.M);
+        return new QRCoder.PngByteQRCode(d).GetGraphic(10);
     }
 }
