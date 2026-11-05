@@ -2437,6 +2437,28 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.136.0",
+            Titulo: "Lista de presença do treinamento em grade",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Dados da turma organizados em grade",
+                    "Na lista de presença do treinamento, os dados da turma ficavam soltos em linhas de texto.",
+                    "Curso, data, carga horária, certificado, instrutor e status agora ficam em uma grade com bordas, no mesmo padrão dos outros documentos. A tabela de participantes também ganhou bordas em todas as células."),
+            }),
+        new(
+            Versao: "5.137.0",
+            Titulo: "Documentos com dados em grade",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Mesmo padrão de grade nos PDFs",
+                    "No DDS, na Inspeção, na Permissão de Trabalho, nas atas da CIPA e na Solicitação de reposição de EPI, os dados de identificação ficavam soltos em linhas de texto.",
+                    "Agora todos usam a mesma grade com bordas: o nome do campo em letra pequena em cima e o valor embaixo. Os temas do DDS, os itens da inspeção, as deliberações e a lista de presença da reunião da CIPA também ficaram em grade."),
+            }),
+        new(
+            Versao: "5.138.0",
             Titulo: "Ficha de EPI e Relatório de Fiscalização com prova de assinatura mais clara",
             DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
@@ -2457,6 +2479,62 @@ public static class NovidadesSeeder
                     "Biometria lado a lado no Relatório de Fiscalização",
                     "O cofre de assinaturas mostrava uma miniatura pequena e deitada.",
                     "Cada assinatura mostra a biometria cadastrada (foto facial ou digital) ao lado da capturada na assinatura, em 3×4."),
+            }),
+        new(
+            Versao: "5.139.0",
+            Titulo: "Presença no treinamento com prova completa",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Presença guarda a foto ou a digital",
+                    "A presença na turma confirmava a pessoa, mas não guardava a foto do rosto nem a imagem da digital, e o certificado saía como \"digital\" para todos.",
+                    "A presença passa a guardar a imagem capturada, o IP, o aparelho e a localização, como na entrega de EPI. Ao encerrar a turma, a assinatura do certificado sai com o método certo (facial ou digital) e com essa evidência."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Lista de presença com selo e certificado de assinaturas",
+                    "A lista de presença mostrava só \"Assinado digitalmente\" em cada linha.",
+                    "Cada participante tem o selo ASSINADO ELETRONICAMENTE com função e CBO, o instrutor assina no fim da lista e o PDF termina com o Certificado de Assinaturas Eletrônicas, com a biometria cadastrada ao lado da capturada na presença."),
+            }),
+        new(
+            Versao: "5.140.0",
+            Titulo: "DDS com selo de assinatura e certificado",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Lista de presença do DDS com selo",
+                    "A lista de presença do DDS mostrava só \"Assinado digitalmente\" com a data.",
+                    "Cada participante tem o selo ASSINADO ELETRONICAMENTE com função e CBO, e o PDF do DDS termina com o Certificado de Assinaturas Eletrônicas: a biometria cadastrada ao lado da capturada na presença, com um QR para validar cada assinatura."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Presença no DDS guarda a localização",
+                    "A presença no DDS guardava a foto ou a digital, mas não onde o aparelho estava.",
+                    "A localização do aparelho passa a ir junto com a presença, como na entrega de EPI. Se o aparelho não autorizar, a presença é registrada mesmo assim."),
+            }),
+        new(
+            Versao: "5.141.0",
+            Titulo: "APR assinada por biometria",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Todo mundo assina a APR com digital ou facial",
+                    "Na APR, a assinatura dos envolvidos, da elaboração e da supervisão era um registro feito por clique, sem prova de quem estava presente.",
+                    "Na aba Assinaturas, defina quem elabora e quem supervisiona; cada pessoa assina com a digital ou o reconhecimento facial e o sistema grava o papel dela. Quem não está na APR é recusado. O registro por clique saiu; os antigos continuam, marcados como \"sem biometria\"."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "PDF da APR com selo e certificado de assinaturas",
+                    "O PDF da APR mostrava só \"Assinado\" ou \"Pendente\" na lista de envolvidos.",
+                    "Cada envolvido tem função, CBO e o selo ASSINADO ELETRONICAMENTE; elaboração e supervisão saem com o selo da assinatura biométrica; o Certificado de Assinaturas Eletrônicas, com a biometria cadastrada ao lado da capturada e um QR por assinatura, fica no botão Certificado de assinaturas, à parte da APR."),
+            }),
+        new(
+            Versao: "5.142.0",
+            Titulo: "PT com selo de assinatura e certificado à parte",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Equipe da PT com selo de assinatura",
+                    "A ciência da equipe na PT mostrava só \"Assinado\" ou \"Pendente\".",
+                    "Cada executante aparece com função, CBO e o selo ASSINADO ELETRONICAMENTE com o método e o código da assinatura. Na tela da PT, o botão Certificado de assinaturas abre as evidências de cada assinatura (biometria cadastrada ao lado da capturada e QR), à parte da PT."),
             }),
     };
 

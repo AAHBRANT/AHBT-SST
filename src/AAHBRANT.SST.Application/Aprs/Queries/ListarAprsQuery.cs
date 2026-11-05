@@ -45,7 +45,9 @@ public class ListarAprsQueryHandler : IRequestHandler<ListarAprsQuery, List<AprD
             AprovadoPorUsuarioId = a.AprovadoPorUsuarioId,
             AprovadoPorUsuarioNome = a.AprovadoPorUsuario?.Nome,
             DataAprovacao = a.DataAprovacao,
-            MotivoReprovacao = a.MotivoReprovacao
+            MotivoReprovacao = a.MotivoReprovacao,
+            ElaboradorTrabalhadorId = a.ElaboradorTrabalhadorId,
+            SupervisorTrabalhadorId = a.SupervisorTrabalhadorId
         }).ToList();
     }
 }

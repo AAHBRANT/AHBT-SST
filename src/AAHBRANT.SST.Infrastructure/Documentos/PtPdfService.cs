@@ -63,31 +63,19 @@ public class PtPdfService : IPtPdfService
 
     private static void SecaoCabecalho(IContainer container, PtPdfModelo modelo)
     {
-        container.Column(coluna =>
+        GradeDocumentoPadrao.Desenhar(container, new GradeDocumentoPadrao.Campo[]
         {
-            coluna.Item().Row(linha =>
-            {
-                linha.RelativeItem(2).Text(t => { t.Span("OBRA / CONTRATO: ").SemiBold(); t.Span(modelo.ObraNome ?? "não informado"); });
-                linha.RelativeItem().Text(t => { t.Span("Nº PT: ").SemiBold(); t.Span(modelo.NumeroPt ?? "-"); });
-                linha.RelativeItem().Text(t => { t.Span("DATA: ").SemiBold(); t.Span(modelo.Data.ToString("dd/MM/yyyy")); });
-            });
-            coluna.Item().Row(linha =>
-            {
-                linha.RelativeItem(2).Text(t => { t.Span("ATIVIDADE: ").SemiBold(); t.Span(modelo.DescricaoAtividade); });
-                linha.RelativeItem().Text(t => { t.Span("LOCAL: ").SemiBold(); t.Span(modelo.Local); });
-            });
-            coluna.Item().Row(linha =>
-            {
-                linha.RelativeItem(2).Text(t => { t.Span("EMPRESA EXECUTANTE: ").SemiBold(); t.Span(modelo.EmpresaExecutante ?? "-"); });
-                linha.RelativeItem().Text(t => { t.Span("HORÁRIO: ").SemiBold(); t.Span($"{FormatarHora(modelo.HorarioInicio)} às {FormatarHora(modelo.HorarioFim)}"); });
-            });
-            coluna.Item().Row(linha =>
-            {
-                linha.RelativeItem(2).Text(t => { t.Span("RESP. EXECUÇÃO: ").SemiBold(); t.Span(modelo.ResponsavelExecucaoNome ?? "-"); });
-                linha.RelativeItem().Text(t => { t.Span("RESP. ÁREA: ").SemiBold(); t.Span(modelo.ResponsavelAreaNome ?? "-"); });
-                linha.RelativeItem().Text(t => { t.Span("VALIDADE: ").SemiBold(); t.Span(modelo.Validade.HasValue ? modelo.Validade.Value.ToString("dd/MM/yyyy") : "-"); });
-            });
-        });
+            new("Obra / contrato", modelo.ObraNome, 2),
+            new("Nº PT", modelo.NumeroPt, 1),
+            new("Data", modelo.Data.ToString("dd/MM/yyyy"), 1),
+            new("Atividade", modelo.DescricaoAtividade, 2),
+            new("Local", modelo.Local, 2),
+            new("Empresa executante", modelo.EmpresaExecutante, 2),
+            new("Horário", $"{FormatarHora(modelo.HorarioInicio)} às {FormatarHora(modelo.HorarioFim)}", 1),
+            new("Validade", modelo.Validade?.ToString("dd/MM/yyyy"), 1),
+            new("Resp. execução", modelo.ResponsavelExecucaoNome, 2),
+            new("Resp. área", modelo.ResponsavelAreaNome, 2),
+        }, tamanhoValor: 9);
     }
 
     private static void SecaoPreRequisitos(IContainer container, PtPdfModelo modelo)
@@ -270,26 +258,21 @@ public class PtPdfService : IPtPdfService
                 table.ColumnsDefinition(columns =>
                 {
                     columns.RelativeColumn(2);
-                    columns.RelativeColumn(1.5f);
-                    columns.RelativeColumn(1);
+                    columns.RelativeColumn(1.6f);
+                    columns.RelativeColumn(2.2f);
                 });
                 table.Header(header =>
                 {
                     header.Cell().Element(CabecalhoCelula).Text("Nome");
-                    header.Cell().Element(CabecalhoCelula).Text("Função");
-                    header.Cell().Element(CabecalhoCelula).Text("Ass./Visto");
+                    header.Cell().Element(CabecalhoCelula).Text("Função · CBO");
+                    header.Cell().Element(CabecalhoCelula).Text("Assinatura");
                 });
                 foreach (var envolvido in modelo.Envolvidos)
                 {
                     table.Cell().Element(Celula).Text(envolvido.Nome);
                     table.Cell().Element(Celula).Text(envolvido.Funcao ?? "-");
-                    table.Cell().Element(Celula).Column(c =>
-                    {
-                        c.Item().Text(envolvido.Assinou ? "Assinado" : "Pendente");
-                        if (envolvido.AssinadoEm is { } quando)
-                            c.Item().Text(DescricaoMetodoAssinatura.LegendaCurta(HorarioBrasilia.De(quando), envolvido.Metodo))
-                                .FontSize(6).FontColor(Colors.Grey.Darken2);
-                    });
+                    // 05/11: selo da assinatura na linha (AssinaturaPdfPadrao.SeloLinha).
+                    table.Cell().Element(Celula).Element(c => AssinaturaPdfPadrao.SeloLinha(c, envolvido.AssinadoEm, envolvido.Metodo, envolvido.Selo));
                 }
             });
         });

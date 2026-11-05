@@ -30,24 +30,12 @@ public class SolicitacaoReposicaoEpiPdfService : ISolicitacaoReposicaoEpiPdfServ
                 {
                     coluna.Spacing(8);
 
-                    coluna.Item().Row(linha =>
+                    coluna.Item().Element(c => GradeDocumentoPadrao.Desenhar(c, new GradeDocumentoPadrao.Campo[]
                     {
-                        linha.RelativeItem().Text(t =>
-                        {
-                            t.Span("Nº do documento: ").SemiBold();
-                            t.Span(modelo.NumeroDocumento);
-                        });
-                        linha.RelativeItem().AlignRight().Text(t =>
-                        {
-                            t.Span("Emitida em: ").SemiBold();
-                            t.Span(HorarioBrasilia.De(modelo.EmitidaEmUtc).ToString("dd/MM/yyyy HH:mm"));
-                        });
-                    });
-                    coluna.Item().Text(t =>
-                    {
-                        t.Span("Prazo de reposição considerado: ").SemiBold();
-                        t.Span($"{modelo.PrazoReposicaoDias} dias");
-                    });
+                        new("Nº do documento", modelo.NumeroDocumento, 2),
+                        new("Emitida em", HorarioBrasilia.De(modelo.EmitidaEmUtc).ToString("dd/MM/yyyy HH:mm"), 1),
+                        new("Prazo de reposição", $"{modelo.PrazoReposicaoDias} dias", 1),
+                    }));
 
                     coluna.Item().PaddingTop(4).Text(
                         "Itens com disponível abaixo do estoque mínimo da obra. Disponível = saldo físico menos as unidades já separadas " +
@@ -88,18 +76,12 @@ public class SolicitacaoReposicaoEpiPdfService : ISolicitacaoReposicaoEpiPdfServ
                         }
                     });
 
-                    coluna.Item().AlignRight().Text(t =>
+                    var resumo = new List<GradeDocumentoPadrao.Campo>
                     {
-                        t.Span("Total a repor: ").SemiBold();
-                        t.Span($"{modelo.Itens.Sum(i => i.QuantidadeSugerida)} unidade(s) em {modelo.Itens.Count} item(ns)");
-                    });
-
-                    if (!string.IsNullOrWhiteSpace(modelo.Observacao))
-                        coluna.Item().Text(t =>
-                        {
-                            t.Span("Observação: ").SemiBold();
-                            t.Span(modelo.Observacao);
-                        });
+                        new("Total a repor", $"{modelo.Itens.Sum(i => i.QuantidadeSugerida)} unidade(s) em {modelo.Itens.Count} item(ns)", 4),
+                    };
+                    if (!string.IsNullOrWhiteSpace(modelo.Observacao)) resumo.Add(new("Observação", modelo.Observacao, 4));
+                    coluna.Item().Element(c => GradeDocumentoPadrao.Desenhar(c, resumo));
 
                     coluna.Item().PaddingTop(24).AlignCenter().Width(260).Element(e =>
                         AssinaturaPdfPadrao.Bloco(e, "Solicitante", modelo.SolicitanteNome, modelo.SolicitanteFuncao,
@@ -116,5 +98,5 @@ public class SolicitacaoReposicaoEpiPdfService : ISolicitacaoReposicaoEpiPdfServ
     }
 
     private static IContainer Celula(TableDescriptor tabela, string fundo) =>
-        tabela.Cell().Background(fundo).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingVertical(4).PaddingHorizontal(4);
+        tabela.Cell().Background(fundo).Border(0.5f).BorderColor(GradeDocumentoPadrao.CorLinha).PaddingVertical(4).PaddingHorizontal(4);
 }

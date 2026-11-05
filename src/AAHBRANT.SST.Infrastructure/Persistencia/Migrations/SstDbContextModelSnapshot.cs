@@ -628,6 +628,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<DateTime?>("DataAprovacao")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("ElaboradorTrabalhadorId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("EquipeId")
                         .HasColumnType("uniqueidentifier");
 
@@ -663,6 +666,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("SupervisorTrabalhadorId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -678,7 +684,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("AtividadeId");
 
+                    b.HasIndex("ElaboradorTrabalhadorId");
+
                     b.HasIndex("EquipeId");
+
+                    b.HasIndex("SupervisorTrabalhadorId");
 
                     b.ToTable("Aprs");
                 });
@@ -7054,11 +7064,41 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("DispositivoAgenteId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("EvidenciaContentType")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<byte[]>("EvidenciaConteudo")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("EvidenciaHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<int>("LocalizacaoStatus")
+                        .HasColumnType("int");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("float");
+
                     b.Property<int?>("MetodoPresenca")
                         .HasColumnType("int");
 
                     b.Property<int>("Origem")
                         .HasColumnType("int");
+
+                    b.Property<double?>("PrecisaoMetros")
+                        .HasColumnType("float");
 
                     b.Property<DateTime?>("PresencaConfirmadaEm")
                         .HasColumnType("datetime2");
@@ -7085,6 +7125,22 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("ValidacaoGrupoId")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("ValidacaoModelo")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("ValidacaoRequisicaoId")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
 
                     b.HasKey("Id");
 
@@ -10725,16 +10781,30 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Elaborador")
+                        .WithMany()
+                        .HasForeignKey("ElaboradorTrabalhadorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("AAHBRANT.SST.Domain.Entidades.Equipe", "Equipe")
                         .WithMany()
                         .HasForeignKey("EquipeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Supervisor")
+                        .WithMany()
+                        .HasForeignKey("SupervisorTrabalhadorId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("AprovadoPorUsuario");
 
                     b.Navigation("Atividade");
 
+                    b.Navigation("Elaborador");
+
                     b.Navigation("Equipe");
+
+                    b.Navigation("Supervisor");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.AprAssinatura", b =>

@@ -152,7 +152,7 @@ public class FinalizarDocumentoCommandTests
     public async Task Registrar_GuardaAConfiancaDaIdentificacao()
     {
         var (db, _, trabalhador) = await PrepararAsync();
-        var documento = new DocumentoAssinatura { EntidadeTipo = "Apr", EntidadeId = Guid.NewGuid() };
+        var documento = new DocumentoAssinatura { EntidadeTipo = "Dds", EntidadeId = Guid.NewGuid() };
         db.DocumentosAssinatura.Add(documento);
         await db.SaveChangesAsync();
 
@@ -170,7 +170,7 @@ public class FinalizarDocumentoCommandTests
     public async Task Registrar_HoraDeclaradaDaCaptura_SoQuandoAFotoFoiEnviadaDepois(int minutos, bool guarda)
     {
         var (db, _, trabalhador) = await PrepararAsync();
-        var documento = new DocumentoAssinatura { EntidadeTipo = "Apr", EntidadeId = Guid.NewGuid() };
+        var documento = new DocumentoAssinatura { EntidadeTipo = "Dds", EntidadeId = Guid.NewGuid() };
         db.DocumentosAssinatura.Add(documento);
         await db.SaveChangesAsync();
         var capturada = DateTime.UtcNow.AddMinutes(minutos);

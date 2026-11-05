@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.EntregasEpi;
 using AAHBRANT.SST.Infrastructure.Documentos;
 using SixLabors.ImageSharp;

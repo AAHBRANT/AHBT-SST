@@ -841,6 +841,9 @@ public enum PapelAssinatura
     EngenheiroSegurancaPgr = 4,
     // Instrutor da turma de treinamento: assina o certificado com o perfil de instrutor (pode ser de outra obra).
     Instrutor = 5,
+    // APR por biometria (05/11): elaboração e supervisão; envolvido assina sem papel.
+    AprElaboracao = 6,
+    AprSupervisao = 7,
 }
 
 // Formação do instrutor de treinamento; sai impressa no certificado.

@@ -12,7 +12,10 @@ public record DdsPdfTemaModelo(
 public record DdsPdfParticipanteModelo(
     string Nome,
     DateTime? AssinadoEm,
-    AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? Metodo = null);
+    AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? Metodo = null,
+    // 05/11: função com CBO (coluna da lista) e selo da assinatura na linha.
+    string? FuncaoComCbo = null,
+    AAHBRANT.SST.Application.Assinatura.SeloAssinaturaPdf? Selo = null);
 
 // Foto de evidência do encerramento (3 obrigatórias). Metadados vêm de DadosCapturaFoto; foto
 // anexada da galeria não tem hora/GPS de captura (CapturadaEm e coordenadas nulos).
@@ -45,7 +48,9 @@ public record DdsPdfModelo(
     AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura? ResponsavelMetodo = null,
     // Cargo/função do responsável (cadastro do trabalhador vinculado ao usuário), ex.: "Técnico de Segurança".
     string? ResponsavelFuncao = null,
-    IReadOnlyList<DdsPdfFotoModelo>? Fotos = null);
+    IReadOnlyList<DdsPdfFotoModelo>? Fotos = null,
+    // 05/11: Certificado de Assinaturas Eletrônicas no fim (modelo único, compacto).
+    AAHBRANT.SST.Application.Assinatura.CertificadoAssinaturasModelo? Certificado = null);
 
 public interface IDdsPdfService
 {

@@ -19,6 +19,11 @@ public class AprConfiguracao : IEntityTypeConfiguration<Apr>
             .HasForeignKey(a => a.EquipeId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(a => a.AprovadoPorUsuario).WithMany()
             .HasForeignKey(a => a.AprovadoPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        // 05/11: quem elabora e quem supervisiona (assinam por biometria).
+        builder.HasOne(a => a.Elaborador).WithMany()
+            .HasForeignKey(a => a.ElaboradorTrabalhadorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(a => a.Supervisor).WithMany()
+            .HasForeignKey(a => a.SupervisorTrabalhadorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(a => a.AtividadeId);
         builder.HasQueryFilter(a => a.Ativo);
     }

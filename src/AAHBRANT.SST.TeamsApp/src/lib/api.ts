@@ -2065,6 +2065,11 @@ export interface Apr {
   aprovadoPorUsuarioNome?: string | null;
   dataAprovacao?: string | null;
   motivoReprovacao?: string | null;
+  // 05/11: quem elabora e quem supervisiona (assinam por biometria).
+  elaboradorTrabalhadorId?: string | null;
+  elaboradorNome?: string | null;
+  supervisorTrabalhadorId?: string | null;
+  supervisorNome?: string | null;
 }
 
 export interface NovaApr {
@@ -2076,6 +2081,8 @@ export interface NovaApr {
   data: string;
   validade?: string | null;
   responsaveisIds: string[];
+  elaboradorTrabalhadorId?: string | null;
+  supervisorTrabalhadorId?: string | null;
 }
 
 export type AtualizarAprPayload = NovaApr & { id: string };
@@ -2128,6 +2135,10 @@ export interface AprAssinatura {
   trabalhadorNome: string;
   papel: number;
   dataAssinatura: string;
+  trabalhadorFuncaoNome?: string | null;
+  metodoAutenticacao?: number;
+  // 05/11: true = assinatura por digital/facial no quiosque; false = registro antigo por clique.
+  biometrica?: boolean;
 }
 
 export interface NovaAprAssinatura {
@@ -5101,6 +5112,15 @@ export interface PlanoIntegracao {
   kit: ItemKitEpi[];
 }
 
+// 05/11: localização do aparelho na presença por facial (campos do formulário). Nunca bloqueia.
+async function anexarLocalizacaoPresenca(formData: FormData) {
+  const localizacao = await obterLocalizacaoAssinatura();
+  formData.append('LocalizacaoStatus', String(localizacao.status));
+  if (localizacao.latitude != null) formData.append('Latitude', String(localizacao.latitude));
+  if (localizacao.longitude != null) formData.append('Longitude', String(localizacao.longitude));
+  if (localizacao.precisaoMetros != null) formData.append('PrecisaoMetros', String(localizacao.precisaoMetros));
+}
+
 export const api = {
   fotos: {
     // Endereço por extenso do carimbo da foto (Azure Maps). Lista vazia quando o serviço está desligado.
@@ -5614,16 +5634,25 @@ export const api = {
     // Presença exclusivamente por biometria (mesmo padrão de api.dds.registrarParticipante) —
     // dispositivoId/segredoDispositivo vêm do agente local, score é o resultado do match 1:N já
     // feito por ele (ver capturarDigitalLocal).
-    registrarPresenca: (sessaoId: string, trabalhadorId: string, credencial: CredencialLeitura, score: number) =>
-      request<void>(`/api/sessoestreinamento/${sessaoId}/presenca`, {
+    // 05/11: a imagem lida e a localização do aparelho vão junto (evidência da presença, como no EPI).
+    registrarPresenca: async (sessaoId: string, trabalhadorId: string, credencial: CredencialLeitura, score: number, imagemDigital?: string | null) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<void>(`/api/sessoestreinamento/${sessaoId}/presenca`, {
         method: 'POST',
-        body: JSON.stringify({ trabalhadorId, ...credencial, score }),
-      }),
+        body: JSON.stringify({ trabalhadorId, ...credencial, score, imagemDigital: imagemDigital ?? null, localizacao }),
+      });
+    },
     registrarPresencaFacial: async (sessaoId: string, obraId: string, foto: File) => {
       const formData = new FormData();
       formData.append('obraId', obraId);
       formData.append('foto', foto);
       anexarDadosFoto(formData, foto);
+      // 05/11: localização do aparelho na presença (evidência, como na assinatura facial de EPI).
+      const localizacao = await obterLocalizacaoAssinatura();
+      formData.append('localizacaoStatus', String(localizacao.status));
+      if (localizacao.latitude != null) formData.append('latitude', String(localizacao.latitude));
+      if (localizacao.longitude != null) formData.append('longitude', String(localizacao.longitude));
+      if (localizacao.precisaoMetros != null) formData.append('precisaoMetros', String(localizacao.precisaoMetros));
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<{ trabalhadorId: string }>(
         `/api/sessoestreinamento/${sessaoId}/presenca/facial`,
@@ -6143,6 +6172,12 @@ export const api = {
   aprs: {
     listar: (atividadeId?: string) => request<Apr[]>(`/api/aprs${atividadeId ? `?atividadeId=${atividadeId}` : ''}`),
     obterDetalhe: (id: string) => request<AprDetalhe>(`/api/aprs/${id}`),
+    // 05/11: quem elabora e quem supervisiona a APR (assinam por biometria).
+    definirResponsaveisAssinatura: (id: string, elaboradorTrabalhadorId: string | null, supervisorTrabalhadorId: string | null) =>
+      request<void>(`/api/aprs/${id}/responsaveis-assinatura`, {
+        method: 'PUT',
+        body: JSON.stringify({ elaboradorTrabalhadorId, supervisorTrabalhadorId }),
+      }),
     criar: (apr: NovaApr) => request<{ id: string }>('/api/aprs', { method: 'POST', body: JSON.stringify(apr) }),
     atualizar: (id: string, apr: AtualizarAprPayload) =>
       request<void>(`/api/aprs/${id}`, { method: 'PUT', body: JSON.stringify(apr) }),
@@ -6151,6 +6186,17 @@ export const api = {
     aprovar: (id: string) => request<void>(`/api/aprs/${id}/aprovar`, { method: 'POST' }),
     reprovar: (id: string, motivo: string) =>
       request<void>(`/api/aprs/${id}/reprovar`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+    // 05/11: Certificado de Assinaturas Eletrônicas da APR, em PDF à parte.
+    certificadoAssinaturasPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/aprs/${id}/certificado-assinaturas-pdf`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
     exportarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/aprs/${id}/pdf`, {
         headers: await montarHeadersAuth(),
@@ -6245,6 +6291,17 @@ export const api = {
       }),
     excluirRiscoCritico: (riscoId: string) =>
       request<void>(`/api/permissoesTrabalho/riscos-criticos/${riscoId}`, { method: 'DELETE' }),
+    // 05/11: Certificado de Assinaturas Eletrônicas da PT, em PDF à parte.
+    certificadoAssinaturasPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/permissoesTrabalho/${id}/certificado-assinaturas-pdf`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
     exportarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/permissoesTrabalho/${id}/pdf`, {
         headers: await montarHeadersAuth(),
@@ -6611,17 +6668,21 @@ export const api = {
     // Presença exclusivamente por biometria (2026-08-31, pedido do usuário) — dispositivoId/
     // segredoDispositivo vêm do agente local (fetch a /api/dispositivo), nunca de localStorage;
     // score é o resultado do match 1:N já feito pelo agente (ver capturarDigitalLocal).
-    registrarParticipante: (ddsId: string, trabalhadorId: string, credencial: CredencialLeitura, score: number, imagemDigital?: string | null) =>
-      request<{ id: string }>(`/api/dds/${ddsId}/participantes`, {
+    // 05/11: a localização do aparelho vai junto (evidência da assinatura, como no EPI).
+    registrarParticipante: async (ddsId: string, trabalhadorId: string, credencial: CredencialLeitura, score: number, imagemDigital?: string | null) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<{ id: string }>(`/api/dds/${ddsId}/participantes`, {
         method: 'POST',
-        body: JSON.stringify({ trabalhadorId, ...credencial, score, imagemDigital: imagemDigital ?? null }),
-      }),
+        body: JSON.stringify({ trabalhadorId, ...credencial, score, imagemDigital: imagemDigital ?? null, localizacao }),
+      });
+    },
     // Presença por reconhecimento facial: a foto é identificada no servidor (grupo da obra do DDS) e o
     // rosto precisa ser do funcionário informado. Erros de rejeição vêm como { erro, motivo } no corpo.
     registrarParticipanteFacial: async (ddsId: string, trabalhadorId: string, foto: File) => {
       const formData = new FormData();
       formData.append('TrabalhadorId', trabalhadorId);
       formData.append('Foto', foto);
+      await anexarLocalizacaoPresenca(formData);
       const response = await fetch(`${API_BASE_URL}/api/dds/${ddsId}/participantes/facial`, {
         method: 'POST',
         headers: await montarHeadersAuth(),
@@ -6638,6 +6699,7 @@ export const api = {
     registrarParticipanteFacialFila: async (ddsId: string, foto: File) => {
       const formData = new FormData();
       formData.append('Foto', foto);
+      await anexarLocalizacaoPresenca(formData);
       const response = await fetch(`${API_BASE_URL}/api/dds/${ddsId}/participantes/facial-fila`, {
         method: 'POST',
         headers: await montarHeadersAuth(),

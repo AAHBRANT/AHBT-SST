@@ -14,7 +14,10 @@ namespace AAHBRANT.SST.Application.SessoesTreinamento.Commands;
 public record RegistrarPresencaFacialSessaoTreinamentoCommand(
     Guid SessaoTreinamentoId,
     Guid ObraId,
-    byte[] FotoJpeg) : IRequest<Guid>;
+    byte[] FotoJpeg,
+    // 05/11: evidência da presença (como na assinatura facial de EPI).
+    string? FotoContentType = null,
+    LocalizacaoAssinatura? Localizacao = null) : IRequest<Guid>;
 
 public class RegistrarPresencaFacialSessaoTreinamentoCommandValidator : AbstractValidator<RegistrarPresencaFacialSessaoTreinamentoCommand>
 {
@@ -30,11 +33,14 @@ public class RegistrarPresencaFacialSessaoTreinamentoCommandHandler : IRequestHa
 {
     private readonly IAppDbContext _db;
     private readonly IAutenticacaoFacialService _autenticacaoFacial;
+    private readonly IClienteIpProvider? _clienteIp;
 
-    public RegistrarPresencaFacialSessaoTreinamentoCommandHandler(IAppDbContext db, IAutenticacaoFacialService autenticacaoFacial)
+    public RegistrarPresencaFacialSessaoTreinamentoCommandHandler(IAppDbContext db, IAutenticacaoFacialService autenticacaoFacial,
+        IClienteIpProvider? clienteIp = null)
     {
         _db = db;
         _autenticacaoFacial = autenticacaoFacial;
+        _clienteIp = clienteIp;
     }
 
     public async Task<Guid> Handle(RegistrarPresencaFacialSessaoTreinamentoCommand request, CancellationToken ct)
@@ -56,6 +62,7 @@ public class RegistrarPresencaFacialSessaoTreinamentoCommandHandler : IRequestHa
         participante.PresencaConfirmadaEm = DateTime.UtcNow;
         participante.ScoreConfianca = identificacao.Confianca;
         participante.MetodoPresenca = MetodoAutenticacaoAssinatura.ReconhecimentoFacial;
+        EvidenciaPresencaTreinamento.Aplicar(participante, identificacao.Resultado, request.FotoJpeg, request.FotoContentType, request.Localizacao, _clienteIp);
 
         await _db.SaveChangesAsync(ct);
         return trabalhadorId;

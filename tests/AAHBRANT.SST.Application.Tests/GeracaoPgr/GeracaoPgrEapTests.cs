@@ -970,7 +970,7 @@ public class GeracaoPgrEapTests
         public async Task<AAHBRANT.SST.Application.Assinatura.Queries.DocumentoSignatarioDto> RegistrarAsync(
             Guid documentoAssinaturaId, AAHBRANT.SST.Application.Assinatura.ResultadoAutenticacaoAssinatura resultado, string? ipAddress,
             CancellationToken ct, byte[]? fotoEvidenciaConteudo = null, string? fotoEvidenciaContentType = null, PapelAssinatura? papel = null,
-            AAHBRANT.SST.Application.Assinatura.LocalizacaoAssinatura? localizacao = null)
+            AAHBRANT.SST.Application.Assinatura.LocalizacaoAssinatura? localizacao = null, string? userAgent = null)
         {
             var agora = DateTime.UtcNow;
             _db.DocumentoSignatarios.Add(new DocumentoSignatario

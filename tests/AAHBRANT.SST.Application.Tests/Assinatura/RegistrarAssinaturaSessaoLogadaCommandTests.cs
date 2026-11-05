@@ -48,7 +48,7 @@ public class RegistrarAssinaturaSessaoLogadaCommandTests
             byte[]? fotoEvidenciaConteudo = null,
             string? fotoEvidenciaContentType = null,
             PapelAssinatura? papel = null,
-            LocalizacaoAssinatura? localizacao = null)
+            LocalizacaoAssinatura? localizacao = null, string? userAgent = null)
         {
             IpRecebido = ipAddress;
             ResultadoRecebido = resultado;

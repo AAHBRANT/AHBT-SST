@@ -69,7 +69,7 @@ public class DdsController : ControllerBase
     public async Task<IActionResult> RegistrarParticipante(Guid id, RegistrarParticipanteRequestBody body, CancellationToken ct)
     {
         var command = new RegistrarParticipanteCommand(id, body.TrabalhadorId, body.DispositivoId, body.SegredoDispositivo, body.Score, body.ImagemDigital,
-            body.Desafio, body.AssinaturaLeitura);
+            body.Desafio, body.AssinaturaLeitura, body.Localizacao?.ParaDominio());
         var participanteId = await _mediator.Send(command, ct);
         return Ok(new { id = participanteId });
     }
@@ -84,7 +84,7 @@ public class DdsController : ControllerBase
 
         try
         {
-            var participanteId = await _mediator.Send(new RegistrarParticipanteFacialCommand(id, body.TrabalhadorId, stream.ToArray()), ct);
+            var participanteId = await _mediator.Send(new RegistrarParticipanteFacialCommand(id, body.TrabalhadorId, stream.ToArray(), Localizacao(body.LocalizacaoStatus, body.Latitude, body.Longitude, body.PrecisaoMetros)), ct);
             return Ok(new { id = participanteId });
         }
         catch (AAHBRANT.SST.Application.Assinatura.Commands.RejeicaoFacialException ex)
@@ -105,7 +105,7 @@ public class DdsController : ControllerBase
 
         try
         {
-            return Ok(await _mediator.Send(new RegistrarParticipanteFacialFilaCommand(id, stream.ToArray()), ct));
+            return Ok(await _mediator.Send(new RegistrarParticipanteFacialFilaCommand(id, stream.ToArray(), Localizacao(body.LocalizacaoStatus, body.Latitude, body.Longitude, body.PrecisaoMetros)), ct));
         }
         catch (AAHBRANT.SST.Application.Assinatura.Commands.RejeicaoFacialException ex)
         {
@@ -194,20 +194,33 @@ public class DdsController : ControllerBase
         var pdf = await _mediator.Send(new ExportarDdsPdfQuery(id), ct);
         return pdf is null ? NotFound() : File(pdf, "application/pdf", $"dds-{id}.pdf");
     }
+
+    private static AAHBRANT.SST.Application.Assinatura.LocalizacaoAssinatura? Localizacao(
+        AAHBRANT.SST.Domain.Enums.StatusLocalizacaoAssinatura? status, double? latitude, double? longitude, double? precisao) =>
+        status is { } s ? new AAHBRANT.SST.Application.Assinatura.LocalizacaoAssinatura(s, latitude, longitude, precisao) : null;
 }
 
 public record MarcarItemChecklistRequestBody(bool Verificado);
 public record AtualizarFuncionariosDdsRequestBody(List<Guid> TrabalhadoresIds);
 
+// 05/11: localização do aparelho na presença (campos do formulário, como na assinatura facial).
 public class RegistrarParticipanteFacialFilaRequestBody
 {
     public IFormFile Foto { get; set; } = null!;
+    public AAHBRANT.SST.Domain.Enums.StatusLocalizacaoAssinatura? LocalizacaoStatus { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public double? PrecisaoMetros { get; set; }
 }
 
 public class RegistrarParticipanteFacialRequestBody
 {
     public Guid TrabalhadorId { get; set; }
     public IFormFile Foto { get; set; } = null!;
+    public AAHBRANT.SST.Domain.Enums.StatusLocalizacaoAssinatura? LocalizacaoStatus { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public double? PrecisaoMetros { get; set; }
 }
 
 public class RegistrarParticipanteRequestBody
@@ -221,6 +234,8 @@ public class RegistrarParticipanteRequestBody
     // Leitura assinada pelo agente (ver FutronicAutenticacaoStrategy).
     public string? Desafio { get; set; }
     public string? AssinaturaLeitura { get; set; }
+    // 05/11: localização do aparelho na presença.
+    public AssinaturaController.LocalizacaoAssinaturaBody? Localizacao { get; set; }
 }
 
 public class AnexarFotoEvidenciaDdsRequestBody

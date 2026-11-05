@@ -18,7 +18,7 @@ import {
   type Tom,
 } from '@ui';
 import { CampoData } from '../../components/CampoData';
-import { ArrowDownload24Regular, Eye24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Eye24Regular, ShieldCheckmark24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { api, StatusPt, statusPtLabel, type PermissaoTrabalhoDetalhe } from '../../lib/api';
 import { PreRequisitosPtTab } from './PreRequisitosPtTab';
 import { TiposTrabalhoPtTab } from './TiposTrabalhoPtTab';
@@ -279,6 +279,22 @@ export function PermissaoTrabalhoDetalhePage() {
               aria-label="Exportar PDF"
             >
               Exportar PDF
+            </BotaoAcao>
+            {/* 05/11: certificado de assinaturas à parte — a PT fica no local sem biometria exposta. */}
+            <BotaoAcao
+              tom="ver"
+              icon={<ShieldCheckmark24Regular />}
+              onClick={() =>
+                id &&
+                void visualizar({
+                  titulo: 'Certificado de assinaturas da PT',
+                  nomeArquivo: `pt-${id}-certificado-assinaturas.pdf`,
+                  obter: () => api.permissoesTrabalho.certificadoAssinaturasPdf(id),
+                })
+              }
+              aria-label="Certificado de assinaturas"
+            >
+              Certificado de assinaturas
             </BotaoAcao>
             {dialogoVisualizador}
           </>

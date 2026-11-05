@@ -1,3 +1,5 @@
+using AAHBRANT.SST.Domain.Enums;
+using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using MediatR;
@@ -13,13 +15,18 @@ public class ExportarDdsPdfQueryHandler : IRequestHandler<ExportarDdsPdfQuery, b
     private readonly IAppDbContext _db;
     private readonly IDdsPdfService _pdf;
     private readonly IRegistradorRastreabilidadeService _rastreabilidade;
+    private readonly IImagemBiometricaCriptografia? _cripto;
+    private readonly IQrCodeDocumentoService? _qrCode;
 
-    public ExportarDdsPdfQueryHandler(IMediator mediator, IAppDbContext db, IDdsPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
+    public ExportarDdsPdfQueryHandler(IMediator mediator, IAppDbContext db, IDdsPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade,
+        IImagemBiometricaCriptografia? cripto = null, IQrCodeDocumentoService? qrCode = null)
     {
         _mediator = mediator;
         _db = db;
         _pdf = pdf;
         _rastreabilidade = rastreabilidade;
+        _cripto = cripto;
+        _qrCode = qrCode;
     }
 
     public async Task<byte[]?> Handle(ExportarDdsPdfQuery request, CancellationToken ct)
@@ -64,8 +71,52 @@ public class ExportarDdsPdfQueryHandler : IRequestHandler<ExportarDdsPdfQuery, b
             return new DdsPdfFotoModelo(f.FotoConteudo, d?.CapturadaEm, d?.FusoMinutos, d?.Local, d?.Latitude, d?.Longitude);
         }).ToList();
 
+        // 05/11: selo na linha (função · CBO) e Certificado de Assinaturas com as assinaturas gravadas.
+        var documento = await _db.DocumentosAssinatura.AsNoTracking()
+            .Include(d => d.Signatarios)
+            .Where(d => d.EntidadeTipo == nameof(Domain.Entidades.Dds) && d.EntidadeId == request.Id && d.Status != StatusDocumentoAssinatura.Cancelado)
+            .OrderByDescending(d => d.CreatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+        var assinaturas = documento?.Signatarios.Where(s => s.Ativo).ToList() ?? new List<DocumentoSignatario>();
+        var signatarios = await MontadorCertificadoAssinaturas.CarregarSignatariosAsync(_db,
+            assinaturas.Select(s => s.TrabalhadorId).Concat(detalhe.Participantes.Select(p => p.TrabalhadorId)), ct);
+        var assinaturaPorTrabalhador = assinaturas.GroupBy(s => s.TrabalhadorId).ToDictionary(g => g.Key, g => g.OrderBy(s => s.AssinadoEm).First());
+
+        var participantes = detalhe.Participantes.Select(p =>
+        {
+            signatarios.TryGetValue(p.TrabalhadorId, out var dados);
+            assinaturaPorTrabalhador.TryGetValue(p.TrabalhadorId, out var sig);
+            var selo = p.AssinadoEm is null ? null
+                : new SeloAssinaturaPdf(p.TrabalhadorNome, dados?.Funcao, sig is null ? null : MontadorCertificadoAssinaturas.CodigoSelo(sig));
+            return new DdsPdfParticipanteModelo(p.TrabalhadorNome, p.AssinadoEm, p.MetodoAssinatura, dados?.Funcao, selo);
+        }).ToList();
+
+        var temas = detalhe.Dds.TemasAtividades.Select(t => t.AtividadeNome).ToList();
+        if (!string.IsNullOrWhiteSpace(detalhe.Dds.TemaLivreNome)) temas.Add(detalhe.Dds.TemaLivreNome!);
+        var painel = new PainelCertificado("DDS", $"Diálogo Diário de Segurança · {detalhe.Dds.Data:dd/MM/yyyy}", new List<SecaoPainelCertificado>
+        {
+            new("DDS", new List<LinhaPainelCertificado>
+            {
+                new("Data", detalhe.Dds.Data.ToString("dd/MM/yyyy")),
+                new("Nº", dds.NumeroDocumento ?? "—"),
+                new("Tema(s)", temas.Count == 0 ? "—" : string.Join("; ", temas)),
+            }),
+            new("Responsável", new List<LinhaPainelCertificado>
+            {
+                new("Nome", detalhe.Dds.ResponsavelUsuarioNome),
+                new("Função", responsavel?.Funcao ?? "—"),
+            }),
+        });
+        var certificado = documento is null ? null : await MontadorCertificadoAssinaturas.MontarAsync(
+            _db, _cripto, _qrCode, documento, assinaturas, signatarios,
+            s => s.TrabalhadorId == trabalhadorResponsavelId ? "DDS — assinatura do responsável" : "DDS — presença do participante",
+            "DDS", $"DDS · {detalhe.Dds.Data:dd/MM/yyyy} · {detalhe.Dds.ObraNome}",
+            detalhe.Dds.ObraNome, logoConteudo, rastreio, painel, compacto: true, ct);
+
         var modelo = MontarModelo(detalhe, logoConteudo, dds.NumeroDocumento, rastreio) with
         {
+            Participantes = participantes,
+            Certificado = certificado,
             Fotos = fotos,
             ResponsavelAssinadoEm = assinaturaResponsavel?.AssinadoEm,
             ResponsavelMetodo = assinaturaResponsavel?.MetodoAutenticacao,

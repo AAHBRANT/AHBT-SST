@@ -4,10 +4,10 @@ import {
   StatusChip, designTokens, type Coluna,
 } from '@ui';
 import {
-  ArrowDownload24Regular, Camera24Regular, Checkmark24Regular, Dismiss24Regular,
+  Camera24Regular, Checkmark24Regular, Dismiss24Regular,
   PeopleTeam24Regular, Search24Regular, Stop24Regular,
 } from '@fluentui/react-icons';
-import { api, TipoFotoParticipante, type DdsDetalhe, type DdsFuncionario } from '../../lib/api';
+import { api, type DdsDetalhe, type DdsFuncionario } from '../../lib/api';
 import { capturarDigitalLocal, credencialLeitura, obterDispositivoLocal, type CapturaLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { formatarHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
@@ -52,7 +52,6 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
   const [salvando, setSalvando] = useState(false);
   const [selecaoEmGravacao, setSelecaoEmGravacao] = useState<string[] | null>(null);
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
-  const [baixandoId, setBaixandoId] = useState<string | null>(null);
   const [mensagem, setMensagem] = useState('');
   const [dispositivo, setDispositivo] = useState<DispositivoLocal | null>(null);
   const [verificandoLeitor, setVerificandoLeitor] = useState(false);
@@ -238,31 +237,9 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
     }
   }
 
-  async function baixarFoto(id: string) {
-    const participante = confirmados.get(id);
-    if (!participante) return;
-    setBaixandoId(id);
-    setErro(null);
-    try {
-      const blob = await api.dds.baixarFotoParticipante(participante.id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `dds-${participante.trabalhadorNome.replace(/\s+/g, '-').toLowerCase()}`;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao baixar a foto.');
-    } finally {
-      setBaixandoId(null);
-    }
-  }
-
   function acoesFuncionario(f: DdsFuncionario) {
     const presenca = confirmados.get(f.trabalhadorId);
-    if (presenca) return presenca.fotoTipo !== TipoFotoParticipante.Biometria
-      ? <Button size="small" icon={<ArrowDownload24Regular />} disabled={baixandoId === f.trabalhadorId}
-        onClick={() => void baixarFoto(f.trabalhadorId)}>Baixar foto</Button> : <Checkmark24Regular aria-label="Presença confirmada" />;
+    if (presenca) return <Checkmark24Regular aria-label="Presença confirmada" />;
     if (somenteLeitura || !selecionados.has(f.trabalhadorId)) return null;
     return <div style={linhaFlex}>
       <SeletorFotoCamera
