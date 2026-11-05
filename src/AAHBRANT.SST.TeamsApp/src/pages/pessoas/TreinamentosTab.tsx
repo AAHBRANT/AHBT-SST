@@ -22,7 +22,7 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Eye24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { Add24Regular, ArrowDownload24Regular, ClipboardTaskListLtr24Regular, Delete24Regular, Eye24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { api, type CursoTreinamento, type NovoTreinamento, type Treinamento } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { AssinaturaCertificadoTreinamentoDialog } from '../../components/assinatura/AssinaturaCertificadoTreinamentoDialog';
@@ -209,6 +209,24 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
             >
               Ver turma
             </Button>
+          )}
+          {t.sessaoTreinamentoId && (
+            <div style={{ marginTop: 4 }}>
+              <BotaoAcao
+                tom="ver"
+                icon={<ClipboardTaskListLtr24Regular />}
+                onClick={() =>
+                  void visualizar({
+                    titulo: 'Lista de presença do treinamento',
+                    nomeArquivo: `lista-presenca-treinamento-${t.sessaoTreinamentoId}.pdf`,
+                    obter: () => api.sessoesTreinamento.baixarAta(t.sessaoTreinamentoId!),
+                  })
+                }
+                aria-label="Ver lista de presença do treinamento"
+              >
+                Lista de presença
+              </BotaoAcao>
+            </div>
           )}
         </div>
       ),
