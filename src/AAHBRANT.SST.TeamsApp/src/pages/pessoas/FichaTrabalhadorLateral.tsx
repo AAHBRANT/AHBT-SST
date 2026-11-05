@@ -205,9 +205,9 @@ export function FichaTrabalhadorLateral({
           icon={<ArrowDownload24Regular />}
           onClick={aoBaixarRelatorio}
           disabled={baixandoRelatorio}
-          aria-label="Emitir relatório de fiscalização (PDF)"
+          aria-label="Baixar dossiê completo do funcionário (PDF)"
         >
-          Emitir relatório de fiscalização
+          {baixandoRelatorio ? 'Gerando dossiê…' : 'Baixar dossiê completo'}
         </BotaoAcao>
       </div>
 

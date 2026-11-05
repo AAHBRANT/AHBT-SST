@@ -69,6 +69,17 @@ public class TrabalhadoresController : ControllerBase
         return File(pdf, "application/pdf", $"relatorio-fiscalizacao-{id}.pdf");
     }
 
+    // Dossiê do Funcionário (29/10): relatório + índice + todos os documentos dele num PDF só. Mesma
+    // permissão do relatório — quem vê o perfil pode baixar (decisão do usuário).
+    [Authorize(Policy = "trabalhador:ver")]
+    [HttpGet("{id:guid}/dossie-pdf")]
+    public async Task<IActionResult> ObterDossie(Guid id, CancellationToken ct)
+    {
+        var pdf = await _mediator.Send(new GerarDossieTrabalhadorQuery(id), ct);
+        if (pdf is null) return NotFound();
+        return File(pdf, "application/pdf", $"dossie-funcionario-{id}.pdf");
+    }
+
     [Authorize(Policy = "trabalhador:criar")]
     [HttpPost]
     public async Task<IActionResult> Criar(CriarTrabalhadorCommand command, CancellationToken ct)

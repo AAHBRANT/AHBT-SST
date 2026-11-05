@@ -5262,6 +5262,14 @@ export const api = {
       }
       return response.blob();
     },
+    baixarDossie: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/trabalhadores/${id}/dossie-pdf`, { headers: await montarHeadersAuth() });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
     // Cadastro de digital via agente local (Futronic FS80H) — templateBruto vem em base64 do
     // agente (fetch local a /api/capturar-bruto); o backend criptografa antes de persistir.
     cadastrarBiometriaLocal: (id: string, templateBrutoBase64: string, imagemCadastroBase64?: string | null, dedo?: DedoBiometria) =>
