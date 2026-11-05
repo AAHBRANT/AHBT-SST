@@ -9,7 +9,8 @@ namespace AAHBRANT.SST.Application.Aprs.Queries;
 
 // CertificadoAssinaturas (05/11): true = só o Certificado de Assinaturas Eletrônicas, em PDF à parte; a APR
 // em si sai sem ele (vai para a frente de serviço sem biometria exposta).
-public record ExportarAprPdfQuery(Guid Id, bool CertificadoAssinaturas = false) : IRequest<byte[]?>;
+// SomenteTrabalhadorId (dossiê, LGPD): o certificado traz só a evidência desse funcionário.
+public record ExportarAprPdfQuery(Guid Id, bool CertificadoAssinaturas = false, Guid? SomenteTrabalhadorId = null) : IRequest<byte[]?>;
 
 public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, byte[]?>
 {
@@ -72,7 +73,8 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
             }),
         });
         var certificado = documento is null ? null : await MontadorCertificadoAssinaturas.MontarAsync(
-            _db, _cripto, _qrCode, documento, assinaturas, signatarios,
+            _db, _cripto, _qrCode, documento,
+            request.SomenteTrabalhadorId is { } so ? assinaturas.Where(a => a.TrabalhadorId == so).ToList() : assinaturas, signatarios,
             s => s.Papel switch
             {
                 PapelAssinatura.AprElaboracao => "APR — assinatura da elaboração",

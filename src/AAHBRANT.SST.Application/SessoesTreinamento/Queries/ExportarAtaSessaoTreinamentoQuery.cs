@@ -8,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.SessoesTreinamento.Queries;
 
-public record ExportarAtaSessaoTreinamentoQuery(Guid SessaoTreinamentoId) : IRequest<byte[]?>;
+// SomenteTrabalhadorId (dossiê, LGPD): o certificado traz só a evidência desse funcionário.
+public record ExportarAtaSessaoTreinamentoQuery(Guid SessaoTreinamentoId, Guid? SomenteTrabalhadorId = null) : IRequest<byte[]?>;
 
 public class ExportarAtaSessaoTreinamentoQueryHandler : IRequestHandler<ExportarAtaSessaoTreinamentoQuery, byte[]?>
 {
@@ -120,7 +121,11 @@ public class ExportarAtaSessaoTreinamentoQueryHandler : IRequestHandler<Exportar
                     assinaturaInstrutor.Sig?.AssinadoEm, assinaturaInstrutor.Sig?.MetodoAutenticacao, assinaturaInstrutor.Sig?.FotoEvidenciaHash);
         }
 
-        var certificado = await MontarCertificadoAsync(sessao, inscritos, assinaturaParticipante, assinaturaInstrutor,
+        var certificado = request.SomenteTrabalhadorId is { } so
+            ? await MontarCertificadoAsync(sessao, inscritos,
+                assinaturaParticipante.Where(kv => kv.Key == so).ToDictionary(kv => kv.Key, kv => kv.Value), default,
+                instrutorNome, instrutorCargo, rastreio, ct)
+            : await MontarCertificadoAsync(sessao, inscritos, assinaturaParticipante, assinaturaInstrutor,
             instrutorNome, instrutorCargo, rastreio, ct);
 
         var modelo = new AtaSessaoTreinamentoPdfModelo(

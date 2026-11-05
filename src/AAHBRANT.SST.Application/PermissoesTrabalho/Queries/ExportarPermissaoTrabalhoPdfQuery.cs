@@ -9,7 +9,8 @@ namespace AAHBRANT.SST.Application.PermissoesTrabalho.Queries;
 
 // CertificadoAssinaturas (05/11): true = só o Certificado de Assinaturas Eletrônicas, em PDF à parte; a PT
 // em si sai sem ele (fica no local de trabalho sem biometria exposta).
-public record ExportarPermissaoTrabalhoPdfQuery(Guid Id, bool CertificadoAssinaturas = false) : IRequest<byte[]?>;
+// SomenteTrabalhadorId (dossiê, LGPD): o certificado traz só a evidência desse funcionário.
+public record ExportarPermissaoTrabalhoPdfQuery(Guid Id, bool CertificadoAssinaturas = false, Guid? SomenteTrabalhadorId = null) : IRequest<byte[]?>;
 
 public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<ExportarPermissaoTrabalhoPdfQuery, byte[]?>
 {
@@ -88,7 +89,9 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
                 }),
             });
             var certificado = await MontadorCertificadoAssinaturas.MontarAsync(
-                _db, _cripto, _qrCode, documento, assinaturas, signatarios, _ => "PT — ciência da equipe executante",
+                _db, _cripto, _qrCode, documento,
+                request.SomenteTrabalhadorId is { } so ? assinaturas.Where(a => a.TrabalhadorId == so).ToList() : assinaturas,
+                signatarios, _ => "PT — ciência da equipe executante",
                 "Permissão de Trabalho", $"PT {p.NumeroPt ?? "—"} · {p.DescricaoAtividade}",
                 p.ObraNome ?? string.Empty, logoConteudo, rastreio, painel, compacto: true, ct);
             return certificado is null ? null : _certificadoPdf.Gerar(certificado);

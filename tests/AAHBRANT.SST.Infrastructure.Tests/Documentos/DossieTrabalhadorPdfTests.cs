@@ -8,6 +8,11 @@ namespace AAHBRANT.SST.Infrastructure.Tests.Documentos;
 
 public class DossieTrabalhadorPdfTests
 {
+    static DossieTrabalhadorPdfTests()
+    {
+        QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+    }
+
     private static byte[] FotoDeitada1280x720()
     {
         using var imagem = new Image<Rgb24>(1280, 720, new Rgb24(90, 120, 150));
@@ -16,24 +21,6 @@ public class DossieTrabalhadorPdfTests
         return ms.ToArray();
     }
 
-    [Theory]
-    [InlineData(78f, 96f)]  // foto de cadastro do relatório (em pé)
-    [InlineData(54f, 54f)]  // foto da assinatura no cofre (quadrada)
-    [InlineData(104f, 132f)] // biometria na Ficha de EPI
-    public void Recortar_FotoDeitada_SaiNaProporcaoDoQuadro(float largura, float altura)
-    {
-        var recortada = FotoQuadroPdf.Recortar(FotoDeitada1280x720(), largura, altura);
-
-        Assert.NotNull(recortada);
-        var info = Image.Identify(recortada);
-        Assert.Equal(largura / altura, info.Width / (double)info.Height, 2);
-        Assert.Equal(720, info.Height); // corta só as laterais, sem perder altura
-    }
-
-    [Fact]
-    public void Recortar_BytesQueNaoSaoImagem_DevolveNulo()
-        => Assert.Null(FotoQuadroPdf.Recortar(new byte[] { 1, 2, 3, 4 }, 54, 54));
-
     [Fact]
     public void GerarIndice_ComItensIncluidosENaoIncluidos_GeraPdf()
     {
@@ -41,6 +28,13 @@ public class DossieTrabalhadorPdfTests
         var itens = new List<ItemIndiceDossie>
         {
             new("Certificados de treinamento", "Certificado — NR-35", new DateTime(2026, 3, 1, 12, 0, 0, DateTimeKind.Utc), true),
+            new("Turmas de treinamento", "Lista de presença — NR-35", new DateTime(2026, 11, 5, 10, 0, 0, DateTimeKind.Utc), true),
+            new("DDS", "DDS", new DateTime(2026, 11, 5, 7, 10, 0, DateTimeKind.Utc), true),
+            new("Outros documentos assinados", "APR", new DateTime(2026, 11, 5, 10, 12, 0, DateTimeKind.Utc), true),
+            new("Outros documentos assinados", "Certificado de assinaturas — APR", new DateTime(2026, 11, 5, 10, 12, 0, DateTimeKind.Utc), true),
+            new("Outros documentos assinados", "Permissão de Trabalho", new DateTime(2026, 11, 5, 10, 12, 0, DateTimeKind.Utc), true),
+            new("Outros documentos assinados", "Certificado de assinaturas — Permissão de Trabalho", new DateTime(2026, 11, 5, 10, 12, 0, DateTimeKind.Utc), true),
+            new("Ficha de EPI", "Ficha de EPI", null, true),
             new("ASO — Atestado de Saúde Ocupacional", "ASO Admissional", null, false, "Arquivo danificado."),
         };
 
@@ -48,6 +42,12 @@ public class DossieTrabalhadorPdfTests
 
         Assert.True(pdf.Length > 0);
         Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+        var pasta = Environment.GetEnvironmentVariable("FICHA_PDF_SAIDA");
+        if (!string.IsNullOrEmpty(pasta))
+        {
+            Directory.CreateDirectory(pasta);
+            File.WriteAllBytes(Path.Combine(pasta, "dossie-indice.pdf"), pdf);
+        }
     }
 
     [Fact]

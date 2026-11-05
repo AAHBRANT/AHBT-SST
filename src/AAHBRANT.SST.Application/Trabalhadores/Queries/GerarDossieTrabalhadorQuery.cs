@@ -180,9 +180,9 @@ public class GerarDossieTrabalhadorQueryHandler : IRequestHandler<GerarDossieTra
             {
                 pdf = doc.EntidadeTipo switch
                 {
-                    "Dds" => await _mediator.Send(new ExportarDdsPdfQuery(doc.EntidadeId), ct),
+                    "Dds" => await _mediator.Send(new ExportarDdsPdfQuery(doc.EntidadeId, trabalhadorId), ct),
                     "DdsSemanal" => await _mediator.Send(new ExportarDdsSemanalPdfQuery(doc.EntidadeId), ct),
-                    "SessaoTreinamento" => await _mediator.Send(new ExportarAtaSessaoTreinamentoQuery(doc.EntidadeId), ct),
+                    "SessaoTreinamento" => await _mediator.Send(new ExportarAtaSessaoTreinamentoQuery(doc.EntidadeId, trabalhadorId), ct),
                     "Inspecao" => await _mediator.Send(new ExportarInspecaoPdfQuery(doc.EntidadeId), ct),
                     "PermissaoTrabalho" => await _mediator.Send(new ExportarPermissaoTrabalhoPdfQuery(doc.EntidadeId), ct),
                     "Apr" => await _mediator.Send(new ExportarAprPdfQuery(doc.EntidadeId), ct),
@@ -199,6 +199,25 @@ public class GerarDossieTrabalhadorQueryHandler : IRequestHandler<GerarDossieTra
 
             adicionar(secao, TipoDocumentoAssinatura.Rotulo(doc.EntidadeTipo), doc.AssinadoEm, pdf,
                 "Documento fora do escopo de obra de quem emitiu o dossiê, ou sem arquivo gerado.");
+
+            // APR e PT: o certificado de assinaturas é um PDF à parte; no dossiê vem logo após o documento,
+            // só com a evidência deste funcionário.
+            if (doc.EntidadeTipo is "Apr" or "PermissaoTrabalho")
+            {
+                byte[]? cert;
+                try
+                {
+                    cert = doc.EntidadeTipo == "Apr"
+                        ? await _mediator.Send(new ExportarAprPdfQuery(doc.EntidadeId, true, trabalhadorId), ct)
+                        : await _mediator.Send(new ExportarPermissaoTrabalhoPdfQuery(doc.EntidadeId, true, trabalhadorId), ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    cert = null;
+                }
+                adicionar(secao, $"Certificado de assinaturas — {TipoDocumentoAssinatura.Rotulo(doc.EntidadeTipo)}", doc.AssinadoEm, cert,
+                    "Sem assinatura por digital ou facial deste funcionário.");
+            }
         }
     }
 
