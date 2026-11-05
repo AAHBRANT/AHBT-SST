@@ -20,7 +20,10 @@ public record AtualizarAprCommand(
     Guid? EquipeId,
     DateTime Data,
     DateTime? Validade,
-    List<Guid> ResponsaveisIds) : IRequest;
+    List<Guid> ResponsaveisIds,
+    // 05/11: quem elabora e quem supervisiona (assinam por biometria no quiosque).
+    Guid? ElaboradorTrabalhadorId = null,
+    Guid? SupervisorTrabalhadorId = null) : IRequest;
 
 public class AtualizarAprCommandValidator : AbstractValidator<AtualizarAprCommand>
 {
@@ -60,6 +63,8 @@ public class AtualizarAprCommandHandler : IRequestHandler<AtualizarAprCommand>
         apr.EquipeId = request.EquipeId;
         apr.Data = request.Data;
         apr.Validade = request.Validade;
+        apr.ElaboradorTrabalhadorId = request.ElaboradorTrabalhadorId;
+        apr.SupervisorTrabalhadorId = request.SupervisorTrabalhadorId;
 
         var idsNovos = request.ResponsaveisIds.Distinct().ToHashSet();
         foreach (var vinculoAntigo in apr.Responsaveis.Where(v => !idsNovos.Contains(v.TrabalhadorId)).ToList())

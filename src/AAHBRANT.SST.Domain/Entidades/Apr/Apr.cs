@@ -28,6 +28,13 @@ public class Apr : AuditableEntity
     public Guid? EquipeId { get; set; }
     public Equipe? Equipe { get; set; }
 
+    // Quem elabora e quem supervisiona a APR (05/11, pedido do usuário): todos assinam por biometria
+    // pelo quiosque, e o papel da assinatura sai daqui. Nulos nas APRs anteriores.
+    public Guid? ElaboradorTrabalhadorId { get; set; }
+    public Trabalhador? Elaborador { get; set; }
+    public Guid? SupervisorTrabalhadorId { get; set; }
+    public Trabalhador? Supervisor { get; set; }
+
     public DateTime Data { get; set; }
     public DateTime? Validade { get; set; }
 

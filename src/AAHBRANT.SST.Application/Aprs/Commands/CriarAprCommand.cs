@@ -20,7 +20,10 @@ public record CriarAprCommand(
     Guid? EquipeId,
     DateTime Data,
     DateTime? Validade,
-    List<Guid> ResponsaveisIds) : IRequest<Guid>;
+    List<Guid> ResponsaveisIds,
+    // 05/11: quem elabora e quem supervisiona (assinam por biometria no quiosque).
+    Guid? ElaboradorTrabalhadorId = null,
+    Guid? SupervisorTrabalhadorId = null) : IRequest<Guid>;
 
 public class CriarAprCommandValidator : AbstractValidator<CriarAprCommand>
 {
@@ -62,6 +65,8 @@ public class CriarAprCommandHandler : IRequestHandler<CriarAprCommand, Guid>
             EquipeId = request.EquipeId,
             Data = request.Data,
             Validade = request.Validade,
+            ElaboradorTrabalhadorId = request.ElaboradorTrabalhadorId,
+            SupervisorTrabalhadorId = request.SupervisorTrabalhadorId,
         };
 
         foreach (var trabalhadorId in request.ResponsaveisIds.Distinct())

@@ -41,6 +41,15 @@ public class AprsController : ControllerBase
         return CreatedAtAction(nameof(ObterDetalhe), new { id }, new { id });
     }
 
+    // 05/11: quem elabora e quem supervisiona (assinam por biometria no quiosque).
+    [Authorize(Policy = "apr:editar")]
+    [HttpPut("{id:guid}/responsaveis-assinatura")]
+    public async Task<IActionResult> DefinirResponsaveisAssinatura(Guid id, DefinirResponsaveisAssinaturaAprRequestBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new DefinirResponsaveisAssinaturaAprCommand(id, body.ElaboradorTrabalhadorId, body.SupervisorTrabalhadorId), ct);
+        return NoContent();
+    }
+
     [Authorize(Policy = "apr:editar")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Atualizar(Guid id, AtualizarAprCommand command, CancellationToken ct)
@@ -88,3 +97,4 @@ public class AprsController : ControllerBase
 }
 
 public record ReprovarAprRequestBody(string Motivo);
+public record DefinirResponsaveisAssinaturaAprRequestBody(Guid? ElaboradorTrabalhadorId, Guid? SupervisorTrabalhadorId);
