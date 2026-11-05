@@ -27,6 +27,8 @@ import { api, TipoVinculo, type PerfilCompletoTrabalhador } from '../../lib/api'
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { PerfilGeralTab } from './PerfilGeralTab';
 import { TamanhosUniformeSecao } from './TamanhosUniformeSecao';
+import { FichaEpiBotoes } from './FichaEpiBotoes';
+import { ParticipacoesDdsCard } from './ParticipacoesDdsCard';
 import { TreinamentosTab } from './TreinamentosTab';
 import { OrdemServicoTab } from './OrdemServicoTab';
 import { RiscosTab } from './RiscosTab';
@@ -232,6 +234,7 @@ export function TrabalhadorDetalhePage() {
             {aba === 'epi' && (
               <div style={estiloPilha}>
                 <TermoCompromissoEpiCartao trabalhadorId={id} trabalhadorNome={perfil.nome} />
+                <FichaEpiBotoes trabalhadorId={perfil.id} />
                 <EpiPerfilSecao perfil={perfil} />
               </div>
             )}
@@ -261,6 +264,7 @@ export function TrabalhadorDetalhePage() {
                     </div>
                   )}
                 </Card>
+                {perfil.assiduidadeDds.totalRealizados > 0 && <ParticipacoesDdsCard trabalhadorId={perfil.id} />}
                 <TreinamentosTab trabalhadorId={id} obraId={perfil.obraId} />
               </div>
             )}

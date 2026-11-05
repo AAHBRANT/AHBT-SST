@@ -10,4 +10,5 @@ public record TreinamentoDto(
     string? InstituicaoInstrutor,
     string? NumeroCertificado,
     string? Local,
-    string? InstrutorRegistroProfissional);
+    string? InstrutorRegistroProfissional,
+    Guid? SessaoTreinamentoId = null);

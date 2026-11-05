@@ -2394,6 +2394,25 @@ public static class NovidadesSeeder
                     "O menu marcava só o módulo, sem dizer se você estava em DDS, EPI ou Inspeções.",
                     "Com o menu expandido, o módulo aberto mostra suas seções com a atual em destaque. Com o menu recolhido, a dica do ícone diz a seção."),
             }),
+        new(
+            Versao: "5.133.0",
+            Titulo: "Perfil do funcionário mais completo",
+            DataPublicacao: new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Lista de DDS no perfil",
+                    "O perfil mostrava só o percentual de presença em DDS, sem dizer de quais DDS a pessoa participou.",
+                    "Na aba Treinamentos, o card Participações em DDS lista cada DDS da obra desde a admissão, com tema, responsável e como a presença foi registrada (facial, digital ou foto). Filtre por presente ou ausente e clique na linha para abrir o DDS."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Treinamentos com carga horária e instrutor",
+                    "A tabela de treinamentos do perfil mostrava só curso, datas e número do certificado.",
+                    "Agora mostra também a carga horária, o instrutor com o registro profissional, o local e o link da turma, com as datas em dd/mm/aaaa."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Ficha de EPI no perfil",
+                    "Para baixar a ficha de EPI era preciso sair do perfil e ir ao módulo EPI.",
+                    "Na aba EPI do perfil, o card Ficha de EPI (NR-06) tem os botões Visualizar ficha e Baixar ficha (PDF)."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

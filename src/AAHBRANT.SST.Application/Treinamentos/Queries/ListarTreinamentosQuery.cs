@@ -34,7 +34,8 @@ public class ListarTreinamentosQueryHandler : IRequestHandler<ListarTreinamentos
                 x.InstituicaoInstrutor,
                 x.NumeroCertificado,
                 x.Local,
-                x.InstrutorRegistroProfissional))
+                x.InstrutorRegistroProfissional,
+                x.SessaoTreinamentoId))
             .ToListAsync(ct);
     }
 }
