@@ -2413,6 +2413,17 @@ public static class NovidadesSeeder
                     "Para baixar a ficha de EPI era preciso sair do perfil e ir ao módulo EPI.",
                     "Na aba EPI do perfil, o card Ficha de EPI (NR-06) tem os botões Visualizar ficha e Baixar ficha (PDF)."),
             }),
+        new(
+            Versao: "5.134.0",
+            Titulo: "Cabeçalho mais limpo",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Topo da tela sem seletor de obra e sem busca",
+                    "O seletor de obra do topo não mudava telas como Requisitos legais e Documentos, e a busca Ctrl+K pouco ajudava.",
+                    "Os dois saíram do topo. Para ver uma obra específica, use o filtro Obra de cada painel."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

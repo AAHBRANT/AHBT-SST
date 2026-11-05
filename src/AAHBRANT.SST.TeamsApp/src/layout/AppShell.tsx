@@ -1,6 +1,4 @@
-import { FaixaObraAtiva, SeletorObraAtiva } from './SeletorObraAtiva';
 import { TrilhaNavegacao } from './TrilhaNavegacao';
-import { BuscaGlobal } from './BuscaGlobal';
 import { localizarNaNavegacao, rotaDaSecao } from './mapaNavegacao';
 import type { ComponentType, ReactElement, ReactNode, SVGProps } from 'react';
 import { useEffect, useState } from 'react';
@@ -1090,15 +1088,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Button>
             }
           />
-          <SeletorObraAtiva />
           <SyncStatusBadge />
         </div>
 
         <div className={estilos.topoDireita}>
-          {/* Instância única: o atalho Ctrl+K é global e abriria dois diálogos com duas cópias. */}
-          <BuscaGlobal />
           <div className={estilos.acoesTopoCompactas} aria-label="Ações globais (compacto)">
-            <SeletorObraAtiva />
             <SyncStatusBadge />
             <MenuAtalhos
               botao={
@@ -1317,7 +1311,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <main className={estilos.content}>
-        <FaixaObraAtiva />
         <TrilhaNavegacao />
         {children}
       </main>
