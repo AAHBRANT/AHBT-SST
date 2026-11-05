@@ -48,7 +48,8 @@ public static class GradeIdentificacaoFiscalizacaoPdf
                 {
                     foto.Item().Text("Foto de cadastro").FontSize(7.5f).SemiBold().FontColor(CorMarca);
                     if (identificacao?.Foto is { Length: > 0 } bytes && FotoValida(bytes))
-                        foto.Item().PaddingTop(2).Height(96).Image(bytes).FitArea();
+                        // 04/11: foto 3×4 em pé (72 × 96), como no cadastro facial; antigas deitadas cortadas no centro.
+                        foto.Item().PaddingTop(2).AlignCenter().Width(72).Height(96).Image(AAHBRANT.SST.Infrastructure.Documentos.FotoRetrato34.Cortar(bytes)).FitArea();
                     else
                         foto.Item().PaddingTop(2).Height(96).Border(0.5f).BorderColor(Colors.Grey.Lighten1)
                             .AlignCenter().AlignMiddle().Text("Sem foto cadastrada").FontSize(7.5f).FontColor(Colors.Grey.Darken1).AlignCenter();

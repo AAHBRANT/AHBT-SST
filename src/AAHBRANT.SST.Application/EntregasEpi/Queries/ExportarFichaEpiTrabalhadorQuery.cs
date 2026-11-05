@@ -15,15 +15,18 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
     private readonly IFichaEpiPdfService _pdf;
     private readonly IRegistradorRastreabilidadeService _rastreabilidade;
     private readonly IImagemBiometricaCriptografia? _imagemCriptografia;
+    private readonly IQrCodeDocumentoService? _qrCode;
 
     public ExportarFichaEpiTrabalhadorQueryHandler(
         IAppDbContext db, IFichaEpiPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade,
-        IImagemBiometricaCriptografia? imagemCriptografia = null)
+        IImagemBiometricaCriptografia? imagemCriptografia = null,
+        IQrCodeDocumentoService? qrCode = null)
     {
         _db = db;
         _pdf = pdf;
         _rastreabilidade = rastreabilidade;
         _imagemCriptografia = imagemCriptografia;
+        _qrCode = qrCode;
     }
 
     public async Task<byte[]?> Handle(ExportarFichaEpiTrabalhadorQuery request, CancellationToken ct)
@@ -82,6 +85,37 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
 
         var linhasEntrega = new List<LinhaEntregaEpiPdf>();
         var linhasDevolucao = new List<LinhaDevolucaoEpiPdf>();
+        // Selos das linhas (05/11): funcionário = função · CBO; responsável (técnico logado) = registro
+        // do perfil de instrutor (MTE/CREA).
+        var cboFuncao = string.IsNullOrWhiteSpace(trabalhador.Funcao?.CboCodigo) ? null : Cbo.CodigoCbo.Formatar(trabalhador.Funcao!.CboCodigo!);
+        var registroEmpregado = trabalhador.Funcao is null ? null
+            : cboFuncao is null ? trabalhador.Funcao.Nome : $"{trabalhador.Funcao.Nome} · CBO {cboFuncao}";
+        var idsResponsaveis = documentos.SelectMany(d => d.Signatarios)
+            .Where(s => s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada)
+            .Select(s => s.TrabalhadorId).Distinct().ToList();
+        var nomesResponsaveis = await _db.Trabalhadores.AsNoTracking().IgnoreQueryFilters()
+            .Where(t => idsResponsaveis.Contains(t.Id))
+            .Select(t => new { t.Id, t.Nome })
+            .ToDictionaryAsync(t => t.Id, t => t.Nome, ct);
+        var registrosResponsaveis = (await _db.PerfisInstrutor.AsNoTracking()
+                .Where(p => idsResponsaveis.Contains(p.TrabalhadorId) && p.NumeroRegistro != null)
+                .Select(p => new { p.TrabalhadorId, p.Conselho, p.NumeroRegistro, p.UfRegistro })
+                .ToListAsync(ct))
+            .GroupBy(p => p.TrabalhadorId)
+            .ToDictionary(g => g.Key, g =>
+            {
+                var p = g.First();
+                var conselho = p.Conselho == ConselhoInstrutor.Crea ? "CREA" : "MTE";
+                return $"{conselho}-{p.NumeroRegistro}{(string.IsNullOrWhiteSpace(p.UfRegistro) ? "" : "/" + p.UfRegistro)}";
+            });
+
+        SeloAssinaturaPdf? SeloEmpregado(Domain.Entidades.DocumentoSignatario? s) =>
+            s is null ? null : new SeloAssinaturaPdf(trabalhador.Nome, registroEmpregado, CodigoAssinatura(s));
+        SeloAssinaturaPdf? SeloResponsavel(Domain.Entidades.DocumentoSignatario? s) =>
+            s is null ? null : new SeloAssinaturaPdf(
+                nomesResponsaveis.GetValueOrDefault(s.TrabalhadorId) ?? "Responsável",
+                registrosResponsaveis.GetValueOrDefault(s.TrabalhadorId), CodigoAssinatura(s));
+
         var numero = 0;
 
         foreach (var entrega in entregas)
@@ -112,7 +146,10 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
                 assinaturaEmpregado?.AssinadoEm,
                 assinaturaResponsavel?.AssinadoEm,
                 assinaturaEmpregado?.MetodoAutenticacao,
-                assinaturaResponsavel?.MetodoAutenticacao));
+                assinaturaResponsavel?.MetodoAutenticacao,
+                entrega.CatalogoEpi?.FotoConteudo,
+                SeloEmpregado(assinaturaEmpregado),
+                SeloResponsavel(assinaturaResponsavel)));
 
             if (entrega.DataDevolucao is null) continue;
 
@@ -131,7 +168,9 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
                 assinaturaDevolucaoEmpregado is not null,
                 assinaturaDevolucaoEmpregado?.AssinadoEm,
                 entrega.VistoConsorcioResponsavel,
-                assinaturaDevolucaoEmpregado?.MetodoAutenticacao));
+                assinaturaDevolucaoEmpregado?.MetodoAutenticacao,
+                entrega.CatalogoEpi?.FotoConteudo,
+                SeloEmpregado(assinaturaDevolucaoEmpregado)));
         }
 
         // Chave sintética "FichaEpiTrabalhador"/TrabalhadorId: a Ficha agrega N entregas, cada uma já
@@ -163,7 +202,8 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
             termo,
             CpfMascarador.Formatar(trabalhador.Cpf),
             trabalhador.FotoConteudo,
-            log);
+            log,
+            TrabalhadorFuncaoCbo: cboFuncao);
 
         var pdf = _pdf.Gerar(modelo);
         // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
@@ -242,12 +282,19 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
                 }
             }
 
+            QrCodeDocumentoResultado? qr = null;
+            if (_qrCode is not null && !string.IsNullOrWhiteSpace(a.Doc.TokenValidacaoPublica))
+            {
+                try { qr = _qrCode.Gerar(a.Doc.TokenValidacaoPublica!); }
+                catch { qr = null; }
+            }
+
             return new LogAssinaturaEpiItem(
                 tipo, descricao, sig.MetodoAutenticacao, sig.AssinadoEm, a.Doc.CreatedAtUtc,
                 sig.IpAddress, sig.UserAgent, sig.LocalizacaoStatus, sig.Latitude, sig.Longitude, sig.PrecisaoMetros,
                 sig.ValidacaoModelo, sig.ValidacaoGrupoId, sig.ValidacaoRequisicaoId, sig.DispositivoAgenteId,
                 sig.FotoEvidenciaConteudo, sig.FotoEvidenciaHash,
-                fotoCadastro, fotoCadastroEm, fotoCadastroHash, digitalImagem, digitalEm, cupom);
+                fotoCadastro, fotoCadastroEm, fotoCadastroHash, digitalImagem, digitalEm, cupom, qr?.Png, qr?.UrlValidacao);
         }
 
         var itens = new List<LogAssinaturaEpiItem>();
@@ -316,4 +363,9 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
         MotivoEntregaEpi.TrocaDeFuncao => "Troca de função",
         _ => null,
     };
+
+    // Código da assinatura no selo da linha: o SHA-256 da evidência (foto/digital) quando houver; senão o
+    // identificador do registro de assinatura. Completo nas páginas do certificado.
+    private static string CodigoAssinatura(Domain.Entidades.DocumentoSignatario s) =>
+        !string.IsNullOrWhiteSpace(s.FotoEvidenciaHash) ? s.FotoEvidenciaHash! : s.Id.ToString("N").ToUpperInvariant();
 }

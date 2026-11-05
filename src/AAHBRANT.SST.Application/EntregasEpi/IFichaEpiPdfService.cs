@@ -39,7 +39,9 @@ public record FichaEpiPdfModelo(
     string? TrabalhadorCpf = null,
     byte[]? TrabalhadorFoto = null,
     // Páginas finais da ficha com o log de todas as assinaturas de EPI do funcionário. Nulo = sem log.
-    LogAssinaturasFichaEpi? Log = null);
+    LogAssinaturasFichaEpi? Log = null,
+    // CBO da função (05/11), ao lado do nome da função na identificação. Ex.: "7170-20".
+    string? TrabalhadorFuncaoCbo = null);
 
 // Log de assinaturas de EPI do funcionário (só entrega, devolução e termo). Vai nas páginas finais da
 // Ficha de EPI, no estilo de um certificado de conclusão: resumo, uma linha por assinatura e uma
@@ -79,7 +81,11 @@ public record LogAssinaturaEpiItem(
     string? FotoCadastroHash,
     byte[]? DigitalCadastroImagem,
     DateTime? DigitalCadastroEmUtc,
-    CupomEntregaEpi? Cupom);
+    CupomEntregaEpi? Cupom,
+    // QR da validação pública desta assinatura (05/11): leva à página /#/validar do documento da
+    // entrega/devolução. Nulo quando o documento ainda não tem token (não finalizado).
+    byte[]? QrValidacaoPng = null,
+    string? UrlValidacao = null);
 
 // Mesmo conteúdo do canhoto "EPIs recebidos" impresso do carrinho, reconstruído dos dados da entrega.
 public record CupomEntregaEpi(
@@ -108,7 +114,16 @@ public record LinhaEntregaEpiPdf(
     DateTime? AssinadoPeloEmpregadoEm,
     DateTime? AssinadoPeloResponsavelEm,
     MetodoAutenticacaoAssinatura? MetodoEmpregado = null,
-    MetodoAutenticacaoAssinatura? MetodoResponsavel = null);
+    MetodoAutenticacaoAssinatura? MetodoResponsavel = null,
+    // Foto do item no catálogo (05/11): miniatura antes do nome no Controle de Entrega.
+    byte[]? EpiFoto = null,
+    // Selo compacto na linha (05/11): quem assinou, registro (CBO / MTE) e código.
+    SeloAssinaturaPdf? SeloEmpregado = null,
+    SeloAssinaturaPdf? SeloResponsavel = null);
+
+// Selo "ASSINADO ELETRONICAMENTE" dentro da linha das listas (05/11, mesmo desenho do selo do técnico):
+// nome, registro (funcionário: função · CBO; técnico: MTE/CREA) e o código da assinatura.
+public record SeloAssinaturaPdf(string Nome, string? Registro, string? Codigo);
 
 public record LinhaDevolucaoEpiPdf(
     int NumeroReferenciaEntrega,
@@ -118,7 +133,10 @@ public record LinhaDevolucaoEpiPdf(
     bool AssinadoPeloEmpregado,
     DateTime? AssinadoPeloEmpregadoEm,
     string? VistoResponsavel,
-    MetodoAutenticacaoAssinatura? MetodoEmpregado = null);
+    MetodoAutenticacaoAssinatura? MetodoEmpregado = null,
+    // Foto do item no catálogo (05/11): miniatura antes do nome no Controle de Devolução.
+    byte[]? EpiFoto = null,
+    SeloAssinaturaPdf? SeloEmpregado = null);
 
 public interface IFichaEpiPdfService
 {

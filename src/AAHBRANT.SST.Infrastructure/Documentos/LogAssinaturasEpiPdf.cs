@@ -26,20 +26,21 @@ internal static class LogAssinaturasEpiPdf
 
     public static void Adicionar(IDocumentContainer documento, FichaEpiPdfModelo modelo, LogAssinaturasFichaEpi log)
     {
-        documento.Page(pagina =>
-        {
-            ConfigurarPagina(pagina, modelo, "Ficha de EPI — Log de Assinaturas");
-            pagina.Content().PaddingVertical(8).Column(coluna => PaginaCertificado(coluna, modelo, log));
-        });
-
+        // 05/11: sem página de resumo separada (repetia as evidências). Cada assinatura tem uma página só,
+        // com o resumo dela em cima; a 1ª traz o cabeçalho do certificado e a última os eventos do documento.
         for (var i = 0; i < log.Itens.Count; i++)
         {
             var item = log.Itens[i];
             var numero = i + 1;
             documento.Page(pagina =>
             {
-                ConfigurarPagina(pagina, modelo, "Ficha de EPI — Log de Assinaturas");
-                pagina.Content().PaddingVertical(8).Column(coluna => PaginaEvidencias(coluna, modelo, log, item, numero));
+                ConfigurarPagina(pagina, modelo, "Ficha de EPI — Certificado de Assinaturas Eletrônicas");
+                pagina.Content().PaddingVertical(8).Column(coluna =>
+                {
+                    if (numero == 1) CabecalhoCertificado(coluna, modelo, log);
+                    PaginaEvidencias(coluna, modelo, log, item, numero);
+                    if (numero == log.Itens.Count) EventosDocumento(coluna, log);
+                });
             });
         }
     }
@@ -56,10 +57,12 @@ internal static class LogAssinaturasEpiPdf
 
     // ───────────────────────────── Página A: certificado de conclusão ─────────────────────────────
 
-    private static void PaginaCertificado(ColumnDescriptor coluna, FichaEpiPdfModelo modelo, LogAssinaturasFichaEpi log)
+    private static void CabecalhoCertificado(ColumnDescriptor coluna, FichaEpiPdfModelo modelo, LogAssinaturasFichaEpi log)
     {
-        coluna.Spacing(6);
-        coluna.Item().Text("Certificado de Conclusão — Assinaturas de EPI").FontSize(13).Bold().FontColor(CorMarca);
+        coluna.Spacing(4);
+        // 05/11: "Certificado de Conclusão" (tradução do DocuSign) confundia com certificado de curso.
+        coluna.Item().Text("Certificado de Assinaturas Eletrônicas").FontSize(13).Bold().FontColor(CorMarca);
+        coluna.Item().Text($"Ficha de EPI · {modelo.TrabalhadorNome}").FontSize(9).FontColor(CorSuave);
 
         coluna.Item().Element(c => Barra(c, "Resumo"));
         coluna.Item().Row(l =>
@@ -72,7 +75,9 @@ internal static class LogAssinaturasEpiPdf
             });
             l.RelativeItem(2).Column(c =>
             {
-                c.Item().Element(x => Campo(x, "Situação", "Concluído"));
+                // Pendente quando alguma entrega ou devolução da ficha ainda não tem a assinatura do funcionário.
+                var pendente = modelo.Entregas.Any(e => !e.AssinadoPeloEmpregado) || modelo.Devolucoes.Any(d => !d.AssinadoPeloEmpregado);
+                c.Item().Element(x => Campo(x, "Situação", pendente ? "Pendente" : "Concluído"));
                 c.Item().Element(x => Campo(x, "Assinaturas de EPI", log.TotalAssinaturas.ToString(CultureInfo.InvariantCulture)));
             });
             l.RelativeItem(3).Column(c =>
@@ -82,63 +87,14 @@ internal static class LogAssinaturasEpiPdf
             });
         });
         coluna.Item().Element(x => Campo(x, "Hash SHA-256 da ficha", modelo.ConteudoHash));
-
-        coluna.Item().PaddingTop(2).Element(c => Barra(c, "Eventos de assinatura"));
-        foreach (var item in log.Itens)
-            coluna.Item().ShowEntire().Element(c => LinhaEvento(c, modelo, log, item));
-
-        coluna.Item().PaddingTop(2).Element(c => Barra(c, "Eventos do documento"));
-        coluna.Item().Element(c => LinhaDocumento(c, "Log gerado a partir dos registros do sistema", "Registrado", Data(log.EmitidoEmUtc)));
-        coluna.Item().Element(c => LinhaDocumento(c, "Assinaturas conferidas", "Integridade verificada (SHA-256 da ficha acima)", Data(log.EmitidoEmUtc)));
+        coluna.Item().Height(4);
     }
 
-    private static void LinhaEvento(IContainer container, FichaEpiPdfModelo modelo, LogAssinaturasFichaEpi log, LogAssinaturaEpiItem item)
+    private static void EventosDocumento(ColumnDescriptor coluna, LogAssinaturasFichaEpi log)
     {
-        container.BorderBottom(0.5f).BorderColor(CorLinha).PaddingVertical(5).Row(linha =>
-        {
-            linha.Spacing(8);
-
-            linha.RelativeItem(4).Column(c =>
-            {
-                c.Spacing(1.5f);
-                c.Item().Text(modelo.TrabalhadorNome).Bold().FontSize(9);
-                c.Item().Text($"{modelo.TrabalhadorFuncaoNome} · Mat. {modelo.TrabalhadorMatricula}").FontSize(7.5f);
-                c.Item().Text(t => { t.DefaultTextStyle(x => x.FontSize(7.5f)); t.Span("Documento: ").SemiBold(); t.Span(item.Descricao); });
-                c.Item().Text(t => { t.DefaultTextStyle(x => x.FontSize(7.5f)); t.Span("Nível de segurança: ").SemiBold(); t.Span(DescreverSeguranca(item.Metodo)); });
-                if (item.Metodo is MetodoAutenticacaoAssinatura.Biometria or MetodoAutenticacaoAssinatura.ReconhecimentoFacial)
-                {
-                    c.Item().Text(t => { t.DefaultTextStyle(x => x.FontSize(7)); t.Span("Termo de aceite aceito: ").SemiBold(); t.Span(log.TermoAceiteEm is { } a ? Data(a) : "não informado"); });
-                    c.Item().Text(t => { t.DefaultTextStyle(x => x.FontSize(7)); t.Span("Consentimento LGPD: ").SemiBold(); t.Span(log.ConsentimentoLgpdEm is { } b ? Data(b) : "não informado"); });
-                }
-            });
-
-            linha.RelativeItem(4).Column(c =>
-            {
-                c.Spacing(1.5f);
-                c.Item().Row(r =>
-                {
-                    r.Spacing(5);
-                    if (item.EvidenciaAssinatura is { Length: > 0 } ev && EhImagem(ev))
-                        r.ConstantItem(26).Height(34).Element(x => ImagemComMarca(x, ev, Data(item.AssinadoEmUtc), pequena: true));
-                    r.RelativeItem().Column(s =>
-                    {
-                        s.Item().Text("Assinado por:").FontSize(6.5f).FontColor(CorSuave);
-                        s.Item().Text(HashCurto(item.EvidenciaAssinaturaHash) ?? "—").FontSize(7).SemiBold();
-                    });
-                });
-                c.Item().Text($"IP: {item.Ip ?? "não registrado"}").FontSize(7.5f);
-                c.Item().Text($"Equipamento: {Equipamento(item.UserAgent)}").FontSize(7.5f);
-                c.Item().Text($"Local: {Localizacao(item)}").FontSize(7.5f);
-                c.Item().Element(x => CaixaValidacao(x, item, compacta: true));
-            });
-
-            linha.RelativeItem(2.4f).Column(c =>
-            {
-                c.Spacing(1.5f);
-                if (item.CriadoEmUtc is { } criado) c.Item().Text($"Criada: {Data(criado)}").FontSize(7.5f);
-                c.Item().Text($"Assinada: {Data(item.AssinadoEmUtc)}").FontSize(7.5f).Bold();
-            });
-        });
+        coluna.Item().PaddingTop(6).Element(c => Barra(c, "Eventos do documento"));
+        coluna.Item().Element(c => LinhaDocumento(c, "Log gerado a partir dos registros do sistema", "Registrado", Data(log.EmitidoEmUtc)));
+        coluna.Item().Element(c => LinhaDocumento(c, "Assinaturas conferidas", "Integridade verificada (SHA-256 da ficha acima)", Data(log.EmitidoEmUtc)));
     }
 
     private static void LinhaDocumento(IContainer container, string evento, string estado, string data)
@@ -156,13 +112,43 @@ internal static class LogAssinaturasEpiPdf
     private static void PaginaEvidencias(ColumnDescriptor coluna, FichaEpiPdfModelo modelo, LogAssinaturasFichaEpi log, LogAssinaturaEpiItem item, int numero)
     {
         coluna.Spacing(7);
-        coluna.Item().Row(r =>
+        // 05/11: cabeçalho da assinatura com o QR de validação pública dela à direita.
+        coluna.Item().Row(topo =>
         {
-            r.RelativeItem().Text($"Evidências da assinatura {numero} de {log.Itens.Count}").FontSize(12).Bold().FontColor(CorMarca);
-            r.AutoItem().Text(Data(item.AssinadoEmUtc)).FontSize(8).FontColor(CorSuave);
+            topo.Spacing(10);
+            topo.RelativeItem().Column(cab =>
+            {
+                cab.Spacing(4);
+                cab.Item().Row(r =>
+                {
+                    r.RelativeItem().Text($"Evidências da assinatura {numero} de {log.Itens.Count}").FontSize(12).Bold().FontColor(CorMarca);
+                    r.AutoItem().Text(Data(item.AssinadoEmUtc)).FontSize(8).FontColor(CorSuave);
+                });
+                cab.Item().Text(item.Descricao).FontSize(9).SemiBold();
+                cab.Item().Text($"{modelo.TrabalhadorNome} · {modelo.TrabalhadorFuncaoNome} · Mat. {modelo.TrabalhadorMatricula}").FontSize(8).FontColor(CorSuave);
+                // Resumo da assinatura (antes ficava numa página à parte).
+                cab.Item().Row(r =>
+                {
+                    r.Spacing(10);
+                    r.RelativeItem().Text(t => { t.DefaultTextStyle(x => x.FontSize(7.5f)); t.Span("Nível de segurança: ").SemiBold(); t.Span(DescreverSeguranca(item.Metodo)); });
+                    if (item.CriadoEmUtc is { } criado)
+                        r.AutoItem().Text(t => { t.DefaultTextStyle(x => x.FontSize(7.5f)); t.Span("Criada: ").SemiBold(); t.Span(Data(criado)); });
+                });
+                if (item.Metodo is MetodoAutenticacaoAssinatura.Biometria or MetodoAutenticacaoAssinatura.ReconhecimentoFacial)
+                    cab.Item().Row(r =>
+                    {
+                        r.Spacing(10);
+                        r.RelativeItem().Text(t => { t.DefaultTextStyle(x => x.FontSize(7.5f)); t.Span("Termo de aceite: ").SemiBold(); t.Span(log.TermoAceiteEm is { } a ? Data(a) : "não informado"); });
+                        r.RelativeItem().Text(t => { t.DefaultTextStyle(x => x.FontSize(7.5f)); t.Span("Consentimento LGPD: ").SemiBold(); t.Span(log.ConsentimentoLgpdEm is { } b ? Data(b) : "não informado"); });
+                    });
+            });
+            if (item.QrValidacaoPng is { Length: > 0 } qr)
+                topo.ConstantItem(66).Column(q =>
+                {
+                    q.Item().Width(66).Height(66).Image(qr).FitArea();
+                    q.Item().AlignCenter().Text("Validar esta assinatura").FontSize(5.5f).FontColor(CorSuave).AlignCenter();
+                });
         });
-        coluna.Item().Text(item.Descricao).FontSize(9).SemiBold();
-        coluna.Item().Text($"{modelo.TrabalhadorNome} · {modelo.TrabalhadorFuncaoNome} · Mat. {modelo.TrabalhadorMatricula}").FontSize(8).FontColor(CorSuave);
 
         coluna.Item().Element(c => CaixaValidacao(c, item, compacta: false));
 
