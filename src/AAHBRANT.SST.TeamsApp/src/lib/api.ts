@@ -6283,6 +6283,17 @@ export const api = {
       }),
     excluirRiscoCritico: (riscoId: string) =>
       request<void>(`/api/permissoesTrabalho/riscos-criticos/${riscoId}`, { method: 'DELETE' }),
+    // 05/11: Certificado de Assinaturas Eletrônicas da PT, em PDF à parte.
+    certificadoAssinaturasPdf: async (id: string) => {
+      const response = await fetch(`${API_BASE_URL}/api/permissoesTrabalho/${id}/certificado-assinaturas-pdf`, {
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
+    },
     exportarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/permissoesTrabalho/${id}/pdf`, {
         headers: await montarHeadersAuth(),

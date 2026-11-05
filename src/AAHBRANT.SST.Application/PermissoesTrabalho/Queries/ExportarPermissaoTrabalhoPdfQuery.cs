@@ -7,7 +7,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.PermissoesTrabalho.Queries;
 
-public record ExportarPermissaoTrabalhoPdfQuery(Guid Id) : IRequest<byte[]?>;
+// CertificadoAssinaturas (05/11): true = só o Certificado de Assinaturas Eletrônicas, em PDF à parte; a PT
+// em si sai sem ele (fica no local de trabalho sem biometria exposta).
+public record ExportarPermissaoTrabalhoPdfQuery(Guid Id, bool CertificadoAssinaturas = false) : IRequest<byte[]?>;
 
 public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<ExportarPermissaoTrabalhoPdfQuery, byte[]?>
 {
@@ -15,13 +17,20 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
     private readonly IAppDbContext _db;
     private readonly IPtPdfService _pdf;
     private readonly IRegistradorRastreabilidadeService _rastreabilidade;
+    private readonly IImagemBiometricaCriptografia? _cripto;
+    private readonly IQrCodeDocumentoService? _qrCode;
+    private readonly ICertificadoAssinaturasPdfService? _certificadoPdf;
 
-    public ExportarPermissaoTrabalhoPdfQueryHandler(IMediator mediator, IAppDbContext db, IPtPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
+    public ExportarPermissaoTrabalhoPdfQueryHandler(IMediator mediator, IAppDbContext db, IPtPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade,
+        IImagemBiometricaCriptografia? cripto = null, IQrCodeDocumentoService? qrCode = null, ICertificadoAssinaturasPdfService? certificadoPdf = null)
     {
         _mediator = mediator;
         _db = db;
         _pdf = pdf;
         _rastreabilidade = rastreabilidade;
+        _cripto = cripto;
+        _qrCode = qrCode;
+        _certificadoPdf = certificadoPdf;
     }
 
     public async Task<byte[]?> Handle(ExportarPermissaoTrabalhoPdfQuery request, CancellationToken ct)
@@ -54,7 +63,38 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
 
         var rastreio = await _rastreabilidade.GarantirAsync(nameof(PermissaoTrabalho), request.Id, ct);
 
-        var pdf = _pdf.Gerar(MontarModelo(detalhe, assinaram, funcoes, logoConteudo, rastreio));
+        // 05/11: selo na linha (função · CBO + código) e o certificado de assinaturas à parte.
+        var assinaturas = documento?.Signatarios.Where(x => x.Ativo).ToList() ?? new List<DocumentoSignatario>();
+        var signatarios = await MontadorCertificadoAssinaturas.CarregarSignatariosAsync(_db,
+            assinaturas.Select(x => x.TrabalhadorId).Concat(detalhe.Responsaveis.Select(r => r.TrabalhadorId)), ct);
+
+        if (request.CertificadoAssinaturas)
+        {
+            if (documento is null || _certificadoPdf is null) return null;
+            var p = detalhe.PermissaoTrabalho;
+            var painel = new PainelCertificado("PT", $"PT {p.NumeroPt ?? "—"} · {p.DescricaoAtividade}", new List<SecaoPainelCertificado>
+            {
+                new("Atividade", new List<LinhaPainelCertificado>
+                {
+                    new("Atividade", p.DescricaoAtividade),
+                    new("Local", p.Local),
+                    new("Data", p.Data.ToString("dd/MM/yyyy")),
+                }),
+                new("Liberação", new List<LinhaPainelCertificado>
+                {
+                    new("Autorizada por", p.AutorizadoPorUsuarioNome ?? "—"),
+                    new("Resp. execução", p.ResponsavelExecucaoUsuarioNome ?? "—"),
+                    new("Equipe", detalhe.Responsaveis.Count.ToString()),
+                }),
+            });
+            var certificado = await MontadorCertificadoAssinaturas.MontarAsync(
+                _db, _cripto, _qrCode, documento, assinaturas, signatarios, _ => "PT — ciência da equipe executante",
+                "Permissão de Trabalho", $"PT {p.NumeroPt ?? "—"} · {p.DescricaoAtividade}",
+                p.ObraNome ?? string.Empty, logoConteudo, rastreio, painel, compacto: true, ct);
+            return certificado is null ? null : _certificadoPdf.Gerar(certificado);
+        }
+
+        var pdf = _pdf.Gerar(MontarModelo(detalhe, assinaram, funcoes, logoConteudo, rastreio, signatarios));
         // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
         // que o arquivo em mãos não foi adulterado (ver HashArquivoCalculador).
         await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);
@@ -135,7 +175,8 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
     private static string? FuncaoDe(Dictionary<Guid, string?> funcoes, Guid? usuarioId) =>
         usuarioId.HasValue && funcoes.TryGetValue(usuarioId.Value, out var f) ? f : null;
 
-    private static PtPdfModelo MontarModelo(PermissaoTrabalhoDetalheDto detalhe, Dictionary<Guid, DocumentoSignatario> assinaram, Dictionary<Guid, string?> funcoes, byte[]? obraLogoConteudo, RastreabilidadeDocumentoResultado rastreio)
+    private static PtPdfModelo MontarModelo(PermissaoTrabalhoDetalheDto detalhe, Dictionary<Guid, DocumentoSignatario> assinaram, Dictionary<Guid, string?> funcoes, byte[]? obraLogoConteudo, RastreabilidadeDocumentoResultado rastreio,
+        IReadOnlyDictionary<Guid, MontadorCertificadoAssinaturas.DadosSignatario>? signatarios = null)
     {
         var pt = detalhe.PermissaoTrabalho;
         return new PtPdfModelo(
@@ -164,9 +205,14 @@ public class ExportarPermissaoTrabalhoPdfQueryHandler : IRequestHandler<Exportar
             pt.ResponsavelSstUsuarioId.HasValue ? new PtPdfAssinatura(pt.ResponsavelSstUsuarioNome, pt.DataAssinaturaSst, pt.MetodoAssinatura, FuncaoDe(funcoes, pt.ResponsavelSstUsuarioId)) : null,
             pt.SuspensaPorUsuarioId.HasValue ? new PtPdfSuspensao(pt.SuspensaPorUsuarioNome, pt.DataSuspensao, pt.MotivoSuspensao) : null,
             pt.EncerradaPorUsuarioId.HasValue ? new PtPdfEncerramento(pt.EncerradaPorUsuarioNome, pt.DataEncerramento, pt.ObservacoesEncerramento) : null,
-            detalhe.Responsaveis.Select(r => assinaram.TryGetValue(r.TrabalhadorId, out var ass)
-                ? new PtPdfEnvolvido(r.TrabalhadorNome, r.TrabalhadorFuncaoNome, true, ass.AssinadoEm, ass.MetodoAutenticacao)
-                : new PtPdfEnvolvido(r.TrabalhadorNome, r.TrabalhadorFuncaoNome, false)).ToList(),
+            detalhe.Responsaveis.Select(r =>
+            {
+                var funcao = signatarios is not null && signatarios.TryGetValue(r.TrabalhadorId, out var d) ? d.Funcao ?? r.TrabalhadorFuncaoNome : r.TrabalhadorFuncaoNome;
+                return assinaram.TryGetValue(r.TrabalhadorId, out var ass)
+                    ? new PtPdfEnvolvido(r.TrabalhadorNome, funcao, true, ass.AssinadoEm, ass.MetodoAutenticacao,
+                        new SeloAssinaturaPdf(r.TrabalhadorNome, funcao, MontadorCertificadoAssinaturas.CodigoSelo(ass)))
+                    : new PtPdfEnvolvido(r.TrabalhadorNome, funcao, false);
+            }).ToList(),
             rastreio.ConteudoHash,
             rastreio.UrlValidacaoPublica,
             rastreio.QrCodePng,

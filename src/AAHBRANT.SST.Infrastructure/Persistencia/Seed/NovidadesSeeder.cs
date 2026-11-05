@@ -2525,6 +2525,17 @@ public static class NovidadesSeeder
                     "O PDF da APR mostrava só \"Assinado\" ou \"Pendente\" na lista de envolvidos.",
                     "Cada envolvido tem função, CBO e o selo ASSINADO ELETRONICAMENTE; elaboração e supervisão saem com o selo da assinatura biométrica; o Certificado de Assinaturas Eletrônicas, com a biometria cadastrada ao lado da capturada e um QR por assinatura, fica no botão Certificado de assinaturas, à parte da APR."),
             }),
+        new(
+            Versao: "5.142.0",
+            Titulo: "PT com selo de assinatura e certificado à parte",
+            DataPublicacao: new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Equipe da PT com selo de assinatura",
+                    "A ciência da equipe na PT mostrava só \"Assinado\" ou \"Pendente\".",
+                    "Cada executante aparece com função, CBO e o selo ASSINADO ELETRONICAMENTE com o método e o código da assinatura. Na tela da PT, o botão Certificado de assinaturas abre as evidências de cada assinatura (biometria cadastrada ao lado da capturada e QR), à parte da PT."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

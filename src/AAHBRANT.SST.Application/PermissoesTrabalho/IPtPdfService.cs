@@ -7,7 +7,9 @@ public record PtPdfTipoTrabalho(string Rotulo, string? DescricaoOutro);
 public record PtPdfVerificacao(string Rotulo, RespostaVerificacaoPt? Resposta);
 public record PtPdfEpi(string Rotulo, string? Complemento);
 public record PtPdfRiscoCritico(string RiscoCondicao, string? ControleComplementar, string? ResponsavelEvidencia);
-public record PtPdfEnvolvido(string Nome, string? Funcao, bool Assinou, DateTime? AssinadoEm = null, MetodoAutenticacaoAssinatura? Metodo = null);
+public record PtPdfEnvolvido(string Nome, string? Funcao, bool Assinou, DateTime? AssinadoEm = null, MetodoAutenticacaoAssinatura? Metodo = null,
+    // 05/11: selo da assinatura na linha (função · CBO, método, código).
+    AAHBRANT.SST.Application.Assinatura.SeloAssinaturaPdf? Selo = null);
 public record PtPdfAssinatura(string? Nome, DateTime? Data, MetodoAutenticacaoAssinatura? Metodo = null, string? Funcao = null);
 public record PtPdfSuspensao(string? Nome, DateTime? Data, string? Motivo);
 public record PtPdfEncerramento(string? Nome, DateTime? Data, string? Observacoes);

@@ -177,6 +177,16 @@ public class PermissoesTrabalhoController : ControllerBase
         if (pdf is null) return NotFound();
         return File(pdf, "application/pdf", $"pt-{id}.pdf");
     }
+
+    // 05/11: Certificado de Assinaturas Eletrônicas da PT, à parte (a PT sai sem ele). 404 = ninguém assinou ainda.
+    [Authorize(Policy = "pt:ver")]
+    [HttpGet("{id:guid}/certificado-assinaturas-pdf")]
+    public async Task<IActionResult> ObterCertificadoAssinaturas(Guid id, CancellationToken ct)
+    {
+        var pdf = await _mediator.Send(new ExportarPermissaoTrabalhoPdfQuery(id, CertificadoAssinaturas: true), ct);
+        if (pdf is null) return NotFound(new { erro = "Ninguém da equipe assinou esta PT ainda." });
+        return File(pdf, "application/pdf", $"pt-{id}-certificado-assinaturas.pdf");
+    }
 }
 
 public record AutorizarPermissaoTrabalhoRequestBody(Guid? ResponsavelSstUsuarioId);

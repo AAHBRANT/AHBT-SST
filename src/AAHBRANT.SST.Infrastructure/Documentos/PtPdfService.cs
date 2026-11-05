@@ -258,26 +258,21 @@ public class PtPdfService : IPtPdfService
                 table.ColumnsDefinition(columns =>
                 {
                     columns.RelativeColumn(2);
-                    columns.RelativeColumn(1.5f);
-                    columns.RelativeColumn(1);
+                    columns.RelativeColumn(1.6f);
+                    columns.RelativeColumn(2.2f);
                 });
                 table.Header(header =>
                 {
                     header.Cell().Element(CabecalhoCelula).Text("Nome");
-                    header.Cell().Element(CabecalhoCelula).Text("Função");
-                    header.Cell().Element(CabecalhoCelula).Text("Ass./Visto");
+                    header.Cell().Element(CabecalhoCelula).Text("Função · CBO");
+                    header.Cell().Element(CabecalhoCelula).Text("Assinatura");
                 });
                 foreach (var envolvido in modelo.Envolvidos)
                 {
                     table.Cell().Element(Celula).Text(envolvido.Nome);
                     table.Cell().Element(Celula).Text(envolvido.Funcao ?? "-");
-                    table.Cell().Element(Celula).Column(c =>
-                    {
-                        c.Item().Text(envolvido.Assinou ? "Assinado" : "Pendente");
-                        if (envolvido.AssinadoEm is { } quando)
-                            c.Item().Text(DescricaoMetodoAssinatura.LegendaCurta(HorarioBrasilia.De(quando), envolvido.Metodo))
-                                .FontSize(6).FontColor(Colors.Grey.Darken2);
-                    });
+                    // 05/11: selo da assinatura na linha (AssinaturaPdfPadrao.SeloLinha).
+                    table.Cell().Element(Celula).Element(c => AssinaturaPdfPadrao.SeloLinha(c, envolvido.AssinadoEm, envolvido.Metodo, envolvido.Selo));
                 }
             });
         });
