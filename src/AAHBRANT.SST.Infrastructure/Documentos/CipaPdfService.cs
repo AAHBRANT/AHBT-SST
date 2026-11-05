@@ -26,31 +26,13 @@ public class CipaPdfService : ICipaPdfService
                 {
                     coluna.Spacing(8);
 
-                    if (modelo.NumeroDocumento is not null)
-                        coluna.Item().Text(t =>
-                        {
-                            t.Span("Nº do documento: ").SemiBold();
-                            t.Span(modelo.NumeroDocumento);
-                        });
-
-                    coluna.Item().Row(linha =>
+                    coluna.Item().Element(c => GradeDocumentoPadrao.Desenhar(c, new GradeDocumentoPadrao.Campo[]
                     {
-                        linha.RelativeItem().Text(t =>
-                        {
-                            t.Span("Convocação: ").SemiBold();
-                            t.Span(modelo.DataConvocacao.ToString("dd/MM/yyyy"));
-                        });
-                        linha.RelativeItem().Text(t =>
-                        {
-                            t.Span("Votação: ").SemiBold();
-                            t.Span(modelo.DataVotacao.ToString("dd/MM/yyyy"));
-                        });
-                        linha.RelativeItem().Text(t =>
-                        {
-                            t.Span("Apuração: ").SemiBold();
-                            t.Span(modelo.DataApuracao?.ToString("dd/MM/yyyy HH:mm") ?? "—");
-                        });
-                    });
+                        new("Nº do documento", modelo.NumeroDocumento, 1),
+                        new("Convocação", modelo.DataConvocacao.ToString("dd/MM/yyyy"), 1),
+                        new("Votação", modelo.DataVotacao.ToString("dd/MM/yyyy"), 1),
+                        new("Apuração", modelo.DataApuracao?.ToString("dd/MM/yyyy HH:mm"), 1),
+                    }));
 
                     coluna.Item().PaddingTop(8).Text("Resultado da apuração").FontSize(13).Bold();
 
@@ -118,27 +100,33 @@ public class CipaPdfService : ICipaPdfService
                 {
                     coluna.Spacing(8);
 
-                    coluna.Item().Text(t =>
+                    coluna.Item().Element(c => GradeDocumentoPadrao.Desenhar(c, new GradeDocumentoPadrao.Campo[]
                     {
-                        t.Span("Data: ").SemiBold();
-                        t.Span(modelo.DataReuniao.ToString("dd/MM/yyyy"));
-                    });
-
-                    coluna.Item().Text("Pauta").FontSize(12).Bold();
-                    coluna.Item().Text(modelo.Pauta ?? "—");
-
-                    coluna.Item().PaddingTop(6).Text("Deliberações").FontSize(12).Bold();
-                    coluna.Item().Text(modelo.Deliberacoes ?? "—");
+                        new("Data da reunião", modelo.DataReuniao.ToString("dd/MM/yyyy"), 1),
+                        new("Tipo", modelo.TipoLabel, 3),
+                        new("Pauta", modelo.Pauta, 4),
+                        new("Deliberações", modelo.Deliberacoes, 4),
+                    }));
 
                     coluna.Item().PaddingTop(8).Text("Lista de presença").FontSize(12).Bold();
-                    foreach (var participante in modelo.Participantes)
+                    coluna.Item().Table(tabela =>
                     {
-                        coluna.Item().Text(t =>
+                        tabela.ColumnsDefinition(c => { c.ConstantColumn(36); c.RelativeColumn(3); c.RelativeColumn(1); });
+                        tabela.Header(h =>
                         {
-                            t.Span(participante.Presente ? "[X] " : "[ ] ").FontColor(CorMarca).Bold();
-                            t.Span(participante.Nome);
+                            h.Cell().Background(CorMarca).Padding(4).AlignCenter().Text("Nº").FontColor(Colors.White).SemiBold();
+                            h.Cell().Background(CorMarca).Padding(4).Text("Participante").FontColor(Colors.White).SemiBold();
+                            h.Cell().Background(CorMarca).Padding(4).AlignCenter().Text("Presença").FontColor(Colors.White).SemiBold();
                         });
-                    }
+                        var numero = 1;
+                        foreach (var participante in modelo.Participantes)
+                        {
+                            tabela.Cell().Border(0.5f).BorderColor(GradeDocumentoPadrao.CorLinha).Padding(4).AlignCenter().Text($"{numero++}");
+                            tabela.Cell().Border(0.5f).BorderColor(GradeDocumentoPadrao.CorLinha).Padding(4).Text(participante.Nome);
+                            tabela.Cell().Border(0.5f).BorderColor(GradeDocumentoPadrao.CorLinha).Padding(4).AlignCenter()
+                                .Text(participante.Presente ? "Presente" : "Ausente").FontColor(participante.Presente ? CorMarca : Colors.Grey.Darken1);
+                        }
+                    });
                 });
 
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(

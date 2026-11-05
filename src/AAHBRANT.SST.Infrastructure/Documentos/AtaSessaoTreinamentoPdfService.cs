@@ -14,6 +14,7 @@ namespace AAHBRANT.SST.Infrastructure.Documentos;
 public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
 {
     private const string CorMarca = "#670000";
+    private const string CorLinha = GradeDocumentoPadrao.CorLinha;
 
     public byte[] Gerar(AtaSessaoTreinamentoPdfModelo modelo)
     {
@@ -49,34 +50,25 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
         return documento.GeneratePdf();
     }
 
+    // Pedido do usuário (05/11): dados da turma em grade, no mesmo padrão da Investigação de
+    // Ocorrência — 4 colunas, rótulo miúdo em cima e valor embaixo, cada campo numa célula com borda.
     private static void DadosDaTurma(IContainer container, AtaSessaoTreinamentoPdfModelo modelo)
     {
-        container.Border(1).BorderColor(Colors.Grey.Lighten2).Padding(8).Column(coluna =>
+        var curso = string.IsNullOrWhiteSpace(modelo.NormaReferencia)
+            ? modelo.CursoNome
+            : $"{modelo.CursoNome} ({modelo.NormaReferencia})";
+        var status = modelo.DataEncerramento is not null
+            ? $"Concluída em {modelo.DataEncerramento:dd/MM/yyyy HH:mm}"
+            : "Em andamento";
+
+        GradeDocumentoPadrao.Desenhar(container, new GradeDocumentoPadrao.Campo[]
         {
-            coluna.Spacing(3);
-            coluna.Item().Text(t =>
-            {
-                t.Span("Curso: ").SemiBold();
-                t.Span(modelo.CursoNome).Bold().FontColor(CorMarca);
-                if (!string.IsNullOrWhiteSpace(modelo.NormaReferencia))
-                    t.Span($" ({modelo.NormaReferencia})");
-            });
-            coluna.Item().Row(linha =>
-            {
-                linha.RelativeItem().Text(t => { t.Span("Data de realização: ").SemiBold(); t.Span(modelo.DataRealizacao.ToString("dd/MM/yyyy")); });
-                linha.RelativeItem().Text(t => { t.Span("Carga horária: ").SemiBold(); t.Span($"{modelo.CargaHorariaRealizada}h"); });
-            });
-            if (!string.IsNullOrWhiteSpace(modelo.InstituicaoInstrutor))
-                coluna.Item().Text(t => { t.Span("Instrutor / instituição: ").SemiBold(); t.Span(modelo.InstituicaoInstrutor); });
-            if (!string.IsNullOrWhiteSpace(modelo.NumeroCertificado))
-                coluna.Item().Text(t => { t.Span("Nº do certificado: ").SemiBold(); t.Span(modelo.NumeroCertificado); });
-            coluna.Item().Text(t =>
-            {
-                t.Span("Status: ").SemiBold();
-                t.Span(modelo.DataEncerramento is not null
-                    ? $"Concluída em {modelo.DataEncerramento:dd/MM/yyyy HH:mm}"
-                    : "Em andamento");
-            });
+            new("Curso", curso, 4, Destaque: true),
+            new("Data de realização", modelo.DataRealizacao.ToString("dd/MM/yyyy"), 1),
+            new("Carga horária", $"{modelo.CargaHorariaRealizada} h", 1),
+            new("Nº do certificado", modelo.NumeroCertificado, 2),
+            new("Instrutor / instituição", modelo.InstituicaoInstrutor, 2),
+            new("Status", status, 2),
         });
     }
 
@@ -116,7 +108,7 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
                     Celula(tabela.Cell(), participante.FuncaoComCbo ?? "—");
                     Celula(tabela.Cell(), participante.TrabalhadorMatricula ?? string.Empty);
                     // 05/11: selo na linha (AssinaturaPdfPadrao.SeloLinha); sem presença = "Ausente".
-                    tabela.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignMiddle()
+                    tabela.Cell().Border(0.5f).BorderColor(CorLinha).Padding(3).AlignMiddle()
                         .Element(c => AssinaturaPdfPadrao.SeloLinha(c, participante.PresencaConfirmadaEm, participante.Metodo, participante.Selo, "Ausente"));
                 }
             });
@@ -124,10 +116,10 @@ public class AtaSessaoTreinamentoPdfService : IAtaSessaoTreinamentoPdfService
     }
 
     private static void CelulaCabecalho(IContainer container, string texto) =>
-        container.Background(CorMarca).Padding(4).Text(texto).FontSize(9).Bold().FontColor(Colors.White);
+        container.Border(0.5f).BorderColor(CorMarca).Background(CorMarca).Padding(4).Text(texto).FontSize(9).Bold().FontColor(Colors.White);
 
     private static void Celula(IContainer container, string texto) =>
-        container.BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(texto).FontSize(9);
+        container.Border(0.5f).BorderColor(CorLinha).Padding(4).AlignMiddle().Text(texto).FontSize(9);
 
     private static void GradeDeFotos(IContainer container, IReadOnlyList<byte[]> fotos)
     {
