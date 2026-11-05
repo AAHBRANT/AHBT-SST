@@ -17,7 +17,7 @@ import {
   type AcaoWorkflow,
   type Tom,
 } from '@ui';
-import { ArrowDownload24Regular, Eye24Regular } from '@fluentui/react-icons';
+import { ArrowDownload24Regular, Eye24Regular, ShieldCheckmark24Regular } from '@fluentui/react-icons';
 import { api, StatusApr, statusAprLabel, type AprDetalhe } from '../../lib/api';
 import { AprAssinaturasTab } from './AprAssinaturasTab';
 import { AprEtapasTab } from './AprEtapasTab';
@@ -128,6 +128,16 @@ export function AprDetalhePage() {
     void visualizar({ titulo: 'PDF da APR', nomeArquivo: nomeArquivoPdf(id), obter: () => api.aprs.exportarPdf(id) });
   }
 
+  // 05/11: o certificado de assinaturas sai à parte (a APR vai para a frente de serviço sem biometria exposta).
+  function visualizarCertificado() {
+    if (!id) return;
+    void visualizar({
+      titulo: 'Certificado de assinaturas da APR',
+      nomeArquivo: `apr-${id}-certificado-assinaturas.pdf`,
+      obter: () => api.aprs.certificadoAssinaturasPdf(id),
+    });
+  }
+
   if (!id) return <FeedbackInline tom="erro">APR não encontrada.</FeedbackInline>;
 
   // Erro na carga inicial precisa aparecer aqui: sem isso o skeleton ficaria para sempre e a falha
@@ -187,6 +197,9 @@ export function AprDetalhePage() {
             </BotaoAcao>
             <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={exportarPdf} disabled={exportando} aria-label="Exportar PDF">
               Exportar PDF
+            </BotaoAcao>
+            <BotaoAcao tom="ver" icon={<ShieldCheckmark24Regular />} onClick={visualizarCertificado} aria-label="Certificado de assinaturas">
+              Certificado de assinaturas
             </BotaoAcao>
             {dialogoVisualizador}
           </>

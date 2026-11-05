@@ -6,7 +6,7 @@ using AAHBRANT.SST.Infrastructure.Documentos;
 namespace AAHBRANT.SST.Infrastructure.Tests.Documentos;
 
 // APR por biometria (05/11): envolvidos com Função · CBO e selo, blocos de elaboração/supervisão com a
-// assinatura biométrica, registro antigo por clique marcado "sem biometria" e o certificado no fim.
+// assinatura biométrica, registro antigo por clique marcado "sem biometria"; o certificado é um PDF à parte.
 public class AprPdfServiceTests
 {
     static AprPdfServiceTests()
@@ -47,12 +47,20 @@ public class AprPdfServiceTests
             },
             new AprPdfAssinatura("Alan Franklin dos Santos", "Técnico de Segurança", t0, MetodoAutenticacaoAssinatura.ReconhecimentoFacial, "4B88D0A1C93E7F20A1B2C3D4E5F60718"),
             new AprPdfAssinatura("Carlos Souza Lima", "Encarregado de Obras", t0.AddMinutes(2), MetodoAutenticacaoAssinatura.Biometria, "B02C11AA7E11B02C11AA7E11"),
-            cert.ConteudoHash, cert.UrlValidacaoPublica, cert.QrCodePng, true, certificado);
+            cert.ConteudoHash, cert.UrlValidacaoPublica, cert.QrCodePng, true);
 
+        // 05/11: a APR sai sem o certificado; ele é um PDF à parte.
         var pdf = new AprPdfService().Gerar(modelo);
+        var pdfCertificado = new CertificadoAssinaturasPdfService().Gerar(certificado);
 
         Assert.True(pdf.Length > 1000);
+        Assert.True(pdfCertificado.Length > 1000);
         var pasta = Environment.GetEnvironmentVariable("FICHA_PDF_SAIDA");
-        if (!string.IsNullOrEmpty(pasta)) { Directory.CreateDirectory(pasta); File.WriteAllBytes(Path.Combine(pasta, "apr-completa.pdf"), pdf); }
+        if (!string.IsNullOrEmpty(pasta))
+        {
+            Directory.CreateDirectory(pasta);
+            File.WriteAllBytes(Path.Combine(pasta, "apr-completa.pdf"), pdf);
+            File.WriteAllBytes(Path.Combine(pasta, "apr-certificado-assinaturas.pdf"), pdfCertificado);
+        }
     }
 }

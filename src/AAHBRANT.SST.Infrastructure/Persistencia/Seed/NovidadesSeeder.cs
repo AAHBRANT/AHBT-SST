@@ -2523,7 +2523,7 @@ public static class NovidadesSeeder
                 new NovidadeSeedItem(CategoriaNovidade.Melhoria,
                     "PDF da APR com selo e certificado de assinaturas",
                     "O PDF da APR mostrava só \"Assinado\" ou \"Pendente\" na lista de envolvidos.",
-                    "Cada envolvido tem função, CBO e o selo ASSINADO ELETRONICAMENTE; elaboração e supervisão saem com o selo da assinatura biométrica; o PDF termina com o Certificado de Assinaturas Eletrônicas, com a biometria cadastrada ao lado da capturada e um QR por assinatura."),
+                    "Cada envolvido tem função, CBO e o selo ASSINADO ELETRONICAMENTE; elaboração e supervisão saem com o selo da assinatura biométrica; o Certificado de Assinaturas Eletrônicas, com a biometria cadastrada ao lado da capturada e um QR por assinatura, fica no botão Certificado de assinaturas, à parte da APR."),
             }),
     };
 

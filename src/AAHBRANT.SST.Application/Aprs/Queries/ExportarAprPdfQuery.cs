@@ -7,7 +7,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Aprs.Queries;
 
-public record ExportarAprPdfQuery(Guid Id) : IRequest<byte[]?>;
+// CertificadoAssinaturas (05/11): true = só o Certificado de Assinaturas Eletrônicas, em PDF à parte; a APR
+// em si sai sem ele (vai para a frente de serviço sem biometria exposta).
+public record ExportarAprPdfQuery(Guid Id, bool CertificadoAssinaturas = false) : IRequest<byte[]?>;
 
 public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, byte[]?>
 {
@@ -17,9 +19,11 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
     private readonly IRegistradorRastreabilidadeService _rastreabilidade;
     private readonly IImagemBiometricaCriptografia? _cripto;
     private readonly IQrCodeDocumentoService? _qrCode;
+    private readonly ICertificadoAssinaturasPdfService? _certificadoPdf;
 
     public ExportarAprPdfQueryHandler(IMediator mediator, IAppDbContext db, IAprPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade,
-        IImagemBiometricaCriptografia? cripto = null, IQrCodeDocumentoService? qrCode = null)
+        IImagemBiometricaCriptografia? cripto = null, IQrCodeDocumentoService? qrCode = null,
+        ICertificadoAssinaturasPdfService? certificadoPdf = null)
     {
         _mediator = mediator;
         _db = db;
@@ -27,6 +31,7 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
         _rastreabilidade = rastreabilidade;
         _cripto = cripto;
         _qrCode = qrCode;
+        _certificadoPdf = certificadoPdf;
     }
 
     public async Task<byte[]?> Handle(ExportarAprPdfQuery request, CancellationToken ct)
@@ -77,7 +82,10 @@ public class ExportarAprPdfQueryHandler : IRequestHandler<ExportarAprPdfQuery, b
             "APR", $"APR {detalhe.Apr.NumeroApr ?? "—"} · {detalhe.Apr.AtividadeNome}",
             detalhe.Apr.ObraNome ?? string.Empty, logoConteudo, rastreio, painel, compacto: true, ct);
 
-        var pdf = _pdf.Gerar(modelo with { Certificado = certificado });
+        if (request.CertificadoAssinaturas)
+            return certificado is null || _certificadoPdf is null ? null : _certificadoPdf.Gerar(certificado);
+
+        var pdf = _pdf.Gerar(modelo);
         // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
         // que o arquivo em mãos não foi adulterado (ver HashArquivoCalculador).
         await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);

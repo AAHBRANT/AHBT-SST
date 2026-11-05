@@ -94,6 +94,17 @@ public class AprsController : ControllerBase
         if (pdf is null) return NotFound();
         return File(pdf, "application/pdf", $"apr-{id}.pdf");
     }
+
+    // 05/11: Certificado de Assinaturas Eletrônicas da APR, à parte (a APR sai sem ele). 404 = ninguém
+    // assinou por biometria ainda.
+    [Authorize(Policy = "apr:ver")]
+    [HttpGet("{id:guid}/certificado-assinaturas-pdf")]
+    public async Task<IActionResult> ObterCertificadoAssinaturas(Guid id, CancellationToken ct)
+    {
+        var pdf = await _mediator.Send(new ExportarAprPdfQuery(id, CertificadoAssinaturas: true), ct);
+        if (pdf is null) return NotFound(new { erro = "Nenhuma assinatura por digital ou facial nesta APR ainda." });
+        return File(pdf, "application/pdf", $"apr-{id}-certificado-assinaturas.pdf");
+    }
 }
 
 public record ReprovarAprRequestBody(string Motivo);
