@@ -2588,6 +2588,17 @@ public static class NovidadesSeeder
                     "Em DDS assinados pelo antigo Assinar DDS, o PDF não abria e mostrava um aviso de conflito (\"alterado por outra pessoa enquanto você estava offline\").",
                     "O PDF abre normalmente, com todos que assinaram na lista de presença."),
             }),
+        new(
+            Versao: "5.147.0",
+            Titulo: "DDS: sua obra e obras que você acompanha",
+            DataPublicacao: new DateTime(2026, 11, 6, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Separação entre a sua obra e as obras que você acompanha",
+                    "A lista de DDS misturava todas as obras e mostrava botões de criar e assinar até em obras de outros técnicos.",
+                    "Escolha a obra no topo da lista, em \"Minhas obras\" ou \"Supervisão\". Nas obras que você acompanha, dá para consultar e baixar os PDFs, e as alterações ficam com o técnico responsável."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
