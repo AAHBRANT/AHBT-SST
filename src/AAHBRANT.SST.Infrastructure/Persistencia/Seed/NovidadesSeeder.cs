@@ -2577,6 +2577,17 @@ public static class NovidadesSeeder
                     "Era possível encerrar o DDS sem a assinatura do técnico responsável.",
                     "O Encerrar DDS só libera depois que o técnico responsável assinar na fila. No PDF ele aparece só no bloco do responsável, e não repetido na lista de presença."),
             }),
+        new(
+            Versao: "5.146.0",
+            Titulo: "PDF do DDS volta a abrir",
+            DataPublicacao: new DateTime(2026, 11, 6, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "PDF do DDS com assinaturas pelo botão antigo",
+                    "Em DDS assinados pelo antigo Assinar DDS, o PDF não abria e mostrava um aviso de conflito (\"alterado por outra pessoa enquanto você estava offline\").",
+                    "O PDF abre normalmente, com todos que assinaram na lista de presença."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

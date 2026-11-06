@@ -189,6 +189,9 @@ public class SelecaoFuncionariosDdsTests
         Assert.Equal(ana.Id, presenca.TrabalhadorId);
         Assert.Equal(MetodoAutenticacaoAssinatura.Biometria, presenca.MetodoAssinatura);
         Assert.Equal(new[] { bruno.Id }, detalhe.FuncionariosSelecionados.Select(f => f.TrabalhadorId));
+        // 06/11 (hml, 409 no PDF): a presença virtual não pode ir para o rastreamento do EF.
+        await db.SaveChangesAsync();
+        Assert.Empty(await db.DdsParticipantes.ToListAsync());
     }
 
     // 06/11: o técnico responsável assina na fila, mas sai da lista de presença e vira a assinatura do responsável.
