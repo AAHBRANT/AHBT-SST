@@ -44,9 +44,31 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
         // Assinatura por trabalhador (04/09) — a presença biométrica já vale como assinatura (ver
         // RegistrarParticipanteCommand); busca aqui só pra exibir na lista de presença, sem duplicar
         // a lógica de quem pode assinar (isso continua no Motor de Assinatura).
-        var assinadosEmPorTrabalhador = await _db.DocumentoSignatarios
-            .Where(s => s.DocumentoAssinatura!.EntidadeTipo == nameof(Domain.Entidades.Dds) && s.DocumentoAssinatura!.EntidadeId == dds.Id)
-            .ToDictionaryAsync(s => s.TrabalhadorId, s => new { s.AssinadoEm, s.MetodoAutenticacao }, ct);
+        var assinadosEmPorTrabalhador = (await _db.DocumentoSignatarios
+            .Where(s => s.DocumentoAssinatura!.EntidadeTipo == nameof(Domain.Entidades.Dds) && s.DocumentoAssinatura!.EntidadeId == dds.Id
+                && s.Ativo && s.DocumentoAssinatura.Status != Domain.Enums.StatusDocumentoAssinatura.Cancelado)
+            .Select(s => new { s.TrabalhadorId, s.AssinadoEm, s.MetodoAutenticacao })
+            .ToListAsync(ct))
+            .GroupBy(s => s.TrabalhadorId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(s => s.AssinadoEm).Select(s => new { s.AssinadoEm, s.MetodoAutenticacao }).First());
+
+        // 06/11: quem assinou pela tela "Assinar DDS" (Motor de Assinatura) não passava pela presença e
+        // ficava fora da lista — e do PDF. Assinatura no DDS vale como presença; o responsável não entra.
+        var trabalhadorResponsavelId = await _db.Usuarios.Where(u => u.Id == dds.ResponsavelUsuarioId)
+            .Select(u => u.TrabalhadorId).FirstOrDefaultAsync(ct);
+        var semPresenca = assinadosEmPorTrabalhador.Keys
+            .Where(t => t != trabalhadorResponsavelId && participantes.All(p => p.TrabalhadorId != t)).ToList();
+        if (semPresenca.Count > 0)
+        {
+            var trabalhadores = await _db.Trabalhadores.AsNoTracking().Where(t => semPresenca.Contains(t.Id)).ToListAsync(ct);
+            participantes.AddRange(trabalhadores.Select(t => new Domain.Entidades.DdsParticipante
+            {
+                Id = t.Id, DdsId = dds.Id, TrabalhadorId = t.Id, Trabalhador = t,
+                FotoTipo = Domain.Enums.TipoFotoParticipante.Biometria,
+            }));
+            participantes = participantes.OrderBy(p => p.Trabalhador?.Nome).ToList();
+        }
+        var selecionadosSemPresenca = selecionados.Where(s => participantes.All(p => p.TrabalhadorId != s.TrabalhadorId)).ToList();
 
         dds.ItensChecklist = itens;
         dds.Participantes = participantes;
@@ -55,7 +77,7 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
         return new DdsDetalheDto
         {
             Dds = ListarDdsQueryHandler.MapearParaDto(dds),
-            FuncionariosSelecionados = selecionados,
+            FuncionariosSelecionados = selecionadosSemPresenca,
             ItensChecklist = itens.Select(i => new DdsItemChecklistDto
             {
                 Id = i.Id,

@@ -98,6 +98,14 @@ public class CriarDdsCommandHandler : IRequestHandler<CriarDdsCommand, Guid>
             dds.TemaLivreDescricao = catalogo.Descricao;
         }
 
+        var idsRiscos = riscos.Select(r => r.Id).ToList();
+        var medidasPorRisco = (await _db.MedidasPrevencao.AsNoTracking()
+                .Where(m => idsRiscos.Contains(m.RiscoId) && m.Ativo)
+                .Select(m => new { m.RiscoId, m.Fase, m.Ordem, m.Texto })
+                .ToListAsync(ct))
+            .GroupBy(m => m.RiscoId)
+            .ToDictionary(g => g.Key, g => string.Join('\n', g.OrderBy(m => m.Fase).ThenBy(m => m.Ordem).Select(m => m.Texto)));
+
         foreach (var (atividade, indice) in atividadesOrdenadas.Select((a, i) => (a, i)))
         {
             var maiorRisco = riscos.Where(r => r.AtividadeId == atividade.Id).OrderByDescending(r => r.NivelRisco).FirstOrDefault();
@@ -109,14 +117,16 @@ public class CriarDdsCommandHandler : IRequestHandler<CriarDdsCommand, Guid>
                 PerigoNome = maiorRisco?.Perigo?.Nome,
                 PerigoDescricao = maiorRisco?.Perigo?.Descricao,
                 Consequencia = maiorRisco?.Consequencia,
-                ControlesExistentes = maiorRisco?.ControlesExistentes,
+                // 06/11: PGR gerado pela EAP guarda as medidas em MedidasPrevencao, não em ControlesExistentes.
+                ControlesExistentes = string.IsNullOrWhiteSpace(maiorRisco?.ControlesExistentes) && maiorRisco is not null
+                    && medidasPorRisco.TryGetValue(maiorRisco.Id, out var medidasDoRisco) ? medidasDoRisco : maiorRisco?.ControlesExistentes,
                 ControlesAdicionais = maiorRisco?.ControlesAdicionais,
             });
         }
 
         foreach (var risco in riscos)
         {
-            foreach (var controle in ExtrairControles(risco.ControlesExistentes))
+            foreach (var controle in ExtrairControles(string.IsNullOrWhiteSpace(risco.ControlesExistentes) && medidasPorRisco.TryGetValue(risco.Id, out var m) ? m : risco.ControlesExistentes))
                 dds.ItensChecklist.Add(new Domain.Entidades.DdsItemChecklist { RiscoId = risco.Id, Descricao = controle });
             foreach (var controle in ExtrairControles(risco.ControlesAdicionais))
                 dds.ItensChecklist.Add(new Domain.Entidades.DdsItemChecklist { RiscoId = risco.Id, Descricao = controle });
