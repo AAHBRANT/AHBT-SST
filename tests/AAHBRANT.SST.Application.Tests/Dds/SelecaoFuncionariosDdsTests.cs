@@ -166,4 +166,28 @@ public class SelecaoFuncionariosDdsTests
         await Assert.ThrowsAsync<KeyNotFoundException>(() => new ListarFuncionariosDdsQueryHandler(db).Handle(new(dds.Id), default));
         await Assert.ThrowsAsync<KeyNotFoundException>(() => new AtualizarFuncionariosDdsCommandHandler(db).Handle(new(dds.Id, new()), default));
     }
+
+    // 06/11 (hml): quem assinou pela tela "Assinar DDS" não tinha presença e sumia da lista e do PDF.
+    [Fact]
+    public async Task Detalhe_AssinaturaSemPresenca_EntraNaListaESaiDosSelecionados()
+    {
+        await using var db = CriarDb();
+        var (dds, ana, bruno, _) = await Semear(db);
+        db.DdsFuncionariosSelecionados.AddRange(
+            new DdsFuncionarioSelecionado { DdsId = dds.Id, TrabalhadorId = ana.Id },
+            new DdsFuncionarioSelecionado { DdsId = dds.Id, TrabalhadorId = bruno.Id });
+        var documento = new DocumentoAssinatura { EntidadeTipo = "Dds", EntidadeId = dds.Id };
+        documento.Signatarios.Add(new DocumentoSignatario { DocumentoAssinaturaId = documento.Id, TrabalhadorId = ana.Id,
+            AssinadoEm = new DateTime(2026, 9, 29, 10, 0, 0, DateTimeKind.Utc), MetodoAutenticacao = MetodoAutenticacaoAssinatura.Biometria });
+        db.DocumentosAssinatura.Add(documento);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var detalhe = await new ObterDdsDetalheQueryHandler(db).Handle(new(dds.Id), default);
+
+        var presenca = Assert.Single(detalhe!.Participantes);
+        Assert.Equal(ana.Id, presenca.TrabalhadorId);
+        Assert.Equal(MetodoAutenticacaoAssinatura.Biometria, presenca.MetodoAssinatura);
+        Assert.Equal(new[] { bruno.Id }, detalhe.FuncionariosSelecionados.Select(f => f.TrabalhadorId));
+    }
 }

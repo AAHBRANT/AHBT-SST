@@ -2547,6 +2547,21 @@ public static class NovidadesSeeder
                     "Para reunir os documentos de um funcionário era preciso baixar um por um.",
                     "No perfil do funcionário, o botão Baixar dossiê completo gera um único PDF com o Relatório de Fiscalização, um índice e todos os documentos na íntegra (certificados, listas de presença, DDS, APR, PT, Ficha de EPI e ASO), cada um com o seu Certificado de Assinaturas Eletrônicas trazendo só as evidências desse funcionário."),
             }),
+        new(
+            Versao: "5.144.0",
+            Titulo: "DDS: lista de presença com quem assinou e temas com as medidas do PGR",
+            DataPublicacao: new DateTime(2026, 11, 6, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Lista de presença do DDS",
+                    "Quem assinava pelo botão Assinar DDS não aparecia na lista de presença nem no PDF.",
+                    "Toda assinatura feita no DDS conta como presença: o funcionário aparece na lista, no PDF e no certificado de assinaturas."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Temas do DDS com as medidas de controle",
+                    "Nas obras com PGR gerado pela EAP, o tema do DDS vinha só com perigo e consequência, sem as medidas e sem o checklist.",
+                    "O tema traz as medidas de prevenção aprovadas no PGR e elas viram itens do checklist do DDS."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
