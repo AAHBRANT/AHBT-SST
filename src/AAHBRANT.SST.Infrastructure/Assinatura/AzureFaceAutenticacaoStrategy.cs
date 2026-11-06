@@ -483,7 +483,8 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
     // Resolução mínima da imagem inteira. Abaixo disto nem vale gastar chamada no Azure: câmera de
     // notebook antigo e print de tela caem aqui.
-    private const int LadoMinimoImagemPx = 480;
+    // 06/11: era 480; foto 3×4 de webcam 640x480 sai com 324 px e era recusada sem motivo real.
+    private const int LadoMinimoImagemPx = 320;
 
     // Lado mínimo do rosto detectado dentro da foto. A Microsoft recomenda 200x200 para a foto de
     // referência; abaixo disso a pessoa está longe demais da câmera, ainda que a imagem seja grande.
