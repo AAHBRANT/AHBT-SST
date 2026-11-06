@@ -50,4 +50,29 @@ public class EncerrarDdsEncerradoEmTests
         Assert.Equal(StatusDds.EmAndamento, salvo.Status);
         Assert.Null(salvo.EncerradoEm);
     }
+
+    // 06/11 (trava): técnico responsável com cadastro de funcionário precisa assinar na fila antes de encerrar.
+    [Fact]
+    public async Task TecnicoResponsavelSemAssinatura_NaoEncerra_ComAssinatura_Encerra()
+    {
+        var (db, dds) = await CriarAsync(fotos: 3);
+        var tecnico = new Trabalhador { Nome = "Técnico", ObraId = dds.ObraId };
+        db.Trabalhadores.Add(tecnico);
+        var usuario = await db.Usuarios.SingleAsync();
+        usuario.TrabalhadorId = tecnico.Id;
+        await db.SaveChangesAsync();
+
+        var erro = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new EncerrarDdsCommandHandler(db).Handle(new EncerrarDdsCommand(dds.Id), CancellationToken.None));
+        Assert.Contains("técnico responsável", erro.Message);
+
+        var documento = new DocumentoAssinatura { EntidadeTipo = "Dds", EntidadeId = dds.Id };
+        documento.Signatarios.Add(new DocumentoSignatario { DocumentoAssinaturaId = documento.Id, TrabalhadorId = tecnico.Id,
+            AssinadoEm = DateTime.UtcNow, MetodoAutenticacao = MetodoAutenticacaoAssinatura.Biometria });
+        db.DocumentosAssinatura.Add(documento);
+        await db.SaveChangesAsync();
+
+        await new EncerrarDdsCommandHandler(db).Handle(new EncerrarDdsCommand(dds.Id), CancellationToken.None);
+        Assert.Equal(StatusDds.Concluido, (await db.Dds.SingleAsync()).Status);
+    }
 }

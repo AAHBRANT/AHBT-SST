@@ -161,6 +161,17 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
   async function processarLeituraFila(captura: CapturaLocal) {
     const { detalhe: atual, dispositivo: leitor } = contextoFila.current;
     if (!leitor) return;
+    if (atual.responsavelTrabalhadorId && captura.trabalhadorId === atual.responsavelTrabalhadorId) {
+      if (atual.responsavelAssinadoEm) {
+        setResultadoFila({ tom: 'info', texto: `${dds.responsavelUsuarioNome} já assinou como técnico responsável.` });
+        return;
+      }
+      await api.dds.registrarParticipante(dds.id, captura.trabalhadorId, credencialLeitura(leitor, captura.leituras[0]), captura.score, captura.imagemPng);
+      aoAtualizar(await api.dds.obterDetalhe(dds.id));
+      tocarBipeAssinaturaAceita();
+      setResultadoFila({ tom: 'sucesso', texto: `Assinatura do técnico responsável ${dds.responsavelUsuarioNome} registrada.` });
+      return;
+    }
     const jaConfirmado = atual.participantes.find((p) => p.trabalhadorId === captura.trabalhadorId);
     if (jaConfirmado) {
       setResultadoFila({ tom: 'info', texto: `${jaConfirmado.trabalhadorNome} já teve a presença confirmada.` });
@@ -304,6 +315,9 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
         <StatusChip tom="info">{selecionados.size} {selecionados.size === 1 ? 'selecionado' : 'selecionados'}</StatusChip>
         <StatusChip tom="ok">{confirmados.size} {confirmados.size === 1 ? 'presença confirmada' : 'presenças confirmadas'}</StatusChip>
         <Legenda>{totalPendentes} com presença pendente</Legenda>
+        {detalhe.responsavelTrabalhadorId && (detalhe.responsavelAssinadoEm
+          ? <StatusChip tom="ok">Técnico responsável: assinado</StatusChip>
+          : <StatusChip tom="alerta">Técnico responsável: aguardando assinatura</StatusChip>)}
       </div>
       {!somenteLeitura && <div style={linhaFlex}>
         <Button appearance="primary" icon={<PeopleTeam24Regular />}
@@ -324,7 +338,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
             onClick={() => setFilaFacialAberta(true)}>Abrir fila facial</Button>
           <Legenda>{filaAberta
             ? 'Leitor aberto: cada funcionário encosta o dedo e a presença é confirmada sozinha.'
-            : 'Abra a fila para o pessoal registrar a presença pela digital ou pelo rosto, um após o outro.'}</Legenda>
+            : 'Abra a fila: funcionários e o técnico responsável assinam pela digital ou pelo rosto, um após o outro.'}</Legenda>
         </div>
         {resultadoFila && <div role={resultadoFila.tom === 'erro' ? 'alert' : 'status'}><FeedbackInline tom={resultadoFila.tom}>
           <strong style={{ fontSize: 18 }}>{resultadoFila.texto}</strong>
@@ -372,6 +386,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
       totalInscritos={totalPendentes}
       aberto={filaFacialAberta}
       aoFechar={() => setFilaFacialAberta(false)}
+      trabalhadorResponsavelId={detalhe.responsavelTrabalhadorId ?? undefined}
       aoPresencaConfirmada={() => { void api.dds.obterDetalhe(dds.id).then(aoAtualizar).catch(() => undefined); }}
     />
   </Card>;

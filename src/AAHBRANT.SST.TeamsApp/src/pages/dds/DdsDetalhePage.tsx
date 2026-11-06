@@ -1,6 +1,6 @@
 ﻿import { pendenciasGrade } from '../../lib/dadosFoto';
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   BotaoAcao,
   Field,
@@ -19,7 +19,6 @@ import {
 import {
   ArrowDownload24Regular,
   Eye24Regular,
-  Signature24Regular,
 } from '@fluentui/react-icons';
 import {
   api,
@@ -40,7 +39,6 @@ const tomStatusDia: Record<number, Tom> = {
 
 export function DdsDetalhePage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [detalhe, setDetalhe] = useState<DdsDetalhe | null>(null);
   const [fotosEvidenciaPreview, setFotosEvidenciaPreview] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string | null>(null);
@@ -197,14 +195,7 @@ export function DdsDetalhePage() {
         rotuloVoltar: 'Voltar para a semana',
         acoes: (
           <>
-            <BotaoAcao
-              tom="assinar"
-              icon={<Signature24Regular />}
-              onClick={() => navigate(`/prevencao/dds/dia/${id}/assinar`)}
-              aria-label="Assinar DDS"
-            >
-              Assinar DDS
-            </BotaoAcao>
+            {/* 06/11: "Assinar DDS" saiu — todos assinam pela fila (digital ou facial), inclusive o técnico responsável. */}
             <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
               Visualizar PDF
             </BotaoAcao>

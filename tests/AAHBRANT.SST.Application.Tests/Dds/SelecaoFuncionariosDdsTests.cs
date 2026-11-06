@@ -190,4 +190,30 @@ public class SelecaoFuncionariosDdsTests
         Assert.Equal(MetodoAutenticacaoAssinatura.Biometria, presenca.MetodoAssinatura);
         Assert.Equal(new[] { bruno.Id }, detalhe.FuncionariosSelecionados.Select(f => f.TrabalhadorId));
     }
+
+    // 06/11: o técnico responsável assina na fila, mas sai da lista de presença e vira a assinatura do responsável.
+    [Fact]
+    public async Task Detalhe_TecnicoResponsavelNaFila_SaiDaListaEViraAssinaturaDoResponsavel()
+    {
+        await using var db = CriarDb();
+        var (dds, ana, bruno, _) = await Semear(db);
+        var usuario = await db.Usuarios.SingleAsync();
+        usuario.TrabalhadorId = bruno.Id;
+        db.DdsParticipantes.AddRange(
+            new DdsParticipante { DdsId = dds.Id, TrabalhadorId = ana.Id },
+            new DdsParticipante { DdsId = dds.Id, TrabalhadorId = bruno.Id });
+        var documento = new DocumentoAssinatura { EntidadeTipo = "Dds", EntidadeId = dds.Id };
+        documento.Signatarios.Add(new DocumentoSignatario { DocumentoAssinaturaId = documento.Id, TrabalhadorId = bruno.Id,
+            AssinadoEm = new DateTime(2026, 9, 29, 10, 0, 0, DateTimeKind.Utc), MetodoAutenticacao = MetodoAutenticacaoAssinatura.ReconhecimentoFacial });
+        db.DocumentosAssinatura.Add(documento);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var detalhe = await new ObterDdsDetalheQueryHandler(db).Handle(new(dds.Id), default);
+
+        Assert.Equal(new[] { ana.Id }, detalhe!.Participantes.Select(p => p.TrabalhadorId));
+        Assert.Equal(bruno.Id, detalhe.ResponsavelTrabalhadorId);
+        Assert.NotNull(detalhe.ResponsavelAssinadoEm);
+        Assert.Equal(MetodoAutenticacaoAssinatura.ReconhecimentoFacial, detalhe.ResponsavelMetodoAssinatura);
+    }
 }

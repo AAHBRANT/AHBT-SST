@@ -68,7 +68,12 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
             }));
             participantes = participantes.OrderBy(p => p.Trabalhador?.Nome).ToList();
         }
-        var selecionadosSemPresenca = selecionados.Where(s => participantes.All(p => p.TrabalhadorId != s.TrabalhadorId)).ToList();
+        var selecionadosSemPresenca = selecionados.Where(s => participantes.All(p => p.TrabalhadorId != s.TrabalhadorId)
+            && s.TrabalhadorId != trabalhadorResponsavelId).ToList();
+        // 06/11: o técnico responsável assina na mesma fila, mas a assinatura dele é a do responsável — não
+        // entra na lista de presença (nem no PDF, que já tem o bloco próprio do responsável).
+        participantes = participantes.Where(p => p.TrabalhadorId != trabalhadorResponsavelId).ToList();
+        assinadosEmPorTrabalhador.TryGetValue(trabalhadorResponsavelId ?? Guid.Empty, out var assinaturaResponsavel);
 
         dds.ItensChecklist = itens;
         dds.Participantes = participantes;
@@ -78,6 +83,9 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
         {
             Dds = ListarDdsQueryHandler.MapearParaDto(dds),
             FuncionariosSelecionados = selecionadosSemPresenca,
+            ResponsavelTrabalhadorId = trabalhadorResponsavelId,
+            ResponsavelAssinadoEm = assinaturaResponsavel?.AssinadoEm,
+            ResponsavelMetodoAssinatura = assinaturaResponsavel?.MetodoAutenticacao,
             ItensChecklist = itens.Select(i => new DdsItemChecklistDto
             {
                 Id = i.Id,
