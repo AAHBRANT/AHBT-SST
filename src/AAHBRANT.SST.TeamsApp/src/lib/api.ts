@@ -592,6 +592,9 @@ export interface UsuarioLogado {
   // configurável pela matriz de permissões — ver PoliticasAutorizacao no backend).
   ehAdministrador: boolean;
   permissoes: string[];
+  // Onde cada permissão vale (Responsável x Supervisão, 06/11/2026). global = todas as obras;
+  // obras = obras atribuídas. Ausente = servidor antigo ou acesso total.
+  alcance?: Record<string, { global: boolean; obras: string[] }> | null;
 }
 
 export interface CursoTreinamento {

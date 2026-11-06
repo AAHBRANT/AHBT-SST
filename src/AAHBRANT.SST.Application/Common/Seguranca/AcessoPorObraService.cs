@@ -29,15 +29,26 @@ public sealed class AcessoPorObraService(IAppDbContext db) : IAcessoPorObraServi
         if (string.IsNullOrWhiteSpace(objectId)) return new(false, Array.Empty<Guid>());
         if (_cache.TryGetValue((objectId, permissao), out var escopo)) return escopo;
 
-        var obras = await db.UsuariosPerfilObra.AsNoTracking()
+        // Coluna de alcance da matriz (06/11/2026): "Global" na linha Perfil x Permissão vale em todas
+        // as obras, mesmo com o perfil atribuído a uma obra só — é o que deixa o técnico responsável
+        // pela própria obra VER as demais (supervisão) sem poder EDITAR nelas. As outras colunas
+        // (Obra, Unidade, Próprio) ficam restritas à obra do vínculo; vínculo sem obra continua global.
+        var vinculos = await db.UsuariosPerfilObra.AsNoTracking()
             .Where(v => v.Ativo && v.Usuario != null && v.Usuario.Ativo
                 && v.Usuario.Status == StatusUsuario.Ativo && v.Usuario.AzureAdObjectId == objectId
-                && v.PerfilAcesso != null && v.PerfilAcesso.Ativo
-                && v.PerfilAcesso.Permissoes.Any(p => p.Ativo && p.Permitido
-                    && p.Permissao != null && p.Permissao.Ativo && p.Permissao.Codigo == permissao))
-            .Select(v => v.ObraId).Distinct().ToListAsync(ct);
+                && v.PerfilAcesso != null && v.PerfilAcesso.Ativo)
+            .Select(v => new
+            {
+                v.ObraId,
+                Escopos = v.PerfilAcesso!.Permissoes
+                    .Where(p => p.Ativo && p.Permitido && p.Permissao != null && p.Permissao.Ativo && p.Permissao.Codigo == permissao)
+                    .Select(p => p.Escopo).ToList()
+            })
+            .ToListAsync(ct);
 
-        escopo = new(obras.Contains(null), obras.Where(id => id.HasValue).Select(id => id!.Value).ToArray());
+        var concedidos = vinculos.Where(v => v.Escopos.Count > 0).ToList();
+        var global = concedidos.Any(v => v.ObraId == null || v.Escopos.Contains(EscopoAcesso.Global));
+        escopo = new(global, concedidos.Where(v => v.ObraId.HasValue).Select(v => v.ObraId!.Value).Distinct().ToArray());
         _cache[(objectId, permissao)] = escopo;
         return escopo;
     }

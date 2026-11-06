@@ -46,6 +46,8 @@ import {
 } from '../../lib/api';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { SeletorTemaLivre } from './SeletorTemaLivre';
+import { usePodeNaObra } from '../../lib/UsuarioLogadoContext';
+import { FaixaSupervisao } from '../../components/FaixaSupervisao';
 
 // A API devolve o instante em UTC (às vezes sem o "Z") — mostra no horário de Brasília.
 function formatarDataHoraBrasilia(iso: string) {
@@ -81,6 +83,7 @@ const tomStatusDia: Record<number, Tom> = {
 // real (encerrar semana) tem um único item condicional, sem ganho sobre um botão simples no rodapé
 // do formulário — mesmo julgamento já registrado para PcmsoDetalhePage.tsx (Task 12).
 export function DdsSemanalDetalhePage() {
+  const pode = usePodeNaObra();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [detalhe, setDetalhe] = useState<DdsSemanalDetalhe | null>(null);
@@ -302,7 +305,9 @@ export function DdsSemanalDetalhePage() {
     );
   }
 
-  const somenteLeitura = semanal.status !== StatusDdsSemanal.EmAndamento;
+  // Supervisão (06/11/2026): obra que o usuário só acompanha abre como consulta, sem ações.
+  const supervisao = !pode('dds:criar', semanal.obraId) && !pode('dds:conduzir', semanal.obraId);
+  const somenteLeitura = semanal.status !== StatusDdsSemanal.EmAndamento || supervisao;
   const podeEncerrar =
     !somenteLeitura &&
     detalhe.dias.length === 5 &&
@@ -343,6 +348,8 @@ export function DdsSemanalDetalhePage() {
       />
       {dialogoVisualizador}
 
+      {supervisao && <FaixaSupervisao obraNome={semanal.obraNome} />}
+
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}
@@ -367,6 +374,8 @@ export function DdsSemanalDetalhePage() {
                       {assinatura.nome} — {formatarDataHoraBrasilia(assinatura.assinadoEm)}
                     </Legenda>
                   </>
+                ) : supervisao ? (
+                  <StatusChip tom="atencao">Aguardando assinatura</StatusChip>
                 ) : (
                   <BotaoAcao
                     tom="assinar"

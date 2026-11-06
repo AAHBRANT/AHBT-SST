@@ -32,6 +32,8 @@ import {
   type Obra,
 } from '../../lib/api';
 import { segundaFeiraAtualIso } from '../../lib/datas';
+import { usePodeNaObra } from '../../lib/UsuarioLogadoContext';
+import { FaixaSupervisao } from '../../components/FaixaSupervisao';
 
 function semanalVazia(): NovaDdsSemanal {
   return { obraId: '', tipo: TipoDdsSemanal.Proprios, dataInicioSemana: segundaFeiraAtualIso() };
@@ -61,6 +63,8 @@ export function DdsSemanalPage() {
   const [listaCarregada, setListaCarregada] = useState(false);
   const [obrasIndisponiveis, setObrasIndisponiveis] = useState(false);
   const [painelAberto, setPainelAberto] = useState(false);
+  const [obraFiltro, setObraFiltro] = useState('');
+  const pode = usePodeNaObra();
 
   async function carregar() {
     try {
@@ -108,9 +112,28 @@ export function DdsSemanalPage() {
     }
   }
 
+  // Responsável x Supervisão (06/11/2026): "Minhas obras" = onde pode abrir semana; as demais
+  // obras visíveis são só acompanhadas (consulta).
+  const ehMinha = (obraId: string) => pode('dds:criar', obraId) || pode('dds:conduzir', obraId);
+  const minhasObras = obras.filter((o) => ehMinha(o.id));
+  const obrasSupervisao = obras.filter((o) => !ehMinha(o.id));
+  const obrasParaCriar = obras.filter((o) => pode('dds:criar', o.id));
+  const podeCriar = obrasParaCriar.length > 0;
+  const obraFiltroSelecionada = obras.find((o) => o.id === obraFiltro);
+  const linhasVisiveis = obraFiltro ? registros.filter((r) => r.obraId === obraFiltro) : registros;
+
   const colunas: Coluna<DdsSemanal>[] = [
     { chave: 'numeroDocumento', rotulo: 'Nº do documento', render: (s) => s.numeroDocumento ?? '-' },
-    { chave: 'obra', rotulo: 'Obra', render: (s) => s.obraNome },
+    {
+      chave: 'obra',
+      rotulo: 'Obra',
+      render: (s) => (
+        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          {s.obraNome}
+          {!ehMinha(s.obraId) && <StatusChip tom="neutro">Acompanhando</StatusChip>}
+        </span>
+      ),
+    },
     { chave: 'tipo', rotulo: 'Tipo', render: (s) => tipoDdsSemanalLabel[s.tipo] },
     {
       chave: 'semana',
@@ -135,7 +158,7 @@ export function DdsSemanalPage() {
       <PageHeader
         titulo="DDS — Diálogo Diário de Segurança (Registro Semanal)"
         acoes={
-          <Button
+          podeCriar && <Button
             appearance="primary"
             icon={<Add24Regular />}
             onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
@@ -153,6 +176,32 @@ export function DdsSemanalPage() {
         </FeedbackInline>
       )}
 
+      {obras.length > 1 && (
+        <div style={{ maxWidth: 360 }}>
+          <Field label="Obra">
+            <Select value={obraFiltro} onChange={(_, d) => setObraFiltro(d.value)}>
+              <option value="">Todas as obras</option>
+              {minhasObras.length > 0 && (
+                <optgroup label="Minhas obras">
+                  {minhasObras.map((o) => (
+                    <option key={o.id} value={o.id}>{o.nome}</option>
+                  ))}
+                </optgroup>
+              )}
+              {obrasSupervisao.length > 0 && (
+                <optgroup label="Supervisão (somente consulta)">
+                  {obrasSupervisao.map((o) => (
+                    <option key={o.id} value={o.id}>{o.nome}</option>
+                  ))}
+                </optgroup>
+              )}
+            </Select>
+          </Field>
+        </div>
+      )}
+
+      {obraFiltroSelecionada && !ehMinha(obraFiltroSelecionada.id) && <FaixaSupervisao obraNome={obraFiltroSelecionada.nome} />}
+
       <div id="painel-nova-semana-dds">
         <PainelCriacaoInline aberto={painelAberto} titulo="Nova semana de DDS">
           {obrasIndisponiveis && (
@@ -169,7 +218,7 @@ export function DdsSemanalPage() {
                 <Field label="Obra" required>
                   <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value })}>
                     <option value="">Selecione</option>
-                    {obras.map((obra) => (
+                    {obrasParaCriar.map((obra) => (
                       <option key={obra.id} value={obra.id}>
                         {obra.nome}
                       </option>
@@ -229,12 +278,12 @@ export function DdsSemanalPage() {
         <DataTable
           aria-label="Semanas de DDS registradas"
           colunas={colunas}
-          linhas={registros}
+          linhas={linhasVisiveis}
           chaveLinha={(s) => s.id}
           carregando={carregandoLista}
           vazio={listaCarregada ? {
             titulo: 'Nenhuma semana de DDS registrada ainda.',
-            acao: { rotulo: 'Nova semana', aoClicar: () => setPainelAberto(true) },
+            acao: podeCriar ? { rotulo: 'Nova semana', aoClicar: () => setPainelAberto(true) } : undefined,
           } : {
             titulo: 'Lista indisponível neste dispositivo.',
             descricao: 'Conecte-se à internet e carregue as semanas de DDS antes de usá-las offline.',
