@@ -29,6 +29,7 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
             .Where(p => p.DdsId == dds.Id && p.Ativo)
             .Include(p => p.Trabalhador)
             .ToListAsync(ct);
+        var participantesReais = participantes.ToList();
 
         var fotosEvidencia = await _db.DdsFotosEvidencia
             .Where(f => f.DdsId == dds.Id && f.Ativo)
@@ -76,7 +77,9 @@ public class ObterDdsDetalheQueryHandler : IRequestHandler<ObterDdsDetalheQuery,
         assinadosEmPorTrabalhador.TryGetValue(trabalhadorResponsavelId ?? Guid.Empty, out var assinaturaResponsavel);
 
         dds.ItensChecklist = itens;
-        dds.Participantes = participantes;
+        // 06/11: só as presenças reais vão para a entidade rastreada. As "virtuais" (assinatura sem presença)
+        // ficam só no DTO — na entidade, o EF tentava gravá-las (UPDATE sem linha → 409) quando o PDF salva o rastreio.
+        dds.Participantes = participantesReais;
         dds.FotosEvidencia = fotosEvidencia;
 
         return new DdsDetalheDto
