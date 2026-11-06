@@ -3251,6 +3251,10 @@ export interface DdsDetalhe {
   participantes: DdsParticipante[];
   funcionariosSelecionados: DdsFuncionario[];
   fotosEvidencia: DdsFotoEvidencia[];
+  // 06/11: técnico responsável assina na mesma fila (null = sem cadastro de funcionário).
+  responsavelTrabalhadorId?: string | null;
+  responsavelAssinadoEm?: string | null;
+  responsavelMetodoAssinatura?: number | null;
 }
 
 export interface DdsFuncionario {

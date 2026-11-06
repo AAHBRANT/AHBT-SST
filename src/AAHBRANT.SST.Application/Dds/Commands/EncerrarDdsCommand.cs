@@ -51,6 +51,15 @@ public class EncerrarDdsCommandHandler : IRequestHandler<EncerrarDdsCommand>
         foreach (var foto in fotos)
             AAHBRANT.SST.Application.Common.DadosCapturaFoto.ExigirCompletaSeInformada(foto.FotoMetadadosJson, $"Foto {foto.Ordem}");
 
+        // 06/11 (trava): o DDS só encerra depois que o técnico responsável assinar na fila.
+        var trabalhadorResponsavelId = await _db.Usuarios.Where(u => u.Id == dds.ResponsavelUsuarioId)
+            .Select(u => u.TrabalhadorId).FirstOrDefaultAsync(ct);
+        if (trabalhadorResponsavelId is { } tr && !await _db.DocumentoSignatarios.AnyAsync(s =>
+                s.TrabalhadorId == tr && s.Ativo
+                && s.DocumentoAssinatura!.EntidadeTipo == nameof(Domain.Entidades.Dds) && s.DocumentoAssinatura.EntidadeId == dds.Id
+                && s.DocumentoAssinatura.Status != StatusDocumentoAssinatura.Cancelado, ct))
+            throw new InvalidOperationException("O técnico responsável precisa assinar na fila (digital ou facial) antes de encerrar o DDS.");
+
         dds.Status = StatusDds.Concluido;
         dds.EncerradoEm = DateTime.UtcNow;
 

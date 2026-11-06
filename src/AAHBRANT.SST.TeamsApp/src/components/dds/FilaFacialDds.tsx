@@ -7,12 +7,15 @@ import { tocarBipeAssinaturaAceita, tocarBipeNegado } from '../../lib/bipeAssina
 import { useDetectorRosto } from '../camera/useDetectorRosto';
 
 export interface ResultadoFilaFacial {
+  trabalhadorId?: string;
   trabalhadorNome: string;
   jaConfirmado: boolean;
 }
 
 interface FilaFacialDdsProps {
   ddsId?: string;
+  // 06/11: técnico responsável do DDS — assina na mesma fila, como assinatura do responsável.
+  trabalhadorResponsavelId?: string;
   // Envio próprio da foto (19/10): a turma de treinamento reaproveita esta mesma fila em tela cheia.
   // Sem ele, usa o endpoint de fila do DDS.
   enviarFoto?: (foto: File) => Promise<ResultadoFilaFacial>;
@@ -87,12 +90,14 @@ function mensagemDoErro(e: unknown): string {
 // funcionário só olha para ela e a presença é confirmada sozinha, com bipe (igual à fila da digital).
 // O detector de rosto decide quando capturar (um rosto bom e estável); quem identifica é o Azure, no
 // servidor, que recusa leituras ambíguas. Ver RegistrarParticipanteFacialFilaCommand.
-export function FilaFacialDds({ ddsId, enviarFoto, titulo, subtitulo, totalInscritos, aberto, aoFechar, aoPresencaConfirmada }: FilaFacialDdsProps) {
+export function FilaFacialDds({ ddsId, trabalhadorResponsavelId, enviarFoto, titulo, subtitulo, totalInscritos, aberto, aoFechar, aoPresencaConfirmada }: FilaFacialDdsProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   // Guardado em ref para que a identidade de capturarEEnviar não mude a cada render da tela do DDS (o
   // efeito do detector contaria um "ciclo bom" a mais a cada render).
   const aoConfirmadaRef = useRef(aoPresencaConfirmada);
   aoConfirmadaRef.current = aoPresencaConfirmada;
+  const responsavelRef = useRef(trabalhadorResponsavelId);
+  responsavelRef.current = trabalhadorResponsavelId;
   const enviarRef = useRef(enviarFoto);
   enviarRef.current = enviarFoto;
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -184,9 +189,11 @@ export function FilaFacialDds({ ddsId, enviarFoto, titulo, subtitulo, totalInscr
         novo = { tom: 'info', titulo: r.trabalhadorNome, detalhe: 'Presença já estava confirmada.' };
       } else {
         const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        setConfirmados((lista) => [{ nome: r.trabalhadorNome, hora }, ...lista]);
+        const ehResponsavel = !!responsavelRef.current && r.trabalhadorId === responsavelRef.current;
+        if (!ehResponsavel) setConfirmados((lista) => [{ nome: r.trabalhadorNome, hora }, ...lista]);
         aoConfirmadaRef.current();
-        novo = { tom: 'ok', titulo: r.trabalhadorNome, detalhe: `Presença confirmada · ${hora}` };
+        novo = { tom: 'ok', titulo: r.trabalhadorNome,
+          detalhe: ehResponsavel ? `Assinatura do técnico responsável · ${hora}` : `Presença confirmada · ${hora}` };
       }
     } catch (e) {
       tocarBipeNegado();

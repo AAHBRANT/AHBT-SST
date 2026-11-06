@@ -2562,6 +2562,21 @@ public static class NovidadesSeeder
                     "Nas obras com PGR gerado pela EAP, o tema do DDS vinha só com perigo e consequência, sem as medidas e sem o checklist.",
                     "O tema traz as medidas de prevenção aprovadas no PGR e elas viram itens do checklist do DDS."),
             }),
+        new(
+            Versao: "5.145.0",
+            Titulo: "DDS: técnico assina na fila e o DDS só encerra com a assinatura dele",
+            DataPublicacao: new DateTime(2026, 11, 6, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Uma fila para todas as assinaturas do DDS",
+                    "O DDS tinha a fila de presença e, à parte, o botão Assinar DDS, o que confundia quem assinava.",
+                    "O botão Assinar DDS saiu. Funcionários e o técnico responsável assinam na mesma fila, pela digital ou pelo rosto. Quando o técnico passa, a tela avisa que é a assinatura do responsável, e o card mostra se ela já foi feita."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Encerrar DDS exige a assinatura do técnico",
+                    "Era possível encerrar o DDS sem a assinatura do técnico responsável.",
+                    "O Encerrar DDS só libera depois que o técnico responsável assinar na fila. No PDF ele aparece só no bloco do responsável, e não repetido na lista de presença."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

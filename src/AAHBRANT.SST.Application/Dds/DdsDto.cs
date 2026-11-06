@@ -76,6 +76,11 @@ public class DdsDetalheDto
     public List<DdsParticipanteDto> Participantes { get; set; } = new();
     public List<DdsFuncionarioDto> FuncionariosSelecionados { get; set; } = new();
     public List<DdsFotoEvidenciaDto> FotosEvidencia { get; set; } = new();
+    // 06/11: técnico responsável assina pela fila; null = o usuário responsável não tem cadastro de
+    // funcionário (não assina por biometria, e o encerramento não exige a assinatura dele).
+    public Guid? ResponsavelTrabalhadorId { get; set; }
+    public DateTime? ResponsavelAssinadoEm { get; set; }
+    public MetodoAutenticacaoAssinatura? ResponsavelMetodoAssinatura { get; set; }
 }
 
 public record DdsFuncionarioDto(Guid TrabalhadorId, string Nome, string? Matricula);
