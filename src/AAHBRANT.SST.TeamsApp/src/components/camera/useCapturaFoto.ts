@@ -341,9 +341,9 @@ export function useCapturaFoto({
     if (!video || !video.videoWidth || processando) return;
     const capturadaEm = new Date();
     const canvas = document.createElement('canvas');
-    if (modoCamera === 'user') {
-      // Foto de rosto (04/11): salva um 3×4 em pé, centralizado no rosto, em qualquer orientação do
-      // aparelho — cadastro e assinatura saem sempre no mesmo padrão.
+    if (modoCamera === 'user' && modoCaptura === 'assinatura') {
+      // Foto de rosto (04/11): a assinatura salva um 3×4 em pé, centralizado no rosto. O cadastro (06/11)
+      // não recorta: o recorte reduzia a foto (640x480 → 324x432) e o servidor recusava por resolução baixa.
       const m = recorteNoRosto(video.videoWidth, video.videoHeight, rosto);
       canvas.width = m.largura;
       canvas.height = m.altura;
