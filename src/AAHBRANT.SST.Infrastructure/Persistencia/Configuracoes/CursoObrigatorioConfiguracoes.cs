@@ -11,6 +11,7 @@ public class RegraCursoObrigatorioConfiguracao : IEntityTypeConfiguration<RegraC
         builder.Property(r => r.Norma).HasMaxLength(20).IsRequired();
         builder.Property(r => r.Descricao).HasMaxLength(200).IsRequired();
         builder.Property(r => r.PalavrasChave).HasMaxLength(1000);
+        builder.Property(r => r.Perigos).HasMaxLength(1000);
         builder.HasOne(r => r.CursoTreinamento).WithMany()
             .HasForeignKey(r => r.CursoTreinamentoId).OnDelete(DeleteBehavior.Restrict);
         builder.HasQueryFilter(r => r.Ativo);

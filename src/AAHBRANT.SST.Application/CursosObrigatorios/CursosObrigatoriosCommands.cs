@@ -136,7 +136,8 @@ public record SalvarRegraCursoObrigatorioCommand(
     string Descricao,
     bool AplicaTodasFuncoes,
     string? PalavrasChave,
-    bool Ativo) : IRequest<Guid>;
+    bool Ativo,
+    string? Perigos = null) : IRequest<Guid>;
 
 public class SalvarRegraCursoObrigatorioCommandValidator : AbstractValidator<SalvarRegraCursoObrigatorioCommand>
 {
@@ -146,8 +147,10 @@ public class SalvarRegraCursoObrigatorioCommandValidator : AbstractValidator<Sal
             .Must(n => GeradorCursosObrigatorios.NumeroNr(n) is not null).WithMessage("Informe a NR no formato NR-35.");
         RuleFor(x => x.Descricao).NotEmpty().MaximumLength(200);
         RuleFor(x => x.PalavrasChave).MaximumLength(1000);
-        RuleFor(x => x.PalavrasChave).NotEmpty().When(x => !x.AplicaTodasFuncoes)
-            .WithMessage("Informe as palavras do PGR que tornam a NR obrigatória, ou marque \"todas as funções\".");
+        RuleFor(x => x.Perigos).MaximumLength(1000);
+        RuleFor(x => x.PalavrasChave).NotEmpty()
+            .When(x => !x.AplicaTodasFuncoes && string.IsNullOrWhiteSpace(x.Perigos))
+            .WithMessage("Informe os perigos ou as palavras do PGR que tornam a NR obrigatória, ou marque \"todas as funções\".");
     }
 }
 
@@ -172,7 +175,8 @@ public class SalvarRegraCursoObrigatorioCommandHandler : IRequestHandler<SalvarR
         regra.CursoTreinamentoId = request.CursoTreinamentoId;
         regra.Descricao = request.Descricao.Trim();
         regra.AplicaTodasFuncoes = request.AplicaTodasFuncoes;
-        regra.PalavrasChave = request.AplicaTodasFuncoes ? null : request.PalavrasChave?.Trim();
+        regra.PalavrasChave = request.AplicaTodasFuncoes || string.IsNullOrWhiteSpace(request.PalavrasChave) ? null : request.PalavrasChave.Trim();
+        regra.Perigos = request.AplicaTodasFuncoes || string.IsNullOrWhiteSpace(request.Perigos) ? null : request.Perigos.Trim();
         regra.Ativo = request.Ativo;
         await _db.SaveChangesAsync(ct);
         return regra.Id;

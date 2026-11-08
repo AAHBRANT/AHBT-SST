@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
+import { dataBr } from '../../components/documentos-obra/CartoesVigentesPorObra';
 import { useParams } from 'react-router-dom';
 import {
   Abas,
@@ -207,7 +208,7 @@ export function PcmsoDetalhePage() {
     { chave: 'descricao', rotulo: 'Descrição' },
     { chave: 'responsavel', rotulo: 'Responsável', render: (a) => a.responsavelUsuarioNome ?? '—' },
     { chave: 'prioridade', rotulo: 'Prioridade', render: (a) => prioridadeAcaoLabel[a.prioridade] },
-    { chave: 'prazo', rotulo: 'Prazo', largura: '108px', render: (a) => a.prazo?.slice(0, 10) ?? '—' },
+    { chave: 'prazo', rotulo: 'Prazo', largura: '108px', render: (a) => dataBr(a.prazo) },
     {
       chave: 'status',
       rotulo: 'Status',

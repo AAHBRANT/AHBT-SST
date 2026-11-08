@@ -1,12 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Abas, DashboardTopo, PageHeader, useAbaNaUrl } from '@ui';
+import { Abas, PageHeader, useAbaNaUrl } from '@ui';
 import { PgrsTab } from './PgrsTab';
-import { PgrDashboardTab } from './dashboard/PgrDashboardTab';
 import { MatrizRiscoTab } from '../riscos/MatrizRiscoTab';
 import { AtividadesTab } from '../riscos/AtividadesTab';
-import { ImportarLoteTab } from '../riscos/ImportarLoteTab';
-import { RiscosDashboardTab } from '../riscos/dashboard/RiscosDashboardTab';
 
 // Item "PGR / GRO" da sidebar (02/09): PGR e Riscos juntos porque fazem sentido juntos de verdade
 // (Riscos é a matriz de risco que o PGR consome — pedido explícito do usuário), não porque é
@@ -20,10 +17,10 @@ import { RiscosDashboardTab } from '../riscos/dashboard/RiscosDashboardTab';
 //
 // ?aba=riscos continua funcionando (usado pelo redirecionamento do antigo item "Riscos" da
 // sidebar) — mapeado para "matriz", que era a aba inicial de RiscosPage.
-type AbaPgrGro = 'pgrs' | 'matriz' | 'atividades' | 'importar';
-type DashboardPgrGro = 'pgr' | 'riscos';
+// "Importar em Lote" removida em 06/11/2026: todo PGR nasce da EAP; a tela ImportarLoteTab.tsx foi apagada.
+type AbaPgrGro = 'pgrs' | 'matriz' | 'atividades';
 
-const ABAS_VALIDAS: readonly AbaPgrGro[] = ['pgrs', 'matriz', 'atividades', 'importar'];
+const ABAS_VALIDAS: readonly AbaPgrGro[] = ['pgrs', 'matriz', 'atividades'];
 
 // Onda 2 Task 8 (camada ui/): só o título (guia item 3) está no escopo literal desta task — o
 // conteúdo das abas "matriz"/"atividades"/"importar"/"dashboardRiscos" pertence ao módulo `riscos`
@@ -50,25 +47,12 @@ export function PgrRiscosPage({ mostrarTitulo = true }: { mostrarTitulo?: boolea
   }, [searchParams, setSearchParams]);
 
   const [aba, setAba] = useAbaNaUrl<AbaPgrGro>('aba', ABAS_VALIDAS, 'pgrs');
-  const [dashboard, setDashboard] = useState<DashboardPgrGro>('pgr');
 
   return (
     <div>
       {mostrarTitulo && <PageHeader titulo="PGR / GRO" />}
 
-      <DashboardTopo>
-        <Abas
-          nivel="interno"
-          aria-label="Dashboard de PGR ou de Riscos"
-          valor={dashboard}
-          aoMudar={setDashboard}
-          abas={[
-            { valor: 'pgr', rotulo: 'PGR' },
-            { valor: 'riscos', rotulo: 'Riscos' },
-          ]}
-        />
-        {dashboard === 'pgr' ? <PgrDashboardTab /> : <RiscosDashboardTab />}
-      </DashboardTopo>
+      {/* Dashboard removido em 06/11/2026: no lugar, o PGR vigente de cada obra (aba PGRs). */}
 
       <Abas
         nivel={mostrarTitulo ? 'pilar' : 'modulo'}
@@ -79,14 +63,12 @@ export function PgrRiscosPage({ mostrarTitulo = true }: { mostrarTitulo?: boolea
           { valor: 'pgrs', rotulo: 'PGRs' },
           { valor: 'matriz', rotulo: 'Matriz de Risco' },
           { valor: 'atividades', rotulo: 'Atividades' },
-          { valor: 'importar', rotulo: 'Importar em Lote' },
         ]}
       />
 
       {aba === 'pgrs' && <PgrsTab />}
       {aba === 'matriz' && <MatrizRiscoTab />}
       {aba === 'atividades' && <AtividadesTab />}
-      {aba === 'importar' && <ImportarLoteTab />}
     </div>
   );
 }

@@ -1,21 +1,30 @@
+import { dataBr } from '../../components/documentos-obra/CartoesVigentesPorObra';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Abas, Button, Card, Carregando, FeedbackInline, PageHeader, StatusChip, Text, type Tom } from '@ui';
-import { DocumentArrowUp24Regular } from '@fluentui/react-icons';
+import { DocumentArrowUp24Regular, DocumentPdf24Regular } from '@fluentui/react-icons';
 import { DialogoNovaRevisao } from '../../components/revisoes/DialogoNovaRevisao';
 import { BotaoLerComIa, PainelLeituraIa, useLeituraIa } from '../../components/leitura-ia/PainelLeituraIa';
-import { api, statusPgrLabel, type Obra, type PgrDetalhe } from '../../lib/api';
+import {
+  api,
+  statusPgrLabel,
+  StatusControleRisco,
+  type Obra,
+  type PgrDetalhe,
+  type ResumoGeracaoPgrEap,
+} from '../../lib/api';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { GhesTab } from '../../components/estrutura-sst/GhesTab';
 import { InventarioTab } from './InventarioTab';
 import { PlanoAcaoTab } from './PlanoAcaoTab';
 import { PgrRevisoesTab } from './PgrRevisoesTab';
-import { VisualizadorDocumentoPdf } from '../../components/VisualizadorDocumentoPdf';
+import { DialogoNovaRevisaoPgr } from './DialogoNovaRevisaoPgr';
 
-type AbaPgr = 'documento' | 'ghe' | 'inventario' | 'planoAcao' | 'revisoes';
+type AbaPgr = 'resumo' | 'ghe' | 'inventario' | 'planoAcao' | 'revisoes';
 
-// Mapeamento por julgamento (guia item 5, "não é 1:1 mecânico"): Vigente é o único estado
-// claramente positivo (ok); Em revisão pede atenção (atencao); Encerrado é neutro-informativo, não
-// um alerta (info) — mesmo raciocínio de tomPorStatusApr (AprsTab.tsx), aplicado ao enum de PGR.
+// Mapeamento por julgamento (guia item 5): Vigente é o único estado claramente positivo (ok); Em
+// revisão pede atenção; Encerrado é neutro-informativo (info).
 const tomPorStatusPgr: Record<number, Tom> = {
   1: 'neutro', // EmElaboracao
   2: 'ok', // Vigente
@@ -23,21 +32,22 @@ const tomPorStatusPgr: Record<number, Tom> = {
   4: 'info', // Encerrado
 };
 
-// Onda 2 Task 8 (camada ui/): detalhe do PGR (inventário de riscos + plano de ação + revisões). Sem
-// DetailPageLayout/WorkflowActions — `api.pgrs` só expõe CRUD (criar/atualizar/excluir), não há um
-// conjunto de ações de fluxo nomeadas (aprovar/reprovar) como em AprDetalhePage.tsx; o status muda por
-// edição normal do registro, não por uma transição de estado dedicada. Por isso PageHeader + Card
-// empilhados, mesmo julgamento já usado em TrabalhadorDetalhePage.tsx/PcmsoDetalhePage.tsx — e mesma
-// razão para as abas internas usarem `Abas nivel="modulo"` sem `useAbaNaUrl` (reservado aos dois
-// níveis da página-pilar, spec §4.1).
+// Detalhe do PGR (reformulado em 07/11/2026): abre num Resumo com os números do PGR; o PDF virou
+// botão no cabeçalho. Toda revisão nasce da EAP ("Nova revisão pela EAP"). "Ler com IA" só para PGR
+// importado (legado) e só para o Admin. Origem (EAP x importado) aparece ao lado do status, e um aviso
+// surge quando faltam 60 dias ou menos para a revisão (ou ela já passou).
 export function PgrDetalhePage() {
   const { id } = useParams<{ id: string }>();
-  const [aba, setAba] = useState<AbaPgr>('documento');
+  const navigate = useNavigate();
+  const souAdmin = useSouAdministrador();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
+  const [aba, setAba] = useState<AbaPgr>('resumo');
   const [detalhe, setDetalhe] = useState<PgrDetalhe | null>(null);
   const [obras, setObras] = useState<Obra[]>([]);
+  const [geracao, setGeracao] = useState<ResumoGeracaoPgrEap | undefined>();
   const [erro, setErro] = useState<string | null>(null);
   const [novaRevisaoAberta, setNovaRevisaoAberta] = useState(false);
-  // Muda a cada revisão salva para o visualizador e o histórico recarregarem.
+  const [revisaoEapAberta, setRevisaoEapAberta] = useState(false);
   const [versaoDocumento, setVersaoDocumento] = useState(0);
   const leituraIa = useLeituraIa('pgr', id ?? '');
 
@@ -45,9 +55,14 @@ export function PgrDetalhePage() {
     if (!id) return;
     try {
       setErro(null);
-      const [det, obrs] = await Promise.all([api.pgrs.obterDetalhe(id), api.obras.listar()]);
+      const [det, obrs, gers] = await Promise.all([
+        api.pgrs.obterDetalhe(id),
+        api.obras.listar(),
+        api.geracoesPgrEap.listar().catch(() => [] as ResumoGeracaoPgrEap[]),
+      ]);
       setDetalhe(det);
       setObras(obrs);
+      setGeracao(gers.find((g) => g.pgrId === id));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar PGR.');
     }
@@ -66,9 +81,6 @@ export function PgrDetalhePage() {
     return <FeedbackInline tom="erro">PGR não encontrado.</FeedbackInline>;
   }
 
-  // Erro na carga inicial precisa aparecer aqui: sem isso o skeleton ficaria para sempre e a falha
-  // (API fora, id inexistente) não teria onde ser lida — mesmo padrão de AprDetalhePage.tsx (Task
-  // 11): retorno antecipado com OU o erro OU o skeleton, nunca cabeçalho+skeleton+erro empilhados.
   if (!detalhe) {
     return erro ? (
       <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar de novo', aoClicar: () => void carregar() }}>
@@ -79,19 +91,75 @@ export function PgrDetalhePage() {
     );
   }
 
+  const pgrId = id;
+  const pgr = detalhe.pgr;
+  const importado = !geracao;
   const riscosDisponiveis = detalhe.atividades.flatMap((a) => a.riscos);
+  const riscosAltos = riscosDisponiveis.filter((r) => r.nivelRisco >= 4).length;
+  const acoesTotal = detalhe.planoDeAcao.length;
+  const acoesConcluidas = detalhe.planoDeAcao.filter((a) => a.status === StatusControleRisco.Concluido).length;
+
+  const hoje = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00');
+  const fimVigencia = pgr.dataProximaRevisao ?? pgr.dataTermino ?? null;
+  const diasParaRevisao = fimVigencia
+    ? Math.round((new Date(fimVigencia.slice(0, 10) + 'T00:00:00').getTime() - hoje.getTime()) / 86400000)
+    : null;
+
+  // PGR da EAP: pergunta o motivo e parte da revisão anterior. Importado (legado): gera pela EAP do zero.
+  function novaRevisao() {
+    if (geracao) setRevisaoEapAberta(true);
+    else navigate('/prevencao/pgr/gerar-eap');
+  }
+
+  function abrirPdf() {
+    void visualizar({
+      titulo: pgr.nome,
+      nomeArquivo: `${pgr.nome}.pdf`,
+      obter: async () => {
+        if (geracao) return api.geracoesPgrEap.baixarPdf(geracao.id);
+        const blob = await api.pgrs.obterDocumento(pgrId);
+        if (!blob) throw new Error('Este PGR não tem PDF anexado.');
+        return blob;
+      },
+    });
+  }
+
+  const indicadores: { rotulo: string; valor: string | number; aba: AbaPgr }[] = [
+    { rotulo: 'Atividades', valor: detalhe.atividades.length, aba: 'inventario' },
+    { rotulo: 'Riscos avaliados', valor: riscosDisponiveis.length, aba: 'inventario' },
+    { rotulo: 'Riscos altos ou críticos', valor: riscosAltos, aba: 'inventario' },
+    {
+      rotulo: 'Plano de ação',
+      valor: acoesTotal ? `${acoesConcluidas} de ${acoesTotal} concluídas` : 'Sem ações',
+      aba: 'planoAcao',
+    },
+  ];
 
   return (
     <div>
       <PageHeader
-        titulo={detalhe.pgr.nome}
+        titulo={pgr.nome}
         status={
-          <StatusChip tom={tomPorStatusPgr[detalhe.pgr.status] ?? 'neutro'}>
-            {statusPgrLabel[detalhe.pgr.status]}
-          </StatusChip>
+          <span style={{ display: 'inline-flex', gap: 6 }}>
+            <StatusChip tom={tomPorStatusPgr[pgr.status] ?? 'neutro'}>{statusPgrLabel[pgr.status]}</StatusChip>
+            <StatusChip tom={importado ? 'neutro' : 'atencao'}>
+              {importado ? 'Importado (legado)' : 'Gerado pela EAP'}
+            </StatusChip>
+          </span>
         }
-        voltarPara="/prevencao/pgr"
-        rotuloVoltar="Voltar para PGR"
+        acoes={
+          <>
+            {importado && souAdmin && (
+              <BotaoLerComIa aoClicar={leituraIa.iniciar} desabilitado={leituraIa.lendo || leituraIa.iniciando} />
+            )}
+            <Button icon={<DocumentArrowUp24Regular />} onClick={novaRevisao}>
+              Nova revisão
+            </Button>
+            <Button appearance="primary" icon={<DocumentPdf24Regular />} onClick={abrirPdf}>
+              Abrir PDF
+            </Button>
+          </>
+        }
       />
 
       {erro && (
@@ -100,15 +168,34 @@ export function PgrDetalhePage() {
         </FeedbackInline>
       )}
 
+      {diasParaRevisao !== null && diasParaRevisao <= 60 && (
+        <div style={{ marginBottom: 16 }}>
+          <FeedbackInline
+            tom="aviso"
+            acao={{ rotulo: 'Nova revisão', aoClicar: novaRevisao }}
+          >
+            {diasParaRevisao < 0
+              ? `A data de revisão foi há ${-diasParaRevisao} dias. Gere a nova versão do PGR pela EAP.`
+              : `Revisão em ${diasParaRevisao} dias. Já dá para começar a nova versão do PGR pela EAP.`}
+          </FeedbackInline>
+        </div>
+      )}
+
       <div style={{ marginBottom: 16 }}>
         <Card densidade="compacta">
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Text>Obra: {nomeObra(detalhe.pgr.obraId)}</Text>
-            <Text>Elaboração: {detalhe.pgr.dataElaboracao?.slice(0, 10)}</Text>
-            {detalhe.pgr.dataProximaRevisao && (
-              <Text>Próxima revisão: {detalhe.pgr.dataProximaRevisao.slice(0, 10)}</Text>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Text>
+              <b>Obra:</b> {nomeObra(pgr.obraId)}
+            </Text>
+            <Text>
+              <b>Vigência:</b> {dataBr(pgr.dataElaboracao)} → {dataBr(fimVigencia)}
+              {diasParaRevisao !== null && diasParaRevisao > 60 ? ` (faltam ${diasParaRevisao} dias)` : ''}
+            </Text>
+            {geracao?.aprovadoPorNome && (
+              <Text>
+                <b>Aprovado por:</b> {geracao.aprovadoPorNome}
+              </Text>
             )}
-            {detalhe.pgr.dataTermino && <Text>Término: {detalhe.pgr.dataTermino.slice(0, 10)}</Text>}
           </div>
         </Card>
       </div>
@@ -120,52 +207,62 @@ export function PgrDetalhePage() {
           valor={aba}
           aoMudar={setAba}
           abas={[
-            { valor: 'documento', rotulo: 'PGR' },
+            { valor: 'resumo', rotulo: 'Resumo' },
             { valor: 'ghe', rotulo: 'GHE' },
-            { valor: 'inventario', rotulo: 'Inventário de riscos' },
+            { valor: 'inventario', rotulo: 'Riscos e medidas' },
             { valor: 'planoAcao', rotulo: 'Plano de ação' },
             { valor: 'revisoes', rotulo: 'Revisões' },
           ]}
         />
       </div>
 
-      {aba === 'documento' && <PainelLeituraIa documento="pgr" estado={leituraIa} />}
-      {aba === 'documento' && (
-        <VisualizadorDocumentoPdf
-          key={versaoDocumento}
-          id={id}
-          obterDocumento={() => api.pgrs.obterDocumento(id)}
-          enviarDocumento={(arquivo) => api.pgrs.enviarDocumento(id, arquivo)}
-          acoes={
-            <>
-              <Button icon={<DocumentArrowUp24Regular />} onClick={() => setNovaRevisaoAberta(true)}>
-                Nova revisão
-              </Button>
-              <BotaoLerComIa aoClicar={leituraIa.iniciar} desabilitado={leituraIa.lendo || leituraIa.iniciando} />
-            </>
-          }
-        />
+      {aba === 'resumo' && (
+        <>
+          {importado && souAdmin && <PainelLeituraIa documento="pgr" estado={leituraIa} />}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+            {indicadores.map((k) => (
+              <button
+                key={k.rotulo}
+                type="button"
+                onClick={() => setAba(k.aba)}
+                style={{
+                  textAlign: 'left',
+                  background: '#fff',
+                  border: '1px solid #e5e7eb',
+                  borderLeft: '4px solid #670000',
+                  borderRadius: 8,
+                  padding: '14px 16px',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                }}
+              >
+                <div style={{ fontSize: 12, color: '#6b7280' }}>{k.rotulo}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{k.valor}</div>
+              </button>
+            ))}
+          </div>
+        </>
       )}
-      {aba === 'ghe' && <GhesTab obraId={detalhe.pgr.obraId} />}
+      {aba === 'ghe' && <GhesTab obraId={pgr.obraId} />}
       {aba === 'inventario' && <InventarioTab atividades={detalhe.atividades} aoAlterar={carregar} />}
-      {aba === 'planoAcao' && <PlanoAcaoTab pgrId={id} riscosDisponiveis={riscosDisponiveis} />}
-      {aba === 'revisoes' && <PgrRevisoesTab key={versaoDocumento} pgrId={id} />}
+      {aba === 'planoAcao' && <PlanoAcaoTab pgrId={pgrId} riscosDisponiveis={riscosDisponiveis} />}
+      {aba === 'revisoes' && <PgrRevisoesTab key={versaoDocumento} pgrId={pgrId} />}
+      {dialogoVisualizador}
+      <DialogoNovaRevisaoPgr
+        aberto={revisaoEapAberta}
+        obraId={pgr.obraId}
+        obraNome={nomeObra(pgr.obraId)}
+        rotuloAtual={`PGR atual vigente até ${dataBr(fimVigencia)}`}
+        aoFechar={() => setRevisaoEapAberta(false)}
+      />
       <DialogoNovaRevisao
         aberto={novaRevisaoAberta}
         documento="PGR"
         aoFechar={() => setNovaRevisaoAberta(false)}
-        salvar={(dados) => api.pgrRevisoes.nova(id, dados)}
+        salvar={(dados) => api.pgrRevisoes.nova(pgrId, dados)}
         aoSalvar={() => {
           setNovaRevisaoAberta(false);
           setVersaoDocumento((v) => v + 1);
-        }}
-        acaoExtra={{
-          rotulo: 'Salvar e ler com IA',
-          aoSalvar: () => {
-            setNovaRevisaoAberta(false);
-            setVersaoDocumento((v) => v + 1);
-            leituraIa.iniciar();
-          },
         }}
       />
     </div>

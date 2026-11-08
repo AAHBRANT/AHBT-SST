@@ -27,7 +27,12 @@ public class ListarAtividadesQueryHandler : IRequestHandler<ListarAtividadesQuer
                 Id = a.Id,
                 ObraId = a.ObraId,
                 Nome = a.Nome,
-                Descricao = a.Descricao
+                Descricao = a.Descricao,
+                GheNumero = a.Ghe != null ? a.Ghe.Numero : null,
+                GheSetor = a.Ghe != null ? a.Ghe.Setor : null,
+                RiscosAltos = a.Riscos.Count(r => r.NivelRisco >= Domain.Enums.NivelRisco.Alto),
+                RiscosModerados = a.Riscos.Count(r => r.NivelRisco == Domain.Enums.NivelRisco.Moderado),
+                RiscosBaixos = a.Riscos.Count(r => r.NivelRisco <= Domain.Enums.NivelRisco.Baixo)
             })
             .ToListAsync(ct);
     }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { escolherObraInicial, useObraLembrada } from '../../hooks/useObraLembrada';
 import {
   Button,
   Card,
@@ -43,7 +44,7 @@ const ghe = (n: number) => String(n).padStart(2, '0');
 
 export function EscopoPcmsoTab() {
   const [obras, setObras] = useState<Obra[]>([]);
-  const [obraId, setObraId] = useState('');
+  const [obraId, setObraId] = useObraLembrada();
   const [escopo, setEscopo] = useState<EscopoPcmso | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -60,7 +61,7 @@ export function EscopoPcmsoTab() {
       .listar()
       .then((lista) => {
         setObras(lista);
-        if (lista.length === 1) setObraId(lista[0].id);
+        setObraId(escolherObraInicial(lista));
       })
       .catch((e) => setErro(e instanceof Error ? e.message : 'Falha ao carregar obras.'));
   }, []);

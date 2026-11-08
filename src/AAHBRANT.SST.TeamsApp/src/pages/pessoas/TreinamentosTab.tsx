@@ -23,7 +23,14 @@ import {
   type Coluna,
 } from '@ui';
 import { Add24Regular, ArrowDownload24Regular, ClipboardTaskListLtr24Regular, Delete24Regular, Eye24Regular, Signature24Regular } from '@fluentui/react-icons';
-import { api, type CursoTreinamento, type NovoTreinamento, type Treinamento } from '../../lib/api';
+import {
+  api,
+  OrigemCertificadoTreinamento,
+  type CertificadoLido,
+  type CursoTreinamento,
+  type NovoTreinamento,
+  type Treinamento,
+} from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { AssinaturaCertificadoTreinamentoDialog } from '../../components/assinatura/AssinaturaCertificadoTreinamentoDialog';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
@@ -77,6 +84,81 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const sucessoToast = useSucessoToast();
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
+  // Certificado externo enviado no cadastro (07/11/2026): a IA lê, o técnico confere; o arquivo vai já girado.
+  const [arquivoCert, setArquivoCert] = useState<File | null>(null);
+  const [lido, setLido] = useState<CertificadoLido | null>(null);
+  const [lendo, setLendo] = useState(false);
+  const [corrigindoId, setCorrigindoId] = useState<string | null>(null);
+
+  async function escolherCertificado(arquivo: File | null) {
+    setArquivoCert(arquivo);
+    setLido(null);
+    if (!arquivo) return;
+    try {
+      setLendo(true);
+      setErroPainel(null);
+      const r = await api.treinamentos.lerCertificado(trabalhadorId, arquivo);
+      setLido(r);
+      setNovoTreinamento((n) => ({
+        ...n,
+        origemCertificado: OrigemCertificadoTreinamento.Externo,
+        cursoTreinamentoId: r.cursoTreinamentoId ?? n.cursoTreinamentoId,
+        dataRealizacao: r.dataRealizacao?.slice(0, 10) ?? n.dataRealizacao,
+        dataValidade: r.dataValidade?.slice(0, 10) ?? n.dataValidade,
+        cargaHorariaRealizada: r.cargaHoraria ?? n.cargaHorariaRealizada,
+        instituicaoInstrutor: r.instituicao ?? n.instituicaoInstrutor,
+        instrutorRegistroProfissional: r.registroInstrutor ?? n.instrutorRegistroProfissional,
+        numeroCertificado: r.numeroCertificado ?? n.numeroCertificado,
+      }));
+    } catch (e) {
+      setErroPainel(
+        (e instanceof Error ? e.message : 'A IA não conseguiu ler o certificado.') + ' Preencha os dados manualmente; o arquivo será anexado.',
+      );
+      setNovoTreinamento((n) => ({ ...n, origemCertificado: OrigemCertificadoTreinamento.Externo }));
+    } finally {
+      setLendo(false);
+    }
+  }
+
+  async function anexarDepois(t: Treinamento, arquivo: File | null) {
+    if (!arquivo) return;
+    try {
+      setCorrigindoId(t.id);
+      let rotacao = 0;
+      try {
+        rotacao = (await api.treinamentos.lerCertificado(trabalhadorId, arquivo)).rotacao;
+      } catch {
+        // Sem leitura da IA o arquivo entra como veio.
+      }
+      await api.treinamentos.anexarArquivoCertificado(t.id, arquivo, rotacao);
+      await carregar();
+      sucessoToast(rotacao ? 'Certificado anexado e endireitado pela IA.' : 'Certificado anexado.');
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao anexar o certificado.');
+    } finally {
+      setCorrigindoId(null);
+    }
+  }
+
+  async function corrigirImagem(t: Treinamento) {
+    try {
+      setCorrigindoId(t.id);
+      const { rotacao } = await api.treinamentos.corrigirArquivoCertificado(t.id);
+      sucessoToast(rotacao ? `Imagem corrigida (girada ${rotacao}°).` : 'A imagem já estava na posição certa.');
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao corrigir a imagem.');
+    } finally {
+      setCorrigindoId(null);
+    }
+  }
+
+  function verAnexo(t: Treinamento) {
+    void visualizar({
+      titulo: `Certificado anexado — ${nomeCurso(t.cursoTreinamentoId)}`,
+      nomeArquivo: `certificado-${t.id}`,
+      obter: () => api.treinamentos.baixarArquivoCertificado(t.id),
+    });
+  }
   const [assinaturaAberta, setAssinaturaAberta] = useState<{
     treinamentoId: string;
     cursoNome: string;
@@ -133,6 +215,8 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
   function fecharPainel() {
     setPainelAberto(false);
     setErroPainel(null);
+    setArquivoCert(null);
+    setLido(null);
   }
 
   async function criar() {
@@ -140,7 +224,9 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
       setCarregando(true);
       setErroPainel(null);
       const { id } = await api.treinamentos.criar(novoTreinamento);
-      setAssinaturaAberta({
+      if (arquivoCert) await api.treinamentos.anexarArquivoCertificado(id, arquivoCert, lido?.rotacao ?? 0);
+      // Certificado externo já tem o documento do terceiro: não abre a assinatura do modelo AAHBRANT.
+      if (!arquivoCert) setAssinaturaAberta({
         treinamentoId: id,
         cursoNome: nomeCurso(novoTreinamento.cursoTreinamentoId),
         dataRealizacao: novoTreinamento.dataRealizacao,
@@ -232,6 +318,46 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
       ),
     },
     { chave: 'certificado', rotulo: 'Certificado', render: (t) => t.numeroCertificado },
+    {
+      chave: 'comprovante',
+      rotulo: 'Comprovante',
+      render: (t) => {
+        const externo = t.origemCertificado === OrigemCertificadoTreinamento.Externo;
+        if (t.temArquivo)
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+              <StatusChip tom="ok">Anexado</StatusChip>
+              <Button appearance="transparent" size="small" style={{ padding: 0, minWidth: 0, height: 'auto' }} onClick={() => verAnexo(t)}>
+                Ver anexo
+              </Button>
+              <Button
+                appearance="transparent"
+                size="small"
+                style={{ padding: 0, minWidth: 0, height: 'auto' }}
+                disabled={corrigindoId === t.id}
+                onClick={() => void corrigirImagem(t)}
+              >
+                {corrigindoId === t.id ? 'Corrigindo…' : 'Corrigir imagem com IA'}
+              </Button>
+            </div>
+          );
+        if (!externo) return <span style={estiloSecundario}>Emitido pelo sistema</span>;
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+            <StatusChip tom="atencao">Pendente de anexo</StatusChip>
+            <label style={{ fontSize: 12, color: '#670000', fontWeight: 600, cursor: 'pointer' }}>
+              {corrigindoId === t.id ? 'Anexando…' : 'Anexar'}
+              <input
+                type="file"
+                accept="application/pdf,image/jpeg,image/png"
+                style={{ display: 'none' }}
+                onChange={(ev) => void anexarDepois(t, ev.target.files?.[0] ?? null)}
+              />
+            </label>
+          </div>
+        );
+      },
+    },
   ];
 
   return (
@@ -246,6 +372,46 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
                 {erroPainel}
               </FeedbackInline>
             )}
+            <div
+              style={{
+                border: '2px dashed #b45353',
+                borderRadius: 10,
+                padding: 14,
+                background: '#fdf7f7',
+                marginBottom: 12,
+              }}
+            >
+              <label style={{ display: 'block', cursor: 'pointer', color: '#670000', fontWeight: 600 }}>
+                {lendo ? 'A IA está lendo o certificado…' : arquivoCert ? `Arquivo: ${arquivoCert.name} (trocar)` : 'Certificado externo? Envie a foto ou o PDF — a IA lê e preenche'}
+                <input
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png"
+                  capture="environment"
+                  style={{ display: 'none' }}
+                  disabled={lendo}
+                  onChange={(ev) => void escolherCertificado(ev.target.files?.[0] ?? null)}
+                />
+              </label>
+              <div style={estiloSecundario}>
+                Aceita foto ou PDF, inclusive torto ou de cabeça para baixo. Confira os campos antes de salvar. Curso feito na AAHBRANT
+                não precisa de arquivo.
+              </div>
+              {lido && lido.rotacao !== 0 && (
+                <div style={{ marginTop: 6, fontSize: 12, color: '#166534' }}>
+                  ✓ A imagem estava {lido.rotacao === 180 ? 'de cabeça para baixo' : 'deitada'} — será guardada já na posição certa.
+                </div>
+              )}
+              {lido && !lido.cursoTreinamentoId && lido.cursoLido && (
+                <div style={{ marginTop: 6, fontSize: 12, color: '#92400e' }}>
+                  Curso lido: "{lido.cursoLido}" — não está no catálogo; escolha o curso abaixo.
+                </div>
+              )}
+              {lido && !lido.nomeConfere && (
+                <div style={{ marginTop: 6, fontSize: 12, color: '#991b1b' }}>
+                  ⚠ Nome no certificado: "{lido.nomeParticipante}" — confere com este funcionário?
+                </div>
+              )}
+            </div>
             <FormGrid>
               <Campo span={12}>
                 <Field label="Curso">

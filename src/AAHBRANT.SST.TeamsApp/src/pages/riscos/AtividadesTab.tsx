@@ -1,194 +1,190 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button, Card, FeedbackInline, Field, Input, Select, StatusChip } from '@ui';
 import {
-  BotaoAcao,
-  Button,
-  Card,
-  Campo,
-  DataTable,
-  Field,
-  FeedbackInline,
-  FormGrid,
-  FormRodape,
-  FormSection,
-  Input,
-  PageHeader,
-  PainelCriacaoInline,
-  Select,
-  useConfirmar,
-  type Coluna,
-} from '@ui';
-import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
-import { api, type Atividade, type NovaAtividade, type Obra } from '../../lib/api';
-import { valorUnico } from '../../lib/valoresPadrao';
-import { useSucessoToast } from '../../hooks/useSucessoToast';
+  api,
+  StatusPgr,
+  type Atividade,
+  type Obra,
+  type Pgr,
+  type ResumoGeracaoPgrEap,
+} from '../../lib/api';
+import { dataBr } from '../../components/documentos-obra/CartoesVigentesPorObra';
 
-const atividadeVazia: NovaAtividade = { obraId: '', nome: '', descricao: '' };
+// Aba Atividades só para consulta (07/11/2026, mockup atividades-consulta-pgr_2026-11-07_v1): as
+// atividades nascem da aprovação do PGR pela EAP (uma por item da EAP, dentro do GHE, com os riscos).
+// O cadastro manual saiu — corrigir atividade = nova revisão do PGR. A entidade continua: APR, PT,
+// DDS, inspeções, ocorrências, cursos obrigatórios e escopo do PCMSO dependem dela.
+const st: Record<string, CSSProperties> = {
+  barra: { display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 16 },
+  origem: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+    padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, marginBottom: 14, fontSize: 13,
+  },
+  ghe: {
+    padding: '8px 12px', fontSize: 12, fontWeight: 700, color: '#670000', textTransform: 'uppercase',
+    letterSpacing: '.04em', background: '#fafafa', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb',
+  },
+  tabela: { width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' },
+  th: { textAlign: 'left', padding: '8px 12px', fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 },
+  td: { padding: '9px 12px', borderBottom: '1px solid #f0f0f0', verticalAlign: 'middle' },
+  chips: { display: 'flex', gap: 4, flexWrap: 'wrap' },
+  vazio: { color: '#6b7280', padding: '8px 0' },
+};
 
-// Onda A do spec de formulário inline (2026-09-11): o PainelLateral (drawer) saiu — em tablet, o
-// formulário de 3 campos esticava até a altura total da tela e sobrava um vão vazio enorme antes
-// dos botões. Agora é um PainelCriacaoInline, que cresce acima da lista só até a altura do próprio
-// formulário. Erro do formulário fica em estado próprio, separado do erro de carga da lista.
+// "3.1 Montagem de formas" -> código "3.1" + nome (o nome da atividade gerada vem com o código EAP na frente).
+function separarCodigo(nome: string) {
+  const m = /^(\d+(?:\.\d+)*)\s+(.*)$/.exec(nome);
+  return m ? { codigo: m[1], nome: m[2] } : { codigo: '—', nome };
+}
+
 export function AtividadesTab() {
+  const navigate = useNavigate();
   const [atividades, setAtividades] = useState<Atividade[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
-  const [novaAtividade, setNovaAtividade] = useState<NovaAtividade>(atividadeVazia);
+  const [pgrs, setPgrs] = useState<Pgr[]>([]);
+  const [geracoes, setGeracoes] = useState<ResumoGeracaoPgrEap[]>([]);
+  const [obraId, setObraId] = useState('');
+  const [busca, setBusca] = useState('');
   const [erro, setErro] = useState<string | null>(null);
-  const [erroPainel, setErroPainel] = useState<string | null>(null);
-  const [carregando, setCarregando] = useState(false);
-  const [carregandoLista, setCarregandoLista] = useState(true);
-  const [painelAberto, setPainelAberto] = useState(false);
-  const { confirmar, dialogElement } = useConfirmar();
-  const sucessoToast = useSucessoToast();
-
-  async function carregar() {
-    try {
-      setErro(null);
-      const [ativs, obrs] = await Promise.all([api.atividades.listar(), api.obras.listar()]);
-      setAtividades(ativs);
-      setObras(obrs);
-      // Select com uma única opção possível no contexto atual vem pré-selecionado (spec §2). Não
-      // sobrescreve se o usuário já tiver escolhido uma Obra.
-      setNovaAtividade((prev) => (prev.obraId ? prev : { ...prev, obraId: valorUnico(obrs, (o) => o.id) }));
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar atividades.');
-    } finally {
-      setCarregandoLista(false);
-    }
-  }
+  const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    carregar();
+    (async () => {
+      try {
+        const [a, o, p, g] = await Promise.all([
+          api.atividades.listar(),
+          api.obras.listar(),
+          api.pgrs.listar(),
+          api.geracoesPgrEap.listar().catch(() => [] as ResumoGeracaoPgrEap[]),
+        ]);
+        setAtividades(a);
+        setObras(o);
+        setPgrs(p);
+        setGeracoes(g);
+        const comAtividade = o.find((x) => a.some((y) => y.obraId === x.id));
+        setObraId((atual) => atual || comAtividade?.id || o[0]?.id || '');
+      } catch (e) {
+        setErro(e instanceof Error ? e.message : 'Não foi possível carregar as atividades.');
+      } finally {
+        setCarregando(false);
+      }
+    })();
   }, []);
 
-  function nomeObra(id: string) {
-    return obras.find((o) => o.id === id)?.nome ?? id;
-  }
+  const pgrVigente = pgrs.find((p) => p.obraId === obraId && p.status === StatusPgr.Vigente);
+  const geracao = pgrVigente ? geracoes.find((g) => g.pgrId === pgrVigente.id) : undefined;
 
-  function fecharPainel() {
-    setPainelAberto(false);
-    setErroPainel(null);
-  }
-
-  async function criar() {
-    try {
-      setCarregando(true);
-      setErroPainel(null);
-      await api.atividades.criar(novaAtividade);
-      setNovaAtividade(atividadeVazia);
-      await carregar();
-      sucessoToast('Atividade criada com sucesso.');
-      fecharPainel();
-    } catch (e) {
-      setErroPainel(e instanceof Error ? e.message : 'Falha ao criar atividade.');
-    } finally {
-      setCarregando(false);
+  const grupos = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    const lista = atividades
+      .filter((a) => a.obraId === obraId)
+      .filter((a) => !termo || a.nome.toLowerCase().includes(termo) || (a.gheSetor ?? '').toLowerCase().includes(termo));
+    const mapa = new Map<string, { titulo: string; ordem: number; itens: Atividade[] }>();
+    for (const a of lista) {
+      const chave = a.gheNumero != null ? `ghe-${a.gheNumero}` : 'sem-ghe';
+      if (!mapa.has(chave)) {
+        mapa.set(chave, {
+          titulo: a.gheNumero != null
+            ? `GHE ${String(a.gheNumero).padStart(2, '0')} · ${a.gheSetor ?? ''}`
+            : 'Sem GHE (cadastro manual antigo)',
+          ordem: a.gheNumero ?? 9999,
+          itens: [],
+        });
+      }
+      mapa.get(chave)!.itens.push(a);
     }
-  }
-
-  async function excluir(id: string) {
-    if (!(await confirmar('Excluir esta atividade? Essa ação não pode ser desfeita.'))) return;
-    try {
-      await api.atividades.excluir(id);
-      await carregar();
-      sucessoToast('Atividade excluída com sucesso.');
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao excluir atividade.');
-    }
-  }
-
-  const colunas: Coluna<Atividade>[] = [
-    { chave: 'nome', rotulo: 'Nome' },
-    { chave: 'obra', rotulo: 'Obra', render: (a) => nomeObra(a.obraId) },
-    { chave: 'descricao', rotulo: 'Descrição' },
-  ];
+    const ordenarCodigo = (x: Atividade, y: Atividade) =>
+      x.nome.localeCompare(y.nome, 'pt-BR', { numeric: true });
+    return [...mapa.values()].sort((x, y) => x.ordem - y.ordem).map((g) => ({ ...g, itens: g.itens.sort(ordenarCodigo) }));
+  }, [atividades, obraId, busca]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {dialogElement}
-      <PageHeader
-        titulo="Atividades cadastradas"
-        acoes={
-          <Button
-            appearance="primary"
-            icon={<Add24Regular />}
-            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
-            aria-expanded={painelAberto}
-            aria-controls="painel-nova-atividade"
-          >
-            {painelAberto ? 'Fechar' : 'Adicionar atividade'}
-          </Button>
-        }
-      />
-      {erro && (
-        <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
-          {erro}
-        </FeedbackInline>
-      )}
-      <div id="painel-nova-atividade">
-        <PainelCriacaoInline aberto={painelAberto} titulo="Nova atividade">
-          <FormSection titulo="Dados da atividade" numero={1} primeira>
-            {erroPainel && (
-              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
-                {erroPainel}
-              </FeedbackInline>
-            )}
-            <FormGrid>
-              <Campo span={3}>
-                <Field label="Obra">
-                  <Select
-                    value={novaAtividade.obraId}
-                    onChange={(_, d) => setNovaAtividade({ ...novaAtividade, obraId: d.value })}
-                  >
-                    <option value="">Selecione</option>
-                    {obras.map((obra) => (
-                      <option key={obra.id} value={obra.id}>
-                        {obra.nome}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </Campo>
-              <Campo span={4}>
-                <Field label="Nome da atividade">
-                  <Input
-                    value={novaAtividade.nome}
-                    onChange={(_, d) => setNovaAtividade({ ...novaAtividade, nome: d.value })}
-                  />
-                </Field>
-              </Campo>
-              <Campo span={5}>
-                <Field label="Descrição">
-                  <Input
-                    value={novaAtividade.descricao ?? ''}
-                    onChange={(_, d) => setNovaAtividade({ ...novaAtividade, descricao: d.value })}
-                  />
-                </Field>
-              </Campo>
-            </FormGrid>
-            <FormRodape>
-              <Button onClick={fecharPainel}>Cancelar</Button>
-              <Button appearance="primary" onClick={criar} disabled={carregando}>
-                Adicionar atividade
-              </Button>
-            </FormRodape>
-          </FormSection>
-        </PainelCriacaoInline>
+    <div>
+      <div style={st.barra}>
+        <Field label="Obra" style={{ minWidth: 260 }}>
+          <Select value={obraId} onChange={(_, d) => setObraId(d.value)}>
+            {obras.map((o) => (
+              <option key={o.id} value={o.id}>{o.nome}</option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Buscar" style={{ minWidth: 240 }}>
+          <Input value={busca} onChange={(_, d) => setBusca(d.value)} placeholder="Atividade, código EAP ou GHE" />
+        </Field>
       </div>
-      <Card>
-        <DataTable
-          aria-label="Atividades cadastradas"
-          colunas={colunas}
-          linhas={atividades}
-          chaveLinha={(a) => a.id}
-          carregando={carregandoLista}
-          vazio={{
-            titulo: 'Nenhuma atividade cadastrada ainda',
-            acao: { rotulo: 'Adicionar atividade', aoClicar: () => setPainelAberto(true) },
-          }}
-          acoesLinha={(a) => (
-            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
-          )}
-        />
+
+      {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+
+      <Card
+        titulo="Atividades do PGR vigente"
+        subtitulo="Somente consulta — vêm do PGR aprovado. Usadas em APR, PT, DDS, inspeções e ocorrências. Para corrigir, faça uma nova revisão do PGR pela EAP."
+      >
+        {carregando ? (
+          <div style={st.vazio}>Carregando…</div>
+        ) : (
+          <>
+            {pgrVigente ? (
+              <div style={st.origem}>
+                <span>
+                  Origem:{' '}
+                  <b style={{ color: '#166534' }}>
+                    {geracao ? 'PGR gerado pela EAP' : 'PGR importado (legado)'} · {pgrVigente.nome}
+                  </b>
+                  {geracao?.aprovadoPorNome ? ` · aprovado por ${geracao.aprovadoPorNome}` : ''} · elaboração{' '}
+                  {dataBr(pgrVigente.dataElaboracao)}
+                </span>
+                <Button onClick={() => navigate(`/prevencao/pgr/${pgrVigente.id}`)}>Abrir PGR</Button>
+              </div>
+            ) : (
+              <div style={{ ...st.origem, background: '#fff7ed', borderColor: '#fed7aa' }}>
+                <span>Esta obra ainda não tem PGR vigente. As atividades aparecem aqui quando o PGR for aprovado (aba PGRs).</span>
+              </div>
+            )}
+
+            {grupos.length === 0 ? (
+              <div style={st.vazio}>{busca ? 'Nenhuma atividade encontrada para essa busca.' : 'Nenhuma atividade nesta obra.'}</div>
+            ) : (
+              grupos.map((g, i) => (
+                <div key={g.titulo}>
+                  <div style={st.ghe}>{g.titulo}</div>
+                  <table style={st.tabela}>
+                    {i === 0 && (
+                      <thead>
+                        <tr>
+                          <th style={{ ...st.th, width: 110 }}>Código EAP</th>
+                          <th style={st.th}>Atividade</th>
+                          <th style={{ ...st.th, width: 240 }}>Riscos</th>
+                        </tr>
+                      </thead>
+                    )}
+                    <tbody>
+                      {g.itens.map((a) => {
+                        const { codigo, nome } = separarCodigo(a.nome);
+                        return (
+                          <tr key={a.id}>
+                            <td style={{ ...st.td, width: 110 }}>{codigo}</td>
+                            <td style={st.td}>{nome}</td>
+                            <td style={{ ...st.td, width: 240 }}>
+                              <div style={st.chips}>
+                                {!!a.riscosAltos && <StatusChip tom="alerta">{a.riscosAltos} alto</StatusChip>}
+                                {!!a.riscosModerados && <StatusChip tom="atencao">{a.riscosModerados} médio</StatusChip>}
+                                {!!a.riscosBaixos && <StatusChip tom="ok">{a.riscosBaixos} baixo</StatusChip>}
+                                {!a.riscosAltos && !a.riscosModerados && !a.riscosBaixos && (
+                                  <span style={{ color: '#9ca3af' }}>Sem riscos</span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ))
+            )}
+          </>
+        )}
       </Card>
     </div>
   );

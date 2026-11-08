@@ -20,6 +20,11 @@ public class RegraCursoObrigatorio : AuditableEntity
 
     // Separadas por vírgula; comparadas sem acento e sem caixa.
     public string? PalavrasChave { get; set; }
+
+    // Perigos padronizados do PGR (07/11/2026), separados por vírgula: "Queda de altura". Mais preciso
+    // que palavra solta — o PGR gerado pela EAP grava o perigo com esse nome. As palavras continuam como
+    // reserva para PGR importado e para o que não tem perigo próprio (ex.: espaço confinado).
+    public string? Perigos { get; set; }
 }
 
 // Curso obrigatório de uma função NAQUELA obra (o mesmo "Pedreiro" pode trabalhar em altura numa

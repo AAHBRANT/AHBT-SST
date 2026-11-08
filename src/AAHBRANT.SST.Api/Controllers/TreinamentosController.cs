@@ -85,9 +85,28 @@ public class TreinamentosController : ControllerBase
         using var stream = new MemoryStream();
         await body.Arquivo.CopyToAsync(stream, ct);
         var arquivoId = await _mediator.Send(new AnexarArquivoCertificadoTreinamentoCommand(
-            id, body.Arquivo.FileName, stream.ToArray(), body.Arquivo.ContentType), ct);
+            id, body.Arquivo.FileName, stream.ToArray(), body.Arquivo.ContentType, body.Rotacao), ct);
         return Ok(new { id = arquivoId });
     }
+
+    // Certificado lido pela IA (07/11/2026): devolve os dados e quanto girar. Nada é gravado.
+    [Authorize(Policy = "treinamento:editar")]
+    [HttpPost("certificado/ler")]
+    [RequestSizeLimit(12 * 1024 * 1024)]
+    public async Task<IActionResult> LerCertificado([FromForm] LerCertificadoRequestBody body, CancellationToken ct)
+    {
+        using var stream = new MemoryStream();
+        await body.Arquivo.CopyToAsync(stream, ct);
+        return Ok(await _mediator.Send(new AAHBRANT.SST.Application.Treinamentos.LeituraCertificado.LerCertificadoTreinamentoQuery(
+            body.TrabalhadorId, stream.ToArray(), body.Arquivo.ContentType), ct));
+    }
+
+    // "Corrigir imagem com IA" para certificado já anexado (07/11/2026). Devolve os graus girados (0 = já estava em pé).
+    [Authorize(Policy = "treinamento:editar")]
+    [HttpPost("{id:guid}/certificado/arquivo/corrigir")]
+    public async Task<IActionResult> CorrigirArquivoCertificado(Guid id, CancellationToken ct)
+        => Ok(new { rotacao = await _mediator.Send(
+            new AAHBRANT.SST.Application.Treinamentos.LeituraCertificado.CorrigirArquivoCertificadoTreinamentoCommand(id), ct) });
 
     // inline=true abre o arquivo no visualizador do navegador (o técnico só quer conferir); sem o
     // parâmetro, o navegador baixa.
@@ -114,4 +133,12 @@ public class TreinamentosController : ControllerBase
 public class AnexarArquivoCertificadoRequestBody
 {
     public IFormFile Arquivo { get; set; } = null!;
+    // Graus (0/90/180/270) indicados pela leitura da IA; o servidor gira antes de guardar.
+    public int Rotacao { get; set; }
+}
+
+public class LerCertificadoRequestBody
+{
+    public IFormFile Arquivo { get; set; } = null!;
+    public Guid TrabalhadorId { get; set; }
 }

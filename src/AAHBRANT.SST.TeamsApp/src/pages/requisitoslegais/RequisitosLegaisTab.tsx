@@ -105,6 +105,8 @@ export function RequisitosLegaisTab() {
   const [filtroDefinido, setFiltroDefinido] = useState(false);
   const [edicao, setEdicao] = useState<EdicaoTexto | null>(null);
   const [carregandoLista, setCarregandoLista] = useState(true);
+  // 07/11/2026: formulário de cadastro fechado por padrão; abre pelo botão "Novo requisito".
+  const [formAberto, setFormAberto] = useState(false);
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -153,6 +155,7 @@ export function RequisitosLegaisTab() {
         fonte: novo.fonte || null,
       });
       setNovo(novoInicial());
+      setFormAberto(false);
       await carregar();
       sucessoToast('Requisito legal criado com sucesso.');
     } catch (e) {
@@ -335,7 +338,17 @@ export function RequisitosLegaisTab() {
         </FeedbackInline>
       )}
 
-      <Card titulo="Requisitos legais cadastrados">
+      <Card
+        titulo="Requisitos legais cadastrados"
+        acoes={
+          !formAberto && (
+            <Button appearance="primary" icon={<AddCircle24Regular />} onClick={() => setFormAberto(true)}>
+              Novo requisito
+            </Button>
+          )
+        }
+      >
+        {formAberto && (
         <FormSection titulo="Dados do Requisito Legal" numero={1} primeira>
           <FormGrid>
             <Campo span={2}>
@@ -379,8 +392,10 @@ export function RequisitosLegaisTab() {
             <Button appearance="primary" icon={<AddCircle24Regular />} onClick={criar} disabled={processando}>
               Cadastrar requisito
             </Button>
+            <Button onClick={() => setFormAberto(false)}>Cancelar</Button>
           </FormRodape>
         </FormSection>
+        )}
 
         <div
           role="group"

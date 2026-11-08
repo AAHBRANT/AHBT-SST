@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { escolherObraInicial, useObraLembrada } from '../../hooks/useObraLembrada';
 import {
   Button,
   Card,
@@ -46,7 +47,7 @@ function formatarData(iso?: string | null) {
 
 export function CursosObrigatoriosObraTab() {
   const [obras, setObras] = useState<Obra[]>([]);
-  const [obraId, setObraId] = useState('');
+  const [obraId, setObraId] = useObraLembrada();
   const [dados, setDados] = useState<CursosObrigatoriosObra | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [ocupado, setOcupado] = useState(false);
@@ -65,7 +66,7 @@ export function CursosObrigatoriosObraTab() {
       .listar()
       .then((lista) => {
         setObras(lista);
-        if (lista.length === 1) setObraId(lista[0].id);
+        setObraId(escolherObraInicial(lista));
       })
       .catch((e) => setErro(e instanceof Error ? e.message : 'Falha ao carregar obras.'));
   }, []);
@@ -103,15 +104,7 @@ export function CursosObrigatoriosObraTab() {
     }
   }
 
-  const regerar = () =>
-    executar(async () => {
-      const r = await api.cursosObrigatorios.gerar(obraId);
-      const partes = [r.sugeridos === 0 ? 'Nenhuma sugestão nova: o PGR não trouxe curso diferente do que já está aqui.' : `${r.sugeridos} sugestão(ões) nova(s) a partir do PGR.`];
-      if (r.normasSemCurso.length > 0)
-        partes.push(`Sem curso no catálogo para ${r.normasSemCurso.join(', ')} — cadastre em Catálogo de Cursos e gere de novo.`);
-      return partes.join(' ');
-    });
-
+  // 07/11/2026: botão "Regerar a partir do PGR" removido — a aprovação do PGR pela EAP já gera as sugestões.
   const aprovarTodas = () =>
     executar(async () => {
       const r = await api.cursosObrigatorios.aprovarSugestoes(obraId);
@@ -231,7 +224,6 @@ export function CursosObrigatoriosObraTab() {
         acoes={
           obraId ? (
             <>
-              <Button onClick={regerar} disabled={ocupado}>Regerar a partir do PGR</Button>
               <Button appearance="primary" onClick={aprovarTodas} disabled={ocupado || sugeridos === 0}>
                 Aprovar todas as sugestões
               </Button>
@@ -266,8 +258,8 @@ export function CursosObrigatoriosObraTab() {
               vazio={{
                 titulo: 'Nenhum curso obrigatório nesta obra ainda',
                 descricao: dados?.funcoesNoPgr
-                  ? 'Clique em "Regerar a partir do PGR" para o sistema sugerir os cursos pelas NRs.'
-                  : 'A obra ainda não tem PGR com GHE e funções. Gere ou importe o PGR primeiro.',
+                  ? 'As sugestões são criadas quando o PGR da obra é aprovado pela EAP.'
+                  : 'A obra ainda não tem PGR com GHE e funções. Gere o PGR pela EAP primeiro.',
               }}
               acoesLinha={(i) =>
                 i.status === StatusCursoObrigatorio.Sugerido ? (

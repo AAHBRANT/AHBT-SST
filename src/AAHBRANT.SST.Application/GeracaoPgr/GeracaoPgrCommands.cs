@@ -48,7 +48,7 @@ public record CelulaMatrizDto(int Probabilidade, int Severidade, NivelRisco Nive
 
 public record FuncaoCadastroDto(Guid Id, string Nome);
 
-public record ResumoGeracaoPgrEapDto(Guid Id, string Nome, string ObraNome, StatusGeracaoPgrEap Status, int Passo, DateTime CriadoEmUtc);
+public record ResumoGeracaoPgrEapDto(Guid Id, string Nome, string ObraNome, StatusGeracaoPgrEap Status, int Passo, DateTime CriadoEmUtc, Guid? PgrId = null, string? AprovadoPorNome = null);
 
 internal static class SerializacaoGeracao
 {
@@ -263,9 +263,9 @@ public class ListarGeracoesPgrEapQueryHandler : IRequestHandler<ListarGeracoesPg
         var q = _db.GeracoesPgrEap.Where(g => _db.EscopoObraGlobal || obras.Contains(g.ObraId));
         if (request.ObraId is { } obraId) q = q.Where(g => g.ObraId == obraId);
         var lista = await q.OrderByDescending(g => g.CreatedAtUtc)
-            .Select(g => new { g.Id, g.Nome, g.ObraId, g.Status, g.Passo, g.CreatedAtUtc }).ToListAsync(ct);
+            .Select(g => new { g.Id, g.Nome, g.ObraId, g.Status, g.Passo, g.CreatedAtUtc, g.PgrId, g.AprovadoPorNome }).ToListAsync(ct);
         var nomes = await _db.Obras.Select(o => new { o.Id, o.Nome }).ToDictionaryAsync(o => o.Id, o => o.Nome, ct);
-        return lista.Select(g => new ResumoGeracaoPgrEapDto(g.Id, g.Nome, nomes.GetValueOrDefault(g.ObraId, ""), g.Status, g.Passo, g.CreatedAtUtc)).ToList();
+        return lista.Select(g => new ResumoGeracaoPgrEapDto(g.Id, g.Nome, nomes.GetValueOrDefault(g.ObraId, ""), g.Status, g.Passo, g.CreatedAtUtc, g.PgrId, g.AprovadoPorNome)).ToList();
     }
 }
 
@@ -327,7 +327,8 @@ public class CriarGeracaoPgrEapCommandHandler : IRequestHandler<CriarGeracaoPgrE
             ObraId = request.ObraId,
             Nome = request.Nome.Trim(),
             DataElaboracao = request.DataElaboracao,
-            DataProximaRevisao = request.DataProximaRevisao,
+            // Próxima revisão é sempre 1 ano após a elaboração (regra da empresa, 07/11/2026).
+            DataProximaRevisao = request.DataElaboracao.Date.AddYears(1),
             ElaboradoPorUsuarioId = request.UsuarioId,
             ElaboradoPorNome = await SerializacaoGeracao.NomeUsuarioAsync(_db, request.UsuarioId, request.NomeUsuario, ct),
             NomeArquivoEap = request.NomeArquivo,
@@ -382,6 +383,22 @@ public class SugerirGhesGeracaoPgrCommandHandler : IRequestHandler<SugerirGhesGe
 
         var usadas = PendenciasGeracaoPgr.AtividadesDaEap(e);
         if (usadas.Count == 0) throw new InvalidOperationException("Marque ao menos um item da EAP para entrar no PGR.");
+
+        // Revisão por mudança na obra (07/11/2026): os GHEs aprovados ficam como estão; só os itens novos vão para a IA
+        // e entram no GHE de mesmo nome ou num GHE novo.
+        List<GheGerado>? mantidos = null;
+        if (e.Revisao is { Tipo: RevisaoGeracaoPgr.Mudanca })
+        {
+            var jaNoPgr = e.Ghes.SelectMany(x => x.Atividades).Select(a => a.CodigoEap).ToHashSet();
+            usadas = usadas.Where(i => !jaNoPgr.Contains(i.Codigo)).ToList();
+            mantidos = e.Ghes;
+            if (usadas.Count == 0)
+            {
+                g.Passo = 3;
+                await _db.SaveChangesAsync(ct);
+                return;
+            }
+        }
 
         var funcoes = await _db.Funcoes.Select(f => new { f.Id, f.Nome }).ToListAsync(ct);
         var ghes = await _ia.SugerirGhesAsync(usadas, funcoes.Select(f => f.Nome).ToList(), ct);
@@ -448,8 +465,31 @@ public class SugerirGhesGeracaoPgrCommandHandler : IRequestHandler<SugerirGhesGe
                 Atividades = soltas.Select(i => new AtividadeGerada { CodigoEap = i.Codigo, Nome = i.Nome }).ToList(),
             });
 
-        var numero = 1;
-        foreach (var ghe in unicos) ghe.Numero = numero++;
+        if (mantidos is not null)
+        {
+            // Junta os GHEs novos aos mantidos: mesmo nome = mesmo GHE; senão entra no fim, com o próximo número.
+            var proximo = mantidos.Count == 0 ? 1 : mantidos.Max(x => x.Numero) + 1;
+            foreach (var novo in unicos)
+            {
+                var chave = FuncaoSstClassifier.Normalizar(novo.Nome);
+                var existente = mantidos.FirstOrDefault(x => FuncaoSstClassifier.Normalizar(x.Nome) == chave);
+                if (existente is null)
+                {
+                    novo.Numero = proximo++;
+                    mantidos.Add(novo);
+                    continue;
+                }
+                existente.Atividades.AddRange(novo.Atividades);
+                foreach (var f in novo.Funcoes.Where(f => existente.Funcoes.All(x => FuncaoSstClassifier.Normalizar(x.Nome) != FuncaoSstClassifier.Normalizar(f.Nome))))
+                    existente.Funcoes.Add(f);
+            }
+            unicos = mantidos;
+        }
+        else
+        {
+            var numero = 1;
+            foreach (var ghe in unicos) ghe.Numero = numero++;
+        }
         ghes = unicos;
 
         e.Ghes = ghes.Where(x => x.Funcoes.Count > 0 || x.Atividades.Count > 0).ToList();
@@ -953,9 +993,24 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             PgrId = pgr.Id,
             NumeroRevisao = numero,
             DataRevisao = agora,
-            Motivo = $"Nova geração pela EAP da obra ({g.NomeArquivoEap}), aprovada por {aprovador}.",
+            Motivo = MotivoRevisao(g, aprovador),
             ResponsavelUsuarioId = usuarioId,
         });
+    }
+
+    // Texto da revisão no histórico do PGR (07/11/2026): diz se foi mudança na obra ou revisão periódica.
+    private static string MotivoRevisao(GeracaoPgrEap g, string aprovador)
+    {
+        var e = SerializacaoGeracao.Ler(g.EstruturaJson);
+        var obs = string.IsNullOrWhiteSpace(e.Revisao?.Observacao) ? "" : $" Obs.: {e.Revisao!.Observacao!.Trim()}";
+        return e.Revisao?.Tipo switch
+        {
+            RevisaoGeracaoPgr.Periodica =>
+                $"Revisão periódica — inventário de riscos reavaliado sem alterações por {e.Revisao.ReavaliadoPorNome ?? aprovador}; aprovada por {aprovador}.{obs}",
+            RevisaoGeracaoPgr.Mudanca =>
+                $"Mudança na obra — itens novos: {string.Join(", ", e.Ghes.SelectMany(x => x.Atividades).Where(a => !a.Herdada).Select(a => $"{a.CodigoEap} {a.Nome}".Trim()).DefaultIfEmpty("nenhum"))}; aprovada por {aprovador}.{obs}",
+            _ => $"Nova geração pela EAP da obra ({g.NomeArquivoEap}), aprovada por {aprovador}.",
+        };
     }
 
     private static NivelRisco Nivel(MatrizRiscoConfig matriz, RiscoGerado r) =>

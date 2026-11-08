@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.CursosObrigatorios;
 using AAHBRANT.SST.Application.Asos;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
@@ -76,12 +77,8 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
             .ToDictionary(c => c.Id);
         var cursoIntegracaoId = cursosExistentes.Values.FirstOrDefault(c => c.EhIntegracaoSeguranca)?.Id;
 
-        var cursosPorFuncao = (await _db.MatrizTreinamentoFuncoes
-                .Select(m => new { m.FuncaoId, m.CursoTreinamentoId })
-                .ToListAsync(ct))
-            .Where(m => cursosExistentes.ContainsKey(m.CursoTreinamentoId))
-            .GroupBy(m => m.FuncaoId)
-            .ToDictionary(g => g.Key, g => g.Select(m => m.CursoTreinamentoId).Distinct().ToList());
+        // Cursos exigidos pelo PGR da obra (matriz só como reserva para obra sem PGR aprovado) — 08/11/2026.
+        var exigenciasTreinamento = await ExigenciasTreinamento.CarregarAsync(_db, trabalhadores.Select(t => t.ObraId), ct);
 
         var todosTreinamentos = await _db.Treinamentos
             .Where(t => ids.Contains(t.TrabalhadorId))
@@ -111,8 +108,8 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
             var treinamentosOk = true;
             if (!funcoesIsentas.Contains(trabalhador.FuncaoId))
             {
-                var exigidos = cursosPorFuncao.TryGetValue(trabalhador.FuncaoId, out var lista)
-                    ? new List<Guid>(lista)
+                var exigidos = exigenciasTreinamento(trabalhador.ObraId, trabalhador.FuncaoId) is { } lista
+                    ? lista.Where(cursosExistentes.ContainsKey).ToList()
                     : new List<Guid>();
                 // A Integração de Segurança é obrigatória só para terceirizado (regra do módulo Terceirizado).
                 if (trabalhador.Vinculo == TipoVinculo.Terceirizado && cursoIntegracaoId is { } integracao && !exigidos.Contains(integracao))

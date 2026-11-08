@@ -64,6 +64,16 @@ public class CursosObrigatoriosController : ControllerBase
     public async Task<IActionResult> ListarRegras(CancellationToken ct)
         => Ok(await _mediator.Send(new ListarRegrasCursoObrigatorioQuery(), ct));
 
+    [Authorize(Policy = "treinamento:ver")]
+    [HttpPost("regras/simular")]
+    public async Task<IActionResult> SimularRegra(SimularRegraCursoObrigatorioQuery query, CancellationToken ct)
+        => Ok(await _mediator.Send(query, ct));
+
+    [Authorize(Policy = "treinamento:ver")]
+    [HttpGet("regras/perigos-padrao")]
+    public async Task<IActionResult> PerigosPadrao(CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarPerigosPadraoQuery(), ct));
+
     [Authorize(Policy = "treinamento:editar")]
     [HttpPost("regras")]
     public async Task<IActionResult> SalvarRegra(SalvarRegraCursoObrigatorioCommand command, CancellationToken ct)

@@ -80,7 +80,13 @@ function Passo1Envio() {
   const [obraId, setObraId] = useState('');
   const [nome, setNome] = useState('');
   const [dataElaboracao, setDataElaboracao] = useState(new Date().toISOString().slice(0, 10));
-  const [proximaRevisao, setProximaRevisao] = useState('');
+  // Próxima revisão é sempre 1 ano após a elaboração (regra da empresa, 07/11/2026): calculada, não editável.
+  const proximaRevisao = (() => {
+    if (!dataElaboracao) return '';
+    const d = new Date(dataElaboracao + 'T00:00:00');
+    d.setFullYear(d.getFullYear() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [lendo, setLendo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -126,7 +132,7 @@ function Passo1Envio() {
           </Field>
           <Field label="Nome do PGR" required><Input value={nome} onChange={(_, d) => setNome(d.value)} /></Field>
           <Field label="Data de elaboração" required><Input type="date" value={dataElaboracao} onChange={(_, d) => setDataElaboracao(d.value)} /></Field>
-          <Field label="Próxima revisão"><Input type="date" value={proximaRevisao} onChange={(_, d) => setProximaRevisao(d.value)} /></Field>
+          <Field label="Próxima revisão" hint="Sempre 1 ano após a elaboração"><Input type="date" value={proximaRevisao} disabled /></Field>
         </div>
         <div style={{ marginTop: 16, border: '2px dashed var(--colorNeutralStroke1)', borderRadius: 8, padding: 20, textAlign: 'center' }}>
           <Text weight="semibold" style={{ display: 'block' }}>Arquivo da EAP</Text>
@@ -241,6 +247,24 @@ function Assistente({ id }: { id: string }) {
       </Text>
       <Passos atual={passo} maximo={Math.max(passo, g.passo)} aoIr={(p) => setPasso(p)} />
 
+      {e.revisao && (
+        <FeedbackInline tom="info">
+          {e.revisao.tipo === 'Periodica' ? (
+            <>
+              <b>Revisão periódica.</b> O inventário de riscos é o mesmo da revisão anterior
+              {e.revisao.reavaliadoPorNome ? ` — reavaliado sem alterações por ${e.revisao.reavaliadoPorNome}` : ''}. Confira e envie
+              para aprovação e assinatura.
+            </>
+          ) : (
+            <>
+              <b>Revisão por mudança na obra.</b> O que já foi aprovado aparece como <b>Mantido</b> e não passa de novo pela IA.
+              Inclua os itens novos abaixo; só eles terão os riscos gerados e revisados.
+            </>
+          )}
+          {e.revisao.observacao ? ` Obs.: ${e.revisao.observacao}` : ''}
+        </FeedbackInline>
+      )}
+
       {g.status === 4 && g.motivoDevolucao && (
         <FeedbackInline tom="aviso">Devolvido pelo engenheiro: {g.motivoDevolucao}</FeedbackInline>
       )}
@@ -267,6 +291,8 @@ function Assistente({ id }: { id: string }) {
                 {item.conferir && <StatusChip tom="atencao">conferir</StatusChip>}
                 {item.codigo === 'ADM' && <StatusChip tom="info">padrão em toda obra</StatusChip>}
                 {item.manual && <StatusChip tom="neutro">incluído à mão</StatusChip>}
+                {item.herdado && <StatusChip tom="neutro">Mantido</StatusChip>}
+                {e.revisao?.tipo === 'Mudanca' && !item.herdado && <StatusChip tom="ok">Novo</StatusChip>}
                 {item.manual && editavel && (
                   <Button size="small" onClick={() => alterar((x) => { x.itens.splice(i, 1); })}>Remover</Button>
                 )}
@@ -286,7 +312,7 @@ function Assistente({ id }: { id: string }) {
                 await api.geracoesPgrEap.sugerirGhes(id);
                 await carregar(3);
               })}>
-                {e.ghes.length ? 'Confirmar e refazer GHEs' : 'Confirmar estrutura'}
+                {e.revisao?.tipo === 'Mudanca' ? 'Incluir os itens novos nos GHEs' : e.ghes.length ? 'Confirmar e refazer GHEs' : 'Confirmar estrutura'}
               </Button>
               {e.ghes.length > 0 && <Button onClick={() => setPasso(3)}>Ir para os GHEs atuais</Button>}
             </div>
@@ -557,6 +583,8 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
             <div key={a.codigoEap} style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <Text weight="semibold">{a.codigoEap} {a.nome}</Text>
+                {a.herdada && <StatusChip tom="neutro">Mantido</StatusChip>}
+                {e.revisao?.tipo === 'Mudanca' && !a.herdada && <StatusChip tom="ok">Novo · riscos a revisar</StatusChip>}
                 {editavel && (
                   <span style={{ display: 'inline-flex', gap: 6 }}>
                     {a.riscos.some((r) => !r.excluido && !r.revisado) && (

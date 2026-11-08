@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.CursosObrigatorios;
 using AAHBRANT.SST.Application.Funcoes;
 using AAHBRANT.SST.Application.Asos;
 using AAHBRANT.SST.Application.Common;
@@ -146,7 +147,7 @@ public class ObterMinutaOrdemServicoQueryHandler : IRequestHandler<ObterMinutaOr
         var isento = funcao is not null && FuncaoSstClassifier.EhTecnicoSeguranca(funcao.Nome);
         var cursoIds = isento
             ? new List<Guid>()
-            : await _db.MatrizTreinamentoFuncoes.Where(m => m.FuncaoId == t.FuncaoId).Select(m => m.CursoTreinamentoId).Distinct().ToListAsync(ct);
+            : await ExigenciasTreinamento.CursosAsync(_db, t.ObraId, t.FuncaoId, ct);
         var cursos = await _db.CursosTreinamento.Where(c => cursoIds.Contains(c.Id))
             .Select(c => new { c.Id, c.Nome, c.NormaReferencia }).ToListAsync(ct);
         var feitos = await _db.Treinamentos.Where(x => x.TrabalhadorId == t.Id && cursoIds.Contains(x.CursoTreinamentoId))

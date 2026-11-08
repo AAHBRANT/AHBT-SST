@@ -1,51 +1,27 @@
 import { useEffect, useState } from 'react';
 import {
-  BotaoAcao,
-  Button,
-  Campo,
   Card,
-  CampoData,
+  Checkbox,
   DataTable,
   Field,
   FeedbackInline,
-  FormGrid,
-  FormRodape,
-  FormSection,
   Input,
   Select,
   StatusChip,
   Text,
-  Textarea,
   designTokens,
   LIMIAR_ALERTA_DIAS,
-  useConfirmar,
   type Coluna,
   type Tom,
 } from '@ui';
-import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
 import {
   api,
   resultadoAsoLabel,
   ResultadoAso,
   tipoExameAsoLabel,
   type Aso,
-  type NovoAso,
   type Trabalhador,
 } from '../../lib/api';
-import { useSucessoToast } from '../../hooks/useSucessoToast';
-
-function asoVazio(): NovoAso {
-  return {
-    trabalhadorId: '',
-    tipo: 1,
-    dataExame: '',
-    dataValidade: '',
-    resultadoStatus: ResultadoAso.Apto,
-    medicoNome: '',
-    medicoCrm: '',
-    observacoesClinicas: '',
-  };
-}
 
 // ResultadoAso: Apto=1, AptoComRestricao=2, Inapto=3, Pendente=4 — mesmo enum reaproveitado por
 // AptidoesTab.tsx, mesma tabela de tons.
@@ -115,94 +91,52 @@ function agruparRepetidos(lista: Aso[]): AsoAgrupado[] {
   return [...grupos.values()];
 }
 
-// Onda 2 Task 12 (camada ui/): cross-worker (todos os trabalhadores) — a versão somente-leitura
-// escopada a UM trabalhador já existe em PerfilGeralTab.tsx (aba "Geral & ASO" do perfil), que
-// continua inalterada. Edição inline por linha: clicar na linha abre os campos editáveis nela mesma;
-// clicar de novo enquanto já está em edição não reinicia a edição (guarda em aoClicarLinha).
+// ASO só consulta (08/11/2026, pedido do usuário): os ASOs vêm do G-RH e a próxima importação sobrescreveria qualquer
+// correção feita aqui — então não há edição nem exclusão nesta tela. Correção se faz no G-RH. Busca por nome ou matrícula
+// e filtro pela situação de hoje.
+type FiltroSituacao = 'todas' | 'liberado' | 'vence' | 'sem-parecer' | 'nao-liberado';
+
 export function AsosTab() {
   const [asos, setAsos] = useState<AsoAgrupado[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
-  const [novoAso, setNovoAso] = useState<NovoAso>(asoVazio());
-  const [edicaoId, setEdicaoId] = useState<string | null>(null);
-  const [edicao, setEdicao] = useState<Aso | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
-  const { confirmar, dialogElement } = useConfirmar();
-  const sucessoToast = useSucessoToast();
-
-  async function carregar() {
-    try {
-      setErro(null);
-      const [lista, listaTrabalhadores] = await Promise.all([api.asos.listar(), api.trabalhadores.listar()]);
-      setAsos(agruparRepetidos(lista));
-      setTrabalhadores(listaTrabalhadores);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar ASOs.');
-    } finally {
-      setCarregandoLista(false);
-    }
-  }
+  const [busca, setBusca] = useState('');
+  const [filtro, setFiltro] = useState<FiltroSituacao>('todas');
+  const [soVigentes, setSoVigentes] = useState(true);
 
   useEffect(() => {
-    carregar();
+    (async () => {
+      try {
+        const [lista, listaTrabalhadores] = await Promise.all([api.asos.listar(), api.trabalhadores.listar()]);
+        setAsos(agruparRepetidos(lista));
+        setTrabalhadores(listaTrabalhadores);
+      } catch (e) {
+        setErro(e instanceof Error ? e.message : 'Falha ao carregar ASOs.');
+      } finally {
+        setCarregandoLista(false);
+      }
+    })();
   }, []);
 
-  function nomeTrabalhador(id: string) {
-    return trabalhadores.find((t) => t.id === id)?.nome ?? id;
-  }
+  const porId = new Map(trabalhadores.map((t) => [t.id, t]));
+  const nomeTrabalhador = (id: string) => porId.get(id)?.nome ?? id;
 
-  async function criar() {
-    if (!novoAso.trabalhadorId || !novoAso.dataExame || !novoAso.dataValidade) {
-      setErro('Preencha funcionário, data do exame e validade.');
-      return;
+  const termo = busca.trim().toLowerCase();
+  const linhas = asos.filter((a) => {
+    if (soVigentes && a.vigente === false) return false;
+    if (termo) {
+      const t = porId.get(a.trabalhadorId);
+      const texto = `${t?.nome ?? ''} ${t?.matricula ?? ''}`.toLowerCase();
+      if (!texto.includes(termo)) return false;
     }
-    try {
-      setCarregando(true);
-      setErro(null);
-      await api.asos.criar(novoAso);
-      setNovoAso(asoVazio());
-      await carregar();
-      sucessoToast('ASO registrado com sucesso.');
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar ASO.');
-    } finally {
-      setCarregando(false);
-    }
-  }
-
-  function iniciarEdicao(aso: Aso) {
-    setEdicaoId(aso.id);
-    setEdicao({ ...aso });
-  }
-
-  async function salvarEdicao() {
-    if (!edicao) return;
-    try {
-      setCarregando(true);
-      setErro(null);
-      await api.asos.atualizar(edicao);
-      setEdicaoId(null);
-      setEdicao(null);
-      await carregar();
-      sucessoToast('ASO atualizado com sucesso.');
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao atualizar ASO.');
-    } finally {
-      setCarregando(false);
-    }
-  }
-
-  async function excluir(id: string) {
-    if (!(await confirmar('Excluir este ASO? Essa ação não pode ser desfeita.'))) return;
-    try {
-      await api.asos.excluir(id);
-      await carregar();
-      sucessoToast('ASO excluído com sucesso.');
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao excluir ASO.');
-    }
-  }
+    if (filtro === 'todas') return true;
+    const sit = situacaoHoje(a).rotulo;
+    if (filtro === 'liberado') return sit === 'Liberado' || sit === 'Liberado com restrição';
+    if (filtro === 'vence') return sit.startsWith('Vence') || sit === 'Vencido';
+    if (filtro === 'sem-parecer') return sit === 'Sem parecer';
+    return sit === 'Não liberado';
+  });
 
   const colunas: Coluna<AsoAgrupado>[] = [
     {
@@ -211,59 +145,18 @@ export function AsosTab() {
       render: (a) => (
         <>
           {nomeTrabalhador(a.trabalhadorId)}
+          {porId.get(a.trabalhadorId)?.matricula && <span style={estiloLinhaApoio}>{porId.get(a.trabalhadorId)?.matricula}</span>}
           {a.copias > 1 && (
-            <span
-              style={estiloLinhaApoio}
-              title={`O mesmo exame foi recebido ${a.copias} vezes do G-RH. Excluir remove uma cópia por vez.`}
-            >
+            <span style={estiloLinhaApoio} title={`O mesmo exame foi recebido ${a.copias} vezes do G-RH.`}>
               {a.copias} documentos iguais
             </span>
           )}
         </>
       ),
     },
-    {
-      chave: 'tipo',
-      rotulo: 'Tipo',
-      render: (a) =>
-        edicaoId === a.id && edicao ? (
-          <Select value={edicao.tipo} onChange={(_, d) => setEdicao({ ...edicao, tipo: Number(d.value) })}>
-            {Object.entries(tipoExameAsoLabel).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>
-                {rotulo}
-              </option>
-            ))}
-          </Select>
-        ) : (
-          tipoExameAsoLabel[a.tipo]
-        ),
-    },
-    {
-      chave: 'exame',
-      rotulo: 'Exame',
-      render: (a) =>
-        edicaoId === a.id && edicao ? (
-          <CampoData
-            value={edicao.dataExame?.slice(0, 10)}
-            onChange={(_, d) => setEdicao({ ...edicao, dataExame: d.value })}
-          />
-        ) : (
-          a.dataExame?.slice(0, 10)
-        ),
-    },
-    {
-      chave: 'validade',
-      rotulo: 'Validade',
-      render: (a) =>
-        edicaoId === a.id && edicao ? (
-          <CampoData
-            value={edicao.dataValidade?.slice(0, 10)}
-            onChange={(_, d) => setEdicao({ ...edicao, dataValidade: d.value })}
-          />
-        ) : (
-          a.dataValidade?.slice(0, 10)
-        ),
-    },
+    { chave: 'tipo', rotulo: 'Tipo', render: (a) => tipoExameAsoLabel[a.tipo] },
+    { chave: 'exame', rotulo: 'Exame', render: (a) => (a.dataExame ? formatarData(a.dataExame) : '—') },
+    { chave: 'validade', rotulo: 'Validade', render: (a) => (a.dataValidade ? formatarData(a.dataValidade) : '—') },
     {
       chave: 'situacao',
       rotulo: 'Situação hoje',
@@ -281,27 +174,13 @@ export function AsosTab() {
       chave: 'resultado',
       rotulo: 'Parecer do médico',
       render: (a) =>
-        edicaoId === a.id && edicao ? (
-          <Select
-            value={edicao.resultadoStatus}
-            onChange={(_, d) => setEdicao({ ...edicao, resultadoStatus: Number(d.value) })}
-          >
-            {Object.entries(resultadoAsoLabel).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>
-                {rotulo}
-              </option>
-            ))}
-          </Select>
-        ) : a.vigente === false || diasAteValidade(a.dataValidade) < 0 ? (
-          // Exame vencido ou superado: o parecer é só histórico, então fica apagado e sem pulsar.
+        a.vigente === false || diasAteValidade(a.dataValidade) < 0 ? (
           <>
             <StatusChip tom="neutro">{resultadoAsoLabel[a.resultadoStatus]}</StatusChip>
             <span style={estiloLinhaApoio}>no exame de {formatarData(a.dataExame)}</span>
           </>
         ) : (
-          <StatusChip tom={tomPorResultadoAso[a.resultadoStatus] ?? 'neutro'}>
-            {resultadoAsoLabel[a.resultadoStatus]}
-          </StatusChip>
+          <StatusChip tom={tomPorResultadoAso[a.resultadoStatus] ?? 'neutro'}>{resultadoAsoLabel[a.resultadoStatus]}</StatusChip>
         ),
     },
   ];
@@ -313,127 +192,34 @@ export function AsosTab() {
           {erro}
         </FeedbackInline>
       )}
-
-      <Card titulo="ASOs">
-        <FormSection titulo="Novo ASO" numero={1} primeira>
-          <FormGrid>
-            <Campo span={4}>
-              <Field label="Funcionário">
-                <Select
-                  value={novoAso.trabalhadorId}
-                  onChange={(_, d) => setNovoAso({ ...novoAso, trabalhadorId: d.value })}
-                >
-                  <option value="">Selecione</option>
-                  {trabalhadores.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.matricula ? `${t.nome} (${t.matricula})` : t.nome}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Tipo de exame">
-                <Select value={novoAso.tipo} onChange={(_, d) => setNovoAso({ ...novoAso, tipo: Number(d.value) })}>
-                  {Object.entries(tipoExameAsoLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={2}>
-              <Field label="Data do exame">
-                <CampoData
-                  value={novoAso.dataExame}
-                  onChange={(_, d) => setNovoAso({ ...novoAso, dataExame: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={2}>
-              <Field label="Validade">
-                <CampoData
-                  value={novoAso.dataValidade}
-                  onChange={(_, d) => setNovoAso({ ...novoAso, dataValidade: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Resultado">
-                <Select
-                  value={novoAso.resultadoStatus}
-                  onChange={(_, d) => setNovoAso({ ...novoAso, resultadoStatus: Number(d.value) })}
-                >
-                  {Object.entries(resultadoAsoLabel).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </Campo>
-            <Campo span={3}>
-              <Field label="Médico">
-                <Input
-                  value={novoAso.medicoNome ?? ''}
-                  onChange={(_, d) => setNovoAso({ ...novoAso, medicoNome: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={2}>
-              <Field label="CRM">
-                <Input
-                  value={novoAso.medicoCrm ?? ''}
-                  onChange={(_, d) => setNovoAso({ ...novoAso, medicoCrm: d.value })}
-                />
-              </Field>
-            </Campo>
-            <Campo span={4}>
-              <Field label="Observações clínicas">
-                <Textarea
-                  value={novoAso.observacoesClinicas ?? ''}
-                  onChange={(_, d) => setNovoAso({ ...novoAso, observacoesClinicas: d.value })}
-                />
-              </Field>
-            </Campo>
-          </FormGrid>
-          <FormRodape>
-            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-              Registrar ASO
-            </Button>
-          </FormRodape>
-        </FormSection>
-
+      <Card titulo="ASOs" subtitulo="Recebidos automaticamente do G-RH. Para corrigir um ASO, ajuste no G-RH: a próxima importação atualiza aqui.">
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 12 }}>
+          <Field label="Buscar" style={{ minWidth: 240 }}>
+            <Input value={busca} onChange={(_, d) => setBusca(d.value)} placeholder="Nome ou matrícula" />
+          </Field>
+          <Field label="Situação" style={{ minWidth: 220 }}>
+            <Select value={filtro} onChange={(_, d) => setFiltro(d.value as FiltroSituacao)}>
+              <option value="todas">Todas</option>
+              <option value="liberado">Liberados</option>
+              <option value="vence">Vencendo ou vencidos</option>
+              <option value="sem-parecer">Sem parecer</option>
+              <option value="nao-liberado">Não liberados</option>
+            </Select>
+          </Field>
+          <Checkbox label="Só o exame mais recente de cada um" checked={soVigentes} onChange={(_, d) => setSoVigentes(!!d.checked)} />
+        </div>
         <DataTable
-          aria-label="ASOs registrados"
+          aria-label="ASOs recebidos do G-RH"
           colunas={colunas}
-          linhas={asos}
+          linhas={linhas}
           chaveLinha={(a) => a.id}
           carregando={carregandoLista}
-          vazio={{ titulo: 'Nenhum ASO cadastrado ainda.' }}
-          aoClicarLinha={(a) => {
-            if (edicaoId !== a.id) iniciarEdicao(a);
-          }}
-          acoesLinha={(a) =>
-            edicaoId === a.id ? (
-              <Button
-                appearance="subtle"
-                icon={<Save24Regular />}
-                onClick={salvarEdicao}
-                disabled={carregando}
-                aria-label="Salvar"
-              />
-            ) : (
-              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
-            )
-          }
+          vazio={{ titulo: busca || filtro !== 'todas' ? 'Nenhum ASO com esse filtro.' : 'Nenhum ASO recebido do G-RH ainda.' }}
         />
         <Text size={200} style={{ color: designTokens.colorNeutralMedium, display: 'block', marginTop: 8 }}>
-          Clique em uma linha para editar o ASO.
+          {linhas.length} ASO(s) na lista.
         </Text>
       </Card>
-      {dialogElement}
     </>
   );
 }
