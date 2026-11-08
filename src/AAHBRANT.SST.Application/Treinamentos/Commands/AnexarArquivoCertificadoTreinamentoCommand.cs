@@ -15,7 +15,8 @@ public record AnexarArquivoCertificadoTreinamentoCommand(
     Guid TreinamentoId,
     string NomeArquivo,
     byte[] Conteudo,
-    string ContentType) : IRequest<Guid>;
+    string ContentType,
+    int Rotacao = 0) : IRequest<Guid>;
 
 public class AnexarArquivoCertificadoTreinamentoCommandValidator : AbstractValidator<AnexarArquivoCertificadoTreinamentoCommand>
 {
@@ -43,11 +44,24 @@ public class AnexarArquivoCertificadoTreinamentoCommandValidator : AbstractValid
 public class AnexarArquivoCertificadoTreinamentoCommandHandler : IRequestHandler<AnexarArquivoCertificadoTreinamentoCommand, Guid>
 {
     private readonly IAppDbContext _db;
+    private readonly AAHBRANT.SST.Application.Treinamentos.LeituraCertificado.IProcessadorArquivoCertificado? _processador;
 
-    public AnexarArquivoCertificadoTreinamentoCommandHandler(IAppDbContext db) => _db = db;
-
-    public async Task<Guid> Handle(AnexarArquivoCertificadoTreinamentoCommand request, CancellationToken ct)
+    public AnexarArquivoCertificadoTreinamentoCommandHandler(IAppDbContext db,
+        AAHBRANT.SST.Application.Treinamentos.LeituraCertificado.IProcessadorArquivoCertificado? processador = null)
     {
+        _db = db;
+        _processador = processador;
+    }
+
+    public async Task<Guid> Handle(AnexarArquivoCertificadoTreinamentoCommand original, CancellationToken ct)
+    {
+        // Rotação indicada pela leitura da IA (07/11/2026): o arquivo é guardado já em pé; o original não fica.
+        var request = original;
+        if (_processador is not null && original.Rotacao is 90 or 180 or 270)
+        {
+            var (conteudo, tipo) = _processador.Girar(original.Conteudo, original.ContentType, original.Rotacao);
+            request = original with { Conteudo = conteudo, ContentType = tipo };
+        }
         var treinamentoExiste = await _db.Treinamentos.NoEscopoDoTrabalhador(_db, t => t.TrabalhadorId).AnyAsync(t => t.Id == request.TreinamentoId, ct);
         if (!treinamentoExiste)
             throw new KeyNotFoundException($"Treinamento {request.TreinamentoId} não encontrado.");

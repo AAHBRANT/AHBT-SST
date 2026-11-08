@@ -75,7 +75,8 @@ public record RegraCursoObrigatorioDto(
     string Descricao,
     bool AplicaTodasFuncoes,
     string? PalavrasChave,
-    bool Ativo);
+    bool Ativo,
+    string? Perigos = null);
 
 // Inclui as desativadas: a tela mostra e permite reativar.
 public record ListarRegrasCursoObrigatorioQuery : IRequest<List<RegraCursoObrigatorioDto>>;
@@ -97,7 +98,7 @@ public class ListarRegrasCursoObrigatorioQueryHandler : IRequestHandler<ListarRe
                     ?? cursos.Where(c => GeradorCursosObrigatorios.NumeroNr(c.NormaReferencia) is { } n && n == GeradorCursosObrigatorios.NumeroNr(r.Norma))
                         .OrderBy(c => c.Nome).FirstOrDefault();
                 return new RegraCursoObrigatorioDto(r.Id, r.Norma, r.CursoTreinamentoId, curso?.Nome, r.Descricao,
-                    r.AplicaTodasFuncoes, r.PalavrasChave, r.Ativo);
+                    r.AplicaTodasFuncoes, r.PalavrasChave, r.Ativo, r.Perigos);
             })
             .OrderByDescending(r => r.Ativo).ThenByDescending(r => r.AplicaTodasFuncoes)
             .ThenBy(r => GeradorCursosObrigatorios.NumeroNr(r.Norma)).ThenBy(r => r.Descricao)

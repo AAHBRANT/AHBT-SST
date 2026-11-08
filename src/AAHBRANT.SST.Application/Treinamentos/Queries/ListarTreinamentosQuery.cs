@@ -35,7 +35,9 @@ public class ListarTreinamentosQueryHandler : IRequestHandler<ListarTreinamentos
                 x.NumeroCertificado,
                 x.Local,
                 x.InstrutorRegistroProfissional,
-                x.SessaoTreinamentoId))
+                x.SessaoTreinamentoId,
+                x.OrigemCertificado,
+                _db.ArquivosCertificadoTreinamento.Any(a => a.TreinamentoId == x.Id)))
             .ToListAsync(ct);
     }
 }

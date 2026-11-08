@@ -110,7 +110,7 @@ export function MatrizTreinamentoTab() {
     <div>
       <PageHeader
         titulo="Matriz de treinamento por função"
-        subtitulo="Clique numa função para editar quais cursos são obrigatórios para ela. Funções são cadastradas em Pessoas → Funções; cursos, em Treinamentos → Treinamentos."
+        subtitulo="Clique numa função para editar quais cursos são obrigatórios para ela. Funções são cadastradas em Pessoas → Funções; cursos, em Configurações → Catálogo de Cursos."
         acoes={
           <Button appearance="primary" onClick={salvar} disabled={!alterado || salvando}>
             {salvando ? 'Salvando…' : 'Salvar alterações'}

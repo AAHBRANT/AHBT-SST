@@ -670,6 +670,16 @@ export interface RegraCursoObrigatorio {
   aplicaTodasFuncoes: boolean;
   palavrasChave?: string | null;
   ativo: boolean;
+  // Perigos padronizados do PGR, separados por vírgula (07/11/2026).
+  perigos?: string | null;
+}
+
+// "Simular" da regra (07/11/2026): quais funções de quais obras receberiam o curso. Nada é gravado.
+export interface SimulacaoRegraCursoObrigatorio {
+  cursoNome?: string | null;
+  obrasAnalisadas: number;
+  funcoesAnalisadas: number;
+  itens: { obraNome: string; funcaoNome: string; motivo: string }[];
 }
 
 export type SalvarRegraCursoObrigatorio = Omit<RegraCursoObrigatorio, 'id' | 'cursoNome'> & { id?: string | null };
@@ -730,6 +740,23 @@ export interface Treinamento {
   origemCertificado?: OrigemCertificadoTreinamento;
   // Turma (sessão) de onde o treinamento foi gerado, quando houver — link no perfil.
   sessaoTreinamentoId?: string | null;
+  // Tem certificado digitalizado anexado (07/11/2026): externo sem anexo = "Pendente de anexo".
+  temArquivo?: boolean;
+}
+
+// Certificado lido pela IA (07/11/2026): dados para o técnico conferir e quanto girar o arquivo.
+export interface CertificadoLido {
+  rotacao: 0 | 90 | 180 | 270;
+  cursoTreinamentoId?: string | null;
+  cursoLido?: string | null;
+  dataRealizacao?: string | null;
+  dataValidade?: string | null;
+  cargaHoraria?: number | null;
+  instituicao?: string | null;
+  registroInstrutor?: string | null;
+  numeroCertificado?: string | null;
+  nomeParticipante?: string | null;
+  nomeConfere: boolean;
 }
 
 export const OrigemCertificadoTreinamento = {
@@ -1371,9 +1398,15 @@ export interface Atividade {
   obraId: string;
   nome: string;
   descricao?: string | null;
+  // Consulta da aba Atividades (07/11/2026): GHE de origem e riscos por faixa.
+  gheNumero?: number | null;
+  gheSetor?: string | null;
+  riscosAltos?: number;
+  riscosModerados?: number;
+  riscosBaixos?: number;
 }
 
-export type NovaAtividade = Omit<Atividade, 'id'>;
+export type NovaAtividade = Pick<Atividade, 'obraId' | 'nome' | 'descricao'>;
 
 export interface EligibilityCheckItem {
   requisito: string;
@@ -3040,7 +3073,7 @@ export interface MinutaOrdemServico {
 
 // Gerador de PGR pela EAP (21/10/2026). Status: 1 Rascunho, 2 Aguardando aprovação, 3 Aprovado, 4 Devolvido.
 // manual: incluído à mão no passo 2 (29/10/2026). ADM e ADM.1 são o Administrativo, padrão em toda obra.
-export interface ItemEapGerado { codigo: string; nome: string; nivel: number; periodo?: string | null; usar: boolean; conferir: boolean; manual?: boolean }
+export interface ItemEapGerado { codigo: string; nome: string; nivel: number; periodo?: string | null; usar: boolean; conferir: boolean; manual?: boolean; herdado?: boolean }
 export type CategoriaMedida = 'Eliminação' | 'EPC' | 'Administrativa' | 'EPI';
 export interface MedidaGerada {
   fase: 1 | 2 | 3; texto: string; categoria?: CategoriaMedida | null; decisao: 'Pendente' | 'Aceita' | 'Descartada';
@@ -3057,7 +3090,7 @@ export interface RiscoGerado {
   base: string[]; medidas: MedidaGerada[]; revisado: boolean; excluido: boolean;
   exposicao: ExposicaoRisco;
 }
-export interface AtividadeGerada { codigoEap: string; nome: string; riscosGerados: boolean; riscos: RiscoGerado[] }
+export interface AtividadeGerada { codigoEap: string; nome: string; riscosGerados: boolean; riscos: RiscoGerado[]; herdada?: boolean }
 // CBO da tabela oficial (29/10/2026): cbo com 6 dígitos quando válido; cbo preenchido com cboTitulo nulo = fora da tabela.
 export interface FuncaoGerada {
   funcaoId?: string | null; nome: string; descricao?: string | null; sugeridaPelaIa: boolean;
@@ -3105,6 +3138,25 @@ export interface EstruturaGeracaoPgr {
   complementares: DadosComplementaresPgr;
   // Formato antigo (uma ação por linha); o servidor já converte para acoesPlano ao ler.
   planoAcao: string[];
+  // Revisão do PGR (07/11/2026): nula = geração do zero.
+  revisao?: {
+    tipo: 'Mudanca' | 'Periodica';
+    geracaoAnteriorId: string;
+    observacao?: string | null;
+    reavaliacaoConfirmada: boolean;
+    reavaliadoPorNome?: string | null;
+    reavaliadoEmUtc?: string | null;
+  } | null;
+}
+
+export interface NovaRevisaoPgr {
+  obraId: string;
+  tipo: 'Mudanca' | 'Periodica';
+  dataElaboracao: string;
+  dataProximaRevisao?: string | null;
+  dataTermino?: string | null;
+  observacao?: string | null;
+  reavaliacaoConfirmada: boolean;
 }
 export interface GeracaoPgrEap {
   id: string; obraId: string; obraNome: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null;
@@ -3120,7 +3172,7 @@ export interface LinhaTreinamentoPgr {
   motivo?: string | null; aprovado: boolean;
 }
 export interface CronogramaTreinamentosGeracao { ghes: { numero: number; nome: string }[]; linhas: LinhaTreinamentoPgr[] }
-export interface ResumoGeracaoPgrEap { id: string; nome: string; obraNome: string; status: 1 | 2 | 3 | 4; passo: number; criadoEmUtc: string }
+export interface ResumoGeracaoPgrEap { id: string; nome: string; obraNome: string; status: 1 | 2 | 3 | 4; passo: number; criadoEmUtc: string; pgrId?: string | null; aprovadoPorNome?: string | null }
 
 export interface DadosDocumentoSst {
   tipo: 1 | 2 | 3 | 4;
@@ -5541,6 +5593,12 @@ export const api = {
     regras: () => request<RegraCursoObrigatorio[]>('/api/cursos-obrigatorios/regras'),
     salvarRegra: (regra: SalvarRegraCursoObrigatorio) =>
       request<{ id: string }>('/api/cursos-obrigatorios/regras', { method: 'POST', body: JSON.stringify(regra) }),
+    simularRegra: (regra: SalvarRegraCursoObrigatorio) =>
+      request<SimulacaoRegraCursoObrigatorio>('/api/cursos-obrigatorios/regras/simular', {
+        method: 'POST',
+        body: JSON.stringify(regra),
+      }),
+    perigosPadrao: () => request<string[]>('/api/cursos-obrigatorios/regras/perigos-padrao'),
   },
   treinamentos: {
     listar: (trabalhadorId?: string, obraId?: string) => {
@@ -5576,9 +5634,10 @@ export const api = {
     },
     // Certificado digitalizado do lançamento retroativo (22/09): PDF original ou foto do papel.
     // Reenviar substitui o anterior — é o caminho quando a primeira foto sai ilegível.
-    anexarArquivoCertificado: async (id: string, arquivo: File) => {
+    anexarArquivoCertificado: async (id: string, arquivo: File, rotacao = 0) => {
       const formData = new FormData();
       formData.append('arquivo', arquivo);
+      if (rotacao) formData.append('rotacao', String(rotacao));
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<{ id: string }>(`/api/treinamentos/${id}/certificado/arquivo`, formData, authHeaders);
     },
@@ -5588,6 +5647,17 @@ export const api = {
     },
     removerArquivoCertificado: (id: string) =>
       request<void>(`/api/treinamentos/${id}/certificado/arquivo`, { method: 'DELETE' }),
+    // IA lê o certificado e diz quanto girar (07/11/2026). Nada é gravado.
+    lerCertificado: async (trabalhadorId: string, arquivo: File) => {
+      const formData = new FormData();
+      formData.append('arquivo', arquivo);
+      formData.append('trabalhadorId', trabalhadorId);
+      const authHeaders = await montarHeadersAuth();
+      return syncMutateMultipart<CertificadoLido>('/api/treinamentos/certificado/ler', formData, authHeaders);
+    },
+    // Endireita um certificado já anexado. Devolve os graus girados (0 = já estava em pé).
+    corrigirArquivoCertificado: (id: string) =>
+      request<{ rotacao: number }>(`/api/treinamentos/${id}/certificado/arquivo/corrigir`, { method: 'POST' }),
   },
   termosCompromissoEpi: {
     obter: (trabalhadorId: string) => request<TermoCompromissoEpi>(`/api/termoscompromissoepi/${trabalhadorId}`),
@@ -5986,6 +6056,9 @@ export const api = {
   geracoesPgrEap: {
     listar: (obraId?: string) => request<ResumoGeracaoPgrEap[]>(`/api/geracoes-pgr-eap${obraId ? `?obraId=${obraId}` : ''}`),
     obter: (id: string) => request<GeracaoPgrEap>(`/api/geracoes-pgr-eap/${id}`),
+    // Nova revisão a partir da última geração aprovada da obra (07/11/2026).
+    criarRevisao: (dados: NovaRevisaoPgr) =>
+      request<{ id: string }>('/api/geracoes-pgr-eap/revisao', { method: 'POST', body: JSON.stringify(dados) }),
     // Só Administrador e só rascunho que nunca foi para aprovação; o servidor confere.
     excluir: (id: string) => request<void>(`/api/geracoes-pgr-eap/${id}`, { method: 'DELETE' }),
     baixarPdf: async (id: string): Promise<Blob> => {

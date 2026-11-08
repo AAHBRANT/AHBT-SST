@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.CursosObrigatorios;
 using AAHBRANT.SST.Application.Asos;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.SessoesTreinamento;
@@ -128,9 +129,10 @@ public class ListarPlanosIntegracaoPendentesQueryHandler : IRequestHandler<Lista
             passos.Add(passoNr6);
 
             // 5. Demais cursos obrigatórios da função
-            var outrosCursos = await _db.MatrizTreinamentoFuncoes
-                .Where(m => m.FuncaoId == t.FuncaoId)
-                .Select(m => new { m.CursoTreinamentoId, Nome = m.CursoTreinamento!.Nome })
+            var idsExigidos = await ExigenciasTreinamento.CursosAsync(_db, t.ObraId, t.FuncaoId, ct);
+            var outrosCursos = await _db.CursosTreinamento
+                .Where(c => idsExigidos.Contains(c.Id))
+                .Select(c => new { CursoTreinamentoId = c.Id, c.Nome })
                 .ToListAsync(ct);
             outrosCursos = outrosCursos.Where(c => !idsIntegracao.Contains(c.CursoTreinamentoId) && !idsNr6.Contains(c.CursoTreinamentoId)).ToList();
             var pendentesCurso = outrosCursos.Where(c => !validos.Contains(c.CursoTreinamentoId)).ToList();

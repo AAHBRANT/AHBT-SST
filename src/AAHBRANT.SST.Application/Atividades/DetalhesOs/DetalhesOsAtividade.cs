@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.CursosObrigatorios;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Application.Riscos.Medidas;
@@ -60,13 +61,19 @@ public class ObterDetalhesOsAtividadeQueryHandler : IRequestHandler<ObterDetalhe
             string.IsNullOrWhiteSpace(a.Ghe.JornadaTrabalho) ? null : $"Jornada: {a.Ghe.JornadaTrabalho!.Trim()}",
         }.Where(t => t is not null));
 
-        var treinamentos = a.GheId is null
-            ? new List<TreinamentoExigidoDto>()
-            : await (from gf in _db.GheFuncoes
-                     where gf.GheId == a.GheId
-                     join m in _db.MatrizTreinamentoFuncoes on gf.FuncaoId equals m.FuncaoId
-                     select new TreinamentoExigidoDto(m.CursoTreinamento!.Nome, m.CursoTreinamento.NormaReferencia, gf.Funcao!.Nome))
-                .ToListAsync(ct);
+        // Cursos exigidos pelo PGR da obra (matriz só como reserva) — 08/11/2026.
+        var treinamentos = new List<TreinamentoExigidoDto>();
+        if (a.GheId is not null)
+        {
+            var funcoesDoGhe = await _db.GheFuncoes.Where(gf => gf.GheId == a.GheId)
+                .Select(gf => new { gf.FuncaoId, Nome = gf.Funcao!.Nome }).ToListAsync(ct);
+            var exigencias = await ExigenciasTreinamento.CarregarAsync(_db, new[] { a.ObraId }, ct);
+            var cursosCat = await _db.CursosTreinamento.Select(c => new { c.Id, c.Nome, c.NormaReferencia }).ToDictionaryAsync(c => c.Id, ct);
+            foreach (var f in funcoesDoGhe)
+                foreach (var id in exigencias(a.ObraId, f.FuncaoId) ?? new List<Guid>())
+                    if (cursosCat.TryGetValue(id, out var c))
+                        treinamentos.Add(new TreinamentoExigidoDto(c.Nome, c.NormaReferencia, f.Nome));
+        }
 
         return new DetalhesOsAtividadeDto
         {

@@ -92,6 +92,9 @@ public static class DependencyInjection
         services.AddScoped<AAHBRANT.SST.Application.LeituraIa.ILeitorCabecalhoDocumentoIa, LeituraIa.AzureOpenAiLeitorDocumentoSst>();
         services.AddScoped<AAHBRANT.SST.Application.LeituraIa.ILeitorContratoTerceirizadoIa, LeituraIa.AzureOpenAiLeitorDocumentoSst>();
         services.AddScoped<AAHBRANT.SST.Application.LeituraIa.IClassificadorDocumentoTerceirizadoIa, LeituraIa.ClaudeClassificadorDocumentoTerceirizado>();
+        // Certificado de treinamento lido pela IA e endireitado (07/11/2026).
+        services.AddScoped<AAHBRANT.SST.Application.Treinamentos.LeituraCertificado.ILeitorCertificadoIa, LeituraIa.ClaudeLeitorCertificado>();
+        services.AddScoped<AAHBRANT.SST.Application.Treinamentos.LeituraCertificado.IProcessadorArquivoCertificado, LeituraIa.ProcessadorArquivoCertificado>();
         services.AddScoped<AAHBRANT.SST.Application.SuporteIa.IClassificadorRelatoSuporteIa, AzureOpenAiClassificadorRelato>();
         services.AddScoped<AAHBRANT.SST.Application.Acidentes.RelatoIa.IClassificadorRelatoOcorrencia, AzureOpenAiClassificadorOcorrencia>();
         services.AddScoped<AAHBRANT.SST.Application.Acidentes.RelatoIa.IAnalistaPlanoOcorrencia, AzureOpenAiAnalistaPlanoOcorrencia>();

@@ -19,6 +19,8 @@ public class EstruturaGeracaoPgr
     // Formato antigo (uma ação por linha, sem responsável nem prazo). Só existe para ler rascunhos feitos
     // antes de 23/10/2026: Normalizar() passa as linhas para AcoesPlano.
     public List<string> PlanoAcao { get; set; } = new();
+    // Revisão do PGR (07/11/2026, mockup pgr-nova-revisao_2026-11-07_v1). Nulo = geração do zero.
+    public RevisaoGeracaoPgr? Revisao { get; set; }
 
     public EstruturaGeracaoPgr Normalizar()
     {
@@ -194,6 +196,23 @@ public class ItemEapGerado
     public bool Conferir { get; set; }
     // Incluído à mão no passo 2 (29/10/2026): não veio do arquivo da EAP.
     public bool Manual { get; set; }
+    // Veio da revisão anterior já aprovada (07/11/2026): não passa de novo pela IA.
+    public bool Herdado { get; set; }
+}
+
+// Dados da revisão: "Mudanca" parte da revisão anterior e só acrescenta; "Periodica" não muda o inventário e exige a
+// confirmação do engenheiro de que reavaliou os riscos (NR-01, revisão periódica do PGR).
+public class RevisaoGeracaoPgr
+{
+    public const string Mudanca = "Mudanca";
+    public const string Periodica = "Periodica";
+
+    public string Tipo { get; set; } = Mudanca;
+    public Guid GeracaoAnteriorId { get; set; }
+    public string? Observacao { get; set; }
+    public bool ReavaliacaoConfirmada { get; set; }
+    public string? ReavaliadoPorNome { get; set; }
+    public DateTime? ReavaliadoEmUtc { get; set; }
 }
 
 // Toda obra tem administrativo, e a EAP não traz (29/10/2026): o item entra sempre no passo 2, já marcado, e vira o
@@ -470,6 +489,8 @@ public class AtividadeGerada
     public string Nome { get; set; } = string.Empty;
     // true depois que a IA gerou os riscos (mesmo que nenhum).
     public bool RiscosGerados { get; set; }
+    // Veio da revisão anterior já aprovada (07/11/2026): riscos já revisados, aparece como "Mantido".
+    public bool Herdada { get; set; }
     public List<RiscoGerado> Riscos { get; set; } = new();
 }
 

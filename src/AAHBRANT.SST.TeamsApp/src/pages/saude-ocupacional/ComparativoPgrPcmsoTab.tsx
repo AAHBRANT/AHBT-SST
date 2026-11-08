@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { escolherObraInicial, useObraLembrada } from '../../hooks/useObraLembrada';
 import { Card, DataTable, FeedbackInline, Field, PageHeader, Select, StatusChip, Text, type Coluna, type Tom } from '@ui';
 import { api, type ComparativoFuncaoPgrPcmso, type ComparativoPgrPcmso, type Obra } from '../../lib/api';
 import { BotaoRascunhoPcmso } from './BotaoRascunhoPcmso';
@@ -23,7 +24,7 @@ function aviso(f: ComparativoFuncaoPgrPcmso): string | null {
 // usam o mesmo cadastro de funções, então duas linhas parecidas pedem correção no cadastro.
 export function ComparativoPgrPcmsoTab() {
   const [obras, setObras] = useState<Obra[]>([]);
-  const [obraId, setObraId] = useState('');
+  const [obraId, setObraId] = useObraLembrada();
   const [dados, setDados] = useState<ComparativoPgrPcmso | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export function ComparativoPgrPcmsoTab() {
     api.obras.listar()
       .then((lista) => {
         setObras(lista);
-        if (lista.length === 1) setObraId(lista[0].id);
+        setObraId(escolherObraInicial(lista));
       })
       .catch((e) => setErro(e instanceof Error ? e.message : 'Falha ao carregar obras.'));
   }, []);

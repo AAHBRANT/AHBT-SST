@@ -27,6 +27,8 @@ public class ObterTreinamentoPorIdQueryHandler : IRequestHandler<ObterTreinament
                 x.NumeroCertificado,
                 x.Local,
                 x.InstrutorRegistroProfissional,
-                x.SessaoTreinamentoId))
+                x.SessaoTreinamentoId,
+                x.OrigemCertificado,
+                _db.ArquivosCertificadoTreinamento.Any(a => a.TreinamentoId == x.Id)))
             .FirstOrDefaultAsync(ct);
 }

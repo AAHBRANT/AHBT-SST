@@ -60,6 +60,18 @@ public class GeracoesPgrEapController : ControllerBase
         return NoContent();
     }
 
+    // Nova revisão do PGR a partir da última geração aprovada (07/11/2026).
+    [Authorize(Policy = "pgr:criar")]
+    [HttpPost("revisao")]
+    public async Task<IActionResult> CriarRevisao(CriarRevisaoGeracaoPgrRequest corpo, CancellationToken ct)
+    {
+        var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
+        var id = await _mediator.Send(new CriarRevisaoGeracaoPgrCommand(corpo.ObraId, corpo.Tipo, corpo.DataElaboracao,
+            corpo.DataProximaRevisao, corpo.DataTermino, corpo.Observacao, corpo.ReavaliacaoConfirmada, usuarioId,
+            User.FindFirst("name")?.Value), ct);
+        return Ok(new { id });
+    }
+
     [Authorize(Policy = "pgr:criar")]
     [HttpPost("{id:guid}/sugerir-ghes")]
     public async Task<IActionResult> SugerirGhes(Guid id, CancellationToken ct)
@@ -172,4 +184,15 @@ public class CriarGeracaoRequest
     public DateTime DataElaboracao { get; set; }
     public DateTime? DataProximaRevisao { get; set; }
     public IFormFile Arquivo { get; set; } = null!;
+}
+
+public class CriarRevisaoGeracaoPgrRequest
+{
+    public Guid ObraId { get; set; }
+    public string Tipo { get; set; } = string.Empty;
+    public DateTime DataElaboracao { get; set; }
+    public DateTime? DataProximaRevisao { get; set; }
+    public DateTime? DataTermino { get; set; }
+    public string? Observacao { get; set; }
+    public bool ReavaliacaoConfirmada { get; set; }
 }

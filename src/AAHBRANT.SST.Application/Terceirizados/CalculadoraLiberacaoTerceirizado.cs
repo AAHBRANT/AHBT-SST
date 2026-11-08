@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.CursosObrigatorios;
 using AAHBRANT.SST.Application.Funcoes;
 using AAHBRANT.SST.Application.Asos;
 using AAHBRANT.SST.Application.Common;
@@ -41,9 +42,12 @@ public static class CalculadoraLiberacaoTerceirizado
                 if (!integracaoValida) pendencias.Add("Integração de Segurança pendente");
             }
 
-            var treinamentosObrigatorios = await db.MatrizTreinamentoFuncoes
-                .Where(m => m.FuncaoId == funcaoId)
-                .Select(m => new { m.CursoTreinamentoId, Nome = m.CursoTreinamento!.Nome })
+            var obraDoTerceirizado = await db.Trabalhadores.IgnoreQueryFilters()
+                .Where(t => t.Id == trabalhadorId).Select(t => (Guid?)t.ObraId).FirstOrDefaultAsync(ct);
+            var idsExigidos = await ExigenciasTreinamento.CursosAsync(db, obraDoTerceirizado, funcaoId, ct);
+            var treinamentosObrigatorios = await db.CursosTreinamento
+                .Where(c => idsExigidos.Contains(c.Id))
+                .Select(c => new { CursoTreinamentoId = c.Id, c.Nome })
                 .ToListAsync(ct);
             foreach (var curso in treinamentosObrigatorios)
             {

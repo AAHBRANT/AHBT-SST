@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.CursosObrigatorios;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.SessoesTreinamento;
@@ -48,10 +49,7 @@ public static class AgendaTreinamentosIntegracao
         var nr6 = cursos.Where(c => c.AtendeNr6)
             .OrderBy(c => CatalogoNormasRegulamentadoras.NormalizarNumero(c.NormaReferencia) == "NR-06" ? 0 : 1)
             .FirstOrDefault();
-        var idsDaFuncao = await db.MatrizTreinamentoFuncoes
-            .Where(m => m.FuncaoId == trabalhador.FuncaoId)
-            .Select(m => m.CursoTreinamentoId)
-            .ToListAsync(ct);
+        var idsDaFuncao = await ExigenciasTreinamento.CursosAsync(db, trabalhador.ObraId, trabalhador.FuncaoId, ct);
 
         var ordem = new List<(CursoTreinamento Curso, bool Primeira)>();
         if (integracao is not null) ordem.Add((integracao, true));

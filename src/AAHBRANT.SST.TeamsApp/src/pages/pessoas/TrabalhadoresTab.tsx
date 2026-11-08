@@ -50,6 +50,8 @@ import {
   type NovoTrabalhador,
   type Trabalhador,
   type Treinamento,
+  OrigemCertificadoTreinamento,
+  type CertificadoTreinamento,
 } from '../../lib/api';
 import { formatarCpf } from '../../lib/cpf';
 import { elegerAsoVigente } from '../../lib/aso';
@@ -177,6 +179,25 @@ export function TrabalhadoresTab({
   const [busca, setBusca] = useState('');
   const [filtroRapido, setFiltroRapido] = useState<FiltroRapido>('todos');
   const [funcaoFiltro, setFuncaoFiltro] = useState('');
+  // Filtro de certificados (08/11/2026): substitui a visão geral da antiga aba Certificados de Treinamentos.
+  const [filtroCertificado, setFiltroCertificado] = useState<'' | 'vencendo' | 'vencido' | 'sem-anexo'>('');
+  const [certificados, setCertificados] = useState<CertificadoTreinamento[] | null>(null);
+  useEffect(() => {
+    if (!filtroCertificado || certificados) return;
+    api.treinamentos.listarCertificados().then(setCertificados).catch(() => setCertificados([]));
+  }, [filtroCertificado, certificados]);
+  const comCertificadoFiltrado = useMemo(() => {
+    if (!filtroCertificado || !certificados) return null;
+    const ids = new Set<string>();
+    for (const c of certificados) {
+      const nivel = nivelVencimento(c.dataValidade);
+      if (filtroCertificado === 'vencido' && nivel === 'vencido') ids.add(c.trabalhadorId);
+      if (filtroCertificado === 'vencendo' && nivel === 'alerta') ids.add(c.trabalhadorId);
+      if (filtroCertificado === 'sem-anexo' && c.origemCertificado === OrigemCertificadoTreinamento.Externo && !c.temArquivo)
+        ids.add(c.trabalhadorId);
+    }
+    return ids;
+  }, [filtroCertificado, certificados]);
   const [obraFiltro, setObraFiltro] = useState<string | null>(null);
   const [analiseAberta, setAnaliseAberta] = useState(false);
   const [limite, setLimite] = useState(PASSO_PAGINA);
@@ -360,6 +381,7 @@ export function TrabalhadoresTab({
     const nomePorFuncao = new Map(funcoes.map((f) => [f.id, f.nome.toLowerCase()]));
     return universo.filter((t) => {
       if (funcaoFiltro && t.funcaoId !== funcaoFiltro) return false;
+      if (comCertificadoFiltrado && !comCertificadoFiltrado.has(t.id)) return false;
       const s = situacoes.get(t.id);
       if (filtroRapido === 'aptos' && s?.geral !== 'apto') return false;
       if (filtroRapido === 'pendencia' && s?.geral === 'apto') return false;
@@ -373,9 +395,9 @@ export function TrabalhadoresTab({
         (nomePorFuncao.get(t.funcaoId) ?? '').includes(termo)
       );
     });
-  }, [busca, universo, funcaoFiltro, filtroRapido, situacoes, funcoes]);
+  }, [busca, universo, funcaoFiltro, filtroRapido, situacoes, funcoes, comCertificadoFiltrado]);
 
-  const filtrosAtivos = busca.trim() !== '' || funcaoFiltro !== '' || filtroRapido !== 'todos' || obraFiltro !== null;
+  const filtrosAtivos = busca.trim() !== '' || funcaoFiltro !== '' || filtroCertificado !== '' || filtroRapido !== 'todos' || obraFiltro !== null;
 
   // Toda mudança de filtro volta para a primeira página da lista.
   function aplicarFiltroRapido(filtro: FiltroRapido) {
@@ -391,6 +413,7 @@ export function TrabalhadoresTab({
   function limparFiltros() {
     setBusca('');
     setFuncaoFiltro('');
+    setFiltroCertificado('');
     setFiltroRapido('todos');
     setObraFiltro(null);
     setLimite(PASSO_PAGINA);
@@ -703,6 +726,19 @@ export function TrabalhadoresTab({
                   {f.nome}
                 </option>
               ))}
+            </Select>
+            <Select
+              value={filtroCertificado}
+              onChange={(_, d) => {
+                setFiltroCertificado(d.value as typeof filtroCertificado);
+                setLimite(PASSO_PAGINA);
+              }}
+              aria-label="Filtrar por certificado"
+            >
+              <option value="">Todos os certificados</option>
+              <option value="vencendo">Certificado vencendo (30 dias)</option>
+              <option value="vencido">Certificado vencido</option>
+              <option value="sem-anexo">Certificado externo sem anexo</option>
             </Select>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: tokensUi.espaco.sm }}>
               <Legenda>
