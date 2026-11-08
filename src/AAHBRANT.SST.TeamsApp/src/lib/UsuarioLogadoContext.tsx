@@ -64,3 +64,22 @@ export function useSouAdministrador(): boolean {
   const { usuario } = useUsuarioLogado();
   return usuario?.ehAdministrador === true;
 }
+
+// Responsável x Supervisão (06/11/2026): diz se a permissão (ex.: 'dds:criar') vale NA obra
+// informada. Sem obra, responde se vale em alguma obra. O técnico pode VER todas as obras
+// (supervisão) e só EDITAR a dele; a tela usa isto para esconder a ação em vez de deixar o
+// servidor recusar com erro. Administrador e ambiente sem Entra: sempre pode.
+export function podeNaObra(usuario: UsuarioLogado | null, permissao: string, obraId?: string | null): boolean {
+  if (!usuario) return false;
+  if (usuario.ehAdministrador) return true;
+  const alcance = usuario.alcance?.[permissao];
+  if (!usuario.alcance) return usuario.permissoes.includes(permissao);
+  if (!alcance) return false;
+  if (alcance.global) return true;
+  return obraId ? alcance.obras.includes(obraId) : alcance.obras.length > 0;
+}
+
+export function usePodeNaObra() {
+  const { usuario } = useUsuarioLogado();
+  return (permissao: string, obraId?: string | null) => podeNaObra(usuario, permissao, obraId);
+}

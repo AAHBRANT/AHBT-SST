@@ -2589,6 +2589,17 @@ public static class NovidadesSeeder
                     "O PDF abre normalmente, com todos que assinaram na lista de presença."),
             }),
         new(
+            Versao: "5.147.0",
+            Titulo: "DDS: sua obra e obras que você acompanha",
+            DataPublicacao: new DateTime(2026, 11, 6, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Separação entre a sua obra e as obras que você acompanha",
+                    "A lista de DDS misturava todas as obras e mostrava botões de criar e assinar até em obras de outros técnicos.",
+                    "Escolha a obra no topo da lista, em \"Minhas obras\" ou \"Supervisão\". Nas obras que você acompanha, dá para consultar e baixar os PDFs, e as alterações ficam com o técnico responsável."),
+            }),
+        new(
             Versao: "5.148.0",
             Titulo: "Gestão de SST mais enxuta, revisão do PGR e certificado lido pela IA",
             DataPublicacao: new DateTime(2026, 11, 8, 0, 0, 0, DateTimeKind.Utc),

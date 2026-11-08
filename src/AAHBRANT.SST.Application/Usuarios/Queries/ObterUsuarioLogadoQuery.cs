@@ -21,7 +21,13 @@ public record UsuarioLogadoDto(
     bool EhAdministrador,
     // Códigos de Permissao concedidos por qualquer perfil vinculado ao usuário, em qualquer obra —
     // mesma abrangência que PermissaoAuthorizationHandler usa para autorizar (Camada 1 do RBAC).
-    List<string> Permissoes);
+    List<string> Permissoes,
+    // Onde cada permissão vale (06/11/2026 — Responsável x Supervisão): a tela usa para esconder
+    // criar/editar nas obras que o usuário só acompanha. Mesma regra de AcessoPorObraService.
+    // Nulo = acesso total (Entra desligado).
+    Dictionary<string, AlcancePermissaoDto>? Alcance = null);
+
+public record AlcancePermissaoDto(bool Global, List<Guid> Obras);
 
 public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogadoQuery, UsuarioLogadoDto>
 {
@@ -54,19 +60,35 @@ public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogado
         var perfis = await _db.UsuariosPerfilObra
             .AsNoTracking()
             .Where(v => v.Ativo && v.UsuarioId == usuario.Id && v.PerfilAcesso != null && v.PerfilAcesso.Ativo)
-            .Select(v => new { v.PerfilAcessoId, Tipo = v.PerfilAcesso!.Tipo })
+            .Select(v => new { v.PerfilAcessoId, v.ObraId, Tipo = v.PerfilAcesso!.Tipo })
             .ToListAsync(ct);
 
         var ehAdministrador = perfis.Any(p => p.Tipo == TipoPerfilAcesso.Administrador);
 
         var perfilIds = perfis.Select(p => p.PerfilAcessoId).Distinct().ToList();
-        var permissoes = await _db.PerfisAcessoPermissoes
+        var linhas = await _db.PerfisAcessoPermissoes
             .AsNoTracking()
             .Where(pp => pp.Ativo && perfilIds.Contains(pp.PerfilAcessoId) && pp.Permitido && pp.Permissao != null && pp.Permissao.Ativo)
-            .Select(pp => pp.Permissao!.Codigo)
-            .Distinct()
+            .Select(pp => new { pp.PerfilAcessoId, pp.Permissao!.Codigo, pp.Escopo })
             .ToListAsync(ct);
 
-        return new UsuarioLogadoDto(usuario.Nome, usuario.Email, ehAdministrador, permissoes);
+        var permissoes = linhas.Select(l => l.Codigo).Distinct().ToList();
+
+        var alcance = new Dictionary<string, AlcancePermissaoDto>();
+        foreach (var codigo in permissoes)
+        {
+            var global = false;
+            var obras = new HashSet<Guid>();
+            foreach (var vinculo in perfis)
+            {
+                var escopos = linhas.Where(l => l.PerfilAcessoId == vinculo.PerfilAcessoId && l.Codigo == codigo).Select(l => l.Escopo).ToList();
+                if (escopos.Count == 0) continue;
+                if (vinculo.ObraId is null || escopos.Contains(EscopoAcesso.Global)) global = true;
+                if (vinculo.ObraId is Guid obraId) obras.Add(obraId);
+            }
+            alcance[codigo] = new AlcancePermissaoDto(global, obras.ToList());
+        }
+
+        return new UsuarioLogadoDto(usuario.Nome, usuario.Email, ehAdministrador, permissoes, alcance);
     }
 }
