@@ -693,7 +693,7 @@ export function InspecaoDetalhePage() {
                         <div style={{ width: 180 }}>
                           <SlotFoto
                             rotulo={ehInspecaoTema ? 'Foto do item' : 'Foto da não conformidade'}
-                            contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: inspecao.veiculoPlacaPrefixo }}
+                            contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: inspecao.veiculoPlacaPrefixo }}
                             dadosFoto={resposta.dadosFoto}
                             url={fotoUrls[resposta.id]}
                             carregandoMiniatura={resposta.temFoto && !fotoUrls[resposta.id]}
@@ -710,7 +710,7 @@ export function InspecaoDetalhePage() {
                             <div style={{ width: 180 }}>
                               <SlotFoto
                                 rotulo="2ª foto"
-                                contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: inspecao.veiculoPlacaPrefixo }}
+                                contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: inspecao.veiculoPlacaPrefixo }}
                                 dadosFoto={extra?.dadosFoto}
                                 url={extra ? fotoAdicionalUrls[extra.id] : null}
                                 carregandoMiniatura={!!extra && !fotoAdicionalUrls[extra.id]}
@@ -754,7 +754,7 @@ export function InspecaoDetalhePage() {
                       <div style={{ maxWidth: 180 }}>
                         <SlotFoto
                           rotulo="Foto do item"
-                          contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
+                          contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
                           dadosFoto={resposta.dadosFoto}
                           url={fotoUrls[resposta.id]}
                           carregandoMiniatura={resposta.temFoto && !fotoUrls[resposta.id]}
@@ -771,7 +771,7 @@ export function InspecaoDetalhePage() {
                       <div style={{ maxWidth: 180 }}>
                         <SlotFoto
                           rotulo="Evidência posterior"
-                          contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
+                          contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
                           dadosFoto={resposta.dadosFotoDepois}
                           url={fotoDepoisUrls[resposta.id]}
                           carregandoMiniatura={resposta.temFotoDepois && !fotoDepoisUrls[resposta.id]}
@@ -892,7 +892,7 @@ export function InspecaoDetalhePage() {
                   <div style={{ maxWidth: 160 }}>
                     <SlotFoto
                       rotulo="Evidência anterior"
-                      contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
+                      contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
                       dadosFoto={resposta.dadosFoto}
                       url={fotoUrls[resposta.id]}
                       carregandoMiniatura={resposta.temFoto && !fotoUrls[resposta.id]}
@@ -907,7 +907,7 @@ export function InspecaoDetalhePage() {
                   <div style={{ maxWidth: 160 }}>
                     <SlotFoto
                       rotulo="Evidência posterior"
-                      contextoFoto={{ obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
+                      contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
                       dadosFoto={resposta.dadosFotoDepois}
                       url={fotoDepoisUrls[resposta.id]}
                       carregandoMiniatura={resposta.temFotoDepois && !fotoDepoisUrls[resposta.id]}

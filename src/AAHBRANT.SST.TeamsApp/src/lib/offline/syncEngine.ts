@@ -431,6 +431,17 @@ function reconstruirFormData(item: ItemFilaSaida): FormData {
   const formData = new FormData();
   Object.entries(item.camposFormData ?? {}).forEach(([chave, valor]) => formData.append(chave, valor));
   Object.entries(item.arquivosFormData ?? {}).forEach(([chave, blob]) => formData.append(chave, blob));
+  // A fila antiga já guardava o destino de cada captura na URL. Preserve o vínculo ao reenviar.
+  const destino = /^\/api\/(?:dds|sessoestreinamento)\/([^/]+)\/fotos-evidencia$/.exec(item.url)
+    ?? /^\/api\/inspecoes\/respostas\/([^/]+)\/foto(?:-depois)?$/.exec(item.url)
+    ?? /^\/api\/acidentes\/([^/]+)\/fotos$/.exec(item.url);
+  if (destino && item.camposFormData?.metadados) {
+    try {
+      const dados = JSON.parse(item.camposFormData.metadados);
+      if (dados?.origem === 'camera' && dados.registroId === undefined)
+        formData.set('metadados', JSON.stringify({ ...dados, registroId: destino[1] }));
+    } catch { /* A API informa o motivo da recusa de metadados inválidos. */ }
+  }
   return formData;
 }
 

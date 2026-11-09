@@ -30,7 +30,7 @@ public class AnexarFotoAcidenteCommandHandler : IRequestHandler<AnexarFotoAciden
         var acidente = await _db.Acidentes.FirstOrDefaultAsync(a => a.Id == request.AcidenteId, ct)
             ?? throw new KeyNotFoundException("Acidente não encontrado.");
         if (acidente.Status == StatusAcidente.Concluido) throw new InvalidOperationException("O acidente já foi finalizado.");
-        var dados = await DadosCapturaFoto.PrepararAsync(request.Metadados, acidente.ObraId, _db, ct);
+        var dados = await DadosCapturaFoto.PrepararAsync(request.Metadados, acidente.Id, acidente.ObraId, _db, ct);
         var anterior = await _db.AcidentesFotos.FirstOrDefaultAsync(f => f.AcidenteId == acidente.Id && f.Ordem == request.Ordem, ct);
         if (anterior is not null) anterior.Ativo = false;
         var foto = new AcidenteFoto { AcidenteId = acidente.Id, Ordem = request.Ordem, FotoConteudo = request.Conteudo, FotoContentType = request.ContentType, FotoMetadadosJson = dados };

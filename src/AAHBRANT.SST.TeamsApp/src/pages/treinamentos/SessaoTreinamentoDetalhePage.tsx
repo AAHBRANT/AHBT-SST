@@ -467,7 +467,7 @@ export function SessaoTreinamentoDetalhePage() {
 
       <Card>
         <GradeFotosEvidencia
-          contextoFoto={{ obraId: sessao.obraId, obraNome: sessao.obraNome }}
+          contextoFoto={{ registroId: sessao.id, obraId: sessao.obraId, obraNome: sessao.obraNome }}
           titulo="Evidências fotográficas"
           subtitulo={`${TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS} fotos da turma são obrigatórias para liberar o encerramento.`}
           total={TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS}

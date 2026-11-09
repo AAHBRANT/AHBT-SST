@@ -46,12 +46,11 @@ public class AnexarFotoDepoisItemInspecaoCommandHandler : IRequestHandler<Anexar
         if (request.VersaoEsperada is not null && request.VersaoEsperada != Convert.ToBase64String(resposta.RowVersion ?? []))
             throw new DbUpdateConcurrencyException("O item foi alterado enquanto o dispositivo estava offline.");
 
-        resposta.FotoDepoisConteudo = request.FotoConteudo;
-        resposta.FotoDepoisContentType = request.FotoContentType;
-
         if (resposta.Inspecao!.Status != AAHBRANT.SST.Domain.Enums.StatusInspecao.EmAndamento)
             throw new InvalidOperationException("A inspeção já foi finalizada.");
-        resposta.FotoDepoisMetadadosJson = await DadosCapturaFoto.PrepararAsync(request.Metadados, resposta.Inspecao.ObraId, _db, ct);
+        resposta.FotoDepoisMetadadosJson = await DadosCapturaFoto.PrepararAsync(request.Metadados, resposta.Id, resposta.Inspecao.ObraId, _db, ct);
+        resposta.FotoDepoisConteudo = request.FotoConteudo;
+        resposta.FotoDepoisContentType = request.FotoContentType;
         await _db.SaveChangesAsync(ct);
         return resposta.RowVersion is null ? null : Convert.ToBase64String(resposta.RowVersion);
     }

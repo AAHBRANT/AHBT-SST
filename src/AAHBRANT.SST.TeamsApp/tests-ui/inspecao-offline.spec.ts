@@ -83,7 +83,7 @@ async function salvarFoto(page: Page, invalida = false) {
     const { vincularDadosFoto } = await import(/* @vite-ignore */ fotos);
     const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1u8AAAAASUVORK5CYII='), c => c.charCodeAt(0));
     const file = new File([bytes], 'campo.png', { type: 'image/png' });
-    vincularDadosFoto(file, { origem: 'camera', obraId: 'obra-a', obraNome: 'Obra A', capturadaEm: '2026-10-24T12:00:00Z',
+    vincularDadosFoto(file, { origem: 'camera', registroId: 'resp-a', obraId: 'obra-a', obraNome: 'Obra A', capturadaEm: '2026-10-24T12:00:00Z',
       fusoMinutos: 180, latitude: invalida ? null : -7.1, longitude: -34.8, precisaoMetros: 8, localizacaoObtidaEm: '2026-10-24T12:00:00Z' });
     await salvarFotoInspecao('insp-a', 'resp-a', file);
   }, invalida);
@@ -96,6 +96,78 @@ async function sincronizar(page: Page) {
     await sincronizarFilaSaida();
   });
 }
+
+test('confere e refaz a evidência da câmera antes de confirmar com a localização da captura', async ({ page, context }) => {
+  await context.grantPermissions(['camera', 'geolocation']);
+  const rede = await preparar(page);
+  await page.getByRole('button', { name: 'Evidência anterior', exact: true }).click();
+  await expect(page.getByRole('button', { name: /galeria/ })).toHaveCount(0);
+  await expect(page.locator('input[type=file][accept="image/*"]')).toHaveCount(0);
+  const capturar = async () => {
+    await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.videoWidth)).toBeGreaterThan(0);
+    await context.setGeolocation({ latitude: -7.1, longitude: -34.8, accuracy: 10 });
+    await expect(page.getByText('Localização obtida', { exact: false })).toBeVisible();
+    await page.getByRole('button', { name: 'Capturar', exact: true }).click();
+    await expect(page.getByRole('img', { name: 'Foto capturada' })).toBeVisible();
+  };
+  await capturar();
+  await page.getByRole('button', { name: 'Refazer foto' }).click();
+  await capturar();
+  expect(rede.envios).toHaveLength(0);
+  await rede.desligar();
+  await page.getByRole('button', { name: 'Confirmar foto' }).click();
+  await expect(page.getByRole('img', { name: 'Evidência anterior', exact: true })).toBeVisible();
+  expect(rede.envios).toHaveLength(0);
+  await rede.ligar();
+  await expect.poll(() => rede.detalhe.respostas[0].temFoto).toBe(true);
+  expect(rede.detalhe.respostas[0].dadosFoto).toMatchObject({
+    origem: 'camera', registroId: 'resp-a', obraId: 'obra-a', latitude: -7.1, longitude: -34.8,
+  });
+});
+
+test('câmera indisponível orienta o usuário e não abre o seletor de arquivo', async ({ page }) => {
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = async () => { throw new DOMException('Permissão negada', 'NotAllowedError'); };
+  });
+  const rede = await preparar(page);
+  let abriuSeletor = false;
+  page.on('filechooser', () => { abriuSeletor = true; });
+  await page.getByRole('button', { name: 'Evidência anterior', exact: true }).click();
+  await expect(page.getByText(/Não foi possível acessar a câmera/).first()).toBeVisible();
+  expect(abriuSeletor).toBe(false);
+  expect(rede.envios).toHaveLength(0);
+});
+
+test('os campos de evidência recusam imagens de arquivo antes de enviá-las ou enfileirá-las', async ({ page }) => {
+  const rede = await preparar(page);
+  await rede.desligar();
+  const recusas = await page.evaluate(async () => {
+    const caminho = '/src/lib/api.ts';
+    const { api } = await import(/* @vite-ignore */ caminho);
+    const arquivo = new File(['foto arquivada'], 'galeria.jpg', { type: 'image/jpeg' });
+    const envios = [
+      api.dds.anexarFotoEvidencia('dds-a', 1, arquivo), api.sessoesTreinamento.anexarFotoEvidencia('turma-a', 2, arquivo),
+      api.inspecoes.anexarFoto('resp-a', arquivo), api.inspecoes.anexarFotoDepois('resp-a', arquivo),
+      api.inspecoes.anexarFotoAdicional('resp-a', arquivo), api.acidentes.anexarFoto('ocorrencia-a', 1, arquivo),
+    ];
+    return (await Promise.allSettled(envios)).map(r => r.status === 'rejected' ? r.reason.message : 'aceita');
+  });
+  expect(recusas).toEqual(Array(6).fill('Tire a foto pela câmera deste registro.'));
+});
+
+test('sem GPS é possível descartar ou refazer a captura, mas a confirmação fica bloqueada', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => Object.defineProperty(navigator, 'geolocation', { value: undefined }));
+  const rede = await preparar(page);
+  await page.getByRole('button', { name: 'Evidência anterior', exact: true }).click();
+  await expect.poll(() => page.locator('video').evaluate((v: HTMLVideoElement) => v.videoWidth)).toBeGreaterThan(0);
+  await page.getByRole('button', { name: 'Capturar', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Conferir foto' })).toBeVisible({ timeout: 25_000 });
+  await expect(page.getByRole('button', { name: 'Confirmar foto' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Refazer foto' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  expect(rede.envios).toHaveLength(0);
+});
 
 test('preenche offline, reabre rascunho, salva item/foto e finaliza somente após sincronizar', async ({ page }) => {
   const rede = await preparar(page);
@@ -189,24 +261,14 @@ test('mudança concorrente mantém a versão do servidor e guarda a ação recus
   expect(rede.envios.at(-1)?.chave).not.toBe(primeiraChave);
 });
 
-test('foto com localização pendente é preservada, mas não enviada nem usada para finalizar', async ({ page }) => {
+test('recusa uma nova evidência sem localização antes de gravar na fila', async ({ page }) => {
   const rede = await preparar(page);
   await rede.desligar();
-  await page.getByLabel('Status do ponto verificado').selectOption('1');
-  await page.getByRole('button', { name: 'Salvar ponto verificado', exact: false }).or(page.getByRole('button', { name: 'Salvar item', exact: true })).click();
-  await expect(page.getByLabel('Pontos verificados respondidos')).toHaveValue('1/1');
-  await expect(page.getByText('Rascunho salvo no tablet.', { exact: false })).toHaveCount(0);
-  await salvarFoto(page, true);
+  await expect(salvarFoto(page, true)).rejects.toThrow('geolocalização');
   await page.reload();
-  await expect(page.getByRole('img', { name: 'Evidência anterior', exact: true })).toBeVisible();
-  const erro = await page.evaluate(async () => {
-    const caminho = '/src/lib/offline/inspecoes.ts';
-    try { await (await import(/* @vite-ignore */ caminho)).finalizarInspecaoLocal('insp-a'); return ''; }
-    catch (e) { return (e as Error).message; }
-  });
-  expect(erro).toContain('fotos com dados de captura pendentes');
+  await expect(page.getByRole('img', { name: 'Evidência anterior', exact: true })).toHaveCount(0);
   await rede.ligar();
-  await expect.poll(() => rede.detalhe.inspecao.itensRespondidos).toBe(1);
+  await sincronizar(page);
   expect(rede.envios.some(e => e.path.endsWith('/foto') || e.path.endsWith('/encerrar'))).toBe(false);
 });
 

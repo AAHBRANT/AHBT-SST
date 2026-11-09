@@ -82,11 +82,12 @@ export function useCapturaFoto({
   modoCamera = 'environment',
   cameraInicial,
   permitirCamera = true,
-  exigirCamera = false,
+  exigirCamera: somenteCamera = false,
   permitirCapturaAutomatica = false,
   modoCaptura = 'cadastro',
   contextoFoto,
 }: UseCapturaFotoOptions) {
+  const exigirCamera = somenteCamera || !!contextoFoto;
   const [localFoto, setLocalFoto] = useState(contextoFoto?.local ?? '');
   // Rastreio contínuo (08/10): liga ao abrir a câmera e só desliga ao fechar — a posição fica sempre
   // fresca e o clique não precisa esperar um GPS "do zero". Ver lib/rastreadorLocalizacao.ts.
@@ -100,7 +101,7 @@ export function useCapturaFoto({
   useEffect(() => {
     setLocalFoto(contextoFoto?.local ?? '');
   }, [contextoFoto?.local]);
-  const [fotoPendente, setFotoPendente] = useState<{ arquivo: File; dados: DadosFoto } | null>(null);
+  const [previa, setPrevia] = useState<{ arquivo: File; dados: DadosFoto } | null>(null);
   // Carimbo na foto igual ao do G-QUALI: só foto de evidência (câmera traseira) com contexto de obra. A foto do
   // reconhecimento facial (câmera frontal) nunca é carimbada — o texto atrapalharia a comparação do rosto.
   const carimbar = !!contextoFoto && modoCamera === 'environment';
@@ -130,12 +131,6 @@ export function useCapturaFoto({
       setEstadoLocalizacao(e);
       if (obs && e.leitura) obs.atualizar(e.leitura.latitude, e.leitura.longitude);
     });
-  }
-  function montarDados(origem: 'camera' | 'arquivo', loc: LocalizacaoFoto = localizacao, capturadaEm = new Date()): DadosFoto {
-    return { ...(origem === 'camera' ? loc : {}), origem,
-      capturadaEm: origem === 'camera' ? capturadaEm.toISOString() : null,
-      fusoMinutos: new Date().getTimezoneOffset(),
-      obraId: contextoFoto?.obraId, obraNome: contextoFoto?.obraNome, local: localFoto.trim() };
   }
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -192,8 +187,8 @@ export function useCapturaFoto({
     };
   }, [stream]);
 
-  async function tratarArquivo(arquivo: File | undefined, dados = montarDados('arquivo')) {
-    if (!arquivo) return;
+  async function tratarArquivo(arquivo: File | undefined, dados?: DadosFoto) {
+    if (!arquivo || (exigirCamera && !dados)) return;
 
     let arquivoFinal = arquivo;
     if (arquivo.type.startsWith('image/')) {
@@ -213,12 +208,10 @@ export function useCapturaFoto({
       return;
     }
 
-    if (contextoFoto) {
+    if (contextoFoto && dados) {
       vincularDadosFoto(arquivoFinal, dados);
-      if (pendenciasFoto(dados).length) {
-        setFotoPendente({ arquivo: arquivoFinal, dados });
-        return;
-      }
+      setPrevia({ arquivo: arquivoFinal, dados });
+      return;
     }
     try {
       setProcessando(true);
@@ -228,21 +221,25 @@ export function useCapturaFoto({
     }
   }
 
-  async function salvarFotoPendente() {
-    if (!fotoPendente) return;
+  async function confirmarFoto() {
+    if (!previa || processando || previa.dados.registroId !== contextoFoto?.registroId || pendenciasFoto(previa.dados).length) return;
     try {
       setProcessando(true);
-      await aoSelecionarArquivo(fotoPendente.arquivo);
-      setFotoPendente(null);
+      await aoSelecionarArquivo(previa.arquivo);
     } catch (erro) {
       aoErroValidacao?.(erro instanceof Error ? erro.message : 'Falha ao salvar a foto. Tente novamente.');
-    } finally { setProcessando(false); }
+    } finally {
+      setPrevia(null);
+      setProcessando(false);
+    }
   }
 
   function falharAbertura() {
+    pararLocalizacao();
+    setEstadoLocalizacao(null);
     if (exigirCamera) {
       aoErroValidacao?.(
-        'Não foi possível acessar a câmera. Verifique se o navegador/app tem permissão de câmera liberada e tente novamente — este cadastro exige captura ao vivo, não aceita foto do álbum/arquivos.',
+        'Não foi possível acessar a câmera. Conecte uma câmera e permita o acesso no navegador ou no Teams para tirar a foto.',
       );
       return;
     }
@@ -328,13 +325,6 @@ export function useCapturaFoto({
     setStream(null);
   }
 
-  // Anexo da galeria no lugar da câmera (sem geolocalização): fecha o diálogo e abre o seletor
-  // de arquivos; o local digitado no diálogo segue em localFoto.
-  function anexarDaGaleria() {
-    fecharCamera();
-    inputRef.current?.click();
-  }
-
   // `rosto`: caixa do detector (fração 0–1 do vídeo), para centralizar o recorte 3×4 da foto de rosto.
   async function capturarFoto(rosto: { x: number; y: number; largura: number; altura: number } | null = null) {
     const video = videoRef.current;
@@ -385,11 +375,19 @@ export function useCapturaFoto({
           nota, linhasEndereco));
       }
     }
-    const dados = montarDados('camera', loc, capturadaEm);
+    if (contextoFoto && r !== rastreador.current) return;
+    const dados: DadosFoto = {
+      ...loc, origem: 'camera', registroId: contextoFoto?.registroId,
+      capturadaEm: capturadaEm.toISOString(), fusoMinutos: capturadaEm.getTimezoneOffset(),
+      obraId: contextoFoto?.obraId, obraNome: contextoFoto?.obraNome, local: localFoto.trim(),
+    };
     fecharCamera();
     canvas.toBlob(
       (blob) => {
-        if (!blob) return;
+        if (!blob) {
+          aoErroValidacao?.('Não foi possível capturar a imagem. Abra a câmera e tente novamente.');
+          return;
+        }
         void tratarArquivo(new File([blob], `captura-${Date.now()}.jpg`, { type: 'image/jpeg' }), dados).catch(erro => aoErroValidacao?.(erro instanceof Error ? erro.message : 'Falha ao salvar foto.'));
       },
       'image/jpeg',
@@ -400,12 +398,13 @@ export function useCapturaFoto({
   function onInputChange(evento: ChangeEvent<HTMLInputElement>) {
     const arquivo = evento.target.files?.[0];
     evento.target.value = '';
+    if (exigirCamera) return;
     void tratarArquivo(arquivo).catch(erro => aoErroValidacao?.(erro instanceof Error ? erro.message : 'Falha ao salvar foto.'));
   }
 
   return {
     contextoFoto, localFoto, setLocalFoto, localizacao, localizando, estadoLocalizacao, aguardandoLocalizacao, tentarLocalizacao,
-    fotoPendente, salvarFotoPendente, cancelarFotoPendente: () => setFotoPendente(null),
+    previa, confirmarFoto, descartarPrevia: () => setPrevia(null),
     inputRef,
     videoRef,
     aoMontarVideo,
@@ -422,7 +421,6 @@ export function useCapturaFoto({
     abrirCamera,
     fecharCamera,
     capturarFoto,
-    anexarDaGaleria,
     trocarDispositivo,
     onInputChange,
   };
