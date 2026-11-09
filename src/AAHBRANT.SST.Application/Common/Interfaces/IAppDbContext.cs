@@ -114,6 +114,8 @@ public interface IAppDbContext
     DbSet<AlojamentoMorador> AlojamentoMoradores { get; }
     DbSet<ConfiguracaoAlojamento> ConfiguracoesAlojamento { get; }
     DbSet<Veiculo> Veiculos { get; }
+    DbSet<Camera> Cameras { get; }
+    DbSet<OcorrenciaEpiCamera> OcorrenciasEpiCamera { get; }
     DbSet<OrdemServico> OrdensServico { get; }
     DbSet<TemaInspecao> TemasInspecao { get; }
     DbSet<ItemInspecionavel> ItensInspecionaveis { get; }
