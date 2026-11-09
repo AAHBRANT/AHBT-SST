@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Câmeras — mosaico</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#f8fafc}a:hover{color:#ffffff}
+</style>
+</helmet>
+<div style="min-height: 760px; box-sizing: border-box; background: #0f1220; color: #f8fafc; font-family: 'Roboto', sans-serif; font-weight: 500; padding: 32px">
+<div style="max-width: 1216px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px">
+
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 14px; color: #b7bdca">Operação · Câmeras</div>
+<h1 style="margin: 0; font-size: 28px; line-height: 32px; font-weight: 700">Mosaico de câmeras</h1>
+<div style="font-size: 14px; line-height: 20px; color: #b7bdca">Monitoramento de capacete e colete por imagem, com alerta no Telegram.</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center">
+<div role="group" aria-label="Modo de exibição" style="display: flex; border: 1px solid #4a5065; border-radius: 8px; overflow: hidden">
+<button type="button" aria-label="Ver em mosaico" aria-pressed="true" style="width: 52px; height: 44px; border: 0; background: #96110d; color: #ffffff; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="5.5" height="5.5" rx="1"/><rect x="10.5" y="2" width="5.5" height="5.5" rx="1"/><rect x="2" y="10.5" width="5.5" height="5.5" rx="1"/><rect x="10.5" y="10.5" width="5.5" height="5.5" rx="1"/></svg></button>
+<button type="button" aria-label="Ver em lista" aria-pressed="false" style="width: 52px; height: 44px; border: 0; background: transparent; color: #d5d8e2; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 4.5h10M6 9h10M6 13.5h10M2.5 4.5h.1M2.5 9h.1M2.5 13.5h.1"/></svg></button>
+</div>
+<button type="button" style="height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid #6b728a; background: transparent; color: #f8fafc; font: 600 14px 'Roboto', sans-serif; display: flex; align-items: center; gap: 8px; cursor: pointer">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"/></svg>
+Tela cheia
+</button>
+<button type="button" style="height: 44px; padding: 0 20px; border: 0; border-radius: 8px; background: #15803d; color: #ffffff; font: 600 14px 'Roboto', sans-serif; display: flex; align-items: center; gap: 8px; cursor: pointer">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+Nova câmera
+</button>
+</div>
+</div>
+
+<div style="display: flex; gap: 4px; border-bottom: 1px solid #303447">
+<a href="Main.dc.html" style="padding: 12px 16px; font-size: 14px; font-weight: 600; text-decoration: none; color: #f8fafc; border-bottom: 3px solid #f06f6b">Câmeras</a>
+<a href="Ocorrencias.dc.html" style="padding: 12px 16px; font-size: 14px; font-weight: 600; text-decoration: none; color: #b7bdca; border-bottom: 3px solid transparent">Ocorrências</a>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 12px">
+<button type="button" aria-pressed="true" style="min-height: 64px; padding: 10px 16px; border-radius: 14px; border: 2px solid #f06f6b; background: #151824; color: #f8fafc; font: 600 14px 'Roboto', sans-serif; text-align: left; cursor: pointer">Todas as obras<div style="font-size: 12px; font-weight: 500; color: #b7bdca">5 câmeras</div></button>
+<button type="button" aria-pressed="false" style="min-height: 64px; padding: 10px 16px; border-radius: 14px; border: 1px solid #303447; background: #151824; color: #f8fafc; font: 600 14px 'Roboto', sans-serif; text-align: left; cursor: pointer">Beira Rio<div style="font-size: 12px; font-weight: 500; color: #b7bdca">3 câmeras</div></button>
+<button type="button" aria-pressed="false" style="min-height: 64px; padding: 10px 16px; border-radius: 14px; border: 1px solid #303447; background: #151824; color: #f8fafc; font: 600 14px 'Roboto', sans-serif; text-align: left; cursor: pointer">[Outra obra]<div style="font-size: 12px; font-weight: 500; color: #b7bdca">2 câmeras</div></button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; align-items: center; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid #303447">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#d5d8e2" stroke-width="1.6" stroke-linejoin="round"><path d="M2 5.5a1.5 1.5 0 011.5-1.5h4l2 2h7A1.5 1.5 0 0118 7.5v7a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 012 14.5z"/></svg>
+<h2 style="margin: 0; font-size: 20px; line-height: 26px; font-weight: 600">Beira Rio <span style="color: #b7bdca; font-weight: 500">(3 câmeras)</span></h2>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px">
+
+<div style="border-radius: 14px; background: #151824; border: 1px solid #303447; padding: 12px; display: flex; flex-direction: column; gap: 12px">
+<a href="Monitorar.dc.html" aria-label="Abrir monitoramento da câmera Betoneira" style="position: relative; aspect-ratio: 16 / 9; border-radius: 8px; background: #202333; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14px; color: #b7bdca">[imagem ao vivo]
+<span style="position: absolute; left: 10px; top: 10px; padding: 4px 10px; border-radius: 999px; background: #14532d; color: #dcfce7; font-size: 12px; font-weight: 700">Ao vivo</span>
+<span style="position: absolute; right: 10px; top: 10px; padding: 4px 10px; border-radius: 999px; background: #7f1d1d; color: #fee2e2; font-size: 12px; font-weight: 700">4 ocorrências hoje</span>
+</a>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><div style="font-size: 16px; font-weight: 600">Betoneira</div><div style="font-size: 12px; color: #b7bdca">Canteiro · última análise 15:06</div></div>
+<div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #4ade80"><span style="width: 12px; height: 12px; border-radius: 999px; background: #4ade80"></span>Monitorando</div>
+</div>
+</div>
+
+<div style="border-radius: 14px; background: #151824; border: 1px solid #303447; padding: 12px; display: flex; flex-direction: column; gap: 12px">
+<a href="Monitorar.dc.html" aria-label="Abrir monitoramento da câmera Portaria" style="position: relative; aspect-ratio: 16 / 9; border-radius: 8px; background: #202333; display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; text-decoration: none; font-size: 14px; color: #d5d8e2">
+<svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.6" stroke-linecap="round"><path d="M3 9a13 13 0 0118 0M6 12.5a9 9 0 0112 0M9 16a5 5 0 016 0M12 19.5v.1M4 4l16 16"/></svg>
+Sem sinal da câmera
+<span style="position: absolute; right: 10px; top: 10px; width: 36px; height: 36px; border-radius: 999px; background: rgba(15,18,32,0.85); display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8a5 5 0 11-1.6-3.7M13 2.5v3h-3"/></svg></span>
+</a>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><div style="font-size: 16px; font-weight: 600">Portaria</div><div style="font-size: 12px; color: #b7bdca">Portaria · última análise 14:52</div></div>
+<div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #fbbf24"><span style="width: 12px; height: 12px; border-radius: 2px; background: #fbbf24"></span>Sem sinal</div>
+</div>
+</div>
+
+<div style="border-radius: 14px; background: #151824; border: 1px solid #303447; padding: 12px; display: flex; flex-direction: column; gap: 12px">
+<div style="position: relative; aspect-ratio: 16 / 9; border-radius: 8px; background: #202333; display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; font-size: 14px; color: #b7bdca">
+<svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3zM3 3l18 18"/></svg>
+Monitoramento desligado
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><div style="font-size: 16px; font-weight: 600">Almoxarifado</div><div style="font-size: 12px; color: #b7bdca">Canteiro · ainda sem análise</div></div>
+<div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #b7bdca"><span style="width: 12px; height: 12px; border-radius: 999px; border: 2px solid #b7bdca; box-sizing: border-box"></span>Desligada</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 16px; border-radius: 14px; background: rgba(59,130,246,0.12); border: 1px solid #303447; font-size: 14px; line-height: 20px; color: #d5d8e2">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#93c5fd" stroke-width="1.8" stroke-linecap="round" style="flex: none"><circle cx="10" cy="10" r="8"/><path d="M10 9v5M10 6.2v.1"/></svg>
+<div>No piloto, só o tablet que está monitorando mostra a imagem ao vivo da própria câmera. O mosaico com várias imagens ao vivo ao mesmo tempo depende das câmeras fixas da obra (fase seguinte). Dados de exemplo neste mockup.</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":760}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

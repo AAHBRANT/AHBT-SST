@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Câmeras — monitorar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#f8fafc}a:hover{color:#ffffff}
+</style>
+</helmet>
+<div style="min-height: 760px; box-sizing: border-box; background: #0f1220; color: #f8fafc; font-family: 'Roboto', sans-serif; font-weight: 500; padding: 32px">
+<div style="max-width: 1216px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px">
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px">
+<div style="display: flex; align-items: center; gap: 16px">
+<a href="Main.dc.html" aria-label="Voltar para Câmeras" style="width: 44px; height: 44px; border-radius: 8px; border: 1px solid #4a5065; display: flex; align-items: center; justify-content: center; text-decoration: none"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg></a>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-size: 28px; line-height: 32px; font-weight: 700">Monitorar — Betoneira</h1>
+<div style="font-size: 14px; color: #b7bdca">Beira Rio · Central de concreto · Canteiro</div>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 999px; background: rgba(22,163,74,0.16); color: #4ade80; font-size: 14px; font-weight: 700">
+<span style="width: 10px; height: 10px; border-radius: 999px; background: #4ade80"></span>
+Monitorando
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<div style="position: relative; aspect-ratio: 16 / 9; border-radius: 14px; border: 1px solid #303447; background: #151824; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #b7bdca; overflow: hidden">
+<svg aria-hidden="true" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>
+<div style="font-size: 16px; font-weight: 600; color: #d5d8e2">Imagem ao vivo da câmera do tablet</div>
+<div style="font-size: 14px">[área do vídeo — 16:9]</div>
+<div style="position: absolute; left: 16px; top: 16px; padding: 6px 12px; border-radius: 8px; background: rgba(15,18,32,0.85); font-size: 12px; font-weight: 600; color: #f8fafc">Movimento detectado · analisando</div>
+<div style="position: absolute; right: 16px; bottom: 16px; padding: 6px 12px; border-radius: 8px; background: rgba(15,18,32,0.85); font-size: 12px; color: #d5d8e2">Próxima análise liberada em 18 s</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 14px; background: rgba(245,158,11,0.12); border: 1px solid #303447; font-size: 14px; line-height: 20px; color: #d5d8e2">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="M10 3l8 14H2z"/><path d="M10 8v4M10 14.4v.1"/></svg>
+<div>Mantenha esta tela aberta e o tablet ligado na tomada. Se a tela bloquear ou a página fechar, o monitoramento para. A foto só é enviada para análise quando há movimento, no máximo uma a cada 30 segundos.</div>
+</div>
+</div>
+
+<div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+
+<div style="padding: 20px; border-radius: 14px; background: #151824; border: 1px solid #303447; display: flex; flex-direction: column; gap: 12px">
+<div style="font-size: 12px; font-weight: 600; color: #b7bdca">Última análise · 15:06</div>
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="padding: 4px 10px; border-radius: 999px; background: rgba(239,68,68,0.16); color: #fca5a5; font-size: 12px; font-weight: 700">Sem capacete</span>
+<span style="font-size: 14px; color: #d5d8e2">2 pessoas na cena, 1 sem capacete</span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #4ade80">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>
+Alerta enviado ao Telegram
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+<div style="padding: 16px; border-radius: 14px; background: #151824; border: 1px solid #303447; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 28px; line-height: 32px; font-weight: 700">42</div>
+<div style="font-size: 12px; color: #b7bdca">Análises hoje</div>
+</div>
+<div style="padding: 16px; border-radius: 14px; background: #151824; border: 1px solid #303447; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 28px; line-height: 32px; font-weight: 700; color: #fca5a5">4</div>
+<div style="font-size: 12px; color: #b7bdca">Ocorrências hoje</div>
+</div>
+<div style="padding: 16px; border-radius: 14px; background: #151824; border: 1px solid #303447; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 28px; line-height: 32px; font-weight: 700">4</div>
+<div style="font-size: 12px; color: #b7bdca">Alertas enviados</div>
+</div>
+</div>
+
+<div style="padding: 20px; border-radius: 14px; background: #151824; border: 1px solid #303447; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<div style="font-size: 16px; font-weight: 600">Ocorrências desta sessão</div>
+<a href="Ocorrencias.dc.html" style="font-size: 14px; font-weight: 600; padding: 12px 0">Ver todas</a>
+</div>
+<div style="display: flex; align-items: center; gap: 12px">
+<div style="flex: none; width: 72px; height: 48px; border-radius: 8px; background: #202333; border: 1px solid #303447; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #b7bdca">[foto]</div>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><div style="font-size: 14px; font-weight: 600">15:06 · Sem capacete</div><div style="font-size: 12px; color: #b7bdca">2 pessoas, 1 sem capacete</div></div>
+</div>
+<div style="display: flex; align-items: center; gap: 12px">
+<div style="flex: none; width: 72px; height: 48px; border-radius: 8px; background: #202333; border: 1px solid #303447; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #b7bdca">[foto]</div>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><div style="font-size: 14px; font-weight: 600">14:31 · Sem colete</div><div style="font-size: 12px; color: #b7bdca">1 pessoa, 1 sem colete</div></div>
+</div>
+<div style="display: flex; align-items: center; gap: 12px">
+<div style="flex: none; width: 72px; height: 48px; border-radius: 8px; background: #202333; border: 1px solid #303447; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #b7bdca">[foto]</div>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><div style="font-size: 14px; font-weight: 600">13:48 · Sem capacete e sem colete</div><div style="font-size: 12px; color: #b7bdca">3 pessoas, 1 sem capacete, 1 sem colete</div></div>
+</div>
+</div>
+
+<button type="button" style="height: 48px; border-radius: 8px; border: 1px solid #6b728a; background: transparent; color: #f8fafc; font: 600 14px 'Roboto', sans-serif; cursor: pointer">Parar monitoramento</button>
+
+</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":760}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
