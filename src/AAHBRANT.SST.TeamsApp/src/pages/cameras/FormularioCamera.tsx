@@ -13,7 +13,7 @@ export interface FormularioCameraProps {
   camera?: CameraResumo;
   obras: Obra[];
   obraInicial?: string;
-  aoSalvar: () => void;
+  aoSalvar: (obraId: string) => void;
   aoCancelar: () => void;
 }
 
@@ -66,7 +66,7 @@ export function FormularioCamera({ camera, obras, obraInicial, aoSalvar, aoCance
       } else {
         await api.cameras.criar(dados);
       }
-      aoSalvar();
+      aoSalvar(obraId);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível salvar a câmera.');
     } finally {

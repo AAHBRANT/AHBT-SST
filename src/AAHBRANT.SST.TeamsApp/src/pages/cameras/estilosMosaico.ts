@@ -67,7 +67,7 @@ export const useEstilosMosaico = makeStyles({
     color: designTokens.colorNeutralDark,
   },
   tituloGrupo: { margin: 0 },
-  grade: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: tokensUi.espaco.lg },
+  grade: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: tokensUi.espaco.lg },
   bloco: {
     minWidth: 0,
     borderRadius: tokensUi.raio.lg,

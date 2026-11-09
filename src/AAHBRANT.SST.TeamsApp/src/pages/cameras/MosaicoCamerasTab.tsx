@@ -162,24 +162,35 @@ export function MosaicoCamerasTab() {
     setPainelAberto(false);
   }
 
-  async function aoSalvar() {
+  // Toast e diálogos renderizam fora do elemento em tela cheia: sai dela antes de avisar ou confirmar.
+  async function sairDaTelaCheia() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+    } catch {
+      // O chamador confere se ainda está em tela cheia.
+    }
+  }
+
+  async function aoSalvar(obraDaCamera: string) {
     const editou = !!painel?.camera;
     fecharPainel();
+    if (!editou && filtroEfetivo && obraDaCamera !== filtroEfetivo) setObraFiltro('');
     await queryClient.invalidateQueries({ queryKey: ['cameras'] });
+    await sairDaTelaCheia();
     sucessoToast(editou ? 'Câmera atualizada com sucesso.' : 'Câmera cadastrada com sucesso.');
   }
 
   async function excluir(camera: CameraResumo) {
-    // O diálogo de confirmação abre fora do elemento em tela cheia e ficaria invisível.
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-    } catch {
-      // segue mesmo assim
+    await sairDaTelaCheia();
+    if (document.fullscreenElement) {
+      setErro('Saia da tela cheia para excluir a câmera.');
+      return;
     }
     if (!(await confirmar(`Excluir a câmera ${camera.nome}? As ocorrências já registradas continuam guardadas.`))) return;
     try {
       setErro(null);
       await api.cameras.excluir(camera.id);
+      if (painel?.camera?.id === camera.id) fecharPainel();
       await queryClient.invalidateQueries({ queryKey: ['cameras'] });
       sucessoToast('Câmera excluída com sucesso.');
     } catch (e) {
@@ -359,7 +370,7 @@ export function MosaicoCamerasTab() {
               camera={painel.camera}
               obras={obras}
               obraInicial={obraInicialForm}
-              aoSalvar={() => void aoSalvar()}
+              aoSalvar={(obraDaCamera) => void aoSalvar(obraDaCamera)}
               aoCancelar={fecharPainel}
             />
           )}
