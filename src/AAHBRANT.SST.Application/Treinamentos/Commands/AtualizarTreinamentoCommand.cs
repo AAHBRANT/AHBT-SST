@@ -66,6 +66,10 @@ public class AtualizarTreinamentoCommandHandler : IRequestHandler<AtualizarTrein
         treinamento.NumeroCertificado = request.NumeroCertificado;
         treinamento.Local = request.Local;
         treinamento.InstrutorRegistroProfissional = request.InstrutorRegistroProfissional;
+        // Com certificado de terceiro anexado, a origem não volta para AAHBRANT (09/11/2026).
+        if (request.OrigemCertificado == OrigemCertificadoTreinamento.Aahbrant && treinamento.SessaoTreinamentoId is null
+            && await _db.ArquivosCertificadoTreinamento.AnyAsync(a => a.TreinamentoId == treinamento.Id, ct))
+            throw new InvalidOperationException("Este treinamento tem o certificado de outra empresa anexado: a origem precisa ser Externo.");
         treinamento.OrigemCertificado = request.OrigemCertificado;
 
         await _db.SaveChangesAsync(ct);

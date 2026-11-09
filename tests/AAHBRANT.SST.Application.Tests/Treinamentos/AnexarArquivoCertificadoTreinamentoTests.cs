@@ -2,6 +2,7 @@ using AAHBRANT.SST.Application.Tests.TestSupport;
 using AAHBRANT.SST.Application.Treinamentos.Commands;
 using AAHBRANT.SST.Application.Treinamentos.Queries;
 using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Tests.Treinamentos;
@@ -14,7 +15,9 @@ public class AnexarArquivoCertificadoTreinamentoTests
     private static readonly byte[] PdfValido = { 0x25, 0x50, 0x44, 0x46, 0x01, 0x02 };
     private static readonly byte[] JpegValido = { 0xFF, 0xD8, 0xFF, 0x01, 0x02, 0x03 };
 
-    private static async Task<Guid> SemearTreinamentoAsync(Infrastructure.Persistencia.SstDbContext db)
+    // Anexo é o certificado de outra empresa: o treinamento é Externo (09/11/2026).
+    private static async Task<Guid> SemearTreinamentoAsync(Infrastructure.Persistencia.SstDbContext db,
+        OrigemCertificadoTreinamento origem = OrigemCertificadoTreinamento.Externo)
     {
         var treinamento = new Treinamento
         {
@@ -23,6 +26,7 @@ public class AnexarArquivoCertificadoTreinamentoTests
             DataRealizacao = new DateTime(2025, 3, 10),
             DataValidade = new DateTime(2027, 3, 10),
             CargaHorariaRealizada = 8,
+            OrigemCertificado = origem,
         };
         db.Treinamentos.Add(treinamento);
         await db.SaveChangesAsync();
@@ -49,6 +53,21 @@ public class AnexarArquivoCertificadoTreinamentoTests
 
     // Reenviar é o caminho normal quando a primeira foto do papel sai ilegível — precisa substituir,
     // não acumular um segundo arquivo (a decisão do usuário é um anexo por certificado).
+    [Fact]
+    public async Task Handle_TreinamentoAahbrantForaDeTurma_RecusaAnexo()
+    {
+        // Caso real em hml (23/09): certificado de outra empresa anexado a treinamento marcado como AAHBRANT fazia o
+        // sistema gerar o modelo AAHBRANT com os dados do curso de terceiro.
+        var db = DbContextFactory.Criar();
+        var treinamentoId = await SemearTreinamentoAsync(db, OrigemCertificadoTreinamento.Aahbrant);
+        var handler = new AnexarArquivoCertificadoTreinamentoCommandHandler(db);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(
+            new AnexarArquivoCertificadoTreinamentoCommand(treinamentoId, "CERTIFICADO NR 06.pdf", PdfValido, "application/pdf"), default));
+        Assert.Contains("Externo", ex.Message);
+        Assert.False(await db.ArquivosCertificadoTreinamento.AnyAsync());
+    }
+
     [Fact]
     public async Task Handle_ReenvioDoMesmoTreinamento_SubstituiArquivoExistente()
     {

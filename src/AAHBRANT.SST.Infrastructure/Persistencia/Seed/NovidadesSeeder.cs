@@ -2671,6 +2671,17 @@ public static class NovidadesSeeder
                     "A reunião saía pela caixa do SST, e quem criou não conseguia adiar nem cancelar pelo Outlook.",
                     "A reunião vai para a sua agenda com você como organizador, e dá para adiar, cancelar ou cancelar só um dia direto pelo Outlook ou pelo Teams. Até a liberação pela TI, ela continua saindo pela caixa do SST."),
             }),
+        new(
+            Versao: "5.152.0",
+            Titulo: "Certificado de outra empresa abre o arquivo original",
+            DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Certificado de terceiro não vira mais modelo AAHBRANT",
+                    "Certificado de outra empresa lançado como curso da AAHBRANT aparecia, ao ver ou baixar, no modelo da AAHBRANT.",
+                    "Ver e baixar abrem o certificado original anexado, e o botão Assinar não aparece nesses casos. Para anexar o certificado de outra empresa, a origem precisa ser Externo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
