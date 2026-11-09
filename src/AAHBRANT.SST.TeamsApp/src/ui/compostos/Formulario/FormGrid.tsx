@@ -41,8 +41,9 @@ export function FormGrid({ children }: { children: ReactNode }) {
   return <div className={e.grid}>{children}</div>;
 }
 
-export function Campo({ span = 12, children }: { span?: 1 | 2 | 3 | 4 | 5 | 6 | 8 | 12; children: ReactNode }) {
+// id: permite que o pop-up de pendências (lib/avisoErro.ts) leve o usuário direto a este campo.
+export function Campo({ span = 12, id, children }: { span?: 1 | 2 | 3 | 4 | 5 | 6 | 8 | 12; id?: string; children: ReactNode }) {
   const e = useStyles();
   const classe = { 1: e.s1, 2: e.s2, 3: e.s3, 4: e.s4, 5: e.s5, 6: e.s6, 8: e.s8, 12: e.s12 }[span];
-  return <div className={mergeClasses(classe)}>{children}</div>;
+  return <div id={id} className={mergeClasses(classe)}>{children}</div>;
 }
