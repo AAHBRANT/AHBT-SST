@@ -49,6 +49,8 @@ public sealed class TelegramSimulado : ITelegramResumoService
         return Task.FromResult(true);
     }
 
+    public Task<bool> EnviarFotoAsync(byte[] imagemJpeg, string legenda, CancellationToken ct = default) => Task.FromResult(true);
+
     public Task<bool> EnviarDocumentoAsync(byte[] arquivo, string nomeArquivo, string legenda, CancellationToken ct = default)
     {
         if (!DocumentoFunciona) return Task.FromResult(false);

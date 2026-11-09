@@ -11,6 +11,9 @@ public interface ITelegramResumoService
     // Telegram recusou), para o chamador cair para o texto.
     Task<bool> EnviarImagemAsync(byte[] imagemPng, string legenda, CancellationToken ct = default);
 
+    // Envia uma foto JPEG com legenda (alerta de EPI das câmeras). Devolve false quando não enviou.
+    Task<bool> EnviarFotoAsync(byte[] imagemJpeg, string legenda, CancellationToken ct = default);
+
     // Envia um arquivo (por exemplo, o PDF de detalhe do relatório). Devolve false quando não enviou.
     Task<bool> EnviarDocumentoAsync(byte[] arquivo, string nomeArquivo, string legenda, CancellationToken ct = default);
 }

@@ -24,7 +24,15 @@ public class TelegramResumoService : ITelegramResumoService
         _logger = logger;
     }
 
-    public async Task<bool> EnviarImagemAsync(byte[] imagemPng, string legenda, CancellationToken ct = default)
+    public Task<bool> EnviarImagemAsync(byte[] imagemPng, string legenda, CancellationToken ct = default)
+        => EnviarFotoInternoAsync(imagemPng, "image/png", "resumo-dds.png", legenda,
+            "Falha ao enviar a imagem do resumo ao Telegram: {StatusCode}", ct);
+
+    public Task<bool> EnviarFotoAsync(byte[] imagemJpeg, string legenda, CancellationToken ct = default)
+        => EnviarFotoInternoAsync(imagemJpeg, "image/jpeg", "alerta-epi.jpg", legenda,
+            "Falha ao enviar a foto do alerta de EPI ao Telegram: {StatusCode}", ct);
+
+    private async Task<bool> EnviarFotoInternoAsync(byte[] imagem, string tipoConteudo, string nomeArquivo, string legenda, string mensagemFalha, CancellationToken ct)
     {
         var token = _options.Value.BotToken;
         var chatId = ObterChatId();
@@ -37,15 +45,15 @@ public class TelegramResumoService : ITelegramResumoService
         using var corpo = new MultipartFormDataContent();
         corpo.Add(new StringContent(chatId), "chat_id");
         corpo.Add(new StringContent(legenda.Length > 1000 ? legenda[..1000] : legenda), "caption");
-        var foto = new ByteArrayContent(imagemPng);
-        foto.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
-        corpo.Add(foto, "photo", "resumo-dds.png");
+        var foto = new ByteArrayContent(imagem);
+        foto.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(tipoConteudo);
+        corpo.Add(foto, "photo", nomeArquivo);
 
         var client = _httpClientFactory.CreateClient();
         var response = await client.PostAsync($"https://api.telegram.org/bot{token}/sendPhoto", corpo, ct);
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogWarning("Falha ao enviar a imagem do resumo ao Telegram: {StatusCode}", response.StatusCode);
+            _logger.LogWarning(mensagemFalha, response.StatusCode);
             return false;
         }
         return true;
