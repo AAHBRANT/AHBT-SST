@@ -1825,8 +1825,8 @@ function formularioNovaRevisao(documentoId: string, dados: DadosNovaRevisao): Fo
   return formData;
 }
 
-async function enviarFormulario<T>(caminho: string, formData: FormData): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${caminho}`, { method: 'POST', headers: await montarHeadersAuth(), body: formData });
+async function enviarFormulario<T>(caminho: string, formData: FormData, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${caminho}`, { method: 'POST', headers: await montarHeadersAuth(), body: formData, signal });
   if (!response.ok) {
     const corpo = await response.text().catch(() => '');
     throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
@@ -6751,11 +6751,11 @@ export const api = {
 
     // multipart: campos "Foto" (JPEG) e "CapturadaEm" (ISO 8601). Sem Content-Type manual:
     // o navegador define o boundary.
-    analisarQuadro: (id: string, foto: Blob, capturadaEm: Date) => {
+    analisarQuadro: (id: string, foto: Blob, capturadaEm: Date, signal?: AbortSignal) => {
       const formData = new FormData();
       formData.append('Foto', foto, 'quadro.jpg');
       formData.append('CapturadaEm', capturadaEm.toISOString());
-      return enviarFormulario<ResultadoQuadro>(`/api/cameras/${id}/quadros`, formData);
+      return enviarFormulario<ResultadoQuadro>(`/api/cameras/${id}/quadros`, formData, signal);
     },
 
     listarOcorrencias: (filtro: FiltroOcorrenciasEpi) => {

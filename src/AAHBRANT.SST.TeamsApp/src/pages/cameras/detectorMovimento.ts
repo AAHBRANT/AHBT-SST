@@ -1,5 +1,6 @@
 // Compara dois quadros reduzidos em tons de cinza. Usado para só enviar foto à IA quando a cena
-// muda: cena parada não gera custo. Valores definidos para o piloto; ajustar com dados reais.
+// muda: cena parada não gera custo. Cada quadro tem a luminância média subtraída antes da comparação,
+// então mudança global de brilho (nuvem, auto-exposição, luz acendendo) não conta como movimento. Valores definidos para o piloto; ajustar com dados reais.
 export const LARGURA_AMOSTRA = 64;
 export const ALTURA_AMOSTRA = 36;
 export const LIMIAR_PIXEL = 25; // diferença mínima de brilho (0–255) para um pixel contar como alterado
@@ -14,12 +15,23 @@ export function paraCinza(rgba: Uint8ClampedArray): Uint8Array {
   return cinza;
 }
 
-/** Fração (0–1) de pixels cuja luminância mudou mais que o limiar. Tamanhos diferentes = 1. */
+function media(v: Uint8Array): number {
+  let soma = 0;
+  for (let i = 0; i < v.length; i += 1) soma += v[i];
+  return soma / v.length;
+}
+
+/**
+ * Fração (0–1) de pixels cuja luminância (sem o brilho médio de cada quadro) mudou mais que o limiar.
+ * Tamanhos diferentes ou vazios = 0: sem base de comparação não se gera custo de análise.
+ */
 export function fracaoAlterada(anterior: Uint8Array, atual: Uint8Array, limiarPixel = LIMIAR_PIXEL): number {
-  if (anterior.length !== atual.length || atual.length === 0) return 1;
+  if (anterior.length !== atual.length || atual.length === 0) return 0;
+  const mediaAnterior = media(anterior);
+  const mediaAtual = media(atual);
   let alterados = 0;
   for (let i = 0; i < atual.length; i += 1) {
-    if (Math.abs(atual[i] - anterior[i]) > limiarPixel) alterados += 1;
+    if (Math.abs(atual[i] - mediaAtual - (anterior[i] - mediaAnterior)) > limiarPixel) alterados += 1;
   }
   return alterados / atual.length;
 }
