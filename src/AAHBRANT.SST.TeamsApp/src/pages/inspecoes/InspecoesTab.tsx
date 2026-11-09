@@ -26,6 +26,7 @@ import { hojeIso } from '../../lib/datas';
 import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { assinarMudancasSync } from '../../lib/offline/syncEngine';
 import { criarInspecaoCampo, mesclarInspecoesLocais, obterPreparacaoInspecoes, prepararInspecoesOffline, type InspecaoCampo } from '../../lib/offline/inspecoes';
+import { conferirPendencias } from '../../lib/avisoErro';
 import {
   api,
   statusInspecaoLabel,
@@ -128,8 +129,14 @@ export function InspecoesTab() {
   }
 
   async function criar() {
-    if (!novaInspecao.checklistModeloId || !novaInspecao.obraId || !novaInspecao.data || !novaInspecao.responsavelUsuarioId) {
-      setErroPainel('Preencha checklist, obra, data e responsável.');
+    if (
+      !conferirPendencias([
+        { nome: 'Checklist', dica: 'Escolha o modelo de checklist', ok: !!novaInspecao.checklistModeloId, alvo: 'insp-campo-checklist' },
+        { nome: 'Obra', dica: 'Selecione a obra da inspeção', ok: !!novaInspecao.obraId, alvo: 'insp-campo-obra' },
+        { nome: 'Data', dica: 'Informe a data da inspeção', ok: !!novaInspecao.data, alvo: 'insp-campo-data' },
+        { nome: 'Responsável', dica: 'Quem acompanha a inspeção', ok: !!novaInspecao.responsavelUsuarioId, alvo: 'insp-campo-responsavel' },
+      ])
+    ) {
       return;
     }
     try {
@@ -240,7 +247,7 @@ export function InspecoesTab() {
               </FeedbackInline>
             )}
             <FormGrid>
-              <Campo span={12}>
+              <Campo span={12} id="insp-campo-checklist">
                 <Field label="Checklist">
                   <Select
                     value={novaInspecao.checklistModeloId}
@@ -255,7 +262,7 @@ export function InspecoesTab() {
                   </Select>
                 </Field>
               </Campo>
-              <Campo span={6}>
+              <Campo span={6} id="insp-campo-obra">
                 <Field label="Obra">
                   <Select
                     value={novaInspecao.obraId}
@@ -286,7 +293,7 @@ export function InspecoesTab() {
                   </Select>
                 </Field>
               </Campo>
-              <Campo span={6}>
+              <Campo span={6} id="insp-campo-data">
                 <Field label="Data">
                   <CampoData
                     value={novaInspecao.data}
@@ -294,7 +301,7 @@ export function InspecoesTab() {
                   />
                 </Field>
               </Campo>
-              <Campo span={6}>
+              <Campo span={6} id="insp-campo-responsavel">
                 <Field label="Responsável">
                   <Select
                     value={novaInspecao.responsavelUsuarioId}

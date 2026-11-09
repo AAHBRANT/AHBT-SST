@@ -34,6 +34,7 @@ import { FotoCatalogoEpi } from './FotoCatalogoEpi';
 import { SeletorItensEpi, type ItemCarrinhoEpi } from './SeletorItensEpi';
 import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { CarrinhoEntregaEpi } from './CarrinhoEntregaEpi';
+import { conferirPendencias } from '../../lib/avisoErro';
 
 // Campos aplicados a todas as entregas do carrinho de uma vez (mesmo funcionário, mesma data,
 // mesmo motivo/documentação NR-6) — o que varia por item é só EPI/quantidade/validade, tratado em
@@ -438,19 +439,23 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   // já debitaram estoque; o carrinho é ajustado para mostrar só o que falta, com um aviso claro de
   // quantos itens já entraram antes do erro.
   async function confirmarCarrinho() {
-    if (!dadosComuns.trabalhadorId || !dadosComuns.dataEntrega) {
-      setErroPainel('Selecione o funcionário e a data de entrega.');
-      return;
-    }
-    if (carrinho.length === 0) {
-      setErroPainel('Adicione ao menos um EPI ao carrinho antes de confirmar.');
-      return;
-    }
     // A observação (antigo "Motivo") não vem mais pré-selecionada: técnicos pulavam o campo e tudo
     // era gravado como "Entrega inicial". Agora é escolha ativa e obrigatória.
     const motivoTipo = dadosComuns.motivoTipo;
-    if (motivoTipo === null) {
-      setErroPainel('Selecione a Observação da entrega (entrega inicial, dano, extravio, vencimento ou troca de função).');
+    if (
+      !conferirPendencias([
+        { nome: 'Funcionário', dica: 'Selecione quem está recebendo', ok: !!dadosComuns.trabalhadorId, alvo: 'epi-campo-funcionario' },
+        { nome: 'Data de entrega', dica: 'Informe a data', ok: !!dadosComuns.dataEntrega, alvo: 'epi-campo-data' },
+        { nome: 'EPIs do carrinho', dica: 'Adicione ao menos um EPI', ok: carrinho.length > 0, alvo: 'epi-secao-itens' },
+        {
+          nome: 'Observação da entrega',
+          dica: 'Entrega inicial, dano, extravio, vencimento ou troca de função',
+          ok: motivoTipo !== null,
+          alvo: 'epi-campo-observacao',
+        },
+      ]) ||
+      motivoTipo === null
+    ) {
       return;
     }
     // Pedido do usuário (22/09): nº da lista de presença e data do treinamento de NR-06 deixaram de
@@ -822,7 +827,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                   </FeedbackInline>
                 )}
                 <FormGrid>
-                  <Campo span={6}>
+                  <Campo span={6} id="epi-campo-funcionario">
                     <Field label="Funcionário" required>
                       <SeletorPesquisavel
                         placeholder={`Buscar entre ${trabalhadores.length} funcionários`}
@@ -832,7 +837,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                       />
                     </Field>
                   </Campo>
-                  <Campo span={6}>
+                  <Campo span={6} id="epi-campo-data">
                     <Field label="Data de entrega" required>
                       <CampoData
                         naoFutura
@@ -845,6 +850,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
               </FormSection>
 
               <FormSection titulo="O que é entregue" numero={2}>
+                <div id="epi-secao-itens" />
                 {!dadosComuns.trabalhadorId ? (
                   <FeedbackInline tom="info">Selecione o funcionário para ver os EPIs vinculados à função dele.</FeedbackInline>
                 ) : statusIntegracao?.tipo === 'pendente' ? (
@@ -879,7 +885,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
                 )}
 
                 <FormGrid>
-                  <Campo span={6}>
+                  <Campo span={6} id="epi-campo-observacao">
                     <Field label="Observação" required>
                       <Select
                         value={dadosComuns.motivoTipo === null ? '' : String(dadosComuns.motivoTipo)}

@@ -2684,6 +2684,32 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.153.0",
+            Titulo: "DDS com até 3 temas e 1 tema livre",
+            DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "DDS mais objetivo: até 3 temas por dia",
+                    "Era possível marcar quantas atividades quisesse, e o DDS do dia ficava longo demais.",
+                    "Cada dia aceita até 3 atividades (temas da Matriz de Riscos) e mais 1 tema livre opcional. Um contador mostra quantos temas já foram escolhidos."),
+            }),
+        new(
+            Versao: "5.154.0",
+            Titulo: "Aviso na tela quando falta preencher algo",
+            DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Pop-up com o que falta preencher",
+                    "Ao salvar com algum campo em branco, o aviso aparecia só no topo da página e quem estava no fim do formulário não via.",
+                    "Agora abre na hora uma janela com a lista do que falta. O botão Ir leva direto ao campo. Vale para entrega de EPI, entrega de uniforme, nova inspeção e nova ocorrência."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Motivo do erro ao salvar em qualquer tela",
+                    "Quando o sistema recusava salvar, enviar ou excluir, a mensagem podia ficar escondida no topo.",
+                    "Agora o motivo aparece numa janela no centro da tela, e o que você preencheu continua lá."),
+            }),
+        new(
+            Versao: "5.155.0",
             Titulo: "Entrega de uniforme com visual novo",
             DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]

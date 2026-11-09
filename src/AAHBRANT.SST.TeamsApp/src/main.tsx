@@ -2,6 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { instalarInterceptadorErroServidor } from './lib/interceptadorErroServidor'
+
+// Recusas do servidor a salvar/enviar/excluir abrem o pop-up central em qualquer tela.
+instalarInterceptadorErroServidor()
 
 // Após um deploy, uma aba aberta com o index antigo pede chunks (ex.: pdf-*.js) que não existem
 // mais no servidor. O Vite avisa por este evento; recarregamos uma vez para pegar a versão nova.
