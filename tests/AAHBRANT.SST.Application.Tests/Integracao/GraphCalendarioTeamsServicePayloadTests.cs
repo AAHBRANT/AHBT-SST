@@ -62,4 +62,41 @@ public class GraphCalendarioTeamsServicePayloadTests
 
         Assert.Equal(string.Empty, (string)evento.body.content);
     }
+
+    [Fact]
+    public void MontarReuniao_SemRepeticao_MandaRecurrenceNulo()
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(GraphCalendarioTeamsService.MontarReuniao(
+            "T", "D", new DateTime(2026, 11, 12, 9, 0, 0), new DateTime(2026, 11, 12, 10, 0, 0), ["a@b.com"]));
+
+        Assert.Contains("\"recurrence\":null", json);
+    }
+
+    [Theory]
+    [InlineData(AAHBRANT.SST.Application.Common.Interfaces.TipoRecorrenciaReuniao.Semanal, "weekly", 1)]
+    [InlineData(AAHBRANT.SST.Application.Common.Interfaces.TipoRecorrenciaReuniao.Quinzenal, "weekly", 2)]
+    public void MontarRecorrencia_Semanal_UsaODiaDaSemanaDoInicio(
+        AAHBRANT.SST.Application.Common.Interfaces.TipoRecorrenciaReuniao tipo, string tipoGraph, int intervalo)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(GraphCalendarioTeamsService.MontarRecorrencia(
+            new DateTime(2026, 11, 12, 9, 0, 0), // quinta-feira
+            new(tipo, new DateOnly(2027, 2, 11))));
+
+        Assert.Contains($"\"type\":\"{tipoGraph}\"", json);
+        Assert.Contains($"\"interval\":{intervalo}", json);
+        Assert.Contains("\"daysOfWeek\":[\"thursday\"]", json);
+        Assert.Contains("\"startDate\":\"2026-11-12\"", json);
+        Assert.Contains("\"endDate\":\"2027-02-11\"", json);
+    }
+
+    [Fact]
+    public void MontarRecorrencia_Mensal_UsaODiaDoMes()
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(GraphCalendarioTeamsService.MontarRecorrencia(
+            new DateTime(2026, 11, 12, 9, 0, 0),
+            new(AAHBRANT.SST.Application.Common.Interfaces.TipoRecorrenciaReuniao.Mensal, new DateOnly(2027, 5, 12))));
+
+        Assert.Contains("\"type\":\"absoluteMonthly\"", json);
+        Assert.Contains("\"dayOfMonth\":12", json);
+    }
 }

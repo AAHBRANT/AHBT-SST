@@ -2651,6 +2651,17 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.150.0",
+            Titulo: "Reunião que se repete pelo Calendário",
+            DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Repetir toda semana, a cada 2 semanas ou todo mês",
+                    "A Nova reunião do Calendário criava só uma reunião por vez.",
+                    "Em Repetir, escolha toda semana, a cada 2 semanas ou todo mês e informe até quando (no máximo 1 ano). O Teams cria a série inteira com o mesmo link, e os convidados recebem um convite só."),
+            }),
+        new(
+            Versao: "5.151.0",
             Titulo: "Certificado de outra empresa abre o arquivo original",
             DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
