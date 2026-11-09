@@ -26,6 +26,9 @@ public class Camera : AuditableEntity
     // Controle do teto de análises no servidor e do intervalo entre alertas.
     public DateTime? UltimaAnaliseEmUtc { get; set; }
     public DateTime? UltimoAlertaEmUtc { get; set; }
+
+    // Quadros efetivamente enviados à IA (base do custo por foto); "ignorado" não conta.
+    public int TotalAnalises { get; set; }
 }
 
 // Pessoa sem capacete e/ou sem colete detectada numa foto. Só existe quando há irregularidade:

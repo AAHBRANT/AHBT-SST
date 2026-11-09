@@ -68,8 +68,18 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
             return new ResultadoQuadroDto(SituacaoQuadro.Ignorado, null, false, 0, 0, 0);
 
         // Gravado antes de chamar a IA: um segundo envio em paralelo já encontra o teto aplicado.
+        // Também conta a análise (custo por foto do piloto). Dois quadros simultâneos da mesma câmera
+        // disputam a versão da linha: o perdedor é tratado como "ignorado", não como erro.
         camera.UltimaAnaliseEmUtc = agora;
-        await _db.SaveChangesAsync(ct);
+        camera.TotalAnalises++;
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return new ResultadoQuadroDto(SituacaoQuadro.Ignorado, null, false, 0, 0, 0);
+        }
 
         ResultadoAnaliseEpi analise;
         try
@@ -99,32 +109,47 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
         };
         _db.OcorrenciasEpiCamera.Add(ocorrencia);
 
+        // A ocorrência é gravada ANTES do alerta e sem o token da requisição: a chamada à IA pode demorar
+        // minutos e um cancelamento do cliente ou conflito na câmera não pode perder a evidência.
+        await _db.SaveChangesAsync(CancellationToken.None);
+
         var podeAlertar = camera.IntervaloMinimoAlertasMinutos == 0
             || camera.UltimoAlertaEmUtc is null
             || agora - camera.UltimoAlertaEmUtc.Value >= TimeSpan.FromMinutes(camera.IntervaloMinimoAlertasMinutos);
 
-        if (podeAlertar && await EnviarAlertaAsync(camera, ocorrencia, ct))
+        if (podeAlertar && await EnviarAlertaAsync(camera, ocorrencia))
         {
+            var enviadoEm = DateTime.UtcNow;
             ocorrencia.AlertaEnviado = true;
-            ocorrencia.AlertaEnviadoEmUtc = agora;
-            camera.UltimoAlertaEmUtc = agora;
+            ocorrencia.AlertaEnviadoEmUtc = enviadoEm;
+            await _db.SaveChangesAsync(CancellationToken.None);
+
+            // Se a câmera mudou durante a análise, só se perde o intervalo entre alertas desta vez.
+            camera.UltimoAlertaEmUtc = enviadoEm;
+            try
+            {
+                await _db.SaveChangesAsync(CancellationToken.None);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(ex, "Câmera {CameraId} alterada durante a análise; intervalo entre alertas não registrado.", camera.Id);
+            }
         }
 
-        await _db.SaveChangesAsync(ct);
         return new ResultadoQuadroDto(SituacaoQuadro.Ocorrencia, ocorrencia.Id, ocorrencia.AlertaEnviado,
             analise.Pessoas, analise.SemCapacete, analise.SemColete);
     }
 
     // Falha no Telegram não pode impedir o registro: a ocorrência fica gravada com "alerta não enviado".
-    private async Task<bool> EnviarAlertaAsync(Camera camera, OcorrenciaEpiCamera ocorrencia, CancellationToken ct)
+    private async Task<bool> EnviarAlertaAsync(Camera camera, OcorrenciaEpiCamera ocorrencia)
     {
         try
         {
             var legenda = LegendaAlertaEpi.Montar(camera.Obra?.Nome ?? "-", camera.Nome, ocorrencia.RecebidaEmUtc,
                 ocorrencia.PessoasNaCena, ocorrencia.SemCapacete, ocorrencia.SemColete);
-            return await _telegram.EnviarFotoAsync(ocorrencia.Foto, legenda, ct);
+            return await _telegram.EnviarFotoAsync(ocorrencia.Foto, legenda, CancellationToken.None);
         }
-        catch (Exception ex) when (!ct.IsCancellationRequested)
+        catch (Exception ex)
         {
             _logger.LogWarning(ex, "Alerta de EPI da câmera {CameraId} não enviado ao Telegram.", camera.Id);
             return false;

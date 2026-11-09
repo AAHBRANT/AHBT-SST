@@ -18,7 +18,8 @@ public record CameraDto(
     bool Habilitada,
     int IntervaloMinimoAlertasMinutos,
     DateTime? UltimaAnaliseEmUtc,
-    int OcorrenciasHoje);
+    int OcorrenciasHoje,
+    int TotalAnalises);
 
 public class ListarCamerasQueryHandler : IRequestHandler<ListarCamerasQuery, List<CameraDto>>
 {
@@ -46,7 +47,8 @@ public class ListarCamerasQueryHandler : IRequestHandler<ListarCamerasQuery, Lis
                 c.Habilitada,
                 c.IntervaloMinimoAlertasMinutos,
                 c.UltimaAnaliseEmUtc,
-                _db.OcorrenciasEpiCamera.Count(o => o.CameraId == c.Id && o.RecebidaEmUtc >= desde)))
+                _db.OcorrenciasEpiCamera.Count(o => o.CameraId == c.Id && o.RecebidaEmUtc >= desde),
+                c.TotalAnalises))
             .ToListAsync(ct);
     }
 }

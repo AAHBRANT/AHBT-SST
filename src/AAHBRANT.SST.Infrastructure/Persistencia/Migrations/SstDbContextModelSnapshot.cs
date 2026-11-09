@@ -1814,6 +1814,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("Tipo")
                         .HasColumnType("int");
 
+                    b.Property<int>("TotalAnalises")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UltimaAnaliseEmUtc")
                         .HasColumnType("datetime2");
 

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 {
     [DbContext(typeof(SstDbContext))]
-    [Migration("20261109202755_CriarModuloCameras")]
+    [Migration("20261109224812_CriarModuloCameras")]
     partial class CriarModuloCameras
     {
         /// <inheritdoc />
@@ -1815,6 +1815,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<int>("Tipo")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalAnalises")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UltimaAnaliseEmUtc")

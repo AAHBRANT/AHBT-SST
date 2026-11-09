@@ -5,6 +5,7 @@ using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Infrastructure.Persistencia;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AAHBRANT.SST.Application.Tests.Cameras;
@@ -39,9 +40,27 @@ public class AnalisarQuadroCameraTests
         }
     }
 
-    private static async Task<(SstDbContext db, Camera camera)> Preparar(string nomeBanco, Action<Camera>? ajustar = null)
+    // O provedor InMemory não aplica rowversion: simula o conflito quando a câmera tem a propriedade alterada.
+    private sealed class ConflitoNaCameraInterceptor : SaveChangesInterceptor
     {
-        var db = CamerasPersistenciaTests.CriarDb(nomeBanco);
+        private readonly string _propriedade;
+        public bool Armado { get; set; }
+        public ConflitoNaCameraInterceptor(string propriedade) => _propriedade = propriedade;
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (Armado && eventData.Context!.ChangeTracker.Entries<Camera>()
+                    .Any(e => e.State == EntityState.Modified && e.Property(_propriedade).IsModified))
+                throw new DbUpdateConcurrencyException("Conflito simulado na câmera.");
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+    }
+
+    private static async Task<(SstDbContext db, Camera camera)> Preparar(string nomeBanco, Action<Camera>? ajustar = null,
+        IInterceptor? interceptor = null)
+    {
+        var db = CamerasPersistenciaTests.CriarDb(nomeBanco, interceptor);
         var obra = new Obra { Codigo = "OB1", Nome = "Beira Rio" };
         var camera = new Camera { ObraId = obra.Id, Nome = "Betoneira" };
         ajustar?.Invoke(camera);
@@ -91,7 +110,9 @@ public class AnalisarQuadroCameraTests
         Assert.Equal(SituacaoQuadro.Limpo, r.Situacao);
         Assert.Empty(await db.OcorrenciasEpiCamera.ToListAsync());
         Assert.Empty(telegram.Legendas);
-        Assert.NotNull((await db.Cameras.SingleAsync()).UltimaAnaliseEmUtc);
+        var lida = await db.Cameras.SingleAsync();
+        Assert.NotNull(lida.UltimaAnaliseEmUtc);
+        Assert.Equal(1, lida.TotalAnalises);
     }
 
     [Fact]
@@ -106,6 +127,7 @@ public class AnalisarQuadroCameraTests
 
         Assert.Equal(SituacaoQuadro.Ignorado, r.Situacao);
         Assert.Equal(0, analisador.Chamadas);
+        Assert.Equal(0, (await db.Cameras.SingleAsync()).TotalAnalises);
     }
 
     [Fact]
@@ -121,6 +143,7 @@ public class AnalisarQuadroCameraTests
         Assert.Equal(SituacaoQuadro.Falha, r.Situacao);
         Assert.Empty(await db.OcorrenciasEpiCamera.ToListAsync());
         Assert.Empty(telegram.Legendas);
+        Assert.Equal(1, (await db.Cameras.SingleAsync()).TotalAnalises);
     }
 
     [Fact]
@@ -191,6 +214,64 @@ public class AnalisarQuadroCameraTests
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => Criar(db, new AnalisadorFalso(SemCapacete), new TelegramFalso())
             .Handle(new AnalisarQuadroCameraCommand(Guid.NewGuid(), Jpeg, DateTime.UtcNow), default));
+    }
+
+    [Fact]
+    public async Task TelegramLancaExcecao_OcorrenciaFicaGravadaComAlertaNaoEnviado()
+    {
+        var (db, camera) = await Preparar(nameof(TelegramLancaExcecao_OcorrenciaFicaGravadaComAlertaNaoEnviado));
+        var telegram = new TelegramQueLanca();
+
+        var r = await Criar(db, new AnalisadorFalso(SemCapacete), telegram)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.False(r.AlertaEnviado);
+        Assert.False((await db.OcorrenciasEpiCamera.SingleAsync()).AlertaEnviado);
+    }
+
+    [Fact]
+    public async Task ConflitoAoAtualizarCameraDepoisDoAlerta_OcorrenciaContinuaGravadaComAlertaEnviado()
+    {
+        var interceptor = new ConflitoNaCameraInterceptor(nameof(Camera.UltimoAlertaEmUtc));
+        var (db, camera) = await Preparar(nameof(ConflitoAoAtualizarCameraDepoisDoAlerta_OcorrenciaContinuaGravadaComAlertaEnviado),
+            interceptor: interceptor);
+        interceptor.Armado = true;
+        var telegram = new TelegramFalso();
+
+        var r = await Criar(db, new AnalisadorFalso(SemCapacete), telegram)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.True(r.AlertaEnviado);
+        Assert.Single(telegram.Legendas);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.True(ocorrencia.AlertaEnviado);
+        Assert.NotNull(ocorrencia.AlertaEnviadoEmUtc);
+    }
+
+    [Fact]
+    public async Task ConflitoNoPrimeiroSave_DevolveIgnoradoSemChamarAIa()
+    {
+        var interceptor = new ConflitoNaCameraInterceptor(nameof(Camera.UltimaAnaliseEmUtc));
+        var (db, camera) = await Preparar(nameof(ConflitoNoPrimeiroSave_DevolveIgnoradoSemChamarAIa), interceptor: interceptor);
+        interceptor.Armado = true;
+        var analisador = new AnalisadorFalso(SemCapacete);
+
+        var r = await Criar(db, analisador, new TelegramFalso())
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ignorado, r.Situacao);
+        Assert.Equal(0, analisador.Chamadas);
+    }
+
+    private sealed class TelegramQueLanca : ITelegramResumoService
+    {
+        public Task EnviarAsync(string mensagem, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<bool> EnviarImagemAsync(byte[] imagemPng, string legenda, CancellationToken ct = default) => Task.FromResult(true);
+        public Task<bool> EnviarDocumentoAsync(byte[] arquivo, string nomeArquivo, string legenda, CancellationToken ct = default) => Task.FromResult(true);
+        public Task<bool> EnviarFotoAsync(byte[] imagemJpeg, string legenda, CancellationToken ct = default)
+            => throw new HttpRequestException("Telegram fora do ar");
     }
 
     [Fact]

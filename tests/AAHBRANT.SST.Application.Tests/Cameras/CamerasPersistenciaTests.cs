@@ -8,9 +8,11 @@ namespace AAHBRANT.SST.Application.Tests.Cameras;
 
 public class CamerasPersistenciaTests
 {
-    internal static SstDbContext CriarDb(string nomeBanco)
+    internal static SstDbContext CriarDb(string nomeBanco, Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor? interceptor = null)
     {
-        var options = new DbContextOptionsBuilder<SstDbContext>().UseInMemoryDatabase(nomeBanco).Options;
+        var builder = new DbContextOptionsBuilder<SstDbContext>().UseInMemoryDatabase(nomeBanco);
+        if (interceptor is not null) builder.AddInterceptors(interceptor);
+        var options = builder.Options;
         return new SstDbContext(options, new CurrentUserService());
     }
 

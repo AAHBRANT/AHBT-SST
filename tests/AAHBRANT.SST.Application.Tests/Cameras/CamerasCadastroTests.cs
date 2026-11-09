@@ -87,7 +87,7 @@ public class CamerasCadastroTests
         var db = CamerasPersistenciaTests.CriarDb(nameof(Listar_FiltraPorObraEContaOcorrenciasDeHoje));
         var obra1 = new Obra { Codigo = "OB1", Nome = "Obra Um" };
         var obra2 = new Obra { Codigo = "OB2", Nome = "Obra Dois" };
-        var camera1 = new Camera { ObraId = obra1.Id, Nome = "Betoneira" };
+        var camera1 = new Camera { ObraId = obra1.Id, Nome = "Betoneira", TotalAnalises = 7 };
         var camera2 = new Camera { ObraId = obra2.Id, Nome = "Portaria" };
         db.AddRange(obra1, obra2, camera1, camera2,
             new OcorrenciaEpiCamera { CameraId = camera1.Id, ObraId = obra1.Id, Foto = new byte[] { 1 }, RecebidaEmUtc = DateTime.UtcNow },
@@ -100,6 +100,7 @@ public class CamerasCadastroTests
         Assert.Equal("Betoneira", item.Nome);
         Assert.Equal("Obra Um", item.ObraNome);
         Assert.Equal(1, item.OcorrenciasHoje);
+        Assert.Equal(7, item.TotalAnalises);
     }
 
     [Fact]

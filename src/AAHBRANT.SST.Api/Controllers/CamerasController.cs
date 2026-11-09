@@ -84,7 +84,12 @@ public class CamerasController : ControllerBase
     [Authorize(Policy = "inspecao:ver")]
     [HttpGet("ocorrencias/{id:guid}/foto")]
     public async Task<IActionResult> ObterFoto(Guid id, CancellationToken ct)
-        => File(await _mediator.Send(new ObterFotoOcorrenciaEpiQuery(id), ct), "image/jpeg");
+    {
+        var foto = await _mediator.Send(new ObterFotoOcorrenciaEpiQuery(id), ct);
+        // Foto de pessoa (LGPD): não pode ficar em cache de navegador ou proxy.
+        Response.Headers.CacheControl = "private, no-store";
+        return File(foto, "image/jpeg");
+    }
 
     [Authorize(Policy = "inspecao:criar")]
     [HttpPut("ocorrencias/{id:guid}/trabalhador")]

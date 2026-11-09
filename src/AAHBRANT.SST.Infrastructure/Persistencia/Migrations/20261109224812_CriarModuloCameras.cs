@@ -24,6 +24,7 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     IntervaloMinimoAlertasMinutos = table.Column<int>(type: "int", nullable: false),
                     UltimaAnaliseEmUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
                     UltimoAlertaEmUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    TotalAnalises = table.Column<int>(type: "int", nullable: false),
                     CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     UpdatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
