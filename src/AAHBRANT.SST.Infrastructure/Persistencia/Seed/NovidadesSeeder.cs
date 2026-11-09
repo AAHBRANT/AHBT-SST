@@ -2649,6 +2649,17 @@ public static class NovidadesSeeder
                     "Para marcar uma reunião era preciso sair do sistema e abrir o Teams ou o Outlook.",
                     "No Calendário, clique em Nova reunião, escolha o tipo (DDS, CIPA, Reunião de obra, Alinhamento), a data, o horário, a obra e os convidados. A reunião vai para o seu Teams/Outlook com o link, e os convidados (inclusive externos, pelo e-mail) recebem o convite."),
             }),
+        new(
+            Versao: "5.150.0",
+            Titulo: "Reunião que se repete pelo Calendário",
+            DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Repetir toda semana, a cada 2 semanas ou todo mês",
+                    "A Nova reunião do Calendário criava só uma reunião por vez.",
+                    "Em Repetir, escolha toda semana, a cada 2 semanas ou todo mês e informe até quando (no máximo 1 ano). O Teams cria a série inteira com o mesmo link, e os convidados recebem um convite só."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

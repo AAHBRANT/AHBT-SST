@@ -156,7 +156,7 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService, IReuniaoTeam
     // isOnlineMeeting + onlineMeetingProvider. O Exchange envia os convites por e-mail aos convidados.
     public async Task<ReuniaoTeamsCriada> CriarReuniaoAsync(
         Guid organizadorUsuarioId, string titulo, string descricao, DateTime inicio, DateTime fim,
-        IReadOnlyList<string> emailsConvidados, CancellationToken ct = default)
+        IReadOnlyList<string> emailsConvidados, CancellationToken ct = default, RecorrenciaReuniao? recorrencia = null)
     {
         var (httpClient, aadObjectId) = await PrepararRequisicaoAsync(organizadorUsuarioId, ct);
         var caixa = string.IsNullOrWhiteSpace(_opcoes.CaixaReunioes) ? aadObjectId : _opcoes.CaixaReunioes.Trim();
@@ -164,7 +164,7 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService, IReuniaoTeam
         using var requisicao = new HttpRequestMessage(
             HttpMethod.Post, $"https://graph.microsoft.com/v1.0/users/{Uri.EscapeDataString(caixa)}/events")
         {
-            Content = JsonContent.Create(MontarReuniao(titulo, descricao, inicio, fim, emailsConvidados)),
+            Content = JsonContent.Create(MontarReuniao(titulo, descricao, inicio, fim, emailsConvidados, recorrencia)),
         };
 
         var resposta = await httpClient.SendAsync(requisicao, ct);
@@ -197,9 +197,12 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService, IReuniaoTeam
         await GarantirSucessoAsync(resposta, organizadorUsuarioId, ct);
     }
 
-    internal static object MontarReuniao(string titulo, string descricao, DateTime inicio, DateTime fim, IReadOnlyList<string> emails)
+    internal static object MontarReuniao(
+        string titulo, string descricao, DateTime inicio, DateTime fim, IReadOnlyList<string> emails,
+        RecorrenciaReuniao? recorrencia = null)
         => new
         {
+            recurrence = MontarRecorrencia(inicio, recorrencia),
             subject = titulo,
             body = new { contentType = "text", content = descricao },
             start = new { dateTime = inicio.ToString("yyyy-MM-ddTHH:mm:ss"), timeZone = "America/Sao_Paulo" },
@@ -213,6 +216,31 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService, IReuniaoTeam
             onlineMeetingProvider = "teamsForBusiness",
             allowNewTimeProposals = true,
         };
+
+    // patternedRecurrence do Graph. Sem repetição = null (o System.Text.Json manda "recurrence": null,
+    // que o Graph aceita como evento único).
+    internal static object? MontarRecorrencia(DateTime inicio, RecorrenciaReuniao? recorrencia)
+    {
+        if (recorrencia is null) return null;
+        var diaSemana = inicio.DayOfWeek.ToString().ToLowerInvariant();
+        object padrao = recorrencia.Tipo switch
+        {
+            TipoRecorrenciaReuniao.Semanal => new { type = "weekly", interval = 1, daysOfWeek = new[] { diaSemana } },
+            TipoRecorrenciaReuniao.Quinzenal => new { type = "weekly", interval = 2, daysOfWeek = new[] { diaSemana } },
+            TipoRecorrenciaReuniao.Mensal => new { type = "absoluteMonthly", interval = 1, dayOfMonth = inicio.Day },
+            _ => throw new ArgumentOutOfRangeException(nameof(recorrencia)),
+        };
+        return new
+        {
+            pattern = padrao,
+            range = new
+            {
+                type = "endDate",
+                startDate = inicio.ToString("yyyy-MM-dd"),
+                endDate = recorrencia.Ate.ToString("yyyy-MM-dd"),
+            },
+        };
+    }
 
     // internal (não private) só para permitir teste direto do cálculo de fronteira de dia e do
     // formato do payload — ver GraphCalendarioTeamsServicePayloadTests. InternalsVisibleTo em

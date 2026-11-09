@@ -31,6 +31,20 @@ const TIPOS: { rotulo: string; titulo: string; pauta: string }[] = [
   { rotulo: 'Outra', titulo: '', pauta: '' },
 ];
 
+const REPETICOES: { valor: '' | '1' | '2' | '3'; rotulo: (dia: Date) => string }[] = [
+  { valor: '', rotulo: () => 'Não se repete' },
+  { valor: '1', rotulo: (d) => `Toda semana, ${d.toLocaleDateString('pt-BR', { weekday: 'long' })}` },
+  { valor: '2', rotulo: (d) => `A cada 2 semanas, ${d.toLocaleDateString('pt-BR', { weekday: 'long' })}` },
+  { valor: '3', rotulo: (d) => `Todo mês, no dia ${d.getDate()}` },
+];
+
+// Padrão de 3 meses para o fim da repetição.
+function somarMeses(data: string, meses: number) {
+  const d = new Date(`${data}T12:00:00`);
+  d.setMonth(d.getMonth() + meses);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function somarUmaHora(hora: string) {
@@ -56,6 +70,8 @@ export function DialogoNovaReuniao({
   const [inicio, setInicio] = useState('09:00');
   const [fim, setFim] = useState('10:00');
   const [obraId, setObraId] = useState('');
+  const [repetir, setRepetir] = useState<'' | '1' | '2' | '3'>('');
+  const [repetirAte, setRepetirAte] = useState('');
   const [convidados, setConvidados] = useState<string[]>([]);
   const [externos, setExternos] = useState<string[]>([]);
   const [emailDigitado, setEmailDigitado] = useState('');
@@ -85,6 +101,8 @@ export function DialogoNovaReuniao({
     setInicio('09:00');
     setFim('10:00');
     setObraId('');
+    setRepetir('');
+    setRepetirAte('');
     setConvidados([]);
     setExternos([]);
     setEmailDigitado('');
@@ -126,6 +144,9 @@ export function DialogoNovaReuniao({
     if (!titulo.trim()) return setErro('Informe o título da reunião.');
     if (!data || !inicio || !fim) return setErro('Informe a data e os horários.');
     if (fim <= inicio) return setErro('O horário de fim deve ser depois do início.');
+    if (repetir && !repetirAte) return setErro('Informe até quando a reunião se repete.');
+    if (repetir && repetirAte <= data) return setErro('A data final da repetição deve ser depois do primeiro dia.');
+    if (repetir && repetirAte > somarMeses(data, 12)) return setErro('A repetição pode ir no máximo até 1 ano.');
     try {
       setSalvando(true);
       setErro(null);
@@ -137,6 +158,8 @@ export function DialogoNovaReuniao({
         convidadosUsuarioIds: convidados,
         emailsExternos: externos,
         obraId: obraId || null,
+        repetir: repetir ? (Number(repetir) as 1 | 2 | 3) : null,
+        repetirAte: repetir ? repetirAte : null,
       });
       limpar();
       aoCriar(criada);
@@ -207,6 +230,30 @@ export function DialogoNovaReuniao({
               <Field label="Fim" required>
                 <Input type="time" value={fim} onChange={(_, d) => setFim(d.value)} />
               </Field>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: repetir ? 'minmax(0,1.6fr) minmax(0,1fr)' : '1fr', gap: 10 }}>
+              <Field label="Repetir">
+                <Select
+                  value={repetir}
+                  onChange={(_, d) => {
+                    const valor = d.value as '' | '1' | '2' | '3';
+                    setRepetir(valor);
+                    if (valor && !repetirAte && data) setRepetirAte(somarMeses(data, 3));
+                  }}
+                >
+                  {REPETICOES.map((r) => (
+                    <option key={r.valor} value={r.valor}>
+                      {r.rotulo(new Date(`${data || new Date().toISOString().slice(0, 10)}T12:00:00`))}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              {repetir && (
+                <Field label="Até" required>
+                  <CampoData value={repetirAte} onChange={(_, d) => setRepetirAte(d.value)} />
+                </Field>
+              )}
             </div>
 
             <Field label="Obra (opcional)">
