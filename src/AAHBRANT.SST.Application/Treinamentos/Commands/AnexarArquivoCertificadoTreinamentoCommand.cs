@@ -62,9 +62,16 @@ public class AnexarArquivoCertificadoTreinamentoCommandHandler : IRequestHandler
             var (conteudo, tipo) = _processador.Girar(original.Conteudo, original.ContentType, original.Rotacao);
             request = original with { Conteudo = conteudo, ContentType = tipo };
         }
-        var treinamentoExiste = await _db.Treinamentos.NoEscopoDoTrabalhador(_db, t => t.TrabalhadorId).AnyAsync(t => t.Id == request.TreinamentoId, ct);
-        if (!treinamentoExiste)
-            throw new KeyNotFoundException($"Treinamento {request.TreinamentoId} não encontrado.");
+        var treinamento = await _db.Treinamentos.NoEscopoDoTrabalhador(_db, t => t.TrabalhadorId)
+            .Where(t => t.Id == request.TreinamentoId)
+            .Select(t => new { t.OrigemCertificado, t.SessaoTreinamentoId })
+            .FirstOrDefaultAsync(ct)
+            ?? throw new KeyNotFoundException($"Treinamento {request.TreinamentoId} não encontrado.");
+        // Certificado de terceiro não pode ficar marcado como AAHBRANT (09/11/2026): o sistema geraria o modelo da empresa
+        // com os dados de outro curso. Anexo só em certificado Externo ou em treinamento de turma da AAHBRANT.
+        if (treinamento.OrigemCertificado == Domain.Enums.OrigemCertificadoTreinamento.Aahbrant && treinamento.SessaoTreinamentoId is null)
+            throw new InvalidOperationException(
+                "Este treinamento está como curso da AAHBRANT. Para anexar o certificado de outra empresa, marque a origem como Externo.");
 
         // Substituição no lugar de acumular versões: a decisão do usuário é um arquivo por
         // certificado, e reenviar é o caminho natural quando a primeira foto sai tremida/ilegível.

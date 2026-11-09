@@ -186,6 +186,17 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
     return cursos.find((c) => c.id === id)?.nome ?? id;
   }
 
+  async function baixarAnexo(t: Treinamento) {
+    try {
+      setBaixandoId(t.id);
+      salvarBlob(await api.treinamentos.baixarArquivoCertificado(t.id), `certificado-${nomeCurso(t.cursoTreinamentoId)}`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao baixar o certificado anexado.');
+    } finally {
+      setBaixandoId(null);
+    }
+  }
+
   async function baixarCertificado(id: string) {
     try {
       setBaixandoId(id);
@@ -522,27 +533,35 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
             titulo: 'Nenhum treinamento cadastrado ainda',
             acao: { rotulo: 'Adicionar treinamento', aoClicar: () => setPainelAberto(true) },
           }}
-          acoesLinha={(t) => (
+          acoesLinha={(t) => {
+            // Certificado de outra empresa (09/11/2026): ver e baixar abrem o arquivo original anexado; o modelo
+            // AAHBRANT e a assinatura só existem para curso dado pela AAHBRANT.
+            const externo = t.origemCertificado === OrigemCertificadoTreinamento.Externo;
+            const usaAnexo = externo || !!t.temArquivo;
+            return (
             <>
-              <BotaoAcao
-                tom="assinar"
-                icon={<Signature24Regular />}
-                onClick={() => navigate(`/treinamentos/${t.id}/assinar`)}
-                aria-label="Assinar certificado"
-              />
+              {!externo && (
+                <BotaoAcao
+                  tom="assinar"
+                  icon={<Signature24Regular />}
+                  onClick={() => navigate(`/treinamentos/${t.id}/assinar`)}
+                  aria-label="Assinar certificado"
+                />
+              )}
               <BotaoAcao
                 tom="ver"
                 icon={<Eye24Regular />}
-                onClick={() => visualizarCertificado(t)}
-                aria-label="Visualizar certificado"
+                onClick={() => (usaAnexo ? verAnexo(t) : visualizarCertificado(t))}
+                disabled={externo && !t.temArquivo}
+                aria-label={usaAnexo ? 'Ver certificado anexado' : 'Visualizar certificado'}
               />
               <BotaoAcao
                 tom="baixar"
                 icon={<ArrowDownload24Regular />}
-                onClick={() => baixarCertificado(t.id)}
-                disabled={baixandoId === t.id}
-                aria-label="Baixar certificado"
-                title="Baixar certificado em PDF"
+                onClick={() => void (usaAnexo ? baixarAnexo(t) : baixarCertificado(t.id))}
+                disabled={baixandoId === t.id || (externo && !t.temArquivo)}
+                aria-label={usaAnexo ? 'Baixar certificado anexado' : 'Baixar certificado'}
+                title={usaAnexo ? 'Baixar o certificado original anexado' : 'Baixar certificado em PDF'}
               />
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
               {souAdministrador && !travados.has(t.id) && (
@@ -554,7 +573,8 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
                 />
               )}
             </>
-          )}
+            );
+          }}
         />
       </Card>
 

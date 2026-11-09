@@ -2649,6 +2649,17 @@ public static class NovidadesSeeder
                     "Para marcar uma reunião era preciso sair do sistema e abrir o Teams ou o Outlook.",
                     "No Calendário, clique em Nova reunião, escolha o tipo (DDS, CIPA, Reunião de obra, Alinhamento), a data, o horário, a obra e os convidados. A reunião vai para o seu Teams/Outlook com o link, e os convidados (inclusive externos, pelo e-mail) recebem o convite."),
             }),
+        new(
+            Versao: "5.150.0",
+            Titulo: "Certificado de outra empresa abre o arquivo original",
+            DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Certificado de terceiro não vira mais modelo AAHBRANT",
+                    "Certificado de outra empresa lançado como curso da AAHBRANT aparecia, ao ver ou baixar, no modelo da AAHBRANT.",
+                    "Ver e baixar abrem o certificado original anexado, e o botão Assinar não aparece nesses casos. Para anexar o certificado de outra empresa, a origem precisa ser Externo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
