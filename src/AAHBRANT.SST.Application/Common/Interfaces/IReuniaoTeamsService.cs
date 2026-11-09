@@ -18,7 +18,8 @@ public interface IReuniaoTeamsService
         DateTime inicio,
         DateTime fim,
         IReadOnlyList<string> emailsConvidados,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        RecorrenciaReuniao? recorrencia = null);
 
     /// <summary>Muda só o horário da reunião já criada; o Teams avisa os convidados.</summary>
     /// <param name="inicio">Horário de Brasília.</param>
@@ -31,3 +32,15 @@ public interface IReuniaoTeamsService
 }
 
 public record ReuniaoTeamsCriada(string GraphEventId, string? LinkTeams);
+
+// Repetição da reunião criada pelo Calendário (09/11/2026: "faltou a opção de repetir toda semana").
+// Semanal/Quinzenal repetem no mesmo dia da semana do início; Mensal no mesmo dia do mês.
+public enum TipoRecorrenciaReuniao
+{
+    Semanal = 1,
+    Quinzenal = 2,
+    Mensal = 3,
+}
+
+/// <param name="Ate">Última data em que a reunião pode acontecer (inclusive).</param>
+public record RecorrenciaReuniao(TipoRecorrenciaReuniao Tipo, DateOnly Ate);

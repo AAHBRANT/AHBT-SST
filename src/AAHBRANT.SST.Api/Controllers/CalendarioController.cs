@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AAHBRANT.SST.Application.Calendario.Commands;
 using AAHBRANT.SST.Application.Calendario.Queries;
+using AAHBRANT.SST.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -34,7 +35,7 @@ public class CalendarioController : ControllerBase
         var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return Ok(await _mediator.Send(new CriarReuniaoCalendarioCommand(
             azureAdObjectId, corpo.Titulo, corpo.Pauta, corpo.Inicio, corpo.Fim,
-            corpo.ConvidadosUsuarioIds ?? [], corpo.EmailsExternos ?? [], corpo.ObraId), ct));
+            corpo.ConvidadosUsuarioIds ?? [], corpo.EmailsExternos ?? [], corpo.ObraId, corpo.Repetir, corpo.RepetirAte), ct));
     }
 
     [Authorize(Policy = "calendario:ver")]
@@ -46,4 +47,5 @@ public class CalendarioController : ControllerBase
 // Inicio/Fim no horário de Brasília, sem fuso ("2026-11-12T09:00:00").
 public record CriarReuniaoCalendarioPayload(
     string Titulo, string? Pauta, DateTime Inicio, DateTime Fim,
-    List<Guid>? ConvidadosUsuarioIds, List<string>? EmailsExternos, Guid? ObraId);
+    List<Guid>? ConvidadosUsuarioIds, List<string>? EmailsExternos, Guid? ObraId,
+    TipoRecorrenciaReuniao? Repetir = null, DateOnly? RepetirAte = null);

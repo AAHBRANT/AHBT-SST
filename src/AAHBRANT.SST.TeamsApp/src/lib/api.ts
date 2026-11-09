@@ -4338,6 +4338,10 @@ export interface NovaReuniaoCalendario {
   convidadosUsuarioIds: string[];
   emailsExternos: string[];
   obraId?: string | null;
+  /** 1 = semanal, 2 = quinzenal, 3 = mensal. */
+  repetir?: 1 | 2 | 3 | null;
+  /** "yyyy-MM-dd", obrigatório quando repetir. */
+  repetirAte?: string | null;
 }
 export interface ReuniaoCalendarioCriada {
   graphEventId: string;

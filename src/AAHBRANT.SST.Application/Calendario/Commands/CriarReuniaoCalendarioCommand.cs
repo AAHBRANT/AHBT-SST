@@ -19,7 +19,9 @@ public record CriarReuniaoCalendarioCommand(
     DateTime Fim,
     IReadOnlyList<Guid> ConvidadosUsuarioIds,
     IReadOnlyList<string> EmailsExternos,
-    Guid? ObraId) : IRequest<ReuniaoCalendarioCriadaDto>;
+    Guid? ObraId,
+    TipoRecorrenciaReuniao? Repetir = null,
+    DateOnly? RepetirAte = null) : IRequest<ReuniaoCalendarioCriadaDto>;
 
 public record ReuniaoCalendarioCriadaDto(string GraphEventId, string? LinkTeams, int TotalConvidados);
 
@@ -45,6 +47,19 @@ public class CriarReuniaoCalendarioCommandHandler : IRequestHandler<CriarReuniao
             throw new InvalidOperationException("A reunião pode durar no máximo 12 horas.");
         var pauta = (request.Pauta ?? string.Empty).Trim();
         if (pauta.Length > 4000) throw new InvalidOperationException("A pauta deve ter no máximo 4.000 caracteres.");
+
+        RecorrenciaReuniao? recorrencia = null;
+        if (request.Repetir is { } repetir)
+        {
+            if (!Enum.IsDefined(repetir)) throw new InvalidOperationException("Opção de repetição inválida.");
+            var primeiroDia = DateOnly.FromDateTime(request.Inicio);
+            var ate = request.RepetirAte ?? throw new InvalidOperationException("Informe até quando a reunião se repete.");
+            if (ate <= primeiroDia) throw new InvalidOperationException("A data final da repetição deve ser depois do primeiro dia.");
+            if (ate > primeiroDia.AddYears(1)) throw new InvalidOperationException("A repetição pode ir no máximo até 1 ano.");
+            if (request.Inicio.Date != request.Fim.Date)
+                throw new InvalidOperationException("Reunião que se repete deve começar e terminar no mesmo dia.");
+            recorrencia = new RecorrenciaReuniao(repetir, ate);
+        }
 
         if (string.IsNullOrWhiteSpace(request.AzureAdObjectId))
             throw new InvalidOperationException("Não foi possível identificar sua conta Microsoft. Entre novamente pelo Teams.");
@@ -73,8 +88,11 @@ public class CriarReuniaoCalendarioCommandHandler : IRequestHandler<CriarReuniao
                 .Select(u => u.Email)
                 .ToListAsync(ct);
 
-        var convidados = emailsUsuarios.Concat(externos)
-            .Where(e => !string.Equals(e, organizador.Email, StringComparison.OrdinalIgnoreCase))
+        // Quem criou entra como convidado: em hml/produção a reunião é criada na caixa compartilhada
+        // (Graph:CaixaReunioes = sst@aahbrant.com), não na agenda da pessoa — sem isso ela não
+        // recebia o convite nem via a reunião no próprio Outlook/Teams.
+        var convidados = new[] { organizador.Email }.Concat(emailsUsuarios).Concat(externos)
+            .Where(e => !string.IsNullOrWhiteSpace(e))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (convidados.Count > MaximoConvidados)
@@ -92,8 +110,9 @@ public class CriarReuniaoCalendarioCommandHandler : IRequestHandler<CriarReuniao
         try
         {
             var criada = await _reuniaoTeams.CriarReuniaoAsync(
-                organizador.Id, titulo, descricao, request.Inicio, request.Fim, convidados, ct);
-            return new ReuniaoCalendarioCriadaDto(criada.GraphEventId, criada.LinkTeams, convidados.Count);
+                organizador.Id, titulo, descricao, request.Inicio, request.Fim, convidados, ct, recorrencia);
+            return new ReuniaoCalendarioCriadaDto(criada.GraphEventId, criada.LinkTeams,
+                convidados.Count(e => !string.Equals(e, organizador.Email, StringComparison.OrdinalIgnoreCase)));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
