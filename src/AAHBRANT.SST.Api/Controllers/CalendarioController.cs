@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using AAHBRANT.SST.Application.Calendario.Commands;
 using AAHBRANT.SST.Application.Calendario.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -24,4 +25,25 @@ public class CalendarioController : ControllerBase
         var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return Ok(await _mediator.Send(new ObterCalendarioQuery(azureAdObjectId, inicio, fim), ct));
     }
+
+    // Nova reunião do Teams criada pelo Calendário (09/11/2026). O organizador é quem está logado.
+    [Authorize(Policy = "calendario:ver")]
+    [HttpPost("reunioes")]
+    public async Task<IActionResult> CriarReuniao([FromBody] CriarReuniaoCalendarioPayload corpo, CancellationToken ct)
+    {
+        var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Ok(await _mediator.Send(new CriarReuniaoCalendarioCommand(
+            azureAdObjectId, corpo.Titulo, corpo.Pauta, corpo.Inicio, corpo.Fim,
+            corpo.ConvidadosUsuarioIds ?? [], corpo.EmailsExternos ?? [], corpo.ObraId), ct));
+    }
+
+    [Authorize(Policy = "calendario:ver")]
+    [HttpGet("convidaveis")]
+    public async Task<IActionResult> Convidaveis(CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarConvidaveisReuniaoQuery(), ct));
 }
+
+// Inicio/Fim no horário de Brasília, sem fuso ("2026-11-12T09:00:00").
+public record CriarReuniaoCalendarioPayload(
+    string Titulo, string? Pauta, DateTime Inicio, DateTime Fim,
+    List<Guid>? ConvidadosUsuarioIds, List<string>? EmailsExternos, Guid? ObraId);

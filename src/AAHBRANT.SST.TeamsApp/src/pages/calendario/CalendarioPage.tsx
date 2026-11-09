@@ -7,6 +7,7 @@ import { chaveDia, dataDoDia } from '../../lib/datasCalendario';
 import {
   ArrowLeft24Regular,
   ArrowRight24Regular,
+  Add24Regular,
   CalendarLtr24Regular,
   Location24Regular,
   Video24Regular,
@@ -21,6 +22,7 @@ import {
   type EventoSstCalendario,
 } from '../../lib/api';
 import { usePageStyles } from '../pageStyles';
+import { DialogoNovaReuniao } from './DialogoNovaReuniao';
 import { Button, CalendarioMensal, designTokens, FeedbackInline, StatusChip, Text, type Tom } from '@ui';
 
 const useStyles = makeStyles({
@@ -119,6 +121,9 @@ export function CalendarioPage() {
   const [calendario, setCalendario] = useState<Calendario | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const [novaReuniaoAberta, setNovaReuniaoAberta] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [recarregar, setRecarregar] = useState(0);
 
   const primeiroDiaGrade = useMemo(() => inicioDaSemana(mesAtual), [mesAtual]);
   const ultimoDiaGrade = useMemo(() => {
@@ -145,7 +150,7 @@ export function CalendarioPage() {
       }
     })();
     return () => { ativo = false; };
-  }, [primeiroDiaGrade, ultimoDiaGrade]);
+  }, [primeiroDiaGrade, ultimoDiaGrade, recarregar]);
 
   const eventosPorDia = useMemo(() => {
     const mapa = new Map<string, EventoDoDia[]>();
@@ -211,8 +216,32 @@ export function CalendarioPage() {
             onClick={() => setMesAtual((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
             aria-label="Próximo mês"
           />
+          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setNovaReuniaoAberta(true)}>
+            Nova reunião
+          </Button>
         </div>
       </div>
+
+      <DialogoNovaReuniao
+        aberto={novaReuniaoAberta}
+        dataInicial={diaSelecionado}
+        aoFechar={() => setNovaReuniaoAberta(false)}
+        aoCriar={(criada) => {
+          setNovaReuniaoAberta(false);
+          setAviso(
+            criada.totalConvidados > 0
+              ? `Reunião criada no Teams. ${criada.totalConvidados} convite(s) enviado(s) por e-mail.`
+              : 'Reunião criada no Teams.',
+          );
+          setRecarregar((n) => n + 1);
+        }}
+      />
+
+      {aviso && (
+        <FeedbackInline tom="sucesso" aoFechar={() => setAviso(null)}>
+          {aviso}
+        </FeedbackInline>
+      )}
 
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>

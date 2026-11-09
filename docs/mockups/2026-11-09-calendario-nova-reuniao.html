@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nova reunião – Calendário</title>
+<style>
+:root{--vinho:#670000;--vinho2:#8a1a1a;--bege:#ebe9ad;--txt:#1f1f1f;--mut:#6b6b6b;--bd:#e3e1dc;--bg:#f6f5f1;--card:#fff;--teams:#5b5fc7}
+*{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--txt)}
+.page{max-width:1200px;margin:0 auto;padding:24px 16px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+h1{font-size:22px;margin:0}.nav{display:flex;gap:8px;align-items:center}
+.btn{border:1px solid var(--bd);background:#fff;border-radius:8px;padding:8px 14px;font:inherit;font-size:14px;cursor:pointer}
+.btn.pri{background:var(--vinho);border-color:var(--vinho);color:#fff;font-weight:600}
+.legenda{display:flex;gap:16px;font-size:12px;color:var(--mut);margin-bottom:10px;flex-wrap:wrap}.legenda i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);background:var(--card);border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+.dsem{padding:8px;font-size:12px;font-weight:600;color:var(--mut);background:#faf9f6;border-bottom:1px solid var(--bd)}
+.dia{min-height:92px;padding:6px;border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);font-size:12px;position:relative}
+.dia:hover{background:#fdfcf3}.dia:hover .add{opacity:1}
+.add{position:absolute;right:6px;top:4px;opacity:0;color:var(--vinho);font-weight:700}
+.chip{display:block;color:#fff;border-radius:4px;padding:2px 5px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+.sel{outline:2px solid var(--vinho);outline-offset:-2px;background:#fdfcf3}
+.ov{position:fixed;inset:0;background:rgba(20,10,10,.45);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden}
+.mh{background:var(--vinho);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+.mh h2{margin:0;font-size:18px}.mh small{opacity:.8}
+.mb{padding:20px;display:grid;gap:14px}
+.tipos{display:flex;gap:8px;flex-wrap:wrap}.tipo{border:1px solid var(--bd);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;background:#fff}
+.tipo.on{background:var(--bege);border-color:#cfcb7a;font-weight:600}
+label{font-size:13px;font-weight:600;display:block;margin-bottom:5px}
+input,textarea,select{width:100%;border:1px solid var(--bd);border-radius:8px;padding:9px 10px;font:inherit;font-size:14px}
+textarea{min-height:84px;resize:vertical}
+.row{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px}
+.convs{border:1px solid var(--bd);border-radius:8px;padding:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.conv{display:flex;align-items:center;gap:6px;background:#f2f0ea;border-radius:999px;padding:3px 10px 3px 3px;font-size:13px}
+.av{width:22px;height:22px;border-radius:50%;background:var(--vinho);color:#fff;font-size:10px;display:grid;place-items:center}
+.conv.ext .av{background:#999}.conv b{font-weight:400;color:var(--mut);cursor:pointer}
+.convs input{border:0;flex:1;min-width:160px;padding:5px}
+.sug{border:1px solid var(--bd);border-radius:8px;margin-top:4px;font-size:13px}.sug div{padding:7px 10px;display:flex;gap:8px;align-items:center}.sug div:first-child{background:#fdfcf3}
+.teams{display:flex;gap:10px;align-items:center;background:#f1f1fb;border:1px solid #d9daf3;border-radius:8px;padding:10px 12px;font-size:13px}
+.tg{width:36px;height:20px;border-radius:999px;background:var(--teams);position:relative;flex:none}.tg:after{content:"";position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.aviso{font-size:12px;color:var(--mut)}
+.mf{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--bd);background:#faf9f6}
+@media(max-width:640px){.row{grid-template-columns:1fr 1fr}.row>div:first-child{grid-column:1/-1}.dia{min-height:60px}.chip{display:none}}
+</style></head><body>
+<div class="page">
+  <div class="top"><h1>Calendário</h1>
+    <div class="nav"><button class="btn">‹</button><button class="btn">Hoje</button><button class="btn">›</button><strong style="margin:0 8px">Novembro 2026</strong>
+    <button class="btn pri">+ Nova reunião</button></div></div>
+  <div class="legenda"><span><i style="background:#5b5fc7"></i>Teams/Outlook</span><span><i style="background:#2b6cb0"></i>Treinamentos</span><span><i style="background:#c27c0e"></i>A vencer</span><span><i style="background:#b42318"></i>Atenção</span></div>
+  <div class="grid">
+    <div class="dsem">Dom</div><div class="dsem">Seg</div><div class="dsem">Ter</div><div class="dsem">Qua</div><div class="dsem">Qui</div><div class="dsem">Sex</div><div class="dsem">Sáb</div>
+    <div class="dia">8</div><div class="dia">9<span class="chip" style="background:#5b5fc7">09:00 Alinhamento QSMS</span></div><div class="dia">10</div>
+    <div class="dia">11<span class="chip" style="background:#2b6cb0">NR-35 turma</span></div><div class="dia sel">12<span class="add">+</span></div><div class="dia">13<span class="chip" style="background:#c27c0e">ASO a vencer</span></div><div class="dia">14</div>
+  </div>
+</div>
+<div class="ov"><div class="modal">
+  <div class="mh"><div><h2>Nova reunião</h2><small>Quinta, 12/11/2026 · vai para o Teams e Outlook</small></div><span style="font-size:20px;cursor:pointer">✕</span></div>
+  <div class="mb">
+    <div><label>Tipo</label><div class="tipos"><span class="tipo">DDS</span><span class="tipo on">CIPA</span><span class="tipo">Reunião de obra</span><span class="tipo">Alinhamento</span><span class="tipo">Outra</span></div></div>
+    <div><label>Título</label><input value="Reunião ordinária da CIPA – Novembro"></div>
+    <div class="row"><div><label>Data</label><input type="date" value="2026-11-12"></div><div><label>Início</label><input type="time" value="09:00"></div><div><label>Fim</label><input type="time" value="10:00"></div></div>
+    <div><label>Obra (opcional)</label><select><option>Residencial Beira Rio</option></select></div>
+    <div><label>Convidados</label>
+      <div class="convs"><span class="conv"><span class="av">MS</span>Maria Souza<b>✕</b></span><span class="conv"><span class="av">JP</span>João Pereira<b>✕</b></span><span class="conv ext"><span class="av">@</span>consultor@externo.com.br<b>✕</b></span><input placeholder="Buscar pessoa ou digitar e-mail…" value="car"></div>
+      <div class="sug"><div><span class="av">CL</span>Carlos Lima · Técnico de Segurança</div><div><span class="av">CS</span>Carla Santos · Engenheira de Obra</div></div>
+    </div>
+    <div><label>Pauta</label><textarea>1. Leitura da ata anterior
+2. Análise de ocorrências do mês
+3. Plano de ação e prazos</textarea></div>
+    <div class="teams"><span class="tg"></span><div><strong>Reunião online do Teams</strong><br><span class="aviso">O link é gerado automaticamente e vai no convite.</span></div></div>
+    <div class="aviso">Organizador: você. Os convidados recebem o convite por e-mail. Convidados externos recebem só o título, o horário e o link.</div>
+  </div>
+  <div class="mf"><button class="btn">Cancelar</button><button class="btn pri">Criar reunião</button></div>
+</div></div>
+</body></html>
