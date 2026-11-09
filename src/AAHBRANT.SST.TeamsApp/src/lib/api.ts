@@ -1,4 +1,4 @@
-import { anexarDadosFoto, type DadosFoto } from './dadosFoto';
+import { anexarDadosFoto, dadosEvidencia, type DadosFoto } from './dadosFoto';
 import type { CredencialLeitura } from './agenteBiometricoLocal';
 import { localizacaoParaCorpo, obterLocalizacaoAssinatura } from './localizacaoAssinatura';
 import { API_BASE_URL } from './apiBase';
@@ -5768,7 +5768,7 @@ export const api = {
     anexarFotoEvidencia: async (sessaoId: string, ordem: number, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
-      anexarDadosFoto(formData, foto);
+      formData.set('metadados', JSON.stringify(dadosEvidencia(foto, sessaoId)));
       formData.append('ordem', String(ordem));
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<{ id: string }>(`/api/sessoestreinamento/${sessaoId}/fotos-evidencia`, formData, authHeaders);
@@ -6526,7 +6526,7 @@ export const api = {
     anexarFoto: async (respostaId: string, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
-      anexarDadosFoto(formData, foto);
+      formData.set('metadados', JSON.stringify(dadosEvidencia(foto, respostaId)));
       const response = await fetch(`${API_BASE_URL}/api/inspecoes/respostas/${respostaId}/foto`, {
         method: 'POST',
         headers: await montarHeadersAuth(),
@@ -6552,7 +6552,7 @@ export const api = {
     anexarFotoDepois: async (respostaId: string, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
-      anexarDadosFoto(formData, foto);
+      formData.set('metadados', JSON.stringify(dadosEvidencia(foto, respostaId)));
       const response = await fetch(`${API_BASE_URL}/api/inspecoes/respostas/${respostaId}/foto-depois`, {
         method: 'POST',
         headers: await montarHeadersAuth(),
@@ -6577,7 +6577,7 @@ export const api = {
     anexarFotoAdicional: async (respostaId: string, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
-      anexarDadosFoto(formData, foto);
+      formData.set('metadados', JSON.stringify(dadosEvidencia(foto, respostaId)));
       const response = await fetch(`${API_BASE_URL}/api/inspecoes/respostas/${respostaId}/fotos-adicionais/2`, {
         method: 'POST',
         headers: await montarHeadersAuth(),
@@ -6840,7 +6840,7 @@ export const api = {
     anexarFotoEvidencia: async (ddsId: string, ordem: number, foto: File) => {
       const formData = new FormData();
       formData.append('foto', foto);
-      anexarDadosFoto(formData, foto);
+      formData.set('metadados', JSON.stringify(dadosEvidencia(foto, ddsId)));
       formData.append('ordem', String(ordem));
       const authHeaders = await montarHeadersAuth();
       return syncMutateMultipart<{ id: string }>(`/api/dds/${ddsId}/fotos-evidencia`, formData, authHeaders);
@@ -7090,7 +7090,9 @@ export const api = {
       enviarAudioAcidente<{ transcricao: string }>('/api/acidentes/transcrever', audio, nomeArquivo),
     anexarFoto: async (id: string, ordem: number, foto: File) => {
       const form = new FormData();
-      form.append('foto', foto); form.append('ordem', String(ordem)); anexarDadosFoto(form, foto);
+      form.append('foto', foto);
+      form.append('ordem', String(ordem));
+      form.set('metadados', JSON.stringify(dadosEvidencia(foto, id)));
       return syncMutateMultipart<{ id: string }>('/api/acidentes/' + id + '/fotos', form, await montarHeadersAuth());
     },
     baixarFoto: async (id: string) => syncFetchBlob('/api/acidentes/fotos/' + id, await montarHeadersAuth()),

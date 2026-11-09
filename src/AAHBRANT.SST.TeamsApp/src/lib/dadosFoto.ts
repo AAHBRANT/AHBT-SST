@@ -1,11 +1,12 @@
 import { criarRastreadorFoto } from './fontesLocalizacao';
 import type { LeituraLocalizacao } from './rastreadorLocalizacao';
 
-export interface ContextoFoto { obraId: string; obraNome: string; local?: string | null }
+export interface ContextoFoto { registroId: string; obraId: string; obraNome: string; local?: string | null }
 export interface DadosFoto {
   capturadaEm?: string | null;
   fusoMinutos?: number | null;
   origem: 'camera' | 'arquivo';
+  registroId?: string | null;
   local?: string | null;
   obraId?: string | null;
   obraNome?: string | null;
@@ -25,13 +26,21 @@ export function anexarDadosFoto(form: FormData, arquivo: File) {
   if (dados) form.set('metadados', JSON.stringify(dados));
 }
 
+export function dadosEvidencia(arquivo: File, registroId: string): DadosFoto {
+  const dados = obterDadosFoto(arquivo);
+  if (dados?.origem !== 'camera' || dados.registroId !== registroId)
+    throw new Error('Tire a foto pela câmera deste registro.');
+  const faltas = pendenciasFoto(dados);
+  if (faltas.length) throw new Error(`Refaça a foto. Falta registrar ${faltas.join(', ')}.`);
+  return dados;
+}
+
 export function pendenciasFoto(d?: DadosFoto | null): string[] {
   // Ausência total de metadados identifica uma foto legada. Fotos novas recebem o objeto
   // serializado pelo servidor, inclusive quando ainda estão pendentes.
   if (!d) return [];
   const pendencias: string[] = [];
-  // Foto anexada da galeria: sem data/posição comprováveis; só exige a obra.
-  // "Local da foto" deixou de ser exigido (pedido do usuário, 08/10) — só aparece em fotos antigas.
+  // Regra de encerramento para fotos da galeria que já estavam no histórico.
   if (d.origem === 'arquivo') {
     if (!d.obraId || !d.obraNome?.trim()) pendencias.push('obra vinculada');
     return pendencias;

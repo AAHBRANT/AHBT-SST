@@ -52,7 +52,7 @@ public class AnexarFotoEvidenciaDdsCommandHandler : IRequestHandler<AnexarFotoEv
             ?? throw new KeyNotFoundException("Registro não encontrado.");
         if (registro.Status == AAHBRANT.SST.Domain.Enums.StatusDds.Concluido)
             throw new InvalidOperationException("O registro já foi finalizado. As fotos não podem ser alteradas.");
-        var metadados = await DadosCapturaFoto.PrepararAsync(request.Metadados, registro.ObraId, _db, ct);
+        var metadados = await DadosCapturaFoto.PrepararAsync(request.Metadados, registro.Id, registro.ObraId, _db, ct);
 
         var fotoExistente = await _db.DdsFotosEvidencia
             .FirstOrDefaultAsync(f => f.DdsId == request.DdsId && f.Ordem == request.Ordem && f.Ativo, ct);

@@ -2,7 +2,7 @@ import { TipoInspecao, type InspecaoDetalhe, type InspecaoItemResposta, type Ins
   type NovaInspecao, type ChecklistModelo, type Obra, type Atividade, type Usuario } from '../api';
 import { API_BASE_URL } from '../apiBase';
 import { montarHeadersAuth } from '../authHeaders';
-import { anexarDadosFoto, obterDadosFoto, pendenciasFoto } from '../dadosFoto';
+import { dadosEvidencia } from '../dadosFoto';
 import { contaOffline, identificarConta } from './conta';
 import { offlineDb, blobParaGravar, type InspecaoLocal, type ItemFilaSaida, type RascunhoItemInspecao, type PreparacaoInspecoes } from './db';
 import { aplicarAcaoInspecao as aplicar, ehEncerramentoInspecao } from './inspecaoEstado';
@@ -202,25 +202,10 @@ export async function salvarRespostaInspecao(id: string, respostaId: string, edi
 }
 
 export async function salvarFotoInspecao(id: string, respostaId: string, foto: File, depois = false) {
-  const dados = obterDadosFoto(foto);
-  if (!dados) throw new Error('A foto precisa dos dados de captura e da obra. Capture ou selecione novamente pelo aplicativo.');
-  const faltas = pendenciasFoto(dados);
+  const dados = dadosEvidencia(foto, respostaId);
   const fotoGravavel = await blobParaGravar(foto);
-  if (faltas.length) {
-    const chave = chaveLocal(contaOffline(), id);
-    await offlineDb.transaction('rw', offlineDb.inspecoesLocais, async () => {
-      const local = await offlineDb.inspecoesLocais.get(chave);
-      if (!local) throw new Error('Abra a inspeção antes de guardar a foto.');
-      local.fotos[`/api/inspecoes/respostas/${respostaId}/${depois ? 'foto-depois' : 'foto'}`] = { blob: fotoGravavel, dados, rascunho: true };
-      await offlineDb.inspecoesLocais.put(local);
-    });
-    notificarMudanca();
-    return;
-  }
-  const form = new FormData();
-  anexarDadosFoto(form, foto);
   await enfileirar(id, { url: `/api/inspecoes/respostas/${respostaId}/${depois ? 'foto-depois' : 'foto'}`, metodo: 'POST', isFormData: true,
-    camposFormData: { metadados: String(form.get('metadados')) }, arquivosFormData: { foto: fotoGravavel } }, respostaId);
+    camposFormData: { metadados: JSON.stringify(dados) }, arquivosFormData: { foto: fotoGravavel } }, respostaId);
 }
 
 export async function finalizarInspecaoLocal(id: string) {

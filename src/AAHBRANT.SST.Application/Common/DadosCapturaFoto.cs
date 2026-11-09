@@ -11,6 +11,7 @@ public record DadosCapturaFoto
     public int? FusoMinutos { get; init; }
     public string Origem { get; init; } = "arquivo";
     public string? Local { get; init; }
+    public Guid? RegistroId { get; init; }
     public Guid? ObraId { get; init; }
     public string? ObraNome { get; init; }
     public double? Latitude { get; init; }
@@ -25,20 +26,25 @@ public record DadosCapturaFoto
     public static DadosCapturaFoto? Ler(string? json) => string.IsNullOrWhiteSpace(json)
         ? null : JsonSerializer.Deserialize<DadosCapturaFoto>(json, Json);
 
-    public static async Task<string> PrepararAsync(string? json, Guid? obraId, IAppDbContext db, CancellationToken ct)
+    public static async Task<string> PrepararAsync(string? json, Guid registroId, Guid? obraId, IAppDbContext db, CancellationToken ct)
     {
         if (json?.Length > 8000) throw new InvalidOperationException("Os dados da foto excedem o limite permitido.");
         DadosCapturaFoto dados;
         try { dados = Ler(json) ?? new(); }
         catch (JsonException) { throw new InvalidOperationException("Os dados de captura da foto são inválidos."); }
+        if (dados.Origem != "camera")
+            throw new InvalidOperationException("Tire a foto pela câmera do sistema para registrar a evidência.");
+        if (dados.RegistroId != registroId || obraId is null || dados.ObraId != obraId)
+            throw new InvalidOperationException("A captura precisa pertencer a este registro e à sua obra. Abra a câmera neste registro.");
+        if (!LocalizacaoValida(dados))
+            throw new InvalidOperationException("A foto precisa de data, hora e geolocalização válidas no momento da captura. Confira a permissão de localização e refaça a foto.");
         if (dados.Local?.Length > 200) throw new InvalidOperationException("Informe o local da foto com até 200 caracteres.");
         var agora = DateTimeOffset.UtcNow;
         if (dados.CapturadaEm > agora.AddMinutes(5))
             throw new InvalidOperationException("A data da foto está no futuro. Confira o relógio do aparelho.");
-        if (dados.Origem != "camera") dados = dados with { CapturadaEm = null, Latitude = null, Longitude = null, LocalizacaoObtidaEm = null };
-        var obraNome = obraId.HasValue
-            ? await db.Obras.Where(o => o.Id == obraId).Select(o => o.Nome).FirstOrDefaultAsync(ct)
-            : null;
+        var obraNome = await db.Obras.Where(o => o.Id == obraId).Select(o => o.Nome).FirstOrDefaultAsync(ct);
+        if (string.IsNullOrWhiteSpace(obraNome))
+            throw new InvalidOperationException("Obra da captura não encontrada.");
         // Não preencher com o horário do envio: ele não é a data/hora da captura.
         dados = dados with { ObraId = obraId, ObraNome = obraNome, RecebidaEm = agora, Local = dados.Local?.Trim() };
         return JsonSerializer.Serialize(dados, Json);
@@ -48,9 +54,7 @@ public record DadosCapturaFoto
     {
         var dados = Ler(json);
         var faltas = new List<string>();
-        // Foto anexada da galeria (decisão do usuário, 01/10): não tem como provar data/posição, então
-        // entra marcada como "sem geolocalização" e só exige a obra. A descrição do local deixou de
-        // ser exigida (pedido do usuário, 08/10); o campo segue aceito para fotos antigas.
+        // Registros que já tinham fotos da galeria mantêm a regra histórica de encerramento.
         if (dados?.Origem == "arquivo")
         {
             if (dados.ObraId is null || string.IsNullOrWhiteSpace(dados.ObraNome)) faltas.Add("obra vinculada");
@@ -75,8 +79,7 @@ public record DadosCapturaFoto
     }
 
     // Fotos existentes antes da adoção deste contrato não têm como recuperar a posição original.
-    // Elas permanecem legadas; toda nova gravação passa por PrepararAsync e recebe um JSON, mesmo
-    // quando a captura ainda está pendente.
+    // As novas gravações passam pela validação de captura em PrepararAsync.
     public static void ExigirCompletaSeInformada(string? json, string rotulo)
     {
         if (!string.IsNullOrWhiteSpace(json)) ExigirCompleta(json, rotulo);

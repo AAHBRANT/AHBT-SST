@@ -644,7 +644,7 @@ export function AcidenteDetalhePage() {
         <GradeFotosEvidencia titulo={a.tipo === 1 ? 'Três fotos obrigatórias' : 'Até três fotos (opcionais)'} total={3}
           opcional={a.tipo !== 1}
           subtitulo="Registre a visão geral, o ponto da ocorrência e um detalhe relevante. Confira os dados antes de sair do local."
-          contextoFoto={{ obraId: a.obraId, obraNome: a.obraNome ?? '', local: a.local }}
+          contextoFoto={{ registroId: a.id, obraId: a.obraId, obraNome: a.obraNome ?? '', local: a.local }}
           fotos={(detalhe.fotos ?? []).map(f => ({ ...f, url: fotoUrls[f.id] }))}
           somenteLeitura={a.status === StatusAcidente.Concluido}
           onSelecionarFoto={async (ordem, arquivo) => { await api.acidentes.anexarFoto(a.id, ordem, arquivo); await carregar(); }}

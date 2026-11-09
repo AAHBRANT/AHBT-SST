@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Button,
   Dialog,
@@ -55,6 +55,14 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   // dentro dela; na assinatura ela é guia. Nos dois a foto sai em 3×4 centralizada no rosto.
   const mostrarGuiaRosto = modoCamera === 'user';
   const modoAssinatura = captura.modoCaptura === 'assinatura';
+  const [urlPrevia, setUrlPrevia] = useState<string>();
+  useEffect(() => {
+    if (!captura.previa) { setUrlPrevia(undefined); return; }
+    const url = URL.createObjectURL(captura.previa.arquivo);
+    setUrlPrevia(url);
+    return () => URL.revokeObjectURL(url);
+  }, [captura.previa]);
+  const faltas = pendenciasFoto(captura.previa?.dados);
   const detector = useDetectorRosto(videoRef, mostrarGuiaRosto && !!stream, captura.modoCaptura);
   const avaliacao = detector.situacao === 'ativo' ? detector.avaliacao : null;
   const corQuadrado = avaliacao ? CORES_DETECTOR[avaliacao.tom] : CORES_DETECTOR.ok;
@@ -86,9 +94,6 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
               <Text size={200}>A data e a hora serão registradas ao capturar.</Text>
               <StatusLocalizacao captura={captura} />
               <Button onClick={() => void captura.tentarLocalizacao()} disabled={captura.localizando}>Tentar localização novamente</Button>
-              {!captura.exigirCamera && <Button appearance="subtle" onClick={captura.anexarDaGaleria}>
-                Anexar foto da galeria (sem geolocalização)
-              </Button>}
             </div>}
             {dispositivosVideo.length > 1 && (
               <Field label="Câmera" style={{ marginBottom: 8 }}>
@@ -198,23 +203,22 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
         </DialogBody>
       </DialogSurface>
     </Dialog>
-    <Dialog open={!!captura.fotoPendente} onOpenChange={(_, d) => { if (!d.open && !captura.processando) captura.cancelarFotoPendente(); }}>
-      <DialogSurface aria-describedby="aviso-pendencia-foto">
+    <Dialog open={!!captura.previa} onOpenChange={(_, d) => { if (!d.open && !captura.processando) captura.descartarPrevia(); }}>
+      <DialogSurface>
         <DialogBody>
-          <DialogTitle>Foto com dados pendentes</DialogTitle>
+          <DialogTitle>Conferir foto</DialogTitle>
           <DialogContent>
-            <div id="aviso-pendencia-foto" role="alert">
-              <FeedbackInline tom="aviso">
-                Falta registrar: {pendenciasFoto(captura.fotoPendente?.dados).join(', ')}.
-                Você pode guardar a foto com pendência. Confira os dados antes de sair do local; poderá ser necessária uma nova captura para finalizar o registro.
-              </FeedbackInline>
-              <ResumoDadosFoto dados={captura.fotoPendente?.dados} />
-            </div>
+            {urlPrevia && <img src={urlPrevia} alt="Foto capturada" style={{ width: '100%', maxHeight: '40vh', objectFit: 'contain' }} />}
+            {!!faltas.length && <FeedbackInline tom="aviso">
+              Falta registrar {faltas.join(', ')}. {captura.previa?.dados.motivoLocalizacao} Confira os dados e refaça a foto no local.
+            </FeedbackInline>}
+            <ResumoDadosFoto dados={captura.previa?.dados} />
           </DialogContent>
           <DialogActions>
-            <Button disabled={captura.processando} onClick={() => { captura.cancelarFotoPendente(); void captura.abrirCamera(); }}>Refazer foto</Button>
-            <Button appearance="primary" disabled={captura.processando} onClick={() => void captura.salvarFotoPendente()}>
-              {captura.processando ? 'Salvando…' : 'Salvar foto com pendência'}
+            <Button disabled={captura.processando} onClick={captura.descartarPrevia}>Cancelar</Button>
+            <Button disabled={captura.processando} onClick={() => { captura.descartarPrevia(); void captura.abrirCamera(); }}>Refazer foto</Button>
+            <Button appearance="primary" disabled={captura.processando || !!faltas.length} onClick={() => void captura.confirmarFoto()}>
+              {captura.processando ? 'Salvando…' : 'Confirmar foto'}
             </Button>
           </DialogActions>
         </DialogBody>
@@ -244,5 +248,5 @@ function StatusLocalizacao({ captura }: { captura: UseCapturaFoto }) {
       Localização obtida{precisao != null ? ` · precisão ${Math.round(precisao)} m` : ' · precisão não informada pelo aparelho'}. Atualizando automaticamente.
     </FeedbackInline>;
   }
-  return <FeedbackInline tom="erro">{e.motivo ?? 'Não foi possível obter a localização. A foto ficará com pendência.'}</FeedbackInline>;
+  return <FeedbackInline tom="erro">{e.motivo ?? 'Permita o acesso à localização e tente novamente.'}</FeedbackInline>;
 }

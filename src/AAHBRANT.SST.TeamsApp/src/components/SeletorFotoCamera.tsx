@@ -101,14 +101,14 @@ export function SeletorFotoCamera({
 
   return (
     <>
-      <input
+      {!captura.exigirCamera && <input
         ref={inputRef}
         type="file"
         accept={tiposAceitos}
         capture={permitirCamera ? modoCamera : undefined}
         style={{ display: 'none' }}
         onChange={onInputChange}
-      />
+      />}
       <Button
         appearance={permitirCamera ? 'primary' : 'subtle'}
         className={classeBotao}

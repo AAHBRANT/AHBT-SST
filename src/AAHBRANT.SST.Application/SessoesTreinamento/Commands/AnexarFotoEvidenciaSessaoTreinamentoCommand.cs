@@ -50,7 +50,7 @@ public class AnexarFotoEvidenciaSessaoTreinamentoCommandHandler : IRequestHandle
             ?? throw new KeyNotFoundException("Registro não encontrado.");
         if (registro.Status == AAHBRANT.SST.Domain.Enums.StatusSessaoTreinamento.Concluida)
             throw new InvalidOperationException("O registro já foi finalizado. As fotos não podem ser alteradas.");
-        var metadados = await DadosCapturaFoto.PrepararAsync(request.Metadados, registro.ObraId, _db, ct);
+        var metadados = await DadosCapturaFoto.PrepararAsync(request.Metadados, registro.Id, registro.ObraId, _db, ct);
 
         var fotoExistente = await _db.FotosEvidenciaSessaoTreinamento
             .FirstOrDefaultAsync(f => f.SessaoTreinamentoId == request.SessaoTreinamentoId && f.Ordem == request.Ordem && f.Ativo, ct);

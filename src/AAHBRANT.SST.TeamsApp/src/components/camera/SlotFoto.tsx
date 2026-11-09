@@ -185,7 +185,7 @@ export function SlotFoto({
 
   return (
     <div>
-      <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onInputChange} />
+      {!captura.exigirCamera && <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onInputChange} />}
 
       {url ? (
         <div className={mergeClasses(estilos.slotPreenchido, compacta && estilos.slotPreenchidoCompacto)}>

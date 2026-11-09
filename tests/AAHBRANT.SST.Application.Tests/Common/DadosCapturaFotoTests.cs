@@ -1,10 +1,59 @@
 using System.Text.Json;
 using AAHBRANT.SST.Application.Common;
+using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Infrastructure.Persistencia;
+using AAHBRANT.SST.Infrastructure.Seguranca;
+using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Tests.Common;
 
 public class DadosCapturaFotoTests
 {
+    [Theory]
+    [InlineData(null)]
+    [InlineData("{}")]
+    [InlineData("null")]
+    [InlineData("{\"origem\":\"arquivo\"}")]
+    [InlineData("{\"origem\":\"desconhecida\"}")]
+    [InlineData("invalido")]
+    public async Task NovaEvidencia_RecusaEnvioSemCaptura(string? json)
+    {
+        using var db = CriarBanco();
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            DadosCapturaFoto.PrepararAsync(json, Guid.NewGuid(), Guid.NewGuid(), db, default));
+    }
+
+    [Fact]
+    public async Task NovaEvidencia_ValidaRegistroObraEPosicaoMesmoNaSincronizacaoOffline()
+    {
+        using var db = CriarBanco();
+        var obra = new Obra { Nome = "Obra Centro", Codigo = "CAM" };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+        var registro = Guid.NewGuid();
+        var hora = DateTimeOffset.UtcNow.AddDays(-2);
+        var dados = new DadosCapturaFoto { Origem = "camera", RegistroId = registro, ObraId = obra.Id,
+            ObraNome = "Nome no aparelho", CapturadaEm = hora, Latitude = -23, Longitude = -46,
+            PrecisaoMetros = 12, LocalizacaoObtidaEm = hora };
+        Task<string> Preparar(DadosCapturaFoto d) =>
+            DadosCapturaFoto.PrepararAsync(JsonSerializer.Serialize(d), registro, obra.Id, db, default);
+
+        foreach (var invalido in new[] { dados with { RegistroId = Guid.NewGuid() }, dados with { ObraId = Guid.NewGuid() },
+            dados with { Latitude = null }, dados with { Longitude = 181 }, dados with { PrecisaoMetros = 101 },
+            dados with { CapturadaEm = null }, dados with { LocalizacaoObtidaEm = hora.AddSeconds(-61) },
+            dados with { Origem = "arquivo" } })
+            await Assert.ThrowsAsync<InvalidOperationException>(() => Preparar(invalido));
+
+        var salvo = DadosCapturaFoto.Ler(await Preparar(dados))!;
+        Assert.Equal(hora, salvo.CapturadaEm);
+        Assert.Equal(registro, salvo.RegistroId);
+        Assert.Equal(obra.Nome, salvo.ObraNome);
+        Assert.True(salvo.RecebidaEm > hora);
+    }
+
+    private static SstDbContext CriarBanco() => new(new DbContextOptionsBuilder<SstDbContext>()
+        .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options, new CurrentUserService());
+
     [Fact]
     public void ExigirCompleta_ComCapturaEPosicaoRecentes_NaoLanca()
     {

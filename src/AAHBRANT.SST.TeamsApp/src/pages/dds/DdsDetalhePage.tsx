@@ -239,7 +239,7 @@ export function DdsDetalhePage() {
 
       <Card>
         <GradeFotosEvidencia
-          contextoFoto={{ obraId: dds.obraId, obraNome: dds.obraNome }}
+          contextoFoto={{ registroId: dds.id, obraId: dds.obraId, obraNome: dds.obraNome }}
           titulo="Evidências fotográficas"
           subtitulo={`${TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS} fotos são obrigatórias para liberar o encerramento deste registro diário.`}
           total={TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS}
