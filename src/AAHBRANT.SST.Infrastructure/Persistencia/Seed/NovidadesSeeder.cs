@@ -2682,6 +2682,21 @@ public static class NovidadesSeeder
                     "Certificado de outra empresa lançado como curso da AAHBRANT aparecia, ao ver ou baixar, no modelo da AAHBRANT.",
                     "Ver e baixar abrem o certificado original anexado, e o botão Assinar não aparece nesses casos. Para anexar o certificado de outra empresa, a origem precisa ser Externo."),
             }),
+        new(
+            Versao: "5.153.0",
+            Titulo: "Aviso na tela quando falta preencher algo",
+            DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Pop-up com o que falta preencher",
+                    "Ao salvar com algum campo em branco, o aviso aparecia só no topo da página e quem estava no fim do formulário não via.",
+                    "Agora abre na hora uma janela com a lista do que falta. O botão Ir leva direto ao campo. Vale para entrega de EPI, entrega de uniforme, nova inspeção e nova ocorrência."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Motivo do erro ao salvar em qualquer tela",
+                    "Quando o sistema recusava salvar, enviar ou excluir, a mensagem podia ficar escondida no topo.",
+                    "Agora o motivo aparece numa janela no centro da tela, e o que você preencheu continua lá."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
