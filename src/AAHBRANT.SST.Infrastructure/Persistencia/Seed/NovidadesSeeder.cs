@@ -2708,6 +2708,21 @@ public static class NovidadesSeeder
                     "Quando o sistema recusava salvar, enviar ou excluir, a mensagem podia ficar escondida no topo.",
                     "Agora o motivo aparece numa janela no centro da tela, e o que você preencheu continua lá."),
             }),
+        new(
+            Versao: "5.155.0",
+            Titulo: "Entrega de uniforme com visual novo",
+            DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Foto da frente de cada peça, sem corte",
+                    "Na entrega de uniforme, a foto da peça aparecia recortada e mostrava só um pedaço do tecido.",
+                    "Cada peça mostra a foto da frente inteira, com a cor e o tecido. Clique em Ampliar para ver maior."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Tamanho e saldo num clique",
+                    "Escolher o tamanho exigia abrir uma lista e conferir o saldo em outro lugar do card.",
+                    "Os tamanhos viram botões com o saldo da obra embaixo de cada um, e a quantidade tem botões de mais e menos. O carrinho fica sempre visível ao lado."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
