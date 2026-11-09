@@ -16,7 +16,7 @@
 
 - Trabalhar na worktree `C:\Projetos\SST-APP-cameras`, branch `feature/cameras-epi`. Não usar `C:\Projetos\SST-APP`.
 - Pasta do app: `src/AAHBRANT.SST.TeamsApp`. Páginas importam componentes de `@ui`, nunca de `@fluentui/react-components` direto (ícones de `@fluentui/react-icons` são permitidos). Cores só por tokens (`designTokens`, `tokensUi`), sem hex solto.
-- O visual segue o mockup aprovado: item **Câmeras** na barra lateral logo abaixo de **Operação**; abas **Câmeras** e **Alertas de EPI** (não "Ocorrências", que já é outro módulo); tela 1 em **mosaico** com alternância mosaico/lista e botão **Tela cheia**.
+- O visual segue o mockup aprovado: item **Câmeras** como **último item da lista de módulos** da barra lateral (depois de Calendário; Administração continua fixa no rodapé) — pedido do usuário; abas **Câmeras** e **Alertas de EPI** (não "Ocorrências", que já é outro módulo); tela 1 em **mosaico** com alternância mosaico/lista e botão **Tela cheia**.
 - O item do menu e as rotas só existem para quem `GET /api/cameras/acesso` devolve `permitido: true`. Para os demais, o item não aparece e a rota redireciona para `/`.
 - EPIs: somente capacete e colete. Nada de luvas.
 - Análise só quando há movimento; no máximo um quadro enviado a cada **30 s** por câmera (o servidor ignora abaixo de 25 s).
@@ -666,19 +666,14 @@ git commit -m "feat(cameras): aba Alertas de EPI com foto, vínculo de trabalhad
 
 - [ ] **Step 1: Item condicional na barra lateral**
 
-`itensPilares` é uma constante de módulo e a ordem importa: "Câmeras" entra logo depois de "Operação". Não inserir na constante (ela não conhece o usuário): no componente que faz `itensPilares.map(...)`, montar a lista efetiva com `useMemo`:
+`itensPilares` é uma constante de módulo: "Câmeras" entra como **último item da lista** (depois de Calendário; Administração segue fixa no rodapé). Não inserir na constante (ela não conhece o usuário): no componente que faz `itensPilares.map(...)`, montar a lista efetiva com `useMemo`:
 
 ```tsx
 const acessoCameras = useAcessoCameras();
-const itensPilaresVisiveis = useMemo(() => {
-  if (!acessoCameras) return itensPilares;
-  const posicao = itensPilares.findIndex((i) => i.rota === '/operacao') + 1;
-  return [
-    ...itensPilares.slice(0, posicao),
-    { rota: '/cameras', rotulo: 'Câmeras', icone: Video24Regular },
-    ...itensPilares.slice(posicao),
-  ];
-}, [acessoCameras]);
+const itensPilaresVisiveis = useMemo(
+  () => (acessoCameras ? [...itensPilares, { rota: '/cameras', rotulo: 'Câmeras', icone: Video24Regular }] : itensPilares),
+  [acessoCameras],
+);
 ```
 
 e trocar `itensPilares.map` por `itensPilaresVisiveis.map`. Importar `Video24Regular` de `@fluentui/react-icons`. Verificar se há outra lista derivada de `itensPilares` (menu compacto de telas estreitas, busca de navegação, trilha/breadcrumb): procurar por `itensPilares` e por `'/operacao'` em `src/layout` e `src/components`; onde a lista de módulos for usada para navegação, aplicar a mesma lista efetiva. Onde for só um mapa de rótulos por rota (trilha), acrescentar `/cameras` → "Câmeras".
@@ -726,7 +721,7 @@ Docker aberto com o SQL Server local. Portas próprias para esta worktree (há o
 
 - [ ] **Step 2: Roteiro**
 
-1. Menu mostra **Câmeras** abaixo de Operação (em dev local o acesso é aberto; a restrição só vale com Entra ligado).
+1. Menu mostra **Câmeras** como último item da lista de módulos, depois de Calendário (em dev local o acesso é aberto; a restrição só vale com Entra ligado).
 2. Criar uma câmera "Tablet teste" numa obra; ela aparece no mosaico como "Sem análise recente"; alternar para lista e voltar; Tela cheia entra e sai.
 3. Abrir Monitorar → Iniciar: o navegador pede a câmera; o vídeo aparece; "Cena parada" com a cena imóvel; ao mexer na frente da câmera, "Movimento detectado · analisando" e, em até 30 s, a "Última análise" preenche.
 4. Aba de rede do navegador: `POST /api/cameras/{id}/quadros` só sai com movimento e nunca com menos de 30 s de intervalo; com a cena parada por 2 min, nenhuma chamada.
