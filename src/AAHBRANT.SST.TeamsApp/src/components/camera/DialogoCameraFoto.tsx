@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Button,
   Dialog,
@@ -55,11 +55,10 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
   // dentro dela; na assinatura ela é guia. Nos dois a foto sai em 3×4 centralizada no rosto.
   const mostrarGuiaRosto = modoCamera === 'user';
   const modoAssinatura = captura.modoCaptura === 'assinatura';
-  const [urlPrevia, setUrlPrevia] = useState<string>();
-  useEffect(() => {
-    if (!captura.previa) { setUrlPrevia(undefined); return; }
+  const mostrarPrevia = useCallback((imagem: HTMLImageElement | null) => {
+    if (!imagem || !captura.previa) return;
     const url = URL.createObjectURL(captura.previa.arquivo);
-    setUrlPrevia(url);
+    imagem.src = url;
     return () => URL.revokeObjectURL(url);
   }, [captura.previa]);
   const faltas = pendenciasFoto(captura.previa?.dados);
@@ -208,7 +207,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
         <DialogBody>
           <DialogTitle>Conferir foto</DialogTitle>
           <DialogContent>
-            {urlPrevia && <img src={urlPrevia} alt="Foto capturada" style={{ width: '100%', maxHeight: '40vh', objectFit: 'contain' }} />}
+            {captura.previa && <img ref={mostrarPrevia} alt="Foto capturada" style={{ width: '100%', maxHeight: '40vh', objectFit: 'contain' }} />}
             {!!faltas.length && <FeedbackInline tom="aviso">
               Falta registrar {faltas.join(', ')}. {captura.previa?.dados.motivoLocalizacao} Confira os dados e refaça a foto no local.
             </FeedbackInline>}
