@@ -39,7 +39,6 @@
 | `src/AAHBRANT.SST.Application/Cameras/IAnalisadorEpiImagem.cs` (criar) | Interface da IA e `ResultadoAnaliseEpi` |
 | `src/AAHBRANT.SST.Application/Cameras/LegendaAlertaEpi.cs` (criar) | Texto do alerta |
 | `src/AAHBRANT.SST.Infrastructure/Integracao/Cameras/ClaudeAnalisadorEpiImagem.cs` (criar) | Implementação com Claude |
-| `src/AAHBRANT.SST.Infrastructure/Integracao/SuporteIa/AzureOpenAiChatJsonCliente.cs` (modificar) | Chamada ao Claude com imagem |
 | `src/AAHBRANT.SST.Application/Common/Interfaces/ITelegramResumoService.cs`, `.../Telegram/TelegramResumoService.cs` (modificar) | Envio de foto JPEG |
 | `src/AAHBRANT.SST.Api/Controllers/CamerasController.cs` (criar) | Endpoints |
 
@@ -661,14 +660,12 @@ git commit -m "feat(cameras): cadastro de câmeras por obra"
 
 **Files:**
 - Create: `src/AAHBRANT.SST.Application/Cameras/IAnalisadorEpiImagem.cs`
-- Modify: `src/AAHBRANT.SST.Infrastructure/Integracao/SuporteIa/AzureOpenAiChatJsonCliente.cs`
 - Create: `src/AAHBRANT.SST.Infrastructure/Integracao/Cameras/ClaudeAnalisadorEpiImagem.cs`
-- Modify: `src/AAHBRANT.SST.Infrastructure/DependencyInjection.cs` (logo após `services.AddScoped<AzureOpenAiChatJsonCliente>();`, linha ~82)
+- Modify: `src/AAHBRANT.SST.Infrastructure/DependencyInjection.cs` (logo após `services.AddScoped<ClaudeChatJsonCliente>();`, linha ~84)
 - Test: `tests/AAHBRANT.SST.Infrastructure.Tests/Cameras/ClaudeAnalisadorEpiImagemTests.cs`
 
 **Interfaces:**
 - Produces: `IAnalisadorEpiImagem.AnalisarAsync(byte[] imagemJpeg, CancellationToken ct) : Task<ResultadoAnaliseEpi>`; `record ResultadoAnaliseEpi(int Pessoas, int SemCapacete, int SemColete, ConfiancaAnaliseEpi Confianca)`. Lança `InvalidOperationException` quando a IA falha, não está configurada ou devolve números incoerentes.
-- Produces: `AzureOpenAiChatJsonCliente.ObterComImagemAsync<T>(string instrucoesSistema, string mensagemUsuario, byte[] imagemJpeg, object schema, CancellationToken ct) : Task<T>`.
 
 - [ ] **Step 1: Escrever os testes que falham**
 
@@ -718,11 +715,11 @@ public class ClaudeAnalisadorEpiImagemTests
 
     private static ClaudeAnalisadorEpiImagem Criar(HandlerFalso handler, string? apiKey = "chave-de-teste")
     {
-        var cliente = new AzureOpenAiChatJsonCliente(
+        var cliente = new ClaudeChatJsonCliente(
             new FabricaFalsa(handler),
             Options.Create(new AzureOpenAiOptions()),
             Options.Create(new ClaudeOptions { ApiKey = apiKey }),
-            NullLogger<AzureOpenAiChatJsonCliente>.Instance);
+            NullLogger<ClaudeChatJsonCliente>.Instance);
         return new ClaudeAnalisadorEpiImagem(cliente);
     }
 
@@ -756,7 +753,7 @@ public class ClaudeAnalisadorEpiImagemTests
     [Fact]
     public async Task Analisar_FalhaDoClaude_LancaInvalidOperationException()
     {
-        var handler = new HandlerFalso(HttpStatusCode.InternalServerError, "erro");
+        var handler = new HandlerFalso(HttpStatusCode.BadRequest, "erro");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => Criar(handler).AnalisarAsync(new byte[] { 0xFF, 0xD8 }, default));
     }
@@ -796,81 +793,9 @@ public interface IAnalisadorEpiImagem
 public record ResultadoAnaliseEpi(int Pessoas, int SemCapacete, int SemColete, ConfiancaAnaliseEpi Confianca);
 ```
 
-- [ ] **Step 4: Chamada ao Claude com imagem**
+- [ ] **Step 4: Cliente do Claude — sem alteração**
 
-Em `AzureOpenAiChatJsonCliente.cs`, acrescentar o método público abaixo de `ObterAsync<T>`:
-
-```csharp
-    // Mesma saída estruturada de ObterAsync, com uma imagem JPEG junto do texto (visão do Claude).
-    public async Task<T> ObterComImagemAsync<T>(string instrucoesSistema, string mensagemUsuario, byte[] imagemJpeg, object schema, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(_claude.Value.ApiKey))
-            throw new InvalidOperationException("IA não configurada. Configure Claude:ApiKey.");
-
-        var conteudo = new object[]
-        {
-            new
-            {
-                type = "image",
-                source = new { type = "base64", media_type = "image/jpeg", data = Convert.ToBase64String(imagemJpeg) },
-            },
-            new { type = "text", text = mensagemUsuario },
-        };
-        return await EnviarAoClaudeAsync<T>(instrucoesSistema, conteudo, schema, ct);
-    }
-```
-
-Substituir o método `ObterViaClaudeAsync<T>` inteiro por estes dois (o corpo é o mesmo de hoje; só o conteúdo da mensagem do usuário vira parâmetro):
-
-```csharp
-    // Messages API do Claude com saída estruturada (output_config.format json_schema).
-    private Task<T> ObterViaClaudeAsync<T>(string instrucoesSistema, string mensagemUsuario, object schema, CancellationToken ct)
-        => EnviarAoClaudeAsync<T>(instrucoesSistema, mensagemUsuario, schema, ct);
-
-    // conteudoUsuario: texto simples (string) ou lista de blocos (imagem + texto).
-    private async Task<T> EnviarAoClaudeAsync<T>(string instrucoesSistema, object conteudoUsuario, object schema, CancellationToken ct)
-    {
-        var opcoes = _claude.Value;
-        var corpo = new
-        {
-            model = opcoes.Modelo,
-            max_tokens = 4000,
-            system = instrucoesSistema,
-            messages = new object[] { new { role = "user", content = conteudoUsuario } },
-            output_config = new { format = new { type = "json_schema", schema } },
-        };
-
-        using var requisicao = new HttpRequestMessage(HttpMethod.Post, $"{opcoes.Endpoint.TrimEnd('/')}/v1/messages")
-        {
-            Content = JsonContent.Create(corpo),
-        };
-        requisicao.Headers.Add("x-api-key", opcoes.ApiKey);
-        requisicao.Headers.Add("anthropic-version", "2023-06-01");
-
-        var cliente = _httpClientFactory.CreateClient();
-        cliente.Timeout = TimeSpan.FromSeconds(90);
-        using var resposta = await cliente.SendAsync(requisicao, ct);
-
-        if (!resposta.IsSuccessStatusCode)
-        {
-            var erro = await resposta.Content.ReadAsStringAsync(ct);
-            _logger.LogError("Falha na chamada ao Claude ({Status}): {Corpo}", (int)resposta.StatusCode, erro);
-            throw new InvalidOperationException("A IA não conseguiu concluir a análise agora.");
-        }
-
-        using var json = await JsonDocument.ParseAsync(await resposta.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-        var conteudo = json.RootElement.GetProperty("content").EnumerateArray()
-            .Where(b => b.GetProperty("type").GetString() == "text")
-            .Select(b => b.GetProperty("text").GetString())
-            .FirstOrDefault()
-            ?? throw new InvalidOperationException("A IA devolveu uma resposta vazia.");
-
-        return JsonSerializer.Deserialize<T>(conteudo, new JsonSerializerOptions(JsonSerializerDefaults.Web))
-            ?? throw new InvalidOperationException("A IA devolveu uma resposta inválida.");
-    }
-```
-
-Antes de trocar a mensagem de erro ("analisar o relato" → "concluir a análise"), rodar `grep -rn "não conseguiu analisar o relato" tests src` e, se algum teste comparar o texto antigo, manter o texto antigo.
+`ClaudeChatJsonCliente.ObterAsync<T>(instrucoesSistema, mensagemUsuario, nomeSchema, schema, ct, maxTokens, timeoutSegundos, imagens)` já aceita imagens como data URL (`data:image/jpeg;base64,...`) e já tenta de novo em 429/5xx. Não modificar esse arquivo.
 
 - [ ] **Step 5: Implementação do analisador**
 
@@ -913,12 +838,14 @@ public class ClaudeAnalisadorEpiImagem : IAnalisadorEpiImagem
 
     private sealed record Resposta(int Pessoas, int SemCapacete, int SemColete, string? Confianca);
 
-    private readonly AzureOpenAiChatJsonCliente _cliente;
-    public ClaudeAnalisadorEpiImagem(AzureOpenAiChatJsonCliente cliente) => _cliente = cliente;
+    private readonly ClaudeChatJsonCliente _cliente;
+    public ClaudeAnalisadorEpiImagem(ClaudeChatJsonCliente cliente) => _cliente = cliente;
 
     public async Task<ResultadoAnaliseEpi> AnalisarAsync(byte[] imagemJpeg, CancellationToken ct)
     {
-        var r = await _cliente.ObterComImagemAsync<Resposta>(Instrucoes, Pedido, imagemJpeg, Schema, ct);
+        var imagens = new[] { $"data:image/jpeg;base64,{Convert.ToBase64String(imagemJpeg)}" };
+        var r = await _cliente.ObterAsync<Resposta>(Instrucoes, Pedido, "analise_epi", Schema, ct,
+            maxTokens: 500, timeoutSegundos: 60, imagens: imagens);
 
         if (r.Pessoas < 0 || r.SemCapacete < 0 || r.SemColete < 0 || r.SemCapacete > r.Pessoas || r.SemColete > r.Pessoas)
             throw new InvalidOperationException("A IA devolveu contagens incoerentes.");
@@ -934,7 +861,7 @@ public class ClaudeAnalisadorEpiImagem : IAnalisadorEpiImagem
 }
 ```
 
-Em `DependencyInjection.cs`, logo após `services.AddScoped<AzureOpenAiChatJsonCliente>();`:
+Em `DependencyInjection.cs`, logo após `services.AddScoped<ClaudeChatJsonCliente>();`:
 
 ```csharp
         services.AddScoped<AAHBRANT.SST.Application.Cameras.IAnalisadorEpiImagem, AAHBRANT.SST.Infrastructure.Integracao.Cameras.ClaudeAnalisadorEpiImagem>();
