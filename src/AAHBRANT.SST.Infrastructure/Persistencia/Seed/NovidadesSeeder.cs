@@ -2684,6 +2684,17 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.153.0",
+            Titulo: "DDS com até 3 temas e 1 tema livre",
+            DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "DDS mais objetivo: até 3 temas por dia",
+                    "Era possível marcar quantas atividades quisesse, e o DDS do dia ficava longo demais.",
+                    "Cada dia aceita até 3 atividades (temas da Matriz de Riscos) e mais 1 tema livre opcional. Um contador mostra quantos temas já foram escolhidos."),
+            }),
+        new(
+            Versao: "5.154.0",
             Titulo: "Aviso na tela quando falta preencher algo",
             DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
