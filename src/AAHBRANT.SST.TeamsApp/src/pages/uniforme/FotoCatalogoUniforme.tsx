@@ -43,18 +43,20 @@ export function FotoCatalogoUniforme({ catalogoUniformeId, temFoto, tamanho = 48
     };
   }, [catalogoUniformeId, temFoto, referencia]);
 
-  if (referencia) return <div role="img" aria-label={`Foto de uniforme · ${referencia.cor}`}
+  // Mostra só a foto da frente recortada da ficha (public/uniformes/*-frente.jpg), inteira e sem corte.
+  if (referencia) return <img src={referencia.frente} alt={`Foto de uniforme · ${referencia.cor}`}
     className={destaque ? 'uniforme-foto-destaque' : undefined}
-    style={{ ...(destaque ? {} : { width: tamanho, height: tamanho, backgroundSize: '280% auto', backgroundPosition: '3% 31%', borderRadius: 8, flexShrink: 0 }), backgroundImage: `url(${referencia.arquivo})` }} />;
+    style={destaque ? undefined : { width: tamanho, height: tamanho, objectFit: 'contain', borderRadius: 8, flexShrink: 0, backgroundColor: designTokens.colorNeutralLight }} />;
   const estiloBase = {
     width: destaque ? '100%' : tamanho,
-    height: destaque ? 200 : tamanho,
+    height: destaque ? undefined : tamanho,
+    aspectRatio: destaque ? '5 / 4' : undefined,
     borderRadius: 8,
     flexShrink: 0,
   };
 
   if (url) {
-    return <img src={url} alt="Foto da peça de uniforme" style={{ ...estiloBase, objectFit: 'cover' as const }} />;
+    return <img src={url} alt="Foto da peça de uniforme" style={{ ...estiloBase, objectFit: 'contain' as const, backgroundColor: designTokens.colorNeutralLight }} />;
   }
 
   return (

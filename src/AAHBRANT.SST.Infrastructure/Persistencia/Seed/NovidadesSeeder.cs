@@ -2682,6 +2682,21 @@ public static class NovidadesSeeder
                     "Certificado de outra empresa lançado como curso da AAHBRANT aparecia, ao ver ou baixar, no modelo da AAHBRANT.",
                     "Ver e baixar abrem o certificado original anexado, e o botão Assinar não aparece nesses casos. Para anexar o certificado de outra empresa, a origem precisa ser Externo."),
             }),
+        new(
+            Versao: "5.153.0",
+            Titulo: "Entrega de uniforme com visual novo",
+            DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Foto da frente de cada peça, sem corte",
+                    "Na entrega de uniforme, a foto da peça aparecia recortada e mostrava só um pedaço do tecido.",
+                    "Cada peça mostra a foto da frente inteira, com a cor e o tecido. Clique em Ampliar para ver maior."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Tamanho e saldo num clique",
+                    "Escolher o tamanho exigia abrir uma lista e conferir o saldo em outro lugar do card.",
+                    "Os tamanhos viram botões com o saldo da obra embaixo de cada um, e a quantidade tem botões de mais e menos. O carrinho fica sempre visível ao lado."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

@@ -494,7 +494,9 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
 
               <FormSection titulo="O que é entregue" numero={2}>
                 {!trabalhadorAtual && <Field label="Consultar estoque da obra"><Select value={obraEntregaId} onChange={(_, d) => setObraConsultaId(d.value)}>{obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}</Select></Field>}
-                <div className="uniforme-obra-info">Obra: {nomeObra(obraEntregaId)}{trabalhadorAtual ? ` · ${trabalhadorAtual.nome}` : ' · selecione um trabalhador para montar o kit'}</div>
+                {trabalhadorAtual
+                  ? <div className="uniforme-obra-info">Estoque da obra <b>{nomeObra(obraEntregaId)}</b> · kit da função de {trabalhadorAtual.nome}</div>
+                  : <div className="uniforme-aviso-kit">Selecione o funcionário para montar o kit da função dele. O estoque exibido é o da obra escolhida acima.</div>}
                 {estoqueErro && <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar novamente', aoClicar: () => setEstoqueVersao(v => v + 1) }}>{estoqueErro}</FeedbackInline>}
                 {estoqueCarregando ? <Spinner label="Consultando estoque por tamanho" /> : <VitrineUniforme
                   key={dadosComuns.trabalhadorId || obraEntregaId}
@@ -504,10 +506,11 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
                   aoAdicionar={adicionarAoCarrinho} aoRemover={removerDoCarrinho} />}
                 {matrizErro && <FeedbackInline tom="erro">{matrizErro}</FeedbackInline>}
                 {trabalhadorAtual && !matrizCarregando && !matrizErro && itensPermitidos.length === 0 && <FeedbackInline tom="aviso" acao={{ rotulo: 'Matriz por Função', aoClicar: aoNavegarParaMatriz }}>Esta função não possui peças vinculadas na matriz.</FeedbackInline>}
+              </FormSection>
 
-
+              <FormSection titulo="Detalhes" numero={3}>
                 <FormGrid>
-                  <Campo span={6}>
+                  <Campo span={4}>
                     <Field label="Motivo">
                       <Select
                         value={dadosComuns.motivoTipo}
@@ -521,7 +524,7 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
                       </Select>
                     </Field>
                   </Campo>
-                  <Campo span={6}>
+                  <Campo span={8}>
                     <Field label="Observações (opcional)">
                       <Input
                         value={dadosComuns.observacoes}

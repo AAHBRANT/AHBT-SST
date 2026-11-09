@@ -7,6 +7,7 @@ export const referenciasUniforme = [
     "funcoesIndicadas": [],
     "tecido": "Brim",
     "arquivo": "/uniformes/camisa-brim-laranja.jpeg",
+    "frente": "/uniformes/camisa-brim-laranja-frente.jpg",
     "categoria": "Camisas"
   },
   {
@@ -19,6 +20,7 @@ export const referenciasUniforme = [
     ],
     "tecido": "Brim",
     "arquivo": "/uniformes/camisa-brim-azul.jpeg",
+    "frente": "/uniformes/camisa-brim-azul-frente.jpg",
     "categoria": "Camisas"
   },
   {
@@ -29,6 +31,7 @@ export const referenciasUniforme = [
     "funcoesIndicadas": [],
     "tecido": "Brim",
     "arquivo": "/uniformes/camisa-brim-marsala.jpeg",
+    "frente": "/uniformes/camisa-brim-marsala-frente.jpg",
     "categoria": "Camisas"
   },
   {
@@ -46,6 +49,7 @@ export const referenciasUniforme = [
     ],
     "tecido": "Tricoline",
     "arquivo": "/uniformes/camisa-feminina-marsala.jpeg",
+    "frente": "/uniformes/camisa-feminina-marsala-frente.jpg",
     "categoria": "Camisas"
   },
   {
@@ -63,6 +67,7 @@ export const referenciasUniforme = [
     ],
     "tecido": "Tricoline",
     "arquivo": "/uniformes/camisa-feminina-cinza.jpeg",
+    "frente": "/uniformes/camisa-feminina-cinza-frente.jpg",
     "categoria": "Camisas"
   },
   {
@@ -73,6 +78,7 @@ export const referenciasUniforme = [
     "funcoesIndicadas": [],
     "tecido": "Brim",
     "arquivo": "/uniformes/calca-brim-laranja.jpeg",
+    "frente": "/uniformes/calca-brim-laranja-frente.jpg",
     "categoria": "Calças"
   },
   {
@@ -85,6 +91,7 @@ export const referenciasUniforme = [
     ],
     "tecido": "Brim",
     "arquivo": "/uniformes/calca-brim-azul.jpeg",
+    "frente": "/uniformes/calca-brim-azul-frente.jpg",
     "categoria": "Calças"
   },
   {
@@ -95,6 +102,7 @@ export const referenciasUniforme = [
     "funcoesIndicadas": [],
     "tecido": "Brim",
     "arquivo": "/uniformes/calca-brim-marsala.jpeg",
+    "frente": "/uniformes/calca-brim-marsala-frente.jpg",
     "categoria": "Calças"
   },
   {
@@ -105,6 +113,7 @@ export const referenciasUniforme = [
     "funcoesIndicadas": [],
     "tecido": "Brim",
     "arquivo": "/uniformes/calca-brim-cinza.jpeg",
+    "frente": "/uniformes/calca-brim-cinza-frente.jpg",
     "categoria": "Calças"
   },
   {
@@ -115,6 +124,7 @@ export const referenciasUniforme = [
     "funcoesIndicadas": [],
     "tecido": "Impermeável",
     "arquivo": "/uniformes/agasalho-laranja.jpeg",
+    "frente": "/uniformes/agasalho-laranja-frente.jpg",
     "categoria": "Agasalhos"
   }
 ] as const;
