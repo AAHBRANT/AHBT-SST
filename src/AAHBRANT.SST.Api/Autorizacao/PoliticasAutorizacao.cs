@@ -22,4 +22,11 @@ public static class PoliticasAutorizacao
     // Aprovar o PGR gerado pela EAP é do Engenheiro de Segurança (decisão do usuário, 21/10/2026).
     // Regra fixa por PerfilAcesso.Tipo, pelo mesmo motivo de SomenteAdministrador.
     public const string SomenteEngenheiroSeguranca = "perfil:engenheiro-seguranca";
+
+    // Módulo Câmeras (detecção de EPI) em piloto: só Administrador cujo e-mail esteja em
+    // Cameras:UsuariosPiloto (appsettings), por decisão do usuário em 09/11/2026. Não é um
+    // Permissao.Codigo — regra fixa resolvida por PermissaoAuthorizationHandler; lista vazia ou
+    // ausente nega todos. Para abrir o módulo depois, trocar por códigos no estilo "inspecao:*" ou
+    // por uma permissão dedicada marcada na matriz.
+    public const string CamerasPiloto = "piloto:cameras";
 }

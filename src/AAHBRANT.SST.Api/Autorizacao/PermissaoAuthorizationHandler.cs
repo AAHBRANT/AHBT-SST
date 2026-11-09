@@ -4,6 +4,7 @@ using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace AAHBRANT.SST.Api.Autorizacao;
 
@@ -33,12 +34,27 @@ public class PermissaoAuthorizationHandler : AuthorizationHandler<PermissaoRequi
     private readonly IAppDbContext _db;
     private readonly IConfiguration _configuracao;
     private readonly IAcessoPorObraService _acesso;
+    private readonly CamerasPilotoOptions _camerasPiloto;
 
-    public PermissaoAuthorizationHandler(IAppDbContext db, IConfiguration configuracao, IAcessoPorObraService acesso)
+    public PermissaoAuthorizationHandler(
+        IAppDbContext db, IConfiguration configuracao, IAcessoPorObraService acesso,
+        IOptions<CamerasPilotoOptions> camerasPiloto)
     {
         _db = db;
         _configuracao = configuracao;
         _acesso = acesso;
+        _camerasPiloto = camerasPiloto.Value;
+    }
+
+    // Decisão do piloto do módulo Câmeras (09/11/2026), isolada para ser testável sem banco: Administrador
+    // E e-mail na lista, comparado sem diferenciar maiúsculas e sem espaços nas pontas. Sem e-mail, lista
+    // vazia/ausente ou entradas em branco: nega.
+    public static bool PilotoCamerasPermitido(bool ehAdministrador, string? email, IEnumerable<string>? usuariosPiloto)
+    {
+        if (!ehAdministrador || string.IsNullOrWhiteSpace(email) || usuariosPiloto is null) return false;
+        var alvo = email.Trim();
+        return usuariosPiloto.Any(u => !string.IsNullOrWhiteSpace(u)
+            && string.Equals(u.Trim(), alvo, StringComparison.OrdinalIgnoreCase));
     }
 
     protected override async Task HandleRequirementAsync(
@@ -98,6 +114,28 @@ public class PermissaoAuthorizationHandler : AuthorizationHandler<PermissaoRequi
                     && vinculo.PerfilAcesso.Tipo == TipoPerfilAcesso.Administrador);
 
             if (ehAdministrador) context.Succeed(requirement);
+            return;
+        }
+
+        // Piloto do módulo Câmeras: o mesmo teste de Administrador de SomenteAdministrador + e-mail do token
+        // (preferred_username, com fallback para o claim de e-mail, como em VinculoAzureAdMiddleware) na lista.
+        // Só consulta o banco se a lista tiver alguém (falha fechada com lista vazia).
+        if (requirement.Codigo == PoliticasAutorizacao.CamerasPiloto)
+        {
+            var email = context.User.FindFirst("preferred_username")?.Value
+                ?? context.User.FindFirst(ClaimTypes.Email)?.Value
+                ?? context.User.FindFirst("email")?.Value;
+
+            if (_camerasPiloto.UsuariosPiloto.Count == 0 || string.IsNullOrWhiteSpace(email)) return;
+
+            var ehAdministrador = await _db.Usuarios
+                .Where(u => u.AzureAdObjectId == azureAdObjectId && u.Status == StatusUsuario.Ativo)
+                .SelectMany(u => u.PerfisPorObra)
+                .AnyAsync(vinculo => vinculo.PerfilAcesso != null
+                    && vinculo.PerfilAcesso.Tipo == TipoPerfilAcesso.Administrador);
+
+            if (PilotoCamerasPermitido(ehAdministrador, email, _camerasPiloto.UsuariosPiloto))
+                context.Succeed(requirement);
             return;
         }
 

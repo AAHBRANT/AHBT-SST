@@ -89,6 +89,7 @@ public class EscopoPorObraMiddleware
         PoliticasAutorizacao.SomenteAdministrador
         or PoliticasAutorizacao.SomenteEngenheiroSeguranca
         or PoliticasAutorizacao.QualquerUsuarioAutenticado
+        or PoliticasAutorizacao.CamerasPiloto
         or "suporte-ia:usar"
         or "novidades:usar");
 }
