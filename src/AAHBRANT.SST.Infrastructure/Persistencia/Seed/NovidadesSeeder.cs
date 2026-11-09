@@ -2638,6 +2638,17 @@ public static class NovidadesSeeder
                     "Havia dashboards e abas sem uso, e algumas telas abriam pedindo a obra.",
                     "Saíram o dashboard de Treinamentos, a importação em lote e as abas Exames Complementares, Aptidões e Certificados. As telas abrem na obra escolhida por último. Catálogo, Regras por NR e Matriz estão em Configurações, só para o Admin."),
             }),
+        new(
+            Versao: "5.149.0",
+            Titulo: "Crie reuniões do Teams pelo Calendário",
+            DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Nova reunião direto no Calendário",
+                    "Para marcar uma reunião era preciso sair do sistema e abrir o Teams ou o Outlook.",
+                    "No Calendário, clique em Nova reunião, escolha o tipo (DDS, CIPA, Reunião de obra, Alinhamento), a data, o horário, a obra e os convidados. A reunião vai para o seu Teams/Outlook com o link, e os convidados (inclusive externos, pelo e-mail) recebem o convite."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

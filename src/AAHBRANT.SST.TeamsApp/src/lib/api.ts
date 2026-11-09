@@ -4324,6 +4324,26 @@ export interface EventoSstCalendario {
   entidadeOrigemId: string;
 }
 
+// Nova reunião do Teams pelo Calendário (09/11/2026). inicio/fim no horário de Brasília, sem fuso.
+export interface ConvidavelReuniao {
+  id: string;
+  nome: string;
+  email: string;
+}
+export interface NovaReuniaoCalendario {
+  titulo: string;
+  pauta?: string | null;
+  inicio: string;
+  fim: string;
+  convidadosUsuarioIds: string[];
+  emailsExternos: string[];
+  obraId?: string | null;
+}
+export interface ReuniaoCalendarioCriada {
+  graphEventId: string;
+  linkTeams: string | null;
+  totalConvidados: number;
+}
 export interface Calendario {
   usuarioIdentificado: boolean;
   graphDisponivel: boolean;
@@ -6309,6 +6329,9 @@ export const api = {
       request<Calendario>(
         `/api/calendario?inicio=${encodeURIComponent(inicio.toISOString())}&fim=${encodeURIComponent(fim.toISOString())}`,
       ),
+    convidaveis: () => request<ConvidavelReuniao[]>('/api/calendario/convidaveis'),
+    criarReuniao: (reuniao: NovaReuniaoCalendario) =>
+      request<ReuniaoCalendarioCriada>('/api/calendario/reunioes', { method: 'POST', body: JSON.stringify(reuniao) }),
   },
   permissoesTrabalho: {
     listar: (atividadeId?: string) =>
