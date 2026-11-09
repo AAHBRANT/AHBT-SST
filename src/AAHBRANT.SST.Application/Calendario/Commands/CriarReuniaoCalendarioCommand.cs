@@ -23,18 +23,21 @@ public record CriarReuniaoCalendarioCommand(
     TipoRecorrenciaReuniao? Repetir = null,
     DateOnly? RepetirAte = null) : IRequest<ReuniaoCalendarioCriadaDto>;
 
-public record ReuniaoCalendarioCriadaDto(string GraphEventId, string? LinkTeams, int TotalConvidados);
+public record ReuniaoCalendarioCriadaDto(string GraphEventId, string? LinkTeams, int TotalConvidados, bool NaSuaAgenda);
 
 public class CriarReuniaoCalendarioCommandHandler : IRequestHandler<CriarReuniaoCalendarioCommand, ReuniaoCalendarioCriadaDto>
 {
     private const int MaximoConvidados = 100;
     private readonly IAppDbContext _db;
     private readonly IReuniaoTeamsService? _reuniaoTeams;
+    private readonly ITokenAcessoUsuario? _tokenUsuario;
 
-    public CriarReuniaoCalendarioCommandHandler(IAppDbContext db, IReuniaoTeamsService? reuniaoTeams = null)
+    public CriarReuniaoCalendarioCommandHandler(
+        IAppDbContext db, IReuniaoTeamsService? reuniaoTeams = null, ITokenAcessoUsuario? tokenUsuario = null)
     {
         _db = db;
         _reuniaoTeams = reuniaoTeams;
+        _tokenUsuario = tokenUsuario;
     }
 
     public async Task<ReuniaoCalendarioCriadaDto> Handle(CriarReuniaoCalendarioCommand request, CancellationToken ct)
@@ -88,11 +91,10 @@ public class CriarReuniaoCalendarioCommandHandler : IRequestHandler<CriarReuniao
                 .Select(u => u.Email)
                 .ToListAsync(ct);
 
-        // Quem criou entra como convidado: em hml/produção a reunião é criada na caixa compartilhada
-        // (Graph:CaixaReunioes = sst@aahbrant.com), não na agenda da pessoa — sem isso ela não
-        // recebia o convite nem via a reunião no próprio Outlook/Teams.
-        var convidados = new[] { organizador.Email }.Concat(emailsUsuarios).Concat(externos)
-            .Where(e => !string.IsNullOrWhiteSpace(e))
+        // Quem criou não entra na lista: se a reunião for criada em nome dele, ele é o organizador; se
+        // cair na caixa compartilhada, o serviço o convida (OpcoesCriacaoReuniao.EmailOrganizador).
+        var convidados = emailsUsuarios.Concat(externos)
+            .Where(e => !string.IsNullOrWhiteSpace(e) && !string.Equals(e, organizador.Email, StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (convidados.Count > MaximoConvidados)
@@ -110,9 +112,9 @@ public class CriarReuniaoCalendarioCommandHandler : IRequestHandler<CriarReuniao
         try
         {
             var criada = await _reuniaoTeams.CriarReuniaoAsync(
-                organizador.Id, titulo, descricao, request.Inicio, request.Fim, convidados, ct, recorrencia);
-            return new ReuniaoCalendarioCriadaDto(criada.GraphEventId, criada.LinkTeams,
-                convidados.Count(e => !string.Equals(e, organizador.Email, StringComparison.OrdinalIgnoreCase)));
+                organizador.Id, titulo, descricao, request.Inicio, request.Fim, convidados, ct, recorrencia,
+                new OpcoesCriacaoReuniao(_tokenUsuario?.Obter(), organizador.Email));
+            return new ReuniaoCalendarioCriadaDto(criada.GraphEventId, criada.LinkTeams, convidados.Count, criada.NaAgendaDoOrganizador);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

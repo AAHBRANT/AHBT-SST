@@ -228,10 +228,11 @@ export function CalendarioPage() {
         aoFechar={() => setNovaReuniaoAberta(false)}
         aoCriar={(criada) => {
           setNovaReuniaoAberta(false);
+          const convites = criada.totalConvidados > 0 ? ` ${criada.totalConvidados} convite(s) enviado(s) por e-mail.` : '';
           setAviso(
-            criada.totalConvidados > 0
-              ? `Reunião criada no Teams. ${criada.totalConvidados} convite(s) enviado(s) por e-mail.`
-              : 'Reunião criada no Teams.',
+            criada.naSuaAgenda
+              ? `Reunião criada na sua agenda do Teams. Você é o organizador e pode adiar ou cancelar pelo Outlook.${convites}`
+              : `Reunião criada no Teams pela caixa do SST, e você recebeu o convite.${convites}`,
           );
           setRecarregar((n) => n + 1);
         }}
