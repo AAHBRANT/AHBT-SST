@@ -2660,6 +2660,17 @@ public static class NovidadesSeeder
                     "A Nova reunião do Calendário criava só uma reunião por vez.",
                     "Em Repetir, escolha toda semana, a cada 2 semanas ou todo mês e informe até quando (no máximo 1 ano). O Teams cria a série inteira com o mesmo link, e os convidados recebem um convite só."),
             }),
+        new(
+            Versao: "5.151.0",
+            Titulo: "Reunião criada em seu nome",
+            DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Você é o organizador da reunião que cria pelo Calendário",
+                    "A reunião saía pela caixa do SST, e quem criou não conseguia adiar nem cancelar pelo Outlook.",
+                    "A reunião vai para a sua agenda com você como organizador, e dá para adiar, cancelar ou cancelar só um dia direto pelo Outlook ou pelo Teams. Até a liberação pela TI, ela continua saindo pela caixa do SST."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

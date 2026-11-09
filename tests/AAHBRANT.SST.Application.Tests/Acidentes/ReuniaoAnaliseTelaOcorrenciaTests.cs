@@ -155,7 +155,7 @@ public class ReuniaoAnaliseTelaOcorrenciaTests
 
         public Task<ReuniaoTeamsCriada> CriarReuniaoAsync(Guid organizadorUsuarioId, string titulo, string descricao,
             DateTime inicio, DateTime fim, IReadOnlyList<string> emailsConvidados, CancellationToken ct = default,
-            RecorrenciaReuniao? recorrencia = null)
+            RecorrenciaReuniao? recorrencia = null, OpcoesCriacaoReuniao? opcoes = null)
         {
             if (_falha) throw new InvalidOperationException("Graph 403");
             Titulos.Add(titulo);
