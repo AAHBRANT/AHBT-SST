@@ -1,3 +1,4 @@
+import { conferirPendencias } from '../../lib/avisoErro';
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -344,20 +345,14 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
   }, [filtroStatus, filtroTipo]);
 
   async function criar() {
-    if (!nova.obraId) {
-      setErro('Selecione a obra.');
-      return;
-    }
-    if (!nova.local.trim()) {
-      setErro('Informe o local da ocorrência.');
-      return;
-    }
-    if (!nova.data) {
-      setErro('Informe a data da ocorrência.');
-      return;
-    }
-    if (!nova.descricao.trim()) {
-      setErro('Informe a descrição da ocorrência.');
+    if (
+      !conferirPendencias([
+        { nome: 'Obra', dica: 'Selecione a obra da ocorrência', ok: !!nova.obraId, alvo: 'oco-campo-obra' },
+        { nome: 'Local', dica: 'Onde aconteceu', ok: !!nova.local.trim(), alvo: 'oco-campo-local' },
+        { nome: 'Data', dica: 'Quando aconteceu', ok: !!nova.data, alvo: 'oco-campo-data' },
+        { nome: 'Descrição', dica: 'Conte o que aconteceu', ok: !!nova.descricao.trim(), alvo: 'oco-campo-descricao' },
+      ])
+    ) {
       return;
     }
     // Registro por relato: o tema do DDS do dia seguinte é obrigatório (regra do usuário, 08/10/2026).
@@ -477,7 +472,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
           <Card titulo="Registrar acidente / incidente">
             {/* minmax(0, 1fr): sem isso o grid cresce com o texto do aviso em vez de quebrar a linha. */}
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12, marginBottom: 16 }}>
-              <div style={{ maxWidth: 420 }}>
+              <div id="oco-campo-obra" style={{ maxWidth: 420 }}>
                 <Field label="Obra" required>
                   <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value, trabalhadoresIds: [] })}>
                     <option value="">Selecione</option>
@@ -540,12 +535,12 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                     </Select>
                   </Field>
                 </Campo>
-                <Campo span={4}>
+                <Campo span={4} id="oco-campo-local">
                   <Field label={rotulo('Local', 'local')} required>
                     <Input style={estiloCampo('local')} value={nova.local} onChange={(_, d) => alterar('local', { local: d.value })} />
                   </Field>
                 </Campo>
-                <Campo span={2}>
+                <Campo span={2} id="oco-campo-data">
                   <Field label={rotulo('Data', 'data')} required>
                     <CampoData style={estiloCampo('data')} value={nova.data} onChange={(_, d) => alterar('data', { data: d.value })} />
                   </Field>
@@ -584,7 +579,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
 
             <FormSection titulo="Lesão, Gravidade e Consequências" numero={2}>
               <FormGrid>
-                <Campo span={12}>
+                <Campo span={12} id="oco-campo-descricao">
                   <Field label={rotulo('Descrição', 'descricao')} required>
                     <Textarea style={estiloCampo('descricao')} resize="vertical" rows={5} value={nova.descricao} onChange={(_, d) => alterar('descricao', { descricao: d.value })} />
                   </Field>

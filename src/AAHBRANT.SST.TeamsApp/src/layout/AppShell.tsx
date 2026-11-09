@@ -66,6 +66,7 @@ import { NovidadesModal } from '../components/novidades/NovidadesModal';
 import { FuncionarioNovoModal } from '../components/planos-integracao/FuncionarioNovoModal';
 import { PendenciasAutomaticasModal } from '../components/pendencias/PendenciasAutomaticasModal';
 import { ID_TOASTER_GLOBAL } from '../lib/toaster';
+import { AvisoErroModal } from '../components/avisos/AvisoErroModal';
 
 // Rail de navegação (Hub Gênesis SST — design decidido em sessão anterior): faixa fina só com
 // ícones + tooltip ao passar o mouse/focar, no lugar do menu largo com texto. O botão de
@@ -1315,6 +1316,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
       <Toaster toasterId={ID_TOASTER_GLOBAL} />
+      <AvisoErroModal />
     </div>
   );
 }

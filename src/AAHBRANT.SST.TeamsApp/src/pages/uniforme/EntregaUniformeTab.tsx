@@ -47,6 +47,7 @@ import {
 import { FotoCatalogoUniforme } from './FotoCatalogoUniforme';
 import type { ItemCarrinhoUniforme } from './SeletorItensUniforme';
 import { VitrineUniforme } from './VitrineUniforme';
+import { conferirPendencias } from '../../lib/avisoErro';
 import { CarrinhoEntregaUniforme } from './CarrinhoEntregaUniforme';
 
 // Campos aplicados a todas as entregas do carrinho de uma vez; o que varia por item é só
@@ -252,8 +253,14 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
 
   // O lote é persistido em uma única transação e segue para o fluxo já existente de assinatura.
   async function confirmarCarrinho() {
-    if (!dadosComuns.trabalhadorId || !dadosComuns.dataEntrega || carrinho.length === 0) {
-      setErroPainel('Selecione o funcionário, a data e ao menos uma peça.'); return;
+    if (
+      !conferirPendencias([
+        { nome: 'Funcionário', dica: 'Selecione quem está recebendo', ok: !!dadosComuns.trabalhadorId, alvo: 'uni-campo-funcionario' },
+        { nome: 'Data de entrega', dica: 'Informe a data', ok: !!dadosComuns.dataEntrega, alvo: 'uni-campo-data' },
+        { nome: 'Peças do carrinho', dica: 'Adicione ao menos uma peça', ok: carrinho.length > 0, alvo: 'uni-secao-itens' },
+      ])
+    ) {
+      return;
     }
     if (estoqueCarregando || estoqueErro) { setErroPainel('Aguarde a consulta do estoque antes de confirmar.'); return; }
     const payload = { ...dadosComuns, observacoes: dadosComuns.observacoes || null, itens: carrinho };
@@ -471,7 +478,7 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
                   </FeedbackInline>
                 )}
                 <FormGrid>
-                  <Campo span={6}>
+                  <Campo span={6} id="uni-campo-funcionario">
                     <Field label="Funcionário" required>
                       <SeletorPesquisavel
                         placeholder={`Buscar entre ${trabalhadores.length} funcionários`}
@@ -481,7 +488,7 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
                       />
                     </Field>
                   </Campo>
-                  <Campo span={6}>
+                  <Campo span={6} id="uni-campo-data">
                     <Field label="Data de entrega" required>
                       <CampoData
                         value={dadosComuns.dataEntrega}
@@ -493,6 +500,7 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
               </FormSection>
 
               <FormSection titulo="O que é entregue" numero={2}>
+                <div id="uni-secao-itens" />
                 {!trabalhadorAtual && <Field label="Consultar estoque da obra"><Select value={obraEntregaId} onChange={(_, d) => setObraConsultaId(d.value)}>{obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}</Select></Field>}
                 <div className="uniforme-obra-info">Obra: {nomeObra(obraEntregaId)}{trabalhadorAtual ? ` · ${trabalhadorAtual.nome}` : ' · selecione um trabalhador para montar o kit'}</div>
                 {estoqueErro && <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar novamente', aoClicar: () => setEstoqueVersao(v => v + 1) }}>{estoqueErro}</FeedbackInline>}
