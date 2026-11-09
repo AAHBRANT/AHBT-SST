@@ -88,8 +88,11 @@ public class CriarReuniaoCalendarioCommandHandler : IRequestHandler<CriarReuniao
                 .Select(u => u.Email)
                 .ToListAsync(ct);
 
-        var convidados = emailsUsuarios.Concat(externos)
-            .Where(e => !string.Equals(e, organizador.Email, StringComparison.OrdinalIgnoreCase))
+        // Quem criou entra como convidado: em hml/produção a reunião é criada na caixa compartilhada
+        // (Graph:CaixaReunioes = sst@aahbrant.com), não na agenda da pessoa — sem isso ela não
+        // recebia o convite nem via a reunião no próprio Outlook/Teams.
+        var convidados = new[] { organizador.Email }.Concat(emailsUsuarios).Concat(externos)
+            .Where(e => !string.IsNullOrWhiteSpace(e))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (convidados.Count > MaximoConvidados)
@@ -108,7 +111,8 @@ public class CriarReuniaoCalendarioCommandHandler : IRequestHandler<CriarReuniao
         {
             var criada = await _reuniaoTeams.CriarReuniaoAsync(
                 organizador.Id, titulo, descricao, request.Inicio, request.Fim, convidados, ct, recorrencia);
-            return new ReuniaoCalendarioCriadaDto(criada.GraphEventId, criada.LinkTeams, convidados.Count);
+            return new ReuniaoCalendarioCriadaDto(criada.GraphEventId, criada.LinkTeams,
+                convidados.Count(e => !string.Equals(e, organizador.Email, StringComparison.OrdinalIgnoreCase)));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
