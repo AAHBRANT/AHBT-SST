@@ -26,6 +26,10 @@ public class CriarDdsCommandValidator : AbstractValidator<CriarDdsCommand>
     {
         RuleFor(x => x.DdsSemanalId).NotEmpty();
         RuleFor(x => x.AtividadesIds).NotEmpty().WithMessage("Selecione ao menos uma atividade do dia.");
+        // Até 3 temas de atividade por dia + 1 tema livre (regra do usuário, 09/11/2026).
+        RuleFor(x => x.AtividadesIds)
+            .Must(ids => ids is null || ids.Distinct().Count() <= 3)
+            .WithMessage("Escolha no máximo 3 atividades (temas) por dia, além de 1 tema livre opcional.");
     }
 }
 

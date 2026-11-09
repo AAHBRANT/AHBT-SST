@@ -2682,6 +2682,17 @@ public static class NovidadesSeeder
                     "Certificado de outra empresa lançado como curso da AAHBRANT aparecia, ao ver ou baixar, no modelo da AAHBRANT.",
                     "Ver e baixar abrem o certificado original anexado, e o botão Assinar não aparece nesses casos. Para anexar o certificado de outra empresa, a origem precisa ser Externo."),
             }),
+        new(
+            Versao: "5.153.0",
+            Titulo: "DDS com até 3 temas e 1 tema livre",
+            DataPublicacao: new DateTime(2026, 11, 9, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "DDS mais objetivo: até 3 temas por dia",
+                    "Era possível marcar quantas atividades quisesse, e o DDS do dia ficava longo demais.",
+                    "Cada dia aceita até 3 atividades (temas da Matriz de Riscos) e mais 1 tema livre opcional. Um contador mostra quantos temas já foram escolhidos."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

@@ -55,6 +55,8 @@ function formatarDataHoraBrasilia(iso: string) {
   return new Date(utc).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
 }
 
+const MAX_TEMAS_ATIVIDADE = 3;
+
 const NOMES_DIAS = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira'];
 
 function novoDiaVazio() {
@@ -477,7 +479,7 @@ export function DdsSemanalDetalhePage() {
               <FormSection titulo="Registro do dia" primeira>
                 <FormGrid>
                   <Campo span={12}>
-                    <Field label="Atividades do dia" hint="Cada atividade marcada entra como um tema do dia, com perigo, consequência e controles da Matriz de Riscos.">
+                    <Field label="Atividades do dia" hint="Escolha até 3 atividades. Cada uma entra como um tema do dia, com perigo, consequência e controles da Matriz de Riscos.">
                       {atividades.length === 0 ? (
                         <Legenda>Nenhuma atividade cadastrada para esta obra.</Legenda>
                       ) : (
@@ -498,8 +500,14 @@ export function DdsSemanalDetalhePage() {
                             placeholderBusca="Buscar atividade"
                             opcoes={atividades.map((a) => ({ id: a.id, rotulo: a.nome }))}
                             selecionados={novoDia.atividadesIds}
-                            aoMudar={(atualizar) => setNovoDia((atual) => ({ ...atual, atividadesIds: atualizar(atual.atividadesIds) }))}
+                            aoMudar={(atualizar) => setNovoDia((atual) => {
+                              // Limite: até 3 temas de atividade por dia + 1 tema livre (regra do usuário, 09/11/2026).
+                              const proximos = atualizar(atual.atividadesIds);
+                              if (proximos.length > MAX_TEMAS_ATIVIDADE) return atual;
+                              return { ...atual, atividadesIds: proximos };
+                            })}
                           />
+                          <Legenda>{novoDia.atividadesIds.length} de {MAX_TEMAS_ATIVIDADE} temas escolhidos (mais 1 tema livre opcional).</Legenda>
                         </div>
                       )}
                     </Field>
