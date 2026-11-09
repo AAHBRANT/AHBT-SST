@@ -1,6 +1,7 @@
-import { Abas, EstadoVazio, PageHeader, useAbaNaUrl } from '@ui';
+import { Abas, PageHeader, useAbaNaUrl } from '@ui';
 import { Camera24Regular, Warning24Regular } from '@fluentui/react-icons';
 import { MosaicoCamerasTab } from './MosaicoCamerasTab';
+import { AlertasEpiTab } from './AlertasEpiTab';
 
 type AbaCameras = 'cameras' | 'alertas';
 
@@ -27,8 +28,7 @@ export function CamerasPage() {
         ]}
       />
       {aba === 'cameras' && <MosaicoCamerasTab />}
-      {/* Provisório: a Task 5 troca este estado vazio pela aba de Alertas de EPI. */}
-      {aba === 'alertas' && <EstadoVazio titulo="Alertas de EPI" descricao="Em breve, as ocorrências detectadas pelas câmeras aparecem aqui." />}
+      {aba === 'alertas' && <AlertasEpiTab />}
     </div>
   );
 }
