@@ -359,7 +359,7 @@ export function DialogoNovaReuniao({
               </div>
             </div>
             <Text size={200} style={{ color: designTokens.colorNeutralMedium }}>
-              Ao criar, a reunião já vai para o Teams: você e os convidados recebem o convite por e-mail. Convidados externos recebem o título,
+              Ao criar, a reunião já vai para o Teams, e você e os convidados recebem o convite por e-mail. Convidados externos recebem o título,
               o horário, a pauta e o link.
             </Text>
           </DialogContent>

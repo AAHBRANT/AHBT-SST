@@ -4347,6 +4347,8 @@ export interface ReuniaoCalendarioCriada {
   graphEventId: string;
   linkTeams: string | null;
   totalConvidados: number;
+  /** true = criada na agenda de quem clicou (é o organizador); false = criada pela caixa sst@. */
+  naSuaAgenda: boolean;
 }
 export interface Calendario {
   usuarioIdentificado: boolean;

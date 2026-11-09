@@ -6,6 +6,8 @@ using AAHBRANT.SST.Application.Common.Interfaces;
 using Azure.Core;
 using Azure.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace AAHBRANT.SST.Infrastructure.Integracao.Teams;
@@ -23,13 +25,16 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService, IReuniaoTeam
     private readonly IAppDbContext _db;
     private readonly GraphOptions _opcoes;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<GraphCalendarioTeamsService> _logger;
 
     public GraphCalendarioTeamsService(
-        IAppDbContext db, IOptions<GraphOptions> opcoes, IHttpClientFactory httpClientFactory)
+        IAppDbContext db, IOptions<GraphOptions> opcoes, IHttpClientFactory httpClientFactory,
+        ILogger<GraphCalendarioTeamsService>? logger = null)
     {
         _db = db;
         _opcoes = opcoes.Value;
         _httpClientFactory = httpClientFactory;
+        _logger = logger ?? NullLogger<GraphCalendarioTeamsService>.Instance;
     }
 
     public async Task<string> CriarEventoAsync(
@@ -156,15 +161,28 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService, IReuniaoTeam
     // isOnlineMeeting + onlineMeetingProvider. O Exchange envia os convites por e-mail aos convidados.
     public async Task<ReuniaoTeamsCriada> CriarReuniaoAsync(
         Guid organizadorUsuarioId, string titulo, string descricao, DateTime inicio, DateTime fim,
-        IReadOnlyList<string> emailsConvidados, CancellationToken ct = default, RecorrenciaReuniao? recorrencia = null)
+        IReadOnlyList<string> emailsConvidados, CancellationToken ct = default, RecorrenciaReuniao? recorrencia = null,
+        OpcoesCriacaoReuniao? opcoes = null)
     {
+        // 1º: em nome de quem está logado (organizador de verdade). Falha de permissão/consentimento
+        // não interrompe — cai na caixa compartilhada, como antes.
+        if (!string.IsNullOrWhiteSpace(opcoes?.TokenUsuario))
+        {
+            var naAgenda = await TentarCriarEmNomeDoUsuarioAsync(
+                opcoes.TokenUsuario!, titulo, descricao, inicio, fim, emailsConvidados, recorrencia, ct);
+            if (naAgenda is not null) return naAgenda;
+        }
+
         var (httpClient, aadObjectId) = await PrepararRequisicaoAsync(organizadorUsuarioId, ct);
         var caixa = string.IsNullOrWhiteSpace(_opcoes.CaixaReunioes) ? aadObjectId : _opcoes.CaixaReunioes.Trim();
+        var emails = string.IsNullOrWhiteSpace(opcoes?.EmailOrganizador) || caixa == aadObjectId
+            ? emailsConvidados
+            : emailsConvidados.Append(opcoes!.EmailOrganizador!).ToList();
 
         using var requisicao = new HttpRequestMessage(
             HttpMethod.Post, $"https://graph.microsoft.com/v1.0/users/{Uri.EscapeDataString(caixa)}/events")
         {
-            Content = JsonContent.Create(MontarReuniao(titulo, descricao, inicio, fim, emailsConvidados, recorrencia)),
+            Content = JsonContent.Create(MontarReuniao(titulo, descricao, inicio, fim, emails, recorrencia)),
         };
 
         var resposta = await httpClient.SendAsync(requisicao, ct);
@@ -174,6 +192,45 @@ public class GraphCalendarioTeamsService : ICalendarioTeamsService, IReuniaoTeam
         return new ReuniaoTeamsCriada(
             corpo?.Id ?? throw new InvalidOperationException("Graph não retornou o id da reunião criada."),
             corpo.OnlineMeeting?.JoinUrl);
+    }
+
+    // On-Behalf-Of: troca o token do usuário (aud = este App Registration) por um token do Graph com a
+    // permissão delegada Calendars.ReadWrite e cria em /me/events. Retorna null quando a permissão ainda
+    // não foi concedida (AADSTS65001 etc.) ou o Graph recusa — quem chama usa a caixa compartilhada.
+    private async Task<ReuniaoTeamsCriada?> TentarCriarEmNomeDoUsuarioAsync(
+        string tokenUsuario, string titulo, string descricao, DateTime inicio, DateTime fim,
+        IReadOnlyList<string> emails, RecorrenciaReuniao? recorrencia, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(_opcoes.ClientSecret)) return null;
+        try
+        {
+            var credencial = new OnBehalfOfCredential(_opcoes.TenantId, _opcoes.ClientId, _opcoes.ClientSecret, tokenUsuario);
+            var token = await credencial.GetTokenAsync(
+                new TokenRequestContext(new[] { "https://graph.microsoft.com/Calendars.ReadWrite" }), ct);
+
+            var httpClient = _httpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Token);
+            using var requisicao = new HttpRequestMessage(HttpMethod.Post, "https://graph.microsoft.com/v1.0/me/events")
+            {
+                Content = JsonContent.Create(MontarReuniao(titulo, descricao, inicio, fim, emails, recorrencia)),
+            };
+            var resposta = await httpClient.SendAsync(requisicao, ct);
+            if (!resposta.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Graph recusou criar a reunião em nome do usuário ({Status}); usando a caixa compartilhada.",
+                    (int)resposta.StatusCode);
+                return null;
+            }
+            var corpo = await resposta.Content.ReadFromJsonAsync<GraphEventoView>(cancellationToken: ct);
+            if (corpo?.Id is null) return null;
+            return new ReuniaoTeamsCriada(corpo.Id, corpo.OnlineMeeting?.JoinUrl, NaAgendaDoOrganizador: true);
+        }
+        catch (AuthenticationFailedException ex)
+        {
+            _logger.LogWarning("Sem permissão delegada para criar a reunião em nome do usuário ({Erro}); usando a caixa compartilhada.",
+                ex.Message.Split('\n')[0]);
+            return null;
+        }
     }
 
     // PATCH só de start/end: assunto, convidados e link continuam os mesmos e o Exchange manda a
