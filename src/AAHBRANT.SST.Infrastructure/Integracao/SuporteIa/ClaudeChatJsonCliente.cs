@@ -17,6 +17,9 @@ public class ClaudeChatJsonCliente
     private readonly IOptions<ClaudeOptions> _claude;
     private readonly ILogger<ClaudeChatJsonCliente> _logger;
 
+    // Modelo configurado para a análise de EPI das câmeras (Claude:ModeloCameras).
+    public string ModeloCameras => _claude.Value.ModeloCameras;
+
     public ClaudeChatJsonCliente(
         IHttpClientFactory httpClientFactory,
         IOptions<AzureOpenAiOptions> options,
@@ -34,13 +37,19 @@ public class ClaudeChatJsonCliente
     // de novo até 3 vezes — a leitura de um documento faz dezenas de chamadas seguidas.
     // imagens (21/10/2026, OCR de PDF digitalizado): data URLs ("data:image/jpeg;base64,...") enviadas junto
     // com o texto na mesma mensagem do usuário, em alta resolução para a IA ler letra miúda.
+    // modelo: troca o modelo só nesta chamada (ex.: análise de EPI das câmeras); nulo = Claude:Modelo.
     public async Task<T> ObterAsync<T>(string instrucoesSistema, string mensagemUsuario, string nomeSchema, object schema, CancellationToken ct,
-        int maxTokens = 3000, int timeoutSegundos = 60, IReadOnlyList<string>? imagens = null)
+        int maxTokens = 3000, int timeoutSegundos = 60, IReadOnlyList<string>? imagens = null, string? modelo = null)
+        => (await ObterComUsoAsync<T>(instrucoesSistema, mensagemUsuario, nomeSchema, schema, ct, maxTokens, timeoutSegundos, imagens, modelo)).Valor;
+
+    // Igual a ObterAsync, devolvendo também os tokens cobrados (campo "usage" da resposta), para medir custo.
+    public async Task<(T Valor, int TokensEntrada, int TokensSaida)> ObterComUsoAsync<T>(string instrucoesSistema, string mensagemUsuario, string nomeSchema, object schema, CancellationToken ct,
+        int maxTokens = 3000, int timeoutSegundos = 60, IReadOnlyList<string>? imagens = null, string? modelo = null)
     {
         // Regra (22/10/2026): IA só pelo Claude, chave já contratada. O caminho Azure abaixo fica desligado.
         if (string.IsNullOrWhiteSpace(_claude.Value.ApiKey))
             throw new InvalidOperationException("IA não configurada. Configure Claude:ApiKey.");
-        return await ObterViaClaudeAsync<T>(instrucoesSistema, mensagemUsuario, schema, ct, maxTokens, timeoutSegundos, imagens);
+        return await ObterViaClaudeAsync<T>(instrucoesSistema, mensagemUsuario, schema, ct, maxTokens, timeoutSegundos, imagens, modelo);
     }
 
     // Desligado desde 22/10/2026 (troca para o Claude); mantido só como referência.
@@ -103,8 +112,8 @@ public class ClaudeChatJsonCliente
 
     // Messages API do Claude com saída estruturada (output_config.format json_schema). Mesma política de
     // novas tentativas (429/5xx, até 3 vezes) do caminho Azure.
-    private async Task<T> ObterViaClaudeAsync<T>(string instrucoesSistema, string mensagemUsuario, object schema, CancellationToken ct,
-        int maxTokens, int timeoutSegundos, IReadOnlyList<string>? imagens)
+    private async Task<(T Valor, int TokensEntrada, int TokensSaida)> ObterViaClaudeAsync<T>(string instrucoesSistema, string mensagemUsuario, object schema, CancellationToken ct,
+        int maxTokens, int timeoutSegundos, IReadOnlyList<string>? imagens, string? modelo = null)
     {
         var opcoes = _claude.Value;
         var (schemaEnviado, textosVaziosComoNulo) = ReduzirUnioes(schema);
@@ -112,7 +121,7 @@ public class ClaudeChatJsonCliente
             instrucoesSistema += "\n\nCampo de texto ausente ou ilegível: devolva string vazia (\"\").";
         var corpo = new
         {
-            model = opcoes.Modelo,
+            model = string.IsNullOrWhiteSpace(modelo) ? opcoes.Modelo : modelo,
             max_tokens = maxTokens,
             system = instrucoesSistema,
             messages = new object[] { new { role = "user", content = ConteudoUsuarioClaude(mensagemUsuario, imagens) } },
@@ -162,8 +171,14 @@ public class ClaudeChatJsonCliente
             conteudo = raiz?.ToJsonString() ?? conteudo;
         }
 
-        return JsonSerializer.Deserialize<T>(conteudo, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+        // Tokens cobrados nesta chamada. Entrada inclui o que foi lido ou gravado em cache, quando houver.
+        int Tokens(string campo) => json.RootElement.TryGetProperty("usage", out var uso) && uso.ValueKind == JsonValueKind.Object
+            && uso.TryGetProperty(campo, out var valor) && valor.ValueKind == JsonValueKind.Number && valor.TryGetInt32(out var n) ? n : 0;
+        var tokensEntrada = Tokens("input_tokens") + Tokens("cache_creation_input_tokens") + Tokens("cache_read_input_tokens");
+
+        var resultado = JsonSerializer.Deserialize<T>(conteudo, new JsonSerializerOptions(JsonSerializerDefaults.Web))
             ?? throw new InvalidOperationException("A IA devolveu uma resposta inválida.");
+        return (resultado, tokensEntrada, Tokens("output_tokens"));
     }
 
     // O Claude recusa schema com mais de 16 campos "tipo ou null" (23/10/2026: leitura do contrato de

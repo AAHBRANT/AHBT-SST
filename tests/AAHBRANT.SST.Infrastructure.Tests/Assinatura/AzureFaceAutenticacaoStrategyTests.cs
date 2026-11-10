@@ -144,6 +144,126 @@ public class AzureFaceAutenticacaoStrategyTests
         Assert.Equal(MotivoRejeicaoFacial.RostoNaoReconhecido, resultado.Motivo);
     }
 
+    // JPEG mínimo de 1000 x 500 (só o cabeçalho importa para ler o tamanho).
+    private static readonly byte[] Jpeg1000x500 =
+    {
+        0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x04, 0x00, 0x00,
+        0xFF, 0xC0, 0x00, 0x11, 0x08, 0x01, 0xF4, 0x03, 0xE8, 0x03, 0x01, 0x22, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01,
+    };
+
+    [Fact]
+    public void DimensoesJpeg_LeLarguraEAlturaDoCabecalho()
+    {
+        Assert.Equal((1000, 500), DimensoesJpeg.Ler(Jpeg1000x500));
+        Assert.Null(DimensoesJpeg.Ler(new byte[] { 0x89, 0x50, 0x4E, 0x47 }));
+        Assert.Null(DimensoesJpeg.Ler(new byte[] { 0xFF, 0xD8, 0xFF, 0xD9 }));
+    }
+
+    // Câmeras de EPI com várias pessoas: cada rosto volta com a posição em fração da imagem; só o que passa
+    // no limiar e na margem sobre o segundo colocado vem com o trabalhador.
+    [Fact]
+    public async Task IdentificarRostosDaCenaAsync_DevolvePosicaoDeTodosEIdentificaSoOQuePassaNaMargem()
+    {
+        var db = CriarDb(nameof(IdentificarRostosDaCenaAsync_DevolvePosicaoDeTodosEIdentificaSoOQuePassaNaMargem));
+        var obra = new Obra
+        {
+            Codigo = "OB1", Nome = "Obra Teste",
+            MetodosAutenticacaoHabilitados = MetodoAutenticacaoObra.ReconhecimentoFacial,
+            AzureFacePersonGroupId = "obra-cena",
+        };
+        var joao = new Trabalhador
+        {
+            ObraId = obra.Id, Nome = "João da Silva", AzureFacePersonId = "person-1",
+            TermoAceiteAssinaturaEletronicaEm = DateTime.UtcNow, ConsentimentoBiometriaEm = DateTime.UtcNow,
+        };
+        var pedro = new Trabalhador
+        {
+            ObraId = obra.Id, Nome = "Pedro Souza", AzureFacePersonId = "person-2",
+            TermoAceiteAssinaturaEletronicaEm = DateTime.UtcNow, ConsentimentoBiometriaEm = DateTime.UtcNow,
+        };
+        db.AddRange(obra, joao, pedro);
+        await db.SaveChangesAsync();
+
+        var factory = new HttpClientFactoryFalso(req =>
+        {
+            if (req.RequestUri!.AbsolutePath.EndsWith("/detect"))
+                return Json(new object[]
+                {
+                    new { faceId = "face-1", faceRectangle = new { left = 100, top = 50, width = 100, height = 100 } },
+                    new { faceId = "face-2", faceRectangle = new { left = 700, top = 100, width = 100, height = 100 } },
+                });
+            if (req.RequestUri!.AbsolutePath.EndsWith("/identify"))
+                return Json(new object[]
+                {
+                    new { faceId = "face-1", candidates = new[] { new { personId = "person-1", confidence = 0.95 } } },
+                    // Dois candidatos próximos: rosto ambíguo, volta sem trabalhador.
+                    new { faceId = "face-2", candidates = new[] { new { personId = "person-2", confidence = 0.80 }, new { personId = "person-9", confidence = 0.75 } } },
+                });
+            throw new InvalidOperationException("chamada inesperada: " + req.RequestUri);
+        });
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
+
+        var rostos = await servico.IdentificarRostosDaCenaAsync(obra.Id, Jpeg1000x500, default);
+
+        Assert.Equal(2, rostos.Count);
+        var esquerda = rostos.Single(r => r.X < 0.5);
+        Assert.Equal((0.1, 0.1, 0.1, 0.2), (esquerda.X, esquerda.Y, esquerda.Largura, esquerda.Altura));
+        Assert.Equal(joao.Id, esquerda.TrabalhadorId);
+        Assert.Equal(95, esquerda.Confianca!.Value, 3);
+        var direita = rostos.Single(r => r.X > 0.5);
+        Assert.Null(direita.TrabalhadorId);
+        Assert.Empty(await db.FalhasReconhecimentoFacial.ToListAsync());
+    }
+
+    [Fact]
+    public async Task IdentificarRostosDaCenaAsync_ObraSemGrupoFacial_DevolveVazioSemChamarOAzure()
+    {
+        var db = CriarDb(nameof(IdentificarRostosDaCenaAsync_ObraSemGrupoFacial_DevolveVazioSemChamarOAzure));
+        var obra = new Obra { Codigo = "OB1", Nome = "Obra Teste", MetodosAutenticacaoHabilitados = MetodoAutenticacaoObra.ReconhecimentoFacial };
+        db.Add(obra);
+        await db.SaveChangesAsync();
+        var factory = new HttpClientFactoryFalso(req => throw new InvalidOperationException("chamada inesperada: " + req.RequestUri));
+
+        var rostos = await new AzureFaceAutenticacaoStrategy(db, factory, Opcoes()).IdentificarRostosDaCenaAsync(obra.Id, Jpeg1000x500, default);
+
+        Assert.Empty(rostos);
+    }
+
+    // Câmeras de EPI: rosto distante não reconhecido não pode entrar na lista de cadastros fracos.
+    [Fact]
+    public async Task IdentificarSemRegistrarFalhaAsync_RejeitaSemGravarFalha_EnquantoIdentificarAsyncGrava()
+    {
+        var db = CriarDb(nameof(IdentificarSemRegistrarFalhaAsync_RejeitaSemGravarFalha_EnquantoIdentificarAsyncGrava));
+        var obra = new Obra
+        {
+            Codigo = "OB1", Nome = "Obra Teste",
+            MetodosAutenticacaoHabilitados = MetodoAutenticacaoObra.ReconhecimentoFacial,
+            AzureFacePersonGroupId = "obra-x",
+        };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+
+        var factory = new HttpClientFactoryFalso(req =>
+        {
+            if (req.RequestUri!.AbsolutePath.EndsWith("/detect"))
+                return Json(new[] { new { faceId = "face-1" } });
+            if (req.RequestUri!.AbsolutePath.EndsWith("/identify"))
+                return Json(new[] { new { faceId = "face-1", candidates = new[] { new { personId = "person-1", confidence = 0.40 } } } });
+            throw new InvalidOperationException("chamada inesperada: " + req.RequestUri);
+        });
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
+
+        var semRegistro = await servico.IdentificarSemRegistrarFalhaAsync(obra.Id, new byte[] { 1 }, default);
+
+        Assert.False(semRegistro.Aceito);
+        Assert.Equal(MotivoRejeicaoFacial.RostoNaoReconhecido, semRegistro.Motivo);
+        Assert.Empty(await db.FalhasReconhecimentoFacial.ToListAsync());
+
+        await servico.IdentificarAsync(obra.Id, new byte[] { 1 }, default);
+
+        Assert.Single(await db.FalhasReconhecimentoFacial.ToListAsync());
+    }
+
     [Fact]
     public async Task IdentificarAsync_ConfiancaEntreLimiares_RetornaConfiancaBaixa()
     {

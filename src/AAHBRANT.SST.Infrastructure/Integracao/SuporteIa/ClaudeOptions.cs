@@ -13,5 +13,10 @@ public class ClaudeOptions
     /// </summary>
     public string? WorkspaceId { get; set; }
     public string Modelo { get; set; } = "claude-sonnet-5-5";
+    /// <summary>
+    /// Modelo da análise de EPI por imagem (módulo Câmeras). A análise roda sem parar enquanto há movimento,
+    /// então usa um modelo bem mais barato por foto que o das demais leituras (decisão do usuário, 09/11/2026).
+    /// </summary>
+    public string ModeloCameras { get; set; } = "claude-haiku-5-5";
     public string Endpoint { get; set; } = "https://api.anthropic.com";
 }

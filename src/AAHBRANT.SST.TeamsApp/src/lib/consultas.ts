@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { QueryClient, useQuery, type QueryKey, type UseQueryResult } from '@tanstack/react-query';
-import { api } from './api';
+import { api, type FiltroOcorrenciasEpi } from './api';
 
 // Cache de leituras compartilhado entre telas (melhoria de 17/10, piloto no módulo Pessoas). Antes,
 // cada aba buscava tudo do zero em um useEffect a cada abertura — trocar de Funcionários para Funções
@@ -24,6 +24,7 @@ export const chaves = {
   obras: ['obras'],
   funcoes: ['funcoes'],
   asos: ['asos'],
+  camerasAcesso: ['cameras', 'acesso'],
 } as const satisfies Record<string, QueryKey>;
 
 // Array vazio estável: `data ?? []` criaria um array novo a cada render, e telas que têm a lista
@@ -39,6 +40,31 @@ export const useTrabalhadores = () => useLista(chaves.trabalhadores, () => api.t
 export const useObras = () => useLista(chaves.obras, () => api.obras.listar());
 export const useFuncoes = () => useLista(chaves.funcoes, () => api.funcoes.listar());
 export const useAsos = () => useLista(chaves.asos, () => api.asos.listar());
+
+// Câmeras de EPI (piloto). O acesso é consultado pelo menu e pela guarda de rota: falha na consulta
+// conta como "sem acesso" e nunca lança, para não quebrar a barra lateral.
+const chavesCameras = {
+  cameras: (obraId?: string) => ['cameras', 'lista', obraId ?? 'todas'] as const,
+  ocorrenciasEpi: (filtro: FiltroOcorrenciasEpi) => ['cameras', 'ocorrencias', filtro] as const,
+};
+
+export function useAcessoCamerasEstado(): { permitido: boolean; carregando: boolean } {
+  const { data, isLoading, isSuccess } = useQuery({
+    queryKey: chaves.camerasAcesso,
+    queryFn: () => api.cameras.acesso(),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+  return { permitido: isSuccess && data.permitido === true, carregando: isLoading };
+}
+
+export const useAcessoCameras = (): boolean => useAcessoCamerasEstado().permitido;
+
+export const useCameras = (obraId?: string) =>
+  useQuery({ queryKey: chavesCameras.cameras(obraId), queryFn: () => api.cameras.listar(obraId), refetchInterval: 30_000 });
+
+export const useOcorrenciasEpi = (filtro: FiltroOcorrenciasEpi) =>
+  useQuery({ queryKey: chavesCameras.ocorrenciasEpi(filtro), queryFn: () => api.cameras.listarOcorrencias(filtro) });
 
 // Mensagem de erro de carga das consultas, dispensável pelo usuário (botão fechar do FeedbackInline).
 // Um erro novo (recarga que falha de novo) volta a aparecer mesmo depois de dispensado o anterior.

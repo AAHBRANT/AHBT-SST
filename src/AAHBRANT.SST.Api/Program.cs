@@ -58,6 +58,7 @@ if (autenticacaoEntraIdHabilitada)
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissaoAuthorizationPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissaoAuthorizationHandler>();
+builder.Services.Configure<CamerasPilotoOptions>(builder.Configuration.GetSection("Cameras"));
 builder.Services.AddScoped<IUsuarioAtualResolver, UsuarioAtualResolver>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AAHBRANT.SST.Application.Common.Interfaces.ITokenAcessoUsuario, AAHBRANT.SST.Api.Autorizacao.TokenAcessoUsuarioHttp>();

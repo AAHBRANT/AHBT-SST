@@ -1116,3 +1116,23 @@ public enum FrequenciaPendenciaAutomatica
     TodaEntrada = 1,
     UmaVezPorDia = 2,
 }
+
+public enum TipoCamera
+{
+    Canteiro = 1,
+    Portaria = 2,
+}
+
+public enum SituacaoOcorrenciaEpi
+{
+    Nova = 1,
+    Conferida = 2,
+    FalsoAlerta = 3,
+}
+
+public enum ConfiancaAnaliseEpi
+{
+    Baixa = 1,
+    Media = 2,
+    Alta = 3,
+}

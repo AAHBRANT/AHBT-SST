@@ -50,6 +50,7 @@ export const modulosNav: Record<string, ModuloNav> = {
     ],
   },
   pessoas: { rota: '/pessoas', rotulo: 'Pessoas' },
+  cameras: { rota: '/cameras', rotulo: 'Câmeras' },
   terceirizados: { rota: '/terceirizados', rotulo: 'Terceirizado' },
   suporteIa: { rota: '/suporte-ia', rotulo: 'Suporte IA' },
 };
@@ -73,6 +74,7 @@ const prefixos: Array<{ prefixo: string; modulo: ChaveModulo; secao?: string }> 
   { prefixo: '/nao-conformidades', modulo: 'ocorrencias', secao: 'nao-conformidades' },
   { prefixo: '/acidentes', modulo: 'ocorrencias', secao: 'acidentes' },
   { prefixo: '/pessoas', modulo: 'pessoas' },
+  { prefixo: '/cameras', modulo: 'cameras' },
   { prefixo: '/terceirizados', modulo: 'terceirizados' },
   { prefixo: '/suporte-ia', modulo: 'suporteIa' },
 ];
@@ -113,6 +115,6 @@ export function montarTrilha(caminho: string): ElosTrilha | null {
   if (!local) return null;
   const elos = [{ rotulo: local.modulo.rotulo, para: local.modulo.rota }];
   if (local.secao) elos.push({ rotulo: local.secao.rotulo, para: rotaDaSecao(local.modulo, local.secao) });
-  const atual = caminho.endsWith('/assinar') ? 'Assinatura' : 'Detalhe';
+  const atual = caminho.endsWith('/monitorar') ? 'Monitorar' : caminho.endsWith('/assinar') ? 'Assinatura' : 'Detalhe';
   return { elos, atual };
 }

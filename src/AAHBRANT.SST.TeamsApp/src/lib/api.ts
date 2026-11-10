@@ -1825,8 +1825,8 @@ function formularioNovaRevisao(documentoId: string, dados: DadosNovaRevisao): Fo
   return formData;
 }
 
-async function enviarFormulario<T>(caminho: string, formData: FormData): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${caminho}`, { method: 'POST', headers: await montarHeadersAuth(), body: formData });
+async function enviarFormulario<T>(caminho: string, formData: FormData, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${caminho}`, { method: 'POST', headers: await montarHeadersAuth(), body: formData, signal });
   if (!response.ok) {
     const corpo = await response.text().catch(() => '');
     throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
@@ -2730,6 +2730,93 @@ export const tipoVeiculoLabelPlural: Record<number, string> = {
   4: 'Caminhões carroceria',
   5: 'Caminhões munck',
 };
+
+// Câmeras de monitoramento de EPI (piloto). A API serializa enums como número (sem JsonStringEnumConverter).
+export const TipoCamera = { Canteiro: 1, Portaria: 2 } as const;
+export const tipoCameraLabel: Record<number, string> = { 1: 'Canteiro', 2: 'Portaria' };
+
+export const SituacaoOcorrenciaEpi = { Nova: 1, Conferida: 2, FalsoAlerta: 3 } as const;
+export const situacaoOcorrenciaEpiLabel: Record<number, string> = { 1: 'Nova', 2: 'Conferida', 3: 'Falso alerta' };
+
+export interface CameraResumo {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  nome: string;
+  areaSstId: string | null;
+  areaNome: string | null;
+  tipo: number;
+  habilitada: boolean;
+  intervaloMinimoAlertasMinutos: number;
+  ultimaAnaliseEmUtc: string | null;
+  ocorrenciasHoje: number;
+  totalAnalises: number;
+  // Consumo real da IA e custo em dólares; "NoDia" vale para diaDoConsumo (data em Brasília).
+  totalTokensEntrada: number;
+  totalTokensSaida: number;
+  custoTotalUsd: number;
+  diaDoConsumo: string | null;
+  analisesNoDia: number;
+  custoNoDiaUsd: number;
+}
+
+export interface DadosCamera {
+  obraId: string;
+  nome: string;
+  areaSstId: string | null;
+  tipo: number;
+  habilitada: boolean;
+  intervaloMinimoAlertasMinutos: number;
+}
+
+export type SituacaoQuadro = 'ignorado' | 'limpo' | 'ocorrencia' | 'falha';
+
+export interface ResultadoQuadro {
+  situacao: SituacaoQuadro;
+  ocorrenciaId: string | null;
+  alertaEnviado: boolean;
+  pessoas: number;
+  semCapacete: number;
+  semColete: number;
+  // Quem o reconhecimento facial identificou na ocorrência. Nulo = ninguém.
+  trabalhadorId?: string | null;
+  trabalhadorNome?: string | null;
+  // true = nenhuma ocorrência nova: a irregularidade foi somada a uma ocorrência já aberta.
+  repetida?: boolean;
+}
+
+export interface OcorrenciaEpi {
+  id: string;
+  cameraId: string;
+  cameraNome: string;
+  obraId: string;
+  obraNome: string;
+  capturadaEmUtc: string;
+  recebidaEmUtc: string;
+  pessoasNaCena: number;
+  semCapacete: number;
+  semColete: number;
+  confianca: number;
+  alertaEnviado: boolean;
+  trabalhadorId: string | null;
+  trabalhadorNome: string | null;
+  situacao: number;
+  // true = trabalhador apontado pelo reconhecimento facial, ainda sem conferência do técnico.
+  identificadoPorRosto: boolean;
+  // Confiança do reconhecimento facial (0 a 100), só quando identificadoPorRosto.
+  confiancaIdentificacao: number | null;
+  // Repetições da mesma irregularidade somadas nesta ocorrência (1 = vista uma única vez) e a última vez.
+  vezesVista: number;
+  ultimaVezEmUtc: string | null;
+}
+
+export interface FiltroOcorrenciasEpi {
+  obraId?: string;
+  cameraId?: string;
+  de?: string;
+  ate?: string;
+  situacao?: number;
+}
 
 export const StatusItemChecklist = {
   Conforme: 1,
@@ -6671,6 +6758,48 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/veiculos/${id}`, { method: 'DELETE' }),
     obterOuCriarInspecaoAtual: (veiculoId: string) =>
       request<InspecaoAtual>(`/api/veiculos/${veiculoId}/inspecao-atual`, { method: 'POST' }),
+  },
+  cameras: {
+    acesso: () => request<{ permitido: boolean }>('/api/cameras/acesso'),
+    listar: (obraId?: string) => request<CameraResumo[]>(`/api/cameras${obraId ? `?obraId=${obraId}` : ''}`),
+    criar: (dados: DadosCamera) =>
+      request<{ id: string }>('/api/cameras', { method: 'POST', body: JSON.stringify(dados) }),
+    atualizar: (id: string, dados: Omit<DadosCamera, 'obraId'>) =>
+      request<void>(`/api/cameras/${id}`, { method: 'PUT', body: JSON.stringify({ id, ...dados }) }),
+    excluir: (id: string) => request<void>(`/api/cameras/${id}`, { method: 'DELETE' }),
+
+    // multipart: campos "Foto" (JPEG) e "CapturadaEm" (ISO 8601). Sem Content-Type manual:
+    // o navegador define o boundary.
+    analisarQuadro: (id: string, foto: Blob, capturadaEm: Date, signal?: AbortSignal) => {
+      const formData = new FormData();
+      formData.append('Foto', foto, 'quadro.jpg');
+      formData.append('CapturadaEm', capturadaEm.toISOString());
+      return enviarFormulario<ResultadoQuadro>(`/api/cameras/${id}/quadros`, formData, signal);
+    },
+
+    listarOcorrencias: (filtro: FiltroOcorrenciasEpi) => {
+      const qs = new URLSearchParams();
+      if (filtro.obraId) qs.set('obraId', filtro.obraId);
+      if (filtro.cameraId) qs.set('cameraId', filtro.cameraId);
+      if (filtro.de) qs.set('de', filtro.de);
+      if (filtro.ate) qs.set('ate', filtro.ate);
+      if (filtro.situacao) qs.set('situacao', String(filtro.situacao));
+      const s = qs.toString();
+      return request<OcorrenciaEpi[]>(`/api/cameras/ocorrencias${s ? `?${s}` : ''}`);
+    },
+
+    baixarFotoOcorrencia: (id: string) => baixarArquivoRelatorio(`/api/cameras/ocorrencias/${id}/foto`),
+
+    vincularTrabalhador: (id: string, trabalhadorId: string | null) =>
+      request<void>(`/api/cameras/ocorrencias/${id}/trabalhador`, {
+        method: 'PUT',
+        body: JSON.stringify({ trabalhadorId }),
+      }),
+    definirSituacao: (id: string, situacao: number) =>
+      request<void>(`/api/cameras/ocorrencias/${id}/situacao`, {
+        method: 'PUT',
+        body: JSON.stringify({ situacao }),
+      }),
   },
   // Temas de inspeção criados pelo usuário (card "+" da aba Inspeções).
   temasInspecao: {

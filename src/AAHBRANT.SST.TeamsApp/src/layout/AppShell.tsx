@@ -30,6 +30,7 @@ import {
   Home24Regular,
   Add24Regular,
   CalendarLtr24Regular,
+  Video24Regular,
   ClipboardTaskListLtr24Regular,
   Settings24Regular,
   Alert24Regular,
@@ -52,6 +53,7 @@ import {
 import { designTokens } from '@ui';
 import { useThemeMode } from '../theme/ThemeModeContext';
 import { useTeamsContext } from '../teams/useTeamsContext';
+import { useAcessoCameras } from '../lib/consultas';
 import {
   api,
   FrequenciaPendenciaAutomatica,
@@ -187,6 +189,10 @@ const useStyles = makeStyles({
     gap: '12px',
     minWidth: '300px',
     '@media (max-width: 640px)': { minWidth: 'auto' },
+    '@media (max-width: 560px)': {
+      gap: '4px',
+      '& .gs-logo, & .gs-marca-divisor': { display: 'none' },
+    },
   },
   botoesTopoInicio: {
     display: 'flex',
@@ -515,7 +521,7 @@ const useStyles = makeStyles({
   },
   header: {
     gridRow: '1',
-    gridColumn: '1 / span 2',
+    gridColumn: '1 / -1',
     backgroundColor: designTokens.colorSurface,
     borderBottom: `1px solid ${designTokens.colorCardBorder}`,
     display: 'flex',
@@ -523,6 +529,7 @@ const useStyles = makeStyles({
     justifyContent: 'space-between',
     padding: '0 16px',
     gap: '16px',
+    '@media (max-width: 560px)': { padding: '0 6px', gap: '4px' },
   },
   acoesTopo: {
     position: 'absolute',
@@ -822,6 +829,7 @@ function ItemRail({
 
 export function AppShell({ children }: { children: ReactNode }) {
   const estilos = useStyles();
+  const acessoCameras = useAcessoCameras();
   const location = useLocation();
   const navigate = useNavigate();
   const { carregando, dentroDoTeams, contexto } = useTeamsContext();
@@ -1047,6 +1055,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         {itensPilares.map((item) => (
           <ItemRail key={item.rota} {...item} expandido={railExpandido} aoNavegar={() => setRailExpandido(false)} />
         ))}
+        {acessoCameras && (
+          <ItemRail
+            rota="/cameras"
+            rotulo="Câmeras"
+            icone={Video24Regular}
+            expandido={railExpandido}
+            aoNavegar={() => setRailExpandido(false)}
+          />
+        )}
         <div className={estilos.railRodape}>
           <ItemRail
             rota="/suporte-ia"
@@ -1312,7 +1329,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <main className={estilos.content}>
-        <TrilhaNavegacao />
+        {(acessoCameras || !location.pathname.startsWith('/cameras/')) && <TrilhaNavegacao />}
         {children}
       </main>
       <Toaster toasterId={ID_TOASTER_GLOBAL} />
