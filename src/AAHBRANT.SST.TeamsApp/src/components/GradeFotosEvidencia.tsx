@@ -19,7 +19,7 @@ export interface FotoEvidenciaSlot {
 }
 
 interface GradeFotosEvidenciaProps {
-  contextoFoto?: ContextoFoto;
+  contextoFoto: ContextoFoto;
   titulo: string;
   subtitulo?: string;
   total: number;
@@ -75,7 +75,7 @@ export function GradeFotosEvidencia({
           const foto = porOrdem.get(ordem);
           return (
             <SlotFoto
-              key={ordem}
+              key={`${contextoFoto.registroId}-${ordem}`}
               rotulo={`Foto ${ordem}`}
               contextoFoto={contextoFoto}
               dadosFoto={foto?.dadosFoto}

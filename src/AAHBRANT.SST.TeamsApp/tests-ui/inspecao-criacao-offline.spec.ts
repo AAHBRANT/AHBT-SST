@@ -118,7 +118,7 @@ async function preencher(page: Page, foto = true) {
     const local = await modulo.obterInspecaoLocal(id);
     const bytes = Uint8Array.from(atob(png), c => c.charCodeAt(0));
     const file = new File([bytes], 'campo.png', { type: 'image/png' });
-    (await import(/* @vite-ignore */ dados)).vincularDadosFoto(file, { origem: 'camera', obraId, obraNome: 'Obra teste',
+    (await import(/* @vite-ignore */ dados)).vincularDadosFoto(file, { origem: 'camera', registroId: local.detalhe.respostas[0].id, obraId, obraNome: 'Obra teste',
       capturadaEm: '2026-10-24T12:00:00Z', fusoMinutos: 180, latitude: -7.1, longitude: -34.8, precisaoMetros: 8, localizacaoObtidaEm: '2026-10-24T12:00:00Z' });
     await modulo.salvarFotoInspecao(id, local.detalhe.respostas[0].id, file);
   }, { obraId, png });

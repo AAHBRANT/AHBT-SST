@@ -55,7 +55,7 @@ public class AnexarFotoAdicionalItemInspecaoCommandHandler : IRequestHandler<Ane
         if (resposta.FotoConteudo.Length == 0)
             throw new InvalidOperationException("Registre a foto principal do item antes das fotos extras.");
 
-        var metadados = await DadosCapturaFoto.PrepararAsync(request.Metadados, resposta.Inspecao.ObraId, _db, ct);
+        var metadados = await DadosCapturaFoto.PrepararAsync(request.Metadados, resposta.Id, resposta.Inspecao.ObraId, _db, ct);
 
         var existente = await _db.InspecaoItemFotosAdicionais
             .FirstOrDefaultAsync(f => f.InspecaoItemRespostaId == resposta.Id && f.Ordem == request.Ordem, ct);
