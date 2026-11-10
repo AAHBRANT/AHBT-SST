@@ -12,7 +12,7 @@ import {
   useTipografia,
   type Tom,
 } from '@ui';
-import { tipoCameraLabel } from '../../lib/api';
+import { tipoCameraLabel, type CameraResumo } from '../../lib/api';
 import { useCameras } from '../../lib/consultas';
 import { useMonitoramentoCamera, type EstadoMonitoramento } from './useMonitoramentoCamera';
 import { mergeClasses, useStyles } from './estilos';
@@ -30,13 +30,16 @@ const chipPorEstado: Record<EstadoMonitoramento, { tom: Tom; rotulo: string }> =
 export function MonitorarCameraPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
-  const estilos = useStyles();
-  const tipo = useTipografia();
-  const { data: cameras, isLoading } = useCameras();
-  const camera = cameras?.find((c) => c.id === id);
-  const { videoRef, ...m } = useMonitoramentoCamera(id);
-
-  if (isLoading) return <Carregando variante="detalhe" linhas={6} />;
+  const consulta = useCameras();
+  if (consulta.isLoading) return <Carregando variante="detalhe" linhas={6} />;
+  if (consulta.isError) {
+    return (
+      <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar de novo', aoClicar: () => void consulta.refetch() }}>
+        Não foi possível consultar a câmera.
+      </FeedbackInline>
+    );
+  }
+  const camera = consulta.data?.find((c) => c.id === id);
   if (!camera) {
     return (
       <EstadoVazio
@@ -47,7 +50,13 @@ export function MonitorarCameraPage() {
       />
     );
   }
+  return <Monitoramento key={`${camera.id}-${camera.habilitada}`} camera={camera} />;
+}
 
+function Monitoramento({ camera }: { camera: CameraResumo }) {
+  const estilos = useStyles();
+  const tipo = useTipografia();
+  const { videoRef, ...m } = useMonitoramentoCamera(camera.id);
   const monitorando = m.estado === 'monitorando';
   const abrindo = m.estado === 'iniciando';
   const chip = chipPorEstado[m.estado];
@@ -73,10 +82,11 @@ export function MonitorarCameraPage() {
         rotuloVoltar="Voltar para Câmeras"
         titulo={`Monitorar — ${camera.nome}`}
         subtitulo={`${camera.obraNome} · ${camera.areaNome ?? 'Sem área definida'} · ${tipoCameraLabel[camera.tipo] ?? 'Sem tipo'}`}
-        acoes={<StatusChip tom={chip.tom}>{chip.rotulo}</StatusChip>}
+        acoes={<StatusChip tom={m.semAmostraRecente ? 'atencao' : chip.tom}>{m.semAmostraRecente ? 'Sem imagem recente' : chip.rotulo}</StatusChip>}
       />
 
       {m.erro && <FeedbackInline tom="erro">{m.erro}</FeedbackInline>}
+      {m.semAmostraRecente && <FeedbackInline tom="aviso">A câmera parou de enviar imagens. Confira a conexão do dispositivo.</FeedbackInline>}
       {!camera.habilitada && (
         <FeedbackInline tom="aviso">O monitoramento desta câmera está desligado no cadastro.</FeedbackInline>
       )}
@@ -99,10 +109,10 @@ export function MonitorarCameraPage() {
                 </div>
               </div>
             )}
-            {monitorando && (
+            {monitorando && !m.semAmostraRecente && (
               <>
                 <div className={mergeClasses(estilos.selo, estilos.seloTopo, tipo.legenda)}>
-                  {m.movimento ? 'Movimento detectado · analisando' : 'Cena parada'}
+                  {m.enviando ? 'Movimento detectado · analisando' : m.movimento ? 'Movimento detectado' : 'Cena parada'}
                 </div>
                 {m.segundosParaProxima > 0 && (
                   <div className={mergeClasses(estilos.selo, estilos.seloBase, tipo.legenda)}>
@@ -112,7 +122,7 @@ export function MonitorarCameraPage() {
               </>
             )}
           </div>
-          <FeedbackInline tom="aviso">
+          <FeedbackInline tom="info">
             Mantenha esta tela aberta e o tablet ligado na tomada. Se a tela bloquear ou a página fechar, o
             monitoramento para. A foto só é enviada para análise quando há movimento, no máximo uma a cada 30
             segundos.
@@ -171,7 +181,7 @@ export function MonitorarCameraPage() {
               </div>
               {m.ocorrenciasSessao.length === 0 ? (
                 <div className={mergeClasses(tipo.corpo, estilos.rotuloMedio)}>
-                  Nenhuma ocorrência nesta sessão. Tudo regular até agora.
+                  Nenhuma ocorrência registrada nesta sessão.
                 </div>
               ) : (
                 <ul className={estilos.lista}>
@@ -190,15 +200,15 @@ export function MonitorarCameraPage() {
             </div>
           </Card>
 
-          {monitorando ? (
+          {monitorando || abrindo ? (
             <BotaoAcao
               tom="ver"
-              aria-label="Parar monitoramento"
+              aria-label={abrindo ? 'Cancelar abertura' : 'Parar monitoramento'}
               icon={<Stop20Regular />}
               className={estilos.botao}
               onClick={m.parar}
             >
-              Parar monitoramento
+              {abrindo ? 'Cancelar abertura' : 'Parar monitoramento'}
             </BotaoAcao>
           ) : (
             <BotaoAcao
@@ -206,10 +216,10 @@ export function MonitorarCameraPage() {
               aria-label="Iniciar monitoramento"
               icon={<Play20Regular />}
               className={estilos.botao}
-              disabled={!camera.habilitada || abrindo}
+              disabled={!camera.habilitada}
               onClick={() => void m.iniciar()}
             >
-              {abrindo ? 'Abrindo a câmera…' : 'Iniciar monitoramento'}
+              Iniciar monitoramento
             </BotaoAcao>
           )}
         </div>

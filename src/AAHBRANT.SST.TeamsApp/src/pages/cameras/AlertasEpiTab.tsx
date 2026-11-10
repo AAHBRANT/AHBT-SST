@@ -55,17 +55,19 @@ function inicioDoPeriodo(periodo: Periodo): string {
 const plural = (n: number, singular: string, pluralTexto: string) => `${n} ${n === 1 ? singular : pluralTexto}`;
 
 interface DialogoVincularProps {
-  ocorrencia: OcorrenciaEpi | null;
+  ocorrencia: OcorrenciaEpi;
+  erro: string | null;
   aoFechar: () => void;
   aoConfirmar: (ocorrencia: OcorrenciaEpi, trabalhadorId: string) => Promise<void>;
 }
 
-function DialogoVincular({ ocorrencia, aoFechar, aoConfirmar }: DialogoVincularProps) {
+function DialogoVincular({ ocorrencia, erro, aoFechar, aoConfirmar }: DialogoVincularProps) {
   const estilos = useEstilosAlertas();
-  const { lista: trabalhadores } = useTrabalhadores();
+  const consulta = useTrabalhadores();
+  const trabalhadores = consulta.lista;
   const [trabalhadorId, setTrabalhadorId] = useState('');
   const [salvando, setSalvando] = useState(false);
-  const obraId = ocorrencia?.obraId;
+  const obraId = ocorrencia.obraId;
 
   // Os trabalhadores da obra da ocorrência vêm primeiro; os demais seguem disponíveis (decisão de
   // produto pendente sobre restringir à obra).
@@ -79,7 +81,7 @@ function DialogoVincular({ ocorrencia, aoFechar, aoConfirmar }: DialogoVincularP
   }, [trabalhadores, obraId]);
 
   async function confirmar() {
-    if (!ocorrencia || !trabalhadorId) return;
+    if (!trabalhadorId || salvando) return;
     setSalvando(true);
     try {
       await aoConfirmar(ocorrencia, trabalhadorId);
@@ -90,18 +92,21 @@ function DialogoVincular({ ocorrencia, aoFechar, aoConfirmar }: DialogoVincularP
 
   return (
     <Dialog
-      open={!!ocorrencia}
+      open
       onOpenChange={(_, d) => {
-        if (!d.open && !salvando) {
-          setTrabalhadorId('');
-          aoFechar();
-        }
+        if (!d.open && !salvando) aoFechar();
       }}
     >
       <DialogSurface>
         <DialogBody>
-          <DialogTitle>{ocorrencia?.trabalhadorId ? 'Trocar trabalhador' : 'Vincular trabalhador'}</DialogTitle>
+          <DialogTitle>{ocorrencia.trabalhadorId ? 'Trocar trabalhador' : 'Vincular trabalhador'}</DialogTitle>
           <DialogContent className={estilos.dialogoCorpo}>
+            {erro && <FeedbackInline tom="erro">{erro}</FeedbackInline>}
+            {consulta.isError && (
+              <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar de novo', aoClicar: () => void consulta.refetch() }}>
+                Não foi possível carregar os trabalhadores.
+              </FeedbackInline>
+            )}
             <Field label="Trabalhador da ocorrência" required>
               <SeletorPesquisavel
                 placeholder={`Buscar entre ${trabalhadores.length} trabalhadores`}
@@ -115,10 +120,7 @@ function DialogoVincular({ ocorrencia, aoFechar, aoConfirmar }: DialogoVincularP
             <Button
               className={estilos.botao}
               disabled={salvando}
-              onClick={() => {
-                setTrabalhadorId('');
-                aoFechar();
-              }}
+              onClick={aoFechar}
             >
               Cancelar
             </Button>
@@ -204,6 +206,11 @@ export function AlertasEpiTab() {
     if (ok) setVinculando(null);
   }
 
+  function abrirVinculo(ocorrencia: OcorrenciaEpi | null) {
+    setErro(null);
+    setVinculando(ocorrencia);
+  }
+
   async function marcarFalsoAlerta(ocorrencia: OcorrenciaEpi) {
     const ok = await confirmar({
       mensagem: 'Marcar como falso alerta? Use quando a IA errou — a pessoa estava com o EPI.',
@@ -226,7 +233,7 @@ export function AlertasEpiTab() {
     const irregularidade = descreverIrregularidade(o.semCapacete, o.semColete);
     const titulo = `${o.cameraNome} · ${formatarDataHora(o.capturadaEmUtc)}`;
     const falso = o.situacao === SituacaoOcorrenciaEpi.FalsoAlerta;
-    const bloqueada = ocupada === o.id;
+    const bloqueada = ocupada !== null;
     return (
       <article key={o.id} className={estilos.cartao} aria-label={`Ocorrência de ${titulo}`}>
         <div className={estilos.areaFoto}>
@@ -271,13 +278,13 @@ export function AlertasEpiTab() {
                 appearance="primary"
                 className={estilos.botao}
                 disabled={bloqueada}
-                onClick={() => setVinculando(o)}
+                onClick={() => abrirVinculo(o)}
               >
                 Vincular trabalhador
               </Button>
             ) : (
               <>
-                <Button className={estilos.botao} disabled={bloqueada} onClick={() => setVinculando(o)}>
+                <Button className={estilos.botao} disabled={bloqueada} onClick={() => abrirVinculo(o)}>
                   Trocar trabalhador
                 </Button>
                 <Button
@@ -309,7 +316,15 @@ export function AlertasEpiTab() {
   return (
     <div className={estilos.raiz}>
       {dialogElement}
-      <DialogoVincular ocorrencia={vinculando} aoFechar={() => setVinculando(null)} aoConfirmar={vincular} />
+      {vinculando && (
+        <DialogoVincular
+          key={vinculando.id}
+          ocorrencia={vinculando}
+          erro={erro}
+          aoFechar={() => abrirVinculo(null)}
+          aoConfirmar={vincular}
+        />
+      )}
 
       <div className={estilos.filtros}>
         <div className={estilos.campoFiltro}>
@@ -372,7 +387,7 @@ export function AlertasEpiTab() {
         <FeedbackInline tom="info">Mostrando as 200 mais recentes; refine o período.</FeedbackInline>
       )}
 
-      {erro && (
+      {erro && !vinculando && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}
         </FeedbackInline>

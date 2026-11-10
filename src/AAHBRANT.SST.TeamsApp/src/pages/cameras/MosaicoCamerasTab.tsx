@@ -82,6 +82,7 @@ export function MosaicoCamerasTab() {
   const [painel, setPainel] = useState<PainelAberto | null>(null);
   const [painelAberto, setPainelAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [avisoSalvo, setAvisoSalvo] = useState<string | null>(null);
   const [telaCheia, setTelaCheia] = useState(false);
   const raizRef = useRef<HTMLDivElement>(null);
   const painelRef = useRef<HTMLDivElement>(null);
@@ -90,7 +91,10 @@ export function MosaicoCamerasTab() {
   const todas = useMemo(() => lista ?? [], [lista]);
 
   useEffect(() => {
-    const aoMudar = () => setTelaCheia(!!document.fullscreenElement);
+    const aoMudar = () => {
+      setTelaCheia(document.fullscreenElement === raizRef.current);
+      setAvisoSalvo(null);
+    };
     document.addEventListener('fullscreenchange', aoMudar);
     return () => document.removeEventListener('fullscreenchange', aoMudar);
   }, []);
@@ -149,11 +153,13 @@ export function MosaicoCamerasTab() {
   }
 
   function abrirCadastro() {
+    setAvisoSalvo(null);
     setPainel({ chave: Date.now() });
     setPainelAberto(true);
   }
 
   function abrirEdicao(camera: CameraResumo) {
+    setAvisoSalvo(null);
     setPainel({ chave: Date.now(), camera });
     setPainelAberto(true);
   }
@@ -175,9 +181,11 @@ export function MosaicoCamerasTab() {
     const editou = !!painel?.camera;
     fecharPainel();
     if (!editou && filtroEfetivo && obraDaCamera !== filtroEfetivo) setObraFiltro('');
-    await queryClient.invalidateQueries({ queryKey: ['cameras'] });
+    await queryClient.invalidateQueries({ queryKey: ['cameras', 'lista'] });
     await sairDaTelaCheia();
-    sucessoToast(editou ? 'Câmera atualizada com sucesso.' : 'Câmera cadastrada com sucesso.');
+    const mensagem = editou ? 'Câmera atualizada com sucesso.' : 'Câmera cadastrada com sucesso.';
+    if (document.fullscreenElement) setAvisoSalvo(mensagem);
+    else sucessoToast(mensagem);
   }
 
   async function excluir(camera: CameraResumo) {
@@ -191,7 +199,7 @@ export function MosaicoCamerasTab() {
       setErro(null);
       await api.cameras.excluir(camera.id);
       if (painel?.camera?.id === camera.id) fecharPainel();
-      await queryClient.invalidateQueries({ queryKey: ['cameras'] });
+      await queryClient.invalidateQueries({ queryKey: ['cameras', 'lista'] });
       sucessoToast('Câmera excluída com sucesso.');
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível excluir a câmera.');
@@ -356,6 +364,7 @@ export function MosaicoCamerasTab() {
         </Button>
       </div>
 
+      {avisoSalvo && <FeedbackInline tom="sucesso" aoFechar={() => setAvisoSalvo(null)}>{avisoSalvo}</FeedbackInline>}
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}

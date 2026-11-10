@@ -9,7 +9,7 @@ const TOQUE = '44px';
 export const useEstilosAlertas = makeStyles({
   raiz: { display: 'flex', flexDirection: 'column', gap: tokensUi.espaco.xl, minWidth: 0 },
   filtros: { display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: tokensUi.espaco.md },
-  campoFiltro: { minWidth: 'min(180px, 100%)', flex: '0 1 200px' },
+  campoFiltro: { minWidth: 'min(180px, 100%)', flex: '0 1 200px', '& select': { minHeight: TOQUE } },
   resumo: { color: designTokens.colorNeutralMedium, paddingBottom: tokensUi.espaco.md },
   grade: {
     display: 'grid',

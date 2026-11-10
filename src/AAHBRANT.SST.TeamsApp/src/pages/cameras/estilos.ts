@@ -37,7 +37,7 @@ export const useStyles = makeStyles({
     padding: '6px 12px',
     borderRadius: tokensUi.raio.sm,
     color: designTokens.colorNeutralDark,
-    backgroundColor: 'color-mix(in srgb, var(--sst-color-surface) 88%, transparent)',
+    backgroundColor: `color-mix(in srgb, ${designTokens.colorSurface} 88%, transparent)`,
     border: `1px solid ${designTokens.colorCardBorder}`,
   },
   seloTopo: { left: tokensUi.espaco.lg, top: tokensUi.espaco.lg },

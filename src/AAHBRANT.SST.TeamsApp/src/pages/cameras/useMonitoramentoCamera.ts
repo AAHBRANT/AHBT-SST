@@ -42,7 +42,8 @@ export function useMonitoramentoCamera(cameraId: string) {
   const timerRef = useRef<number | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const amostraAnteriorRef = useRef<Uint8Array | null>(null);
-  const movimentoPendenteRef = useRef(false);
+  const canvasAmostraRef = useRef<HTMLCanvasElement | null>(null);
+  const quadroAnteriorRef = useRef<number | null>(null);
   const amostrasRef = useRef(0);
   const ultimaAmostraRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
@@ -57,6 +58,7 @@ export function useMonitoramentoCamera(cameraId: string) {
   const [estado, setEstado] = useState<EstadoMonitoramento>('parado');
   const [erro, setErro] = useState<string | null>(null);
   const [movimento, setMovimento] = useState(false);
+  const [enviando, setEnviando] = useState(false);
   const [ultimaAnalise, setUltimaAnalise] = useState<AnaliseSessao | null>(null);
   const [contadores, setContadores] = useState<ContadoresSessao>(CONTADORES_ZERADOS);
   const [ocorrenciasSessao, setOcorrenciasSessao] = useState<AnaliseSessao[]>([]);
@@ -80,7 +82,9 @@ export function useMonitoramentoCamera(cameraId: string) {
     void wakeLockRef.current?.release().catch(() => undefined);
     wakeLockRef.current = null;
     amostraAnteriorRef.current = null;
-    movimentoPendenteRef.current = false;
+    canvasAmostraRef.current = null;
+    quadroAnteriorRef.current = null;
+    setEnviando(false);
     setMovimento(false);
     setSegundosParaProxima(0);
     setSemAmostraRecente(false);
@@ -108,7 +112,7 @@ export function useMonitoramentoCamera(cameraId: string) {
     }, TEMPO_LIMITE_ENVIO_MS);
     enviandoRef.current = true;
     ultimoEnvioPorCamera.set(cameraId, Date.now());
-    movimentoPendenteRef.current = false;
+    setEnviando(true);
     try {
       const foto = await capturarFoto(video);
       if (!foto || !vigente()) return;
@@ -135,7 +139,10 @@ export function useMonitoramentoCamera(cameraId: string) {
     } finally {
       window.clearTimeout(relogio);
       if (abortRef.current === controle) abortRef.current = null;
-      if (geracaoRef.current === geracao) enviandoRef.current = false;
+      if (geracaoRef.current === geracao) {
+        enviandoRef.current = false;
+        setEnviando(false);
+      }
     }
   }, [cameraId, capturarFoto]);
 
@@ -145,10 +152,16 @@ export function useMonitoramentoCamera(cameraId: string) {
     // Se o intervalo foi atrasado (aba em segundo plano) ou o vídeo não entrega quadros, avisa a tela.
     setSemAmostraRecente(Date.now() - ultimaAmostraRef.current > SEM_AMOSTRA_MS);
     if (video.readyState < 2 || video.videoWidth === 0) return;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = LARGURA_AMOSTRA;
-    canvas.height = ALTURA_AMOSTRA;
+    const quadro = video.getVideoPlaybackQuality?.().totalVideoFrames || video.currentTime;
+    if (quadro === quadroAnteriorRef.current) return;
+    quadroAnteriorRef.current = quadro;
+    if (!canvasAmostraRef.current) {
+      const novo = document.createElement('canvas');
+      novo.width = LARGURA_AMOSTRA;
+      novo.height = ALTURA_AMOSTRA;
+      canvasAmostraRef.current = novo;
+    }
+    const canvas = canvasAmostraRef.current;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
     ctx.drawImage(video, 0, 0, LARGURA_AMOSTRA, ALTURA_AMOSTRA);
@@ -165,14 +178,14 @@ export function useMonitoramentoCamera(cameraId: string) {
       return;
     }
 
-    if (houveMovimento(amostraAnteriorRef.current, atual)) movimentoPendenteRef.current = true;
+    const detectado = houveMovimento(amostraAnteriorRef.current, atual);
     amostraAnteriorRef.current = atual;
-    setMovimento(movimentoPendenteRef.current);
+    setMovimento(detectado);
 
     const restante = INTERVALO_ENVIO_MS - (Date.now() - (ultimoEnvioPorCamera.get(cameraId) ?? 0));
     setSegundosParaProxima(Math.max(0, Math.ceil(restante / 1000)));
 
-    if (movimentoPendenteRef.current && restante <= 0 && !enviandoRef.current) void enviar(video);
+    if (detectado && restante <= 0 && !enviandoRef.current) void enviar(video);
   }, [cameraId, enviar]);
 
   const iniciar = useCallback(async () => {
@@ -202,18 +215,7 @@ export function useMonitoramentoCamera(cameraId: string) {
       streamRef.current = stream;
       video.srcObject = stream;
       await video.play();
-      // Mantém a tela do tablet acesa quando o navegador suporta; sem suporte, o aviso da tela cobre.
-      let trava: WakeLockSentinel | null = null;
-      try {
-        trava = (await navigator.wakeLock?.request('screen')) ?? null;
-      } catch {
-        trava = null;
-      }
-      if (geracaoRef.current !== geracao) {
-        void trava?.release().catch(() => undefined);
-        return;
-      }
-      wakeLockRef.current = trava;
+      if (geracaoRef.current !== geracao) return;
       ativoRef.current = true;
       iniciandoRef.current = false;
       amostrasRef.current = 0;
@@ -231,11 +233,13 @@ export function useMonitoramentoCamera(cameraId: string) {
       // O navegador solta a trava de tela quando a aba some: pede de novo ao voltar.
       const aoMudarVisibilidade = () => {
         if (document.visibilityState !== 'visible' || !ativoRef.current || geracaoRef.current !== geracao) return;
+        setSemAmostraRecente(Date.now() - ultimaAmostraRef.current > SEM_AMOSTRA_MS);
+        if (wakeLockRef.current && !wakeLockRef.current.released) return;
         void (async () => {
           try {
             const nova = (await navigator.wakeLock?.request('screen')) ?? null;
             if (!nova) return;
-            if (geracaoRef.current !== geracao) {
+            if (geracaoRef.current !== geracao || (wakeLockRef.current && !wakeLockRef.current.released)) {
               void nova.release().catch(() => undefined);
               return;
             }
@@ -251,6 +255,11 @@ export function useMonitoramentoCamera(cameraId: string) {
         faixa?.removeEventListener('ended', aoEncerrar);
         document.removeEventListener('visibilitychange', aoMudarVisibilidade);
       };
+      if (!faixa || faixa.readyState === 'ended') {
+        aoEncerrar();
+        return;
+      }
+      aoMudarVisibilidade();
       setContadores(CONTADORES_ZERADOS);
       setOcorrenciasSessao([]);
       setUltimaAnalise(null);
@@ -277,5 +286,5 @@ export function useMonitoramentoCamera(cameraId: string) {
     [parar, cameraId],
   );
 
-  return { estado, erro, videoRef, iniciar, parar, ultimaAnalise, contadores, ocorrenciasSessao, segundosParaProxima, movimento, semAmostraRecente };
+  return { estado, erro, videoRef, iniciar, parar, ultimaAnalise, contadores, ocorrenciasSessao, segundosParaProxima, movimento, enviando, semAmostraRecente };
 }
