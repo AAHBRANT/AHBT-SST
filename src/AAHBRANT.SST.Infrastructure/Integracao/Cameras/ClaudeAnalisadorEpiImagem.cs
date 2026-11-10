@@ -61,7 +61,7 @@ public class ClaudeAnalisadorEpiImagem : IAnalisadorEpiImagem
     public async Task<ResultadoAnaliseEpi> AnalisarAsync(byte[] imagemJpeg, CancellationToken ct)
     {
         var imagens = new[] { $"data:image/jpeg;base64,{Convert.ToBase64String(imagemJpeg)}" };
-        var r = await _cliente.ObterAsync<Resposta>(Instrucoes, Pedido, "analise_epi", Schema, ct,
+        var (r, tokensEntrada, tokensSaida) = await _cliente.ObterComUsoAsync<Resposta>(Instrucoes, Pedido, "analise_epi", Schema, ct,
             maxTokens: 1500, timeoutSegundos: 60, imagens: imagens, modelo: _cliente.ModeloCameras);
 
         if (r.Pessoas < 0 || r.SemCapacete < 0 || r.SemColete < 0 || r.SemCapacete > r.Pessoas || r.SemColete > r.Pessoas)
@@ -73,7 +73,8 @@ public class ClaudeAnalisadorEpiImagem : IAnalisadorEpiImagem
             "media" => ConfiancaAnaliseEpi.Media,
             _ => ConfiancaAnaliseEpi.Baixa,
         };
-        return new ResultadoAnaliseEpi(r.Pessoas, r.SemCapacete, r.SemColete, confianca, DetalheCoerente(r));
+        return new ResultadoAnaliseEpi(r.Pessoas, r.SemCapacete, r.SemColete, confianca, DetalheCoerente(r),
+            new UsoIa(tokensEntrada, tokensSaida));
     }
 
     // As posições só valem se baterem com a contagem; senão a cena fica sem identificação por rosto

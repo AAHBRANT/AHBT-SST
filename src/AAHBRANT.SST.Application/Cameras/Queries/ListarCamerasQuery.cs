@@ -19,7 +19,15 @@ public record CameraDto(
     int IntervaloMinimoAlertasMinutos,
     DateTime? UltimaAnaliseEmUtc,
     int OcorrenciasHoje,
-    int TotalAnalises);
+    int TotalAnalises,
+    // Consumo real da IA (tokens informados pela API a cada análise) e o custo calculado em dólares
+    // (CustoIaCameras). "NoDia" vale para DiaDoConsumo, a data em Brasília da última análise.
+    long TotalTokensEntrada = 0,
+    long TotalTokensSaida = 0,
+    decimal CustoTotalUsd = 0,
+    DateTime? DiaDoConsumo = null,
+    int AnalisesNoDia = 0,
+    decimal CustoNoDiaUsd = 0);
 
 public class ListarCamerasQueryHandler : IRequestHandler<ListarCamerasQuery, List<CameraDto>>
 {
@@ -34,21 +42,50 @@ public class ListarCamerasQueryHandler : IRequestHandler<ListarCamerasQuery, Lis
         var query = _db.Cameras.AsNoTracking();
         if (request.ObraId is { } obraId) query = query.Where(c => c.ObraId == obraId);
 
-        return await query
+        var cameras = await query
             .OrderBy(c => c.Nome)
-            .Select(c => new CameraDto(
+            .Select(c => new
+            {
                 c.Id,
                 c.ObraId,
-                c.Obra!.Nome,
+                ObraNome = c.Obra!.Nome,
                 c.Nome,
                 c.AreaSstId,
-                c.AreaSst != null ? c.AreaSst.Nome : null,
+                AreaNome = c.AreaSst != null ? c.AreaSst.Nome : null,
                 c.Tipo,
                 c.Habilitada,
                 c.IntervaloMinimoAlertasMinutos,
                 c.UltimaAnaliseEmUtc,
-                _db.OcorrenciasEpiCamera.Count(o => o.CameraId == c.Id && o.RecebidaEmUtc >= desde),
-                c.TotalAnalises))
+                OcorrenciasHoje = _db.OcorrenciasEpiCamera.Count(o => o.CameraId == c.Id && o.RecebidaEmUtc >= desde),
+                c.TotalAnalises,
+                c.TotalTokensEntrada,
+                c.TotalTokensSaida,
+                c.DiaDoConsumo,
+                c.AnalisesNoDia,
+                c.TokensEntradaNoDia,
+                c.TokensSaidaNoDia,
+            })
             .ToListAsync(ct);
+
+        // O custo é calculado fora da consulta (decimal com arredondamento não traduz para SQL).
+        return cameras.Select(c => new CameraDto(
+            c.Id,
+            c.ObraId,
+            c.ObraNome,
+            c.Nome,
+            c.AreaSstId,
+            c.AreaNome,
+            c.Tipo,
+            c.Habilitada,
+            c.IntervaloMinimoAlertasMinutos,
+            c.UltimaAnaliseEmUtc,
+            c.OcorrenciasHoje,
+            c.TotalAnalises,
+            c.TotalTokensEntrada,
+            c.TotalTokensSaida,
+            CustoIaCameras.EmDolares(c.TotalTokensEntrada, c.TotalTokensSaida),
+            c.DiaDoConsumo,
+            c.AnalisesNoDia,
+            CustoIaCameras.EmDolares(c.TokensEntradaNoDia, c.TokensSaidaNoDia))).ToList();
     }
 }

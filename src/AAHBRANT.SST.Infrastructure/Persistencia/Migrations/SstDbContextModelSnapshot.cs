@@ -1777,6 +1777,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("AnalisesNoDia")
+                        .HasColumnType("int");
+
                     b.Property<Guid?>("AreaSstId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1788,6 +1791,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DiaDoConsumo")
+                        .HasColumnType("datetime2");
 
                     b.Property<bool>("Habilitada")
                         .HasColumnType("bit");
@@ -1814,8 +1820,20 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("Tipo")
                         .HasColumnType("int");
 
+                    b.Property<long>("TokensEntradaNoDia")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TokensSaidaNoDia")
+                        .HasColumnType("bigint");
+
                     b.Property<int>("TotalAnalises")
                         .HasColumnType("int");
+
+                    b.Property<long>("TotalTokensEntrada")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TotalTokensSaida")
+                        .HasColumnType("bigint");
 
                     b.Property<DateTime?>("UltimaAnaliseEmUtc")
                         .HasColumnType("datetime2");
@@ -7075,11 +7093,17 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<Guid?>("TrabalhadorId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("UltimaVezEmUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("VezesVista")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("VinculadoEmUtc")
                         .HasColumnType("datetime2");

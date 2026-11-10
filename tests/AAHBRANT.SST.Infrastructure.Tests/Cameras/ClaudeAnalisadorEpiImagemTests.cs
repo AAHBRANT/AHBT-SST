@@ -102,6 +102,20 @@ public class ClaudeAnalisadorEpiImagemTests
         Assert.Null(resultado.Detalhe);
     }
 
+    [Fact]
+    public async Task Analisar_DevolveOsTokensCobradosPelaApi()
+    {
+        var corpo = JsonSerializer.Serialize(new
+        {
+            content = new object[] { new { type = "text", text = "{\"pessoas\":0,\"semCapacete\":0,\"semColete\":0,\"confianca\":\"alta\",\"pessoasDetalhe\":[]}" } },
+            usage = new { input_tokens = 1700, cache_read_input_tokens = 100, output_tokens = 45 },
+        });
+
+        var resultado = await Criar(new HandlerFalso(HttpStatusCode.OK, corpo)).AnalisarAsync(new byte[] { 0xFF, 0xD8, 0x01 }, default);
+
+        Assert.Equal(new UsoIa(1800, 45), resultado.Uso);
+    }
+
     // A análise roda sem parar: usa o modelo barato das câmeras, não o Claude:Modelo das demais leituras.
     [Fact]
     public async Task Analisar_UsaOModeloDasCamerasENaoOModeloPadrao()

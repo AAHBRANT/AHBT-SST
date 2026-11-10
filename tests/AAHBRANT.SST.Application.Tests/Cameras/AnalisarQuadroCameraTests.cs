@@ -305,9 +305,9 @@ public class AnalisarQuadroCameraTests
         var legenda = Assert.Single(telegram.Legendas);
         Assert.DoesNotContain("João da Silva", legenda);
         Assert.Contains("Pedro Souza (sem colete)", legenda);
-        var novaDoJoao = await db.OcorrenciasEpiCamera
-            .Where(o => o.TrabalhadorId == joao.Id).OrderByDescending(o => o.RecebidaEmUtc).FirstAsync();
-        Assert.False(novaDoJoao.AlertaEnviado);
+        // A repetição do João soma na ocorrência dele, sem abrir outra nem alertar de novo.
+        var doJoao = await db.OcorrenciasEpiCamera.SingleAsync(o => o.TrabalhadorId == joao.Id);
+        Assert.Equal(2, doJoao.VezesVista);
     }
 
     [Fact]
@@ -330,7 +330,8 @@ public class AnalisarQuadroCameraTests
         Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
         Assert.False(r.AlertaEnviado);
         Assert.Empty(telegram.Legendas);
-        Assert.Equal(2, await db.OcorrenciasEpiCamera.CountAsync(o => o.TrabalhadorId == joao.Id));
+        Assert.True(r.Repetida);
+        Assert.Equal(2, (await db.OcorrenciasEpiCamera.SingleAsync(o => o.TrabalhadorId == joao.Id)).VezesVista);
     }
 
     [Fact]
@@ -393,7 +394,124 @@ public class AnalisarQuadroCameraTests
         Assert.False(r.AlertaEnviado);
         Assert.Equal("João da Silva", r.TrabalhadorNome);
         Assert.Empty(telegram.Legendas);
+        // Mesmo trabalhador, mesma câmera, menos de uma hora: soma na ocorrência já aberta.
+        Assert.True(r.Repetida);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(r.OcorrenciaId, ocorrencia.Id);
+        Assert.Equal(2, ocorrencia.VezesVista);
+        Assert.NotNull(ocorrencia.UltimaVezEmUtc);
+    }
+
+    // Semeia uma ocorrência sem trabalhador, vista pela última vez há `minutosAtras` minutos.
+    private static async Task<OcorrenciaEpiCamera> ComOcorrenciaSemNome(SstDbContext db, Camera camera, int minutosAtras, bool alertaEnviado)
+    {
+        var quando = DateTime.UtcNow.AddMinutes(-minutosAtras);
+        var ocorrencia = new OcorrenciaEpiCamera
+        {
+            CameraId = camera.Id, ObraId = camera.ObraId, Foto = new byte[] { 0xFF, 0xD8, 0x77 },
+            CapturadaEmUtc = quando, RecebidaEmUtc = quando, UltimaVezEmUtc = quando,
+            PessoasNaCena = 1, SemCapacete = 1, AlertaEnviado = alertaEnviado, AlertaEnviadoEmUtc = alertaEnviado ? quando : null,
+        };
+        db.Add(ocorrencia);
+        await db.SaveChangesAsync();
+        return ocorrencia;
+    }
+
+    [Fact]
+    public async Task SemIdentificacao_VistaDeNovoEmPoucosMinutos_SomaNaMesmaOcorrenciaSemNovoAlerta()
+    {
+        var (db, camera) = await Preparar(nameof(SemIdentificacao_VistaDeNovoEmPoucosMinutos_SomaNaMesmaOcorrenciaSemNovoAlerta),
+            c => c.IntervaloMinimoAlertasMinutos = 0);
+        var aberta = await ComOcorrenciaSemNome(db, camera, minutosAtras: 2, alertaEnviado: true);
+        var telegram = new TelegramFalso();
+
+        var r = await Criar(db, new AnalisadorFalso(() => new ResultadoAnaliseEpi(1, 1, 1, ConfiancaAnaliseEpi.Alta)), telegram)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.True(r.Repetida);
+        Assert.False(r.AlertaEnviado);
+        Assert.Empty(telegram.Legendas);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(aberta.Id, ocorrencia.Id);
+        Assert.Equal(2, ocorrencia.VezesVista);
+        // Fica o pior caso das contagens; a foto continua a da primeira vez.
+        Assert.Equal((1, 1), (ocorrencia.SemCapacete, ocorrencia.SemColete));
+        Assert.Equal(new byte[] { 0xFF, 0xD8, 0x77 }, ocorrencia.Foto);
+    }
+
+    [Fact]
+    public async Task SemIdentificacao_DepoisDeUmaPausa_AbreNovaOcorrencia()
+    {
+        var (db, camera) = await Preparar(nameof(SemIdentificacao_DepoisDeUmaPausa_AbreNovaOcorrencia),
+            c => c.IntervaloMinimoAlertasMinutos = 0);
+        await ComOcorrenciaSemNome(db, camera, minutosAtras: 8, alertaEnviado: true);
+        var telegram = new TelegramFalso();
+
+        var r = await Criar(db, new AnalisadorFalso(() => new ResultadoAnaliseEpi(1, 1, 0, ConfiancaAnaliseEpi.Alta)), telegram)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.False(r.Repetida);
+        Assert.True(r.AlertaEnviado);
         Assert.Equal(2, await db.OcorrenciasEpiCamera.CountAsync());
+    }
+
+    [Fact]
+    public async Task SemIdentificacao_RepeticaoAlertaQuandoOPrimeiroAlertaNaoSaiu()
+    {
+        var (db, camera) = await Preparar(nameof(SemIdentificacao_RepeticaoAlertaQuandoOPrimeiroAlertaNaoSaiu),
+            c => c.IntervaloMinimoAlertasMinutos = 0);
+        await ComOcorrenciaSemNome(db, camera, minutosAtras: 1, alertaEnviado: false);
+        var telegram = new TelegramFalso();
+
+        var r = await Criar(db, new AnalisadorFalso(() => new ResultadoAnaliseEpi(1, 1, 0, ConfiancaAnaliseEpi.Alta)), telegram)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.True(r.Repetida);
+        Assert.True(r.AlertaEnviado);
+        Assert.True((await db.OcorrenciasEpiCamera.SingleAsync()).AlertaEnviado);
+    }
+
+    [Fact]
+    public async Task OutraCamera_NaoSomaNaOcorrenciaDaPrimeira()
+    {
+        var (db, camera) = await Preparar(nameof(OutraCamera_NaoSomaNaOcorrenciaDaPrimeira));
+        var outra = new Camera { ObraId = camera.ObraId, Nome = "Portaria" };
+        db.Add(outra);
+        await db.SaveChangesAsync();
+        await ComOcorrenciaSemNome(db, outra, minutosAtras: 1, alertaEnviado: true);
+
+        var r = await Criar(db, new AnalisadorFalso(() => new ResultadoAnaliseEpi(1, 1, 0, ConfiancaAnaliseEpi.Alta)), new TelegramFalso())
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.False(r.Repetida);
+        Assert.Equal(2, await db.OcorrenciasEpiCamera.CountAsync());
+    }
+
+    [Fact]
+    public async Task ConsumoDaIa_SomaTokensNoTotalENoDia_InclusiveEmCenaRegular()
+    {
+        var (db, camera) = await Preparar(nameof(ConsumoDaIa_SomaTokensNoTotalENoDia_InclusiveEmCenaRegular), c =>
+        {
+            // Consumo de um dia anterior: o do dia zera, o total continua.
+            c.TotalTokensEntrada = 1000;
+            c.TotalTokensSaida = 100;
+            c.DiaDoConsumo = DateTime.UtcNow.AddDays(-2).Date;
+            c.AnalisesNoDia = 9;
+            c.TokensEntradaNoDia = 900;
+            c.TokensSaidaNoDia = 90;
+        });
+        var analise = new ResultadoAnaliseEpi(2, 0, 0, ConfiancaAnaliseEpi.Alta, Uso: new UsoIa(1800, 60));
+
+        await Criar(db, new AnalisadorFalso(() => analise), new TelegramFalso())
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        var lida = await db.Cameras.SingleAsync();
+        Assert.Equal((2800, 160), (lida.TotalTokensEntrada, lida.TotalTokensSaida));
+        Assert.Equal((1, 1800, 60), (lida.AnalisesNoDia, lida.TokensEntradaNoDia, lida.TokensSaidaNoDia));
+        Assert.Equal(DateTime.UtcNow.AddHours(-3).Date, lida.DiaDoConsumo);
+        // 2.800 de entrada a US$ 0,10 e 160 de saída a US$ 0,50 por milhão.
+        Assert.Equal(0.0004m, CustoIaCameras.EmDolares(lida.TotalTokensEntrada, lida.TotalTokensSaida));
     }
 
     [Fact]

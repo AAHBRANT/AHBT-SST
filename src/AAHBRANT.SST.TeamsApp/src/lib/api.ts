@@ -2751,6 +2751,13 @@ export interface CameraResumo {
   ultimaAnaliseEmUtc: string | null;
   ocorrenciasHoje: number;
   totalAnalises: number;
+  // Consumo real da IA e custo em dólares; "NoDia" vale para diaDoConsumo (data em Brasília).
+  totalTokensEntrada: number;
+  totalTokensSaida: number;
+  custoTotalUsd: number;
+  diaDoConsumo: string | null;
+  analisesNoDia: number;
+  custoNoDiaUsd: number;
 }
 
 export interface DadosCamera {
@@ -2771,9 +2778,11 @@ export interface ResultadoQuadro {
   pessoas: number;
   semCapacete: number;
   semColete: number;
-  // Quem o reconhecimento facial identificou na ocorrência (só com uma pessoa na cena). Nulo = ninguém.
+  // Quem o reconhecimento facial identificou na ocorrência. Nulo = ninguém.
   trabalhadorId?: string | null;
   trabalhadorNome?: string | null;
+  // true = nenhuma ocorrência nova: a irregularidade foi somada a uma ocorrência já aberta.
+  repetida?: boolean;
 }
 
 export interface OcorrenciaEpi {
@@ -2796,6 +2805,9 @@ export interface OcorrenciaEpi {
   identificadoPorRosto: boolean;
   // Confiança do reconhecimento facial (0 a 100), só quando identificadoPorRosto.
   confiancaIdentificacao: number | null;
+  // Repetições da mesma irregularidade somadas nesta ocorrência (1 = vista uma única vez) e a última vez.
+  vezesVista: number;
+  ultimaVezEmUtc: string | null;
 }
 
 export interface FiltroOcorrenciasEpi {

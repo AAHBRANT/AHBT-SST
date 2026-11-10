@@ -11,8 +11,9 @@ namespace AAHBRANT.SST.Application.Cameras.Commands;
 public record AnalisarQuadroCameraCommand(Guid CameraId, byte[] Imagem, DateTime CapturadaEmUtc) : IRequest<ResultadoQuadroDto>;
 
 // TrabalhadorId/TrabalhadorNome: quem o reconhecimento facial identificou na ocorrência (nulo = ninguém).
+// Repetida: nenhuma ocorrência nova foi aberta; a irregularidade foi somada a ocorrências já existentes.
 public record ResultadoQuadroDto(string Situacao, Guid? OcorrenciaId, bool AlertaEnviado, int Pessoas, int SemCapacete, int SemColete,
-    Guid? TrabalhadorId = null, string? TrabalhadorNome = null);
+    Guid? TrabalhadorId = null, string? TrabalhadorNome = null, bool Repetida = false);
 
 public static class SituacaoQuadro
 {
@@ -45,11 +46,17 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
     // Depois de alertar sobre um trabalhador identificado, só volta a alertar sobre ele passado este tempo.
     public static readonly TimeSpan IntervaloAlertasPorTrabalhador = TimeSpan.FromHours(1);
 
-    private readonly IAppDbContext _db;
-    private readonly IAnalisadorEpiImagem _analisador;
     // A identificação pelo rosto não pode segurar o alerta: passou disso, sai como "não identificado".
     public static readonly TimeSpan TempoMaximoIdentificacaoFacial = TimeSpan.FromSeconds(20);
 
+    // Repetição da mesma irregularidade (a análise roda sem parar). O mesmo trabalhador na mesma câmera
+    // soma na ocorrência aberta há menos de uma hora. Sem identificação não dá para saber se é a mesma
+    // pessoa: soma enquanto a cena continuar irregular (visto de novo em até 5 minutos), por no máximo uma hora.
+    public static readonly TimeSpan DuracaoMaximaDaOcorrencia = TimeSpan.FromHours(1);
+    public static readonly TimeSpan PausaQueEncerraSemIdentificacao = TimeSpan.FromMinutes(5);
+
+    private readonly IAppDbContext _db;
+    private readonly IAnalisadorEpiImagem _analisador;
     private readonly ITelegramResumoService _telegram;
     private readonly IAutenticacaoFacialService _facial;
     private readonly ILogger<AnalisarQuadroCameraCommandHandler> _logger;
@@ -68,6 +75,8 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
         _logger = logger;
     }
 
+    private sealed record Identificado(Guid Id, string Nome, double? Confianca);
+
     public async Task<ResultadoQuadroDto> Handle(AnalisarQuadroCameraCommand request, CancellationToken ct)
     {
         var camera = await _db.Cameras.Include(c => c.Obra).FirstOrDefaultAsync(c => c.Id == request.CameraId, ct)
@@ -81,8 +90,8 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
             return new ResultadoQuadroDto(SituacaoQuadro.Ignorado, null, false, 0, 0, 0);
 
         // Gravado antes de chamar a IA: um segundo envio em paralelo já encontra o teto aplicado.
-        // Também conta a análise (custo por foto do piloto). Dois quadros simultâneos da mesma câmera
-        // disputam a versão da linha: o perdedor é tratado como "ignorado", não como erro.
+        // Também conta a análise. Dois quadros simultâneos da mesma câmera disputam a versão da linha:
+        // o perdedor é tratado como "ignorado", não como erro.
         camera.UltimaAnaliseEmUtc = agora;
         camera.TotalAnalises++;
         try
@@ -106,78 +115,55 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
         }
 
         if (analise.SemCapacete == 0 && analise.SemColete == 0)
+        {
+            await FinalizarCameraAsync(camera, analise.Uso, agora, alertaEnviadoEm: null);
             return new ResultadoQuadroDto(SituacaoQuadro.Limpo, null, false, analise.Pessoas, 0, 0);
+        }
 
         // Várias pessoas na cena, com a posição de cada uma: identifica cada irregular pelo rosto.
         if (analise.Pessoas > 1 && analise.Detalhe is { Count: > 1 } detalhe && detalhe.Any(p => p.Irregular))
             return await RegistrarCenaComVariasPessoasAsync(camera, request, analise, detalhe, agora);
 
-        var ocorrencia = new OcorrenciaEpiCamera
-        {
-            CameraId = camera.Id,
-            ObraId = camera.ObraId,
-            CapturadaEmUtc = request.CapturadaEmUtc,
-            RecebidaEmUtc = agora,
-            Foto = request.Imagem,
-            PessoasNaCena = analise.Pessoas,
-            SemCapacete = analise.SemCapacete,
-            SemColete = analise.SemColete,
-            Confianca = analise.Confianca,
-        };
-        _db.OcorrenciasEpiCamera.Add(ocorrencia);
+        // Uma única pessoa na cena: o rosto da foto é o dela. (Várias pessoas sem posição conhecida ficam
+        // sem identificação.) Vem antes de gravar, para a repetição do mesmo trabalhador somar na ocorrência dele.
+        var identificado = analise.Pessoas == 1 ? await IdentificarPeloRostoAsync(camera, request.Imagem) : null;
+
+        var (ocorrencia, nova) = await ObterOuCriarOcorrenciaAsync(camera, request, analise, analise.SemCapacete, analise.SemColete,
+            identificado?.Id, identificado?.Confianca, agora);
 
         // A ocorrência é gravada ANTES do alerta e sem o token da requisição: a chamada à IA pode demorar
         // minutos e um cancelamento do cliente ou conflito na câmera não pode perder a evidência.
         await _db.SaveChangesAsync(CancellationToken.None);
 
-        // Uma única pessoa na cena: o rosto da foto é o dela. (Várias pessoas com posição conhecida seguem por
-        // RegistrarCenaComVariasPessoasAsync; sem posição, ficam sem identificação.) Fica antes do alerta
-        // para o nome sair na legenda.
-        var trabalhadorNome = analise.Pessoas == 1 ? await IdentificarPeloRostoAsync(camera, ocorrencia) : null;
+        // Cada ocorrência alerta no máximo uma vez. Trabalhador identificado: um alerta por pessoa a cada
+        // hora, em qualquer câmera (regra do usuário em 09/11/2026), no lugar do intervalo da câmera, para o
+        // alerta de um não segurar o de outro. Sem identificação: vale o intervalo da câmera.
+        var podeAlertar = !ocorrencia.AlertaEnviado
+            && (identificado is not null
+                ? !(await NotificadosNaUltimaHoraAsync(new[] { identificado.Id }, agora)).Contains(identificado.Id)
+                : IntervaloDaCameraPermite(camera, agora));
 
-        bool podeAlertar;
-        if (trabalhadorNome is not null && ocorrencia.TrabalhadorId is { } trabalhadorId)
+        DateTime? enviadoEm = null;
+        if (podeAlertar)
         {
-            // Trabalhador identificado: um alerta por pessoa a cada hora, em qualquer câmera (regra do usuário
-            // em 09/11/2026). Vale no lugar do intervalo da câmera, para o alerta de um não segurar o de outro.
-            var limite = agora - IntervaloAlertasPorTrabalhador;
-            podeAlertar = !await _db.OcorrenciasEpiCamera.AnyAsync(
-                o => o.TrabalhadorId == trabalhadorId && o.AlertaEnviado && o.AlertaEnviadoEmUtc >= limite,
-                CancellationToken.None);
-        }
-        else
-        {
-            // Sem identificação não há como saber se é a mesma pessoa: vale o intervalo da câmera.
-            podeAlertar = camera.IntervaloMinimoAlertasMinutos == 0
-                || camera.UltimoAlertaEmUtc is null
-                || agora - camera.UltimoAlertaEmUtc.Value >= TimeSpan.FromMinutes(camera.IntervaloMinimoAlertasMinutos);
-        }
-
-        if (podeAlertar && await EnviarAlertaAsync(camera, ocorrencia, trabalhadorNome))
-        {
-            var enviadoEm = DateTime.UtcNow;
-            ocorrencia.AlertaEnviado = true;
-            ocorrencia.AlertaEnviadoEmUtc = enviadoEm;
-            await _db.SaveChangesAsync(CancellationToken.None);
-
-            // Se a câmera mudou durante a análise, só se perde o intervalo entre alertas desta vez.
-            camera.UltimoAlertaEmUtc = enviadoEm;
-            try
+            var legenda = LegendaAlertaEpi.Montar(camera.Obra?.Nome ?? "-", camera.Nome, agora,
+                ocorrencia.PessoasNaCena, ocorrencia.SemCapacete, ocorrencia.SemColete, identificado?.Nome);
+            if (await EnviarLegendaAsync(camera, request.Imagem, legenda))
             {
+                enviadoEm = DateTime.UtcNow;
+                ocorrencia.AlertaEnviado = true;
+                ocorrencia.AlertaEnviadoEmUtc = enviadoEm;
                 await _db.SaveChangesAsync(CancellationToken.None);
             }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                _logger.LogWarning(ex, "Câmera {CameraId} alterada durante a análise; intervalo entre alertas não registrado.", camera.Id);
-            }
         }
 
-        return new ResultadoQuadroDto(SituacaoQuadro.Ocorrencia, ocorrencia.Id, ocorrencia.AlertaEnviado,
-            analise.Pessoas, analise.SemCapacete, analise.SemColete,
-            trabalhadorNome is null ? null : ocorrencia.TrabalhadorId, trabalhadorNome);
+        await FinalizarCameraAsync(camera, analise.Uso, agora, enviadoEm);
+
+        return new ResultadoQuadroDto(SituacaoQuadro.Ocorrencia, ocorrencia.Id, enviadoEm is not null,
+            analise.Pessoas, analise.SemCapacete, analise.SemColete, identificado?.Id, identificado?.Nome, Repetida: !nova);
     }
 
-    // Cena com várias pessoas. Cada irregular identificado pelo rosto ganha a própria ocorrência (com o que
+    // Cena com várias pessoas. Cada irregular identificado pelo rosto tem a própria ocorrência (com o que
     // faltava nele), para a conferência e a regra de um alerta por trabalhador por hora valerem por pessoa.
     // Os irregulares sem identificação ficam juntos numa ocorrência sem trabalhador. Sai um único alerta
     // por foto, com os nomes de quem ainda não foi notificado na última hora.
@@ -196,22 +182,10 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
             : await _db.Trabalhadores.Where(t => ids.Contains(t.Id)).Select(t => new { t.Id, t.Nome })
                 .ToDictionaryAsync(t => t.Id, t => t.Nome, CancellationToken.None);
 
-        OcorrenciaEpiCamera Nova(int semCapacete, int semColete) => new()
-        {
-            CameraId = camera.Id,
-            ObraId = camera.ObraId,
-            CapturadaEmUtc = request.CapturadaEmUtc,
-            RecebidaEmUtc = agora,
-            Foto = request.Imagem,
-            PessoasNaCena = analise.Pessoas,
-            SemCapacete = semCapacete,
-            SemColete = semColete,
-            Confianca = analise.Confianca,
-        };
-
         var identificadas = new List<(OcorrenciaEpiCamera Ocorrencia, IdentificadoNaCena Pessoa)>();
         var naoIdentificados = new List<PessoaNaCena>();
         var jaIncluidos = new HashSet<Guid>();
+        var algumaNova = false;
         for (var i = 0; i < detalhe.Count; i++)
         {
             var pessoa = detalhe[i];
@@ -221,11 +195,9 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
             if (rostoPorPessoa.TryGetValue(i, out var rosto) && rosto.TrabalhadorId is { } trabalhadorId
                 && nomes.TryGetValue(trabalhadorId, out var nome) && jaIncluidos.Add(trabalhadorId))
             {
-                var ocorrencia = Nova(pessoa.SemCapacete ? 1 : 0, pessoa.SemColete ? 1 : 0);
-                ocorrencia.TrabalhadorId = trabalhadorId;
-                ocorrencia.IdentificadoPorRosto = true;
-                ocorrencia.ConfiancaIdentificacao = rosto.Confianca;
-                ocorrencia.VinculadoEmUtc = agora;
+                var (ocorrencia, nova) = await ObterOuCriarOcorrenciaAsync(camera, request, analise,
+                    pessoa.SemCapacete ? 1 : 0, pessoa.SemColete ? 1 : 0, trabalhadorId, rosto.Confianca, agora);
+                algumaNova |= nova;
                 identificadas.Add((ocorrencia, new IdentificadoNaCena(nome, pessoa.SemCapacete, pessoa.SemColete)));
             }
             else
@@ -234,72 +206,159 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
             }
         }
 
-        var semIdentificacao = naoIdentificados.Count == 0
-            ? null
-            : Nova(naoIdentificados.Count(p => p.SemCapacete), naoIdentificados.Count(p => p.SemColete));
+        OcorrenciaEpiCamera? semIdentificacao = null;
+        if (naoIdentificados.Count > 0)
+        {
+            (semIdentificacao, var nova) = await ObterOuCriarOcorrenciaAsync(camera, request, analise,
+                naoIdentificados.Count(p => p.SemCapacete), naoIdentificados.Count(p => p.SemColete), null, null, agora);
+            algumaNova |= nova;
+        }
 
-        _db.OcorrenciasEpiCamera.AddRange(identificadas.Select(i => i.Ocorrencia));
-        if (semIdentificacao is not null) _db.OcorrenciasEpiCamera.Add(semIdentificacao);
         // Gravadas antes do alerta e sem o token da requisição, como na cena de uma pessoa só.
         await _db.SaveChangesAsync(CancellationToken.None);
 
         // Quem já foi notificado na última hora (em qualquer câmera) fica fora do alerta desta foto.
-        var limite = agora - IntervaloAlertasPorTrabalhador;
-        var notificadosNaHora = ids.Count == 0
-            ? new List<Guid>()
-            : await _db.OcorrenciasEpiCamera
-                .Where(o => o.TrabalhadorId != null && ids.Contains(o.TrabalhadorId.Value) && o.AlertaEnviado && o.AlertaEnviadoEmUtc >= limite)
-                .Select(o => o.TrabalhadorId!.Value).Distinct().ToListAsync(CancellationToken.None);
-        var aAlertar = identificadas.Where(i => !notificadosNaHora.Contains(i.Ocorrencia.TrabalhadorId!.Value)).ToList();
+        var notificadosNaHora = await NotificadosNaUltimaHoraAsync(ids, agora);
+        var aAlertar = identificadas
+            .Where(i => !i.Ocorrencia.AlertaEnviado && !notificadosNaHora.Contains(i.Ocorrencia.TrabalhadorId!.Value))
+            .ToList();
 
         // Sem identificação vale o intervalo da câmera, como na cena de uma pessoa só.
-        var alertaSemIdentificacao = semIdentificacao is not null
-            && (camera.IntervaloMinimoAlertasMinutos == 0
-                || camera.UltimoAlertaEmUtc is null
-                || agora - camera.UltimoAlertaEmUtc.Value >= TimeSpan.FromMinutes(camera.IntervaloMinimoAlertasMinutos));
+        var alertaSemIdentificacao = semIdentificacao is { AlertaEnviado: false } && IntervaloDaCameraPermite(camera, agora);
 
         var totalSemCapacete = detalhe.Count(p => p.SemCapacete);
         var totalSemColete = detalhe.Count(p => p.SemColete);
-        var alertaEnviado = false;
+        DateTime? enviadoEm = null;
         if (aAlertar.Count > 0 || alertaSemIdentificacao)
         {
             var legenda = LegendaAlertaEpi.MontarCena(camera.Obra?.Nome ?? "-", camera.Nome, agora, analise.Pessoas,
                 totalSemCapacete, totalSemColete, aAlertar.Select(i => i.Pessoa).ToList(),
                 alertaSemIdentificacao ? naoIdentificados.Count : 0);
-            alertaEnviado = await EnviarLegendaAsync(camera, request.Imagem, legenda);
-        }
-
-        if (alertaEnviado)
-        {
-            var enviadoEm = DateTime.UtcNow;
-            foreach (var (ocorrencia, _) in aAlertar)
+            if (await EnviarLegendaAsync(camera, request.Imagem, legenda))
             {
-                ocorrencia.AlertaEnviado = true;
-                ocorrencia.AlertaEnviadoEmUtc = enviadoEm;
-            }
-            if (alertaSemIdentificacao)
-            {
-                semIdentificacao!.AlertaEnviado = true;
-                semIdentificacao.AlertaEnviadoEmUtc = enviadoEm;
-            }
-            await _db.SaveChangesAsync(CancellationToken.None);
-
-            camera.UltimoAlertaEmUtc = enviadoEm;
-            try
-            {
+                enviadoEm = DateTime.UtcNow;
+                foreach (var (ocorrencia, _) in aAlertar)
+                {
+                    ocorrencia.AlertaEnviado = true;
+                    ocorrencia.AlertaEnviadoEmUtc = enviadoEm;
+                }
+                if (alertaSemIdentificacao)
+                {
+                    semIdentificacao!.AlertaEnviado = true;
+                    semIdentificacao.AlertaEnviadoEmUtc = enviadoEm;
+                }
                 await _db.SaveChangesAsync(CancellationToken.None);
             }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                _logger.LogWarning(ex, "Câmera {CameraId} alterada durante a análise; intervalo entre alertas não registrado.", camera.Id);
-            }
         }
 
+        await FinalizarCameraAsync(camera, analise.Uso, agora, enviadoEm);
+
         var primeira = identificadas.Select(i => i.Ocorrencia).FirstOrDefault() ?? semIdentificacao!;
-        return new ResultadoQuadroDto(SituacaoQuadro.Ocorrencia, primeira.Id, alertaEnviado,
+        return new ResultadoQuadroDto(SituacaoQuadro.Ocorrencia, primeira.Id, enviadoEm is not null,
             analise.Pessoas, totalSemCapacete, totalSemColete,
             identificadas.Count == 1 ? identificadas[0].Ocorrencia.TrabalhadorId : null,
-            identificadas.Count == 0 ? null : string.Join(", ", identificadas.Select(i => i.Pessoa.Nome)));
+            identificadas.Count == 0 ? null : string.Join(", ", identificadas.Select(i => i.Pessoa.Nome)),
+            Repetida: !algumaNova);
+    }
+
+    // Soma a irregularidade numa ocorrência já aberta (mesma câmera e mesmo trabalhador, ou a mesma cena sem
+    // identificação) ou abre uma nova. Na repetição a foto e o horário continuam os da primeira vez; contam
+    // as vezes vistas, a última vez e o pior caso das contagens. Não grava: quem chama salva.
+    private async Task<(OcorrenciaEpiCamera Ocorrencia, bool Nova)> ObterOuCriarOcorrenciaAsync(
+        Camera camera, AnalisarQuadroCameraCommand request, ResultadoAnaliseEpi analise, int semCapacete, int semColete,
+        Guid? trabalhadorId, double? confiancaIdentificacao, DateTime agora)
+    {
+        var abertaDesde = agora - DuracaoMaximaDaOcorrencia;
+        var vistaDesde = agora - PausaQueEncerraSemIdentificacao;
+        var candidatas = _db.OcorrenciasEpiCamera.Where(o => o.CameraId == camera.Id && o.RecebidaEmUtc >= abertaDesde);
+        candidatas = trabalhadorId is { } id
+            ? candidatas.Where(o => o.TrabalhadorId == id)
+            : candidatas.Where(o => o.TrabalhadorId == null && (o.UltimaVezEmUtc ?? o.RecebidaEmUtc) >= vistaDesde);
+
+        var existente = await candidatas.OrderByDescending(o => o.RecebidaEmUtc).FirstOrDefaultAsync(CancellationToken.None);
+        if (existente is not null)
+        {
+            existente.VezesVista++;
+            existente.UltimaVezEmUtc = agora;
+            existente.PessoasNaCena = Math.Max(existente.PessoasNaCena, analise.Pessoas);
+            existente.SemCapacete = Math.Max(existente.SemCapacete, semCapacete);
+            existente.SemColete = Math.Max(existente.SemColete, semColete);
+            if (existente.IdentificadoPorRosto && confiancaIdentificacao is { } confianca
+                && confianca > (existente.ConfiancaIdentificacao ?? 0))
+                existente.ConfiancaIdentificacao = confianca;
+            return (existente, false);
+        }
+
+        var nova = new OcorrenciaEpiCamera
+        {
+            CameraId = camera.Id,
+            ObraId = camera.ObraId,
+            CapturadaEmUtc = request.CapturadaEmUtc,
+            RecebidaEmUtc = agora,
+            UltimaVezEmUtc = agora,
+            Foto = request.Imagem,
+            PessoasNaCena = analise.Pessoas,
+            SemCapacete = semCapacete,
+            SemColete = semColete,
+            Confianca = analise.Confianca,
+        };
+        if (trabalhadorId is not null)
+        {
+            nova.TrabalhadorId = trabalhadorId;
+            nova.IdentificadoPorRosto = true;
+            nova.ConfiancaIdentificacao = confiancaIdentificacao;
+            nova.VinculadoEmUtc = agora;
+        }
+        _db.OcorrenciasEpiCamera.Add(nova);
+        return (nova, true);
+    }
+
+    // Trabalhadores (entre os informados) que já receberam alerta na última hora, em qualquer câmera.
+    private async Task<List<Guid>> NotificadosNaUltimaHoraAsync(IReadOnlyCollection<Guid> trabalhadorIds, DateTime agora)
+    {
+        if (trabalhadorIds.Count == 0) return new List<Guid>();
+        var limite = agora - IntervaloAlertasPorTrabalhador;
+        return await _db.OcorrenciasEpiCamera
+            .Where(o => o.TrabalhadorId != null && trabalhadorIds.Contains(o.TrabalhadorId.Value) && o.AlertaEnviado && o.AlertaEnviadoEmUtc >= limite)
+            .Select(o => o.TrabalhadorId!.Value).Distinct().ToListAsync(CancellationToken.None);
+    }
+
+    private static bool IntervaloDaCameraPermite(Camera camera, DateTime agora)
+        => camera.IntervaloMinimoAlertasMinutos == 0
+           || camera.UltimoAlertaEmUtc is null
+           || agora - camera.UltimoAlertaEmUtc.Value >= TimeSpan.FromMinutes(camera.IntervaloMinimoAlertasMinutos);
+
+    // Última gravação da análise, sempre na câmera: consumo real de tokens e, se saiu alerta, o horário dele.
+    // Fica por último e isolada porque a câmera pode ter sido editada durante a análise; nesse conflito só se
+    // perde o consumo e o intervalo entre alertas desta vez, nunca a ocorrência.
+    private async Task FinalizarCameraAsync(Camera camera, UsoIa? uso, DateTime agora, DateTime? alertaEnviadoEm)
+    {
+        var hojeEmBrasilia = agora.AddHours(-3).Date;
+        if (camera.DiaDoConsumo != hojeEmBrasilia)
+        {
+            camera.DiaDoConsumo = hojeEmBrasilia;
+            camera.AnalisesNoDia = 0;
+            camera.TokensEntradaNoDia = 0;
+            camera.TokensSaidaNoDia = 0;
+        }
+        camera.AnalisesNoDia++;
+        if (uso is not null)
+        {
+            camera.TotalTokensEntrada += uso.TokensEntrada;
+            camera.TotalTokensSaida += uso.TokensSaida;
+            camera.TokensEntradaNoDia += uso.TokensEntrada;
+            camera.TokensSaidaNoDia += uso.TokensSaida;
+        }
+        if (alertaEnviadoEm is not null) camera.UltimoAlertaEmUtc = alertaEnviadoEm;
+
+        try
+        {
+            await _db.SaveChangesAsync(CancellationToken.None);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Câmera {CameraId} alterada durante a análise; consumo e intervalo entre alertas não registrados.", camera.Id);
+        }
     }
 
     // Todos os rostos da foto, já reconhecidos na galeria facial da obra. Falha ou demora: lista vazia, e
@@ -319,20 +378,20 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
     }
 
     // Procura o rosto da foto na galeria facial da obra (a mesma da assinatura). Qualquer recusa ou falha
-    // (rosto não reconhecido, obra sem facial, sem consentimento, Azure fora do ar) deixa a ocorrência
-    // sem trabalhador, para o técnico vincular à mão. Devolve o nome de quem foi identificado.
-    private async Task<string?> IdentificarPeloRostoAsync(Camera camera, OcorrenciaEpiCamera ocorrencia)
+    // (rosto não reconhecido, obra sem facial, sem consentimento, Azure fora do ar) devolve nulo, e a
+    // ocorrência fica sem trabalhador, para o técnico vincular à mão.
+    private async Task<Identificado?> IdentificarPeloRostoAsync(Camera camera, byte[] foto)
     {
         try
         {
             using var limite = new CancellationTokenSource(TempoMaximoIdentificacaoFacial);
-            var identificacao = await _facial.IdentificarSemRegistrarFalhaAsync(camera.ObraId, ocorrencia.Foto, limite.Token);
+            var identificacao = await _facial.IdentificarSemRegistrarFalhaAsync(camera.ObraId, foto, limite.Token);
             if (!identificacao.Aceito || identificacao.Resultado is null)
             {
                 // Sem isto, "não identificado" não diz por quê (ex.: o mesmo rosto cadastrado em duas pessoas
                 // sai como RostoAmbiguo, e parecia defeito do reconhecimento).
-                _logger.LogInformation("Rosto da ocorrência {OcorrenciaId} não identificado: {Motivo} (confiança {Confianca}).",
-                    ocorrencia.Id, identificacao.Motivo, identificacao.Confianca);
+                _logger.LogInformation("Rosto na câmera {CameraId} não identificado: {Motivo} (confiança {Confianca}).",
+                    camera.Id, identificacao.Motivo, identificacao.Confianca);
                 return null;
             }
 
@@ -340,32 +399,16 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
                 .Where(t => t.Id == identificacao.Resultado.TrabalhadorId)
                 .Select(t => new { t.Id, t.Nome })
                 .FirstOrDefaultAsync(CancellationToken.None);
-            if (trabalhador is null) return null;
-
-            ocorrencia.TrabalhadorId = trabalhador.Id;
-            ocorrencia.IdentificadoPorRosto = true;
-            ocorrencia.ConfiancaIdentificacao = identificacao.Resultado.Confianca;
-            ocorrencia.VinculadoEmUtc = DateTime.UtcNow;
-            await _db.SaveChangesAsync(CancellationToken.None);
-            return trabalhador.Nome;
+            return trabalhador is null ? null : new Identificado(trabalhador.Id, trabalhador.Nome, identificacao.Resultado.Confianca);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Identificação pelo rosto da ocorrência {OcorrenciaId} não concluída.", ocorrencia.Id);
-            // Se a gravação falhou, o vínculo não pode sair no alerta nem ser gravado depois por tabela.
-            ocorrencia.TrabalhadorId = null;
-            ocorrencia.IdentificadoPorRosto = false;
-            ocorrencia.ConfiancaIdentificacao = null;
-            ocorrencia.VinculadoEmUtc = null;
+            _logger.LogWarning(ex, "Identificação pelo rosto na câmera {CameraId} não concluída.", camera.Id);
             return null;
         }
     }
 
     // Falha no Telegram não pode impedir o registro: a ocorrência fica gravada com "alerta não enviado".
-    private Task<bool> EnviarAlertaAsync(Camera camera, OcorrenciaEpiCamera ocorrencia, string? trabalhadorNome)
-        => EnviarLegendaAsync(camera, ocorrencia.Foto, LegendaAlertaEpi.Montar(camera.Obra?.Nome ?? "-", camera.Nome,
-            ocorrencia.RecebidaEmUtc, ocorrencia.PessoasNaCena, ocorrencia.SemCapacete, ocorrencia.SemColete, trabalhadorNome));
-
     private async Task<bool> EnviarLegendaAsync(Camera camera, byte[] foto, string legenda)
     {
         try

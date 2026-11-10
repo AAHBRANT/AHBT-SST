@@ -4,6 +4,8 @@ import { Button, Campo, FeedbackInline, Field, FormGrid, FormRodape, FormSection
 import { api, TipoCamera, tipoCameraLabel, type CameraResumo, type DadosCamera, type Obra } from '../../lib/api';
 
 const INTERVALOS_PADRAO = [0, 5, 10, 30, 60];
+// Câmera nova nasce com 30 minutos entre alertas de quem não foi identificado (igual ao padrão do servidor).
+const INTERVALO_INICIAL = 30;
 
 function rotuloIntervalo(minutos: number): string {
   return minutos === 0 ? 'Sem limite — alerta a cada ocorrência' : `${minutos} minutos`;
@@ -24,7 +26,7 @@ export function FormularioCamera({ camera, obras, obraInicial, aoSalvar, aoCance
   const [areaSstId, setAreaSstId] = useState(camera?.areaSstId ?? '');
   const [tipo, setTipo] = useState<number>(camera?.tipo ?? TipoCamera.Canteiro);
   const [habilitada, setHabilitada] = useState(camera?.habilitada ?? true);
-  const [intervalo, setIntervalo] = useState(camera?.intervaloMinimoAlertasMinutos ?? 0);
+  const [intervalo, setIntervalo] = useState(camera?.intervaloMinimoAlertasMinutos ?? INTERVALO_INICIAL);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 

@@ -20,8 +20,9 @@ public class Camera : AuditableEntity
     // Desligar o monitoramento sem excluir o cadastro (Ativo é a exclusão lógica).
     public bool Habilitada { get; set; } = true;
 
-    // 0 = sem limite: alerta a cada ocorrência detectada.
-    public int IntervaloMinimoAlertasMinutos { get; set; }
+    // Vale para ocorrência sem trabalhador identificado (o identificado segue a regra de um alerta por
+    // pessoa por hora). 0 = sem limite: alerta a cada nova ocorrência. Câmera nova nasce com 30 minutos.
+    public int IntervaloMinimoAlertasMinutos { get; set; } = 30;
 
     // Controle do teto de análises no servidor e do intervalo entre alertas.
     public DateTime? UltimaAnaliseEmUtc { get; set; }
@@ -29,6 +30,17 @@ public class Camera : AuditableEntity
 
     // Quadros efetivamente enviados à IA (base do custo por foto); "ignorado" não conta.
     public int TotalAnalises { get; set; }
+
+    // Consumo real da IA, somado a cada análise com os tokens que a própria API informa. O custo sai
+    // destes números (ver CustoIaCameras), não de estimativa.
+    public long TotalTokensEntrada { get; set; }
+    public long TotalTokensSaida { get; set; }
+
+    // Mesmo consumo, só do dia corrente (data em Brasília); zera na primeira análise do dia seguinte.
+    public DateTime? DiaDoConsumo { get; set; }
+    public int AnalisesNoDia { get; set; }
+    public long TokensEntradaNoDia { get; set; }
+    public long TokensSaidaNoDia { get; set; }
 }
 
 // Pessoa sem capacete e/ou sem colete detectada numa foto. Só existe quando há irregularidade:
@@ -68,4 +80,9 @@ public class OcorrenciaEpiCamera : AuditableEntity
     public double? ConfiancaIdentificacao { get; set; }
 
     public SituacaoOcorrenciaEpi Situacao { get; set; } = SituacaoOcorrenciaEpi.Nova;
+
+    // A análise roda sem parar: a mesma pessoa parada sem EPI seria uma ocorrência nova a cada foto. As
+    // repetições são somadas na ocorrência já aberta (a foto e o horário continuam os da primeira vez).
+    public int VezesVista { get; set; } = 1;
+    public DateTime? UltimaVezEmUtc { get; set; }
 }

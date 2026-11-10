@@ -149,11 +149,16 @@ export function useMonitoramentoCamera(cameraId: string) {
       setUltimaAnalise(analise);
       setContadores((c) => ({
         analises: c.analises + 1,
-        ocorrencias: c.ocorrencias + (resultado.situacao === 'ocorrencia' ? 1 : 0),
+        // Repetição somada a uma ocorrência já aberta não conta como ocorrência nova.
+        ocorrencias: c.ocorrencias + (resultado.situacao === 'ocorrencia' && !resultado.repetida ? 1 : 0),
         alertas: c.alertas + (resultado.alertaEnviado ? 1 : 0),
         falhas: c.falhas + (resultado.situacao === 'falha' ? 1 : 0),
       }));
-      if (resultado.situacao === 'ocorrencia') setOcorrenciasSessao((lista) => [analise, ...lista].slice(0, 20));
+      // A mesma ocorrência vista de novo sobe para o topo da lista em vez de aparecer duas vezes.
+      if (resultado.situacao === 'ocorrencia')
+        setOcorrenciasSessao((lista) =>
+          [analise, ...lista.filter((o) => !analise.ocorrenciaId || o.ocorrenciaId !== analise.ocorrenciaId)].slice(0, 20),
+        );
     } catch (e) {
       // Erro de rede ou câmera desligada no cadastro: mostra o aviso e segue tentando no próximo ciclo.
       // Cancelamento vindo de parar() não é erro (a sessão deixou de ser vigente).

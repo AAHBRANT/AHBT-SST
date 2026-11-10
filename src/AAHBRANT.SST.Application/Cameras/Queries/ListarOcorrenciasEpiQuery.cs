@@ -32,7 +32,10 @@ public record OcorrenciaEpiDto(
     SituacaoOcorrenciaEpi Situacao,
     // true = trabalhador apontado pelo reconhecimento facial, ainda sem conferência do técnico.
     bool IdentificadoPorRosto = false,
-    double? ConfiancaIdentificacao = null);
+    double? ConfiancaIdentificacao = null,
+    // Repetições da mesma irregularidade somadas nesta ocorrência (1 = vista uma única vez) e a última vez.
+    int VezesVista = 1,
+    DateTime? UltimaVezEmUtc = null);
 
 public class ListarOcorrenciasEpiQueryHandler : IRequestHandler<ListarOcorrenciasEpiQuery, List<OcorrenciaEpiDto>>
 {
@@ -58,7 +61,7 @@ public class ListarOcorrenciasEpiQueryHandler : IRequestHandler<ListarOcorrencia
             {
                 o.Id, o.CameraId, o.ObraId, o.CapturadaEmUtc, o.RecebidaEmUtc, o.PessoasNaCena,
                 o.SemCapacete, o.SemColete, o.Confianca, o.AlertaEnviado, o.TrabalhadorId, o.Situacao,
-                o.IdentificadoPorRosto, o.ConfiancaIdentificacao,
+                o.IdentificadoPorRosto, o.ConfiancaIdentificacao, o.VezesVista, o.UltimaVezEmUtc,
             })
             .ToListAsync(ct);
 
@@ -92,6 +95,8 @@ public class ListarOcorrenciasEpiQueryHandler : IRequestHandler<ListarOcorrencia
             o.TrabalhadorId is { } tid ? trabalhadores.GetValueOrDefault(tid) : null,
             o.Situacao,
             o.IdentificadoPorRosto,
-            o.ConfiancaIdentificacao)).ToList();
+            o.ConfiancaIdentificacao,
+            o.VezesVista,
+            o.UltimaVezEmUtc)).ToList();
     }
 }

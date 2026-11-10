@@ -17,7 +17,24 @@ public record PessoaNaCena(double CabecaX, double CabecaY, bool SemCapacete, boo
     public bool Irregular => SemCapacete || SemColete;
 }
 
+// Tokens que a IA cobrou por uma análise (entrada = foto + instruções; saída = resposta e raciocínio).
+public record UsoIa(int TokensEntrada, int TokensSaida);
+
+// Preço do modelo das câmeras, para transformar tokens em custo. Claude Haiku 5.5, tabela da Anthropic de
+// 06/10/2026 (prompts de até 100 mil tokens): US$ 0,10 por milhão de entrada e US$ 0,50 por milhão de saída.
+// Trocar aqui se Claude:ModeloCameras mudar de modelo.
+public static class CustoIaCameras
+{
+    public const decimal DolaresPorMilhaoEntrada = 0.10m;
+    public const decimal DolaresPorMilhaoSaida = 0.50m;
+
+    public static decimal EmDolares(long tokensEntrada, long tokensSaida)
+        => Math.Round((tokensEntrada * DolaresPorMilhaoEntrada + tokensSaida * DolaresPorMilhaoSaida) / 1_000_000m, 4);
+}
+
 // Detalhe: uma entrada por pessoa visível. Nulo quando a IA não informou posições coerentes com a contagem;
 // nesse caso a cena com várias pessoas fica sem identificação por rosto.
 public record ResultadoAnaliseEpi(int Pessoas, int SemCapacete, int SemColete, ConfiancaAnaliseEpi Confianca,
-    IReadOnlyList<PessoaNaCena>? Detalhe = null);
+    IReadOnlyList<PessoaNaCena>? Detalhe = null,
+    // Nulo quando o motor não informa o consumo.
+    UsoIa? Uso = null);

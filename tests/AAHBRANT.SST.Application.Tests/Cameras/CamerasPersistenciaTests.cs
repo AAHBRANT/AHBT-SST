@@ -38,8 +38,10 @@ public class CamerasPersistenciaTests
 
         var lida = await db.Cameras.SingleAsync();
         Assert.True(lida.Habilitada);
-        Assert.Equal(0, lida.IntervaloMinimoAlertasMinutos);
+        // Câmera nova: 30 minutos entre alertas de quem não foi identificado.
+        Assert.Equal(30, lida.IntervaloMinimoAlertasMinutos);
         var ocorrenciaLida = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(1, ocorrenciaLida.VezesVista);
         Assert.Equal(SituacaoOcorrenciaEpi.Nova, ocorrenciaLida.Situacao);
         Assert.False(ocorrenciaLida.AlertaEnviado);
     }
