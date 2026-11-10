@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
@@ -9,7 +10,9 @@ namespace AAHBRANT.SST.Application.Cameras.Commands;
 
 public record AnalisarQuadroCameraCommand(Guid CameraId, byte[] Imagem, DateTime CapturadaEmUtc) : IRequest<ResultadoQuadroDto>;
 
-public record ResultadoQuadroDto(string Situacao, Guid? OcorrenciaId, bool AlertaEnviado, int Pessoas, int SemCapacete, int SemColete);
+// TrabalhadorId/TrabalhadorNome: quem o reconhecimento facial identificou na ocorrência (nulo = ninguém).
+public record ResultadoQuadroDto(string Situacao, Guid? OcorrenciaId, bool AlertaEnviado, int Pessoas, int SemCapacete, int SemColete,
+    Guid? TrabalhadorId = null, string? TrabalhadorNome = null);
 
 public static class SituacaoQuadro
 {
@@ -40,18 +43,24 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
 
     private readonly IAppDbContext _db;
     private readonly IAnalisadorEpiImagem _analisador;
+    // A identificação pelo rosto não pode segurar o alerta: passou disso, sai como "não identificado".
+    public static readonly TimeSpan TempoMaximoIdentificacaoFacial = TimeSpan.FromSeconds(20);
+
     private readonly ITelegramResumoService _telegram;
+    private readonly IAutenticacaoFacialService _facial;
     private readonly ILogger<AnalisarQuadroCameraCommandHandler> _logger;
 
     public AnalisarQuadroCameraCommandHandler(
         IAppDbContext db,
         IAnalisadorEpiImagem analisador,
         ITelegramResumoService telegram,
+        IAutenticacaoFacialService facial,
         ILogger<AnalisarQuadroCameraCommandHandler> logger)
     {
         _db = db;
         _analisador = analisador;
         _telegram = telegram;
+        _facial = facial;
         _logger = logger;
     }
 
@@ -113,11 +122,15 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
         // minutos e um cancelamento do cliente ou conflito na câmera não pode perder a evidência.
         await _db.SaveChangesAsync(CancellationToken.None);
 
+        // Com mais de uma pessoa na cena não dá para saber de quem é o rosto reconhecido: só identifica
+        // quando a IA viu uma única pessoa. Fica antes do alerta para o nome sair na legenda.
+        var trabalhadorNome = analise.Pessoas == 1 ? await IdentificarPeloRostoAsync(camera, ocorrencia) : null;
+
         var podeAlertar = camera.IntervaloMinimoAlertasMinutos == 0
             || camera.UltimoAlertaEmUtc is null
             || agora - camera.UltimoAlertaEmUtc.Value >= TimeSpan.FromMinutes(camera.IntervaloMinimoAlertasMinutos);
 
-        if (podeAlertar && await EnviarAlertaAsync(camera, ocorrencia))
+        if (podeAlertar && await EnviarAlertaAsync(camera, ocorrencia, trabalhadorNome))
         {
             var enviadoEm = DateTime.UtcNow;
             ocorrencia.AlertaEnviado = true;
@@ -137,16 +150,53 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
         }
 
         return new ResultadoQuadroDto(SituacaoQuadro.Ocorrencia, ocorrencia.Id, ocorrencia.AlertaEnviado,
-            analise.Pessoas, analise.SemCapacete, analise.SemColete);
+            analise.Pessoas, analise.SemCapacete, analise.SemColete,
+            trabalhadorNome is null ? null : ocorrencia.TrabalhadorId, trabalhadorNome);
+    }
+
+    // Procura o rosto da foto na galeria facial da obra (a mesma da assinatura). Qualquer recusa ou falha
+    // (rosto não reconhecido, obra sem facial, sem consentimento, Azure fora do ar) deixa a ocorrência
+    // sem trabalhador, para o técnico vincular à mão. Devolve o nome de quem foi identificado.
+    private async Task<string?> IdentificarPeloRostoAsync(Camera camera, OcorrenciaEpiCamera ocorrencia)
+    {
+        try
+        {
+            using var limite = new CancellationTokenSource(TempoMaximoIdentificacaoFacial);
+            var identificacao = await _facial.IdentificarSemRegistrarFalhaAsync(camera.ObraId, ocorrencia.Foto, limite.Token);
+            if (!identificacao.Aceito || identificacao.Resultado is null) return null;
+
+            var trabalhador = await _db.Trabalhadores
+                .Where(t => t.Id == identificacao.Resultado.TrabalhadorId)
+                .Select(t => new { t.Id, t.Nome })
+                .FirstOrDefaultAsync(CancellationToken.None);
+            if (trabalhador is null) return null;
+
+            ocorrencia.TrabalhadorId = trabalhador.Id;
+            ocorrencia.IdentificadoPorRosto = true;
+            ocorrencia.ConfiancaIdentificacao = identificacao.Resultado.Confianca;
+            ocorrencia.VinculadoEmUtc = DateTime.UtcNow;
+            await _db.SaveChangesAsync(CancellationToken.None);
+            return trabalhador.Nome;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Identificação pelo rosto da ocorrência {OcorrenciaId} não concluída.", ocorrencia.Id);
+            // Se a gravação falhou, o vínculo não pode sair no alerta nem ser gravado depois por tabela.
+            ocorrencia.TrabalhadorId = null;
+            ocorrencia.IdentificadoPorRosto = false;
+            ocorrencia.ConfiancaIdentificacao = null;
+            ocorrencia.VinculadoEmUtc = null;
+            return null;
+        }
     }
 
     // Falha no Telegram não pode impedir o registro: a ocorrência fica gravada com "alerta não enviado".
-    private async Task<bool> EnviarAlertaAsync(Camera camera, OcorrenciaEpiCamera ocorrencia)
+    private async Task<bool> EnviarAlertaAsync(Camera camera, OcorrenciaEpiCamera ocorrencia, string? trabalhadorNome)
     {
         try
         {
             var legenda = LegendaAlertaEpi.Montar(camera.Obra?.Nome ?? "-", camera.Nome, ocorrencia.RecebidaEmUtc,
-                ocorrencia.PessoasNaCena, ocorrencia.SemCapacete, ocorrencia.SemColete);
+                ocorrencia.PessoasNaCena, ocorrencia.SemCapacete, ocorrencia.SemColete, trabalhadorNome);
             return await _telegram.EnviarFotoAsync(ocorrencia.Foto, legenda, CancellationToken.None);
         }
         catch (Exception ex)

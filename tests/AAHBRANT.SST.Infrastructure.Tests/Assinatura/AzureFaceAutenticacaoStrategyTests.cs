@@ -144,6 +144,41 @@ public class AzureFaceAutenticacaoStrategyTests
         Assert.Equal(MotivoRejeicaoFacial.RostoNaoReconhecido, resultado.Motivo);
     }
 
+    // Câmeras de EPI: rosto distante não reconhecido não pode entrar na lista de cadastros fracos.
+    [Fact]
+    public async Task IdentificarSemRegistrarFalhaAsync_RejeitaSemGravarFalha_EnquantoIdentificarAsyncGrava()
+    {
+        var db = CriarDb(nameof(IdentificarSemRegistrarFalhaAsync_RejeitaSemGravarFalha_EnquantoIdentificarAsyncGrava));
+        var obra = new Obra
+        {
+            Codigo = "OB1", Nome = "Obra Teste",
+            MetodosAutenticacaoHabilitados = MetodoAutenticacaoObra.ReconhecimentoFacial,
+            AzureFacePersonGroupId = "obra-x",
+        };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+
+        var factory = new HttpClientFactoryFalso(req =>
+        {
+            if (req.RequestUri!.AbsolutePath.EndsWith("/detect"))
+                return Json(new[] { new { faceId = "face-1" } });
+            if (req.RequestUri!.AbsolutePath.EndsWith("/identify"))
+                return Json(new[] { new { faceId = "face-1", candidates = new[] { new { personId = "person-1", confidence = 0.40 } } } });
+            throw new InvalidOperationException("chamada inesperada: " + req.RequestUri);
+        });
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, Opcoes());
+
+        var semRegistro = await servico.IdentificarSemRegistrarFalhaAsync(obra.Id, new byte[] { 1 }, default);
+
+        Assert.False(semRegistro.Aceito);
+        Assert.Equal(MotivoRejeicaoFacial.RostoNaoReconhecido, semRegistro.Motivo);
+        Assert.Empty(await db.FalhasReconhecimentoFacial.ToListAsync());
+
+        await servico.IdentificarAsync(obra.Id, new byte[] { 1 }, default);
+
+        Assert.Single(await db.FalhasReconhecimentoFacial.ToListAsync());
+    }
+
     [Fact]
     public async Task IdentificarAsync_ConfiancaEntreLimiares_RetornaConfiancaBaixa()
     {

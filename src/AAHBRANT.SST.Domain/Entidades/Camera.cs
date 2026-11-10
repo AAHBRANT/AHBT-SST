@@ -54,11 +54,18 @@ public class OcorrenciaEpiCamera : AuditableEntity
     public bool AlertaEnviado { get; set; }
     public DateTime? AlertaEnviadoEmUtc { get; set; }
 
-    // Vínculo manual feito pelo técnico (fase 1 não identifica o trabalhador automaticamente).
+    // Trabalhador da ocorrência: vinculado à mão pelo técnico ou identificado pelo rosto (galeria facial
+    // da obra) quando há uma única pessoa na cena.
     public Guid? TrabalhadorId { get; set; }
     public Trabalhador? Trabalhador { get; set; }
     public Guid? VinculadoPorUsuarioId { get; set; }
     public DateTime? VinculadoEmUtc { get; set; }
+
+    // true = o vínculo veio do reconhecimento facial, sem conferência humana. Volta a false quando o
+    // técnico troca ou remove o trabalhador.
+    public bool IdentificadoPorRosto { get; set; }
+    // Confiança devolvida pelo reconhecimento facial (0 a 100), só quando IdentificadoPorRosto.
+    public double? ConfiancaIdentificacao { get; set; }
 
     public SituacaoOcorrenciaEpi Situacao { get; set; } = SituacaoOcorrenciaEpi.Nova;
 }

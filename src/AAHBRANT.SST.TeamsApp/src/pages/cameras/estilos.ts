@@ -47,7 +47,19 @@ export const useStyles = makeStyles({
   rotuloMedio: { color: designTokens.colorNeutralMedium },
   indicadores: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: tokensUi.espaco.md },
   lista: { listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: tokensUi.espaco.md },
-  itemOcorrencia: { display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 },
+  itemOcorrencia: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px', minWidth: 0 },
+  // Trabalhador identificado pelo rosto na última análise.
+  faixaRosto: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokensUi.espaco.md,
+    minWidth: 0,
+    padding: `${tokensUi.espaco.sm} ${tokensUi.espaco.md}`,
+    borderRadius: tokensUi.raio.sm,
+    backgroundColor: tokensUi.status.ok.fundo,
+    color: designTokens.colorNeutralDark,
+  },
+  faixaRostoTextos: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', minWidth: 0 },
   verTodas: {
     display: 'inline-flex',
     alignItems: 'center',

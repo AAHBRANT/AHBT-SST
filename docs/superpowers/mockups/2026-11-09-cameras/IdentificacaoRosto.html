@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Câmeras — identificação pelo rosto (mockup)</title>
+<style>
+  :root { --vinho:#670000; --verde:#15803d; --verde-claro:#dcfce7; --texto:#1f2430; --apoio:#5b6272; --borda:#dfe2ea; --fundo:#f3f4f8; --card:#ffffff; --faixa:#f6f7fa; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--fundo); color:var(--texto); font:500 14px/20px 'Segoe UI', Roboto, sans-serif; padding:24px 16px 40px; }
+  .pagina { max-width:1120px; margin:0 auto; display:flex; flex-direction:column; gap:28px; }
+  h1 { margin:0; font-size:22px; line-height:28px; }
+  h2 { margin:0 0 4px; font-size:16px; line-height:22px; color:var(--vinho); }
+  .nota { color:var(--apoio); font-size:13px; margin:0 0 12px; }
+  .grade { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr)); gap:16px; }
+  .card { background:var(--card); border:1px solid var(--borda); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
+  .foto { aspect-ratio:16/9; background:#d9dce5; color:var(--apoio); display:flex; align-items:center; justify-content:center; position:relative; font-size:13px; }
+  .selo { position:absolute; top:10px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+  .selo.epi { left:10px; background:#fee2e2; color:#7f1d1d; }
+  .selo.sit { right:10px; background:#dbeafe; color:#1e3a5f; }
+  .selo.ok { right:10px; background:var(--verde-claro); color:#14532d; }
+  .corpo { padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .titulo { font-size:15px; font-weight:600; }
+  .apoio { color:var(--apoio); font-size:13px; }
+  .faixa { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; background:var(--faixa); border:1px solid var(--borda); }
+  .faixa.rosto { background:#f0fdf4; border-color:#bbf7d0; }
+  .avatar { flex:none; width:36px; height:36px; border-radius:999px; background:var(--vinho); color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .avatar.vazio { background:#c9cdd8; color:#fff; }
+  .nome { font-weight:600; }
+  .chip { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:999px; background:var(--verde-claro); color:#14532d; font-size:12px; font-weight:700; }
+  .chip svg { flex:none; }
+  .botoes { display:flex; flex-wrap:wrap; gap:8px; }
+  button { flex:1 1 0; min-width:120px; height:44px; border-radius:8px; border:1px solid #aab0bf; background:#fff; color:var(--texto); font:600 14px 'Segoe UI', Roboto, sans-serif; }
+  button.primario { background:var(--verde); border-color:var(--verde); color:#fff; }
+  .novo { outline:2px dashed var(--vinho); outline-offset:3px; border-radius:12px; }
+  .legenda-novo { font-size:12px; color:var(--vinho); font-weight:700; }
+  .duas { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr)); gap:16px; }
+  .painel { background:var(--card); border:1px solid var(--borda); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px; }
+  .rotulo { font-size:12px; color:var(--apoio); text-transform:uppercase; letter-spacing:.04em; font-weight:700; }
+  .linha { display:flex; flex-direction:column; gap:2px; padding:8px 0; border-top:1px solid var(--borda); }
+  .linha:first-of-type { border-top:0; }
+  .telegram { background:#e7f0fb; border-radius:12px; padding:12px 14px; white-space:pre-line; font:500 14px/21px 'Segoe UI', Roboto, sans-serif; max-width:420px; }
+</style>
+</head>
+<body>
+<div class="pagina">
+
+  <div>
+    <h1>Câmeras — identificação pelo rosto</h1>
+    <p class="nota">Mockup para aprovação. O que está dentro do tracejado vinho é novo; o resto já existe nas telas. Dados de exemplo.</p>
+  </div>
+
+  <section>
+    <h2>1. Aba Alertas de EPI</h2>
+    <p class="nota">Três situações do cartão de ocorrência.</p>
+    <div class="grade">
+
+      <div class="card">
+        <div class="foto">[foto da ocorrência]<span class="selo epi">Sem capacete</span><span class="selo sit">Nova</span></div>
+        <div class="corpo">
+          <div><div class="titulo">Portaria · 09/11 21:31</div><div class="apoio">1 pessoa na cena, 1 sem capacete</div></div>
+          <div class="novo">
+            <div class="faixa rosto">
+              <div class="avatar">JS</div>
+              <div>
+                <div class="nome">João da Silva</div>
+                <span class="chip"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="6" r="3"/><path d="M2.5 14c.8-2.6 3-4 5.5-4s4.700 1.400 5.500 4"/></svg>Identificado pelo rosto · 91%</span>
+              </div>
+            </div>
+          </div>
+          <div class="apoio">Confira a foto antes de confirmar.</div>
+          <div class="botoes novo">
+            <button class="primario">Confirmar trabalhador</button>
+            <button>Trocar</button>
+          </div>
+          <div class="botoes"><button>Falso alerta</button></div>
+          <div class="legenda-novo">A — Rosto reconhecido (uma pessoa na cena)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="foto">[foto da ocorrência]<span class="selo epi">Sem colete</span><span class="selo sit">Nova</span></div>
+        <div class="corpo">
+          <div><div class="titulo">Betoneira · 09/11 21:18</div><div class="apoio">2 pessoas na cena, 1 sem colete</div></div>
+          <div class="novo">
+            <div class="faixa">
+              <div class="avatar vazio">?</div>
+              <div><div class="nome">Trabalhador não identificado</div><div class="apoio">Vincule quem aparece na foto.</div></div>
+            </div>
+          </div>
+          <div class="botoes">
+            <button class="primario">Vincular trabalhador</button>
+            <button>Falso alerta</button>
+          </div>
+          <div class="legenda-novo">B — Rosto não reconhecido ou mais de uma pessoa</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="foto">[foto da ocorrência]<span class="selo epi">Sem capacete</span><span class="selo ok">Conferida</span></div>
+        <div class="corpo">
+          <div><div class="titulo">Portaria · 09/11 20:52</div><div class="apoio">1 pessoa na cena, 1 sem capacete</div></div>
+          <div class="faixa">
+            <div class="avatar">JS</div>
+            <div><div class="nome">João da Silva</div><div class="apoio">Trabalhador vinculado</div></div>
+          </div>
+          <div class="botoes">
+            <button>Trocar trabalhador</button>
+            <button>Remover vínculo</button>
+          </div>
+          <div class="botoes"><button>Falso alerta</button></div>
+          <div class="legenda-novo" style="color:var(--apoio)">C — Depois de confirmar (igual ao vínculo manual de hoje)</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Tela Monitorar (tablet)</h2>
+    <p class="nota">O nome aparece no resultado da análise e na lista da sessão.</p>
+    <div class="duas">
+      <div class="painel">
+        <div class="rotulo">Última análise</div>
+        <div class="titulo">21:31 · Sem capacete</div>
+        <div class="apoio">1 pessoa na cena, 1 sem capacete</div>
+        <div class="novo">
+          <div class="faixa rosto">
+            <div class="avatar">JS</div>
+            <div><div class="nome">João da Silva</div><span class="chip">Identificado pelo rosto</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="painel">
+        <div class="rotulo">Ocorrências desta sessão</div>
+        <div class="linha">
+          <div class="titulo">21:31 · Sem capacete</div>
+          <div class="apoio">1 pessoa na cena, 1 sem capacete</div>
+          <div class="novo"><span class="chip">João da Silva · pelo rosto</span></div>
+        </div>
+        <div class="linha">
+          <div class="titulo">21:18 · Sem colete</div>
+          <div class="apoio">2 pessoas na cena, 1 sem colete</div>
+          <div class="novo"><span class="apoio">Trabalhador não identificado</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Alerta no Telegram</h2>
+    <p class="nota">A legenda da foto ganha a última linha.</p>
+    <div class="duas">
+      <div class="telegram">⚠️ EPI — pessoa sem capacete
+Obra Beira Rio · Câmera Portaria · 09/11 21:31
+1 pessoa na cena, 1 sem capacete
+<strong>Trabalhador: João da Silva (identificado pelo rosto)</strong></div>
+      <div class="telegram">⚠️ EPI — pessoa sem colete
+Obra Beira Rio · Câmera Betoneira · 09/11 21:18
+2 pessoas na cena, 1 sem colete
+<strong>Trabalhador não identificado</strong></div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

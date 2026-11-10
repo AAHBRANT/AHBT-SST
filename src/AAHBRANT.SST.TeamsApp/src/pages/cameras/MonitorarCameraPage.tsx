@@ -1,6 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Play20Regular, Stop20Regular, Video24Regular } from '@fluentui/react-icons';
+import { Person16Regular, Play20Regular, Stop20Regular, Video24Regular } from '@fluentui/react-icons';
 import {
+  Avatar,
   BotaoAcao,
   Card,
   Carregando,
@@ -150,6 +151,22 @@ function Monitoramento({ camera }: { camera: CameraResumo }) {
                       {analise.alertaEnviado ? 'Alerta enviado ao Telegram' : 'Alerta não enviado'}
                     </div>
                   )}
+                  {ocorrencia &&
+                    (analise.trabalhadorNome ? (
+                      <div className={estilos.faixaRosto}>
+                        <Avatar name={analise.trabalhadorNome} color="brand" size={36} aria-hidden="true" />
+                        <div className={estilos.faixaRostoTextos}>
+                          <span className={tipo.corpo}>
+                            <strong>{analise.trabalhadorNome}</strong>
+                          </span>
+                          <StatusChip tom="ok" icone={<Person16Regular />}>
+                            Identificado pelo rosto
+                          </StatusChip>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={mergeClasses(tipo.corpo, estilos.rotuloMedio)}>Trabalhador não identificado</div>
+                    ))}
                 </>
               ) : (
                 <div className={mergeClasses(tipo.corpo, estilos.rotuloMedio)}>
@@ -193,6 +210,15 @@ function Monitoramento({ camera }: { camera: CameraResumo }) {
                       <div className={mergeClasses(tipo.legenda, estilos.rotuloMedio)}>
                         {resumoCena(o.pessoas, o.semCapacete, o.semColete)}
                       </div>
+                      {o.trabalhadorNome ? (
+                        <StatusChip tom="ok" icone={<Person16Regular />}>
+                          {o.trabalhadorNome} · pelo rosto
+                        </StatusChip>
+                      ) : (
+                        <div className={mergeClasses(tipo.legenda, estilos.rotuloMedio)}>
+                          Trabalhador não identificado
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>

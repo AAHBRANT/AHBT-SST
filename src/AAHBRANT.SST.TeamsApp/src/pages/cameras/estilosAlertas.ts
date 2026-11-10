@@ -53,6 +53,10 @@ export const useEstilosAlertas = makeStyles({
     backgroundColor: designTokens.colorNeutralLight,
     color: designTokens.colorNeutralDark,
   },
+  // Faixa com avatar (identificado pelo rosto / não identificado): avatar à esquerda, textos à direita.
+  faixaComAvatar: { flexDirection: 'row', alignItems: 'center', gap: tokensUi.espaco.md },
+  faixaRosto: { backgroundColor: tokensUi.status.ok.fundo },
+  faixaTextos: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', minWidth: 0 },
   acoes: { display: 'flex', flexWrap: 'wrap', gap: tokensUi.espaco.sm },
   botao: { flex: '1 1 140px', minHeight: TOQUE },
   rodape: { color: designTokens.colorNeutralMedium },

@@ -79,4 +79,9 @@ public interface IAutenticacaoFacialService
     // (ver AssinaturaOptions.MargemMinima...). Ligado por padrão em todo fluxo 1:N (auditoria 19/10, A10).
     // Toda falha (confiança baixa, não reconhecido, ambíguo) é registrada para a lista de cadastros fracos.
     Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct, bool exigirMargemSobreSegundoColocado = true);
+
+    // Mesma identificação 1:N, mas sem gravar a falha na lista de cadastros fracos. Para as câmeras de EPI,
+    // em que a foto vem de longe e sem pose: não reconhecer é o esperado, não sinal de cadastro ruim.
+    Task<ResultadoIdentificacaoFacial> IdentificarSemRegistrarFalhaAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct)
+        => IdentificarAsync(obraId, fotoJpeg, ct);
 }

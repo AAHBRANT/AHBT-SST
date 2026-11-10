@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
+  Avatar,
   Button,
   Carregando,
   Dialog,
@@ -20,7 +21,7 @@ import {
   type OpcaoSeletor,
   type Tom,
 } from '@ui';
-import { Checkmark16Regular, Warning16Regular, Warning24Regular } from '@fluentui/react-icons';
+import { Checkmark16Regular, Person16Regular, Warning16Regular, Warning24Regular } from '@fluentui/react-icons';
 import {
   api,
   SituacaoOcorrenciaEpi,
@@ -234,6 +235,11 @@ export function AlertasEpiTab() {
     const titulo = `${o.cameraNome} · ${formatarDataHora(o.capturadaEmUtc)}`;
     const falso = o.situacao === SituacaoOcorrenciaEpi.FalsoAlerta;
     const bloqueada = ocupada !== null;
+    // Apontado pelo reconhecimento facial e ainda sem conferência: o técnico confirma ou troca.
+    const porRosto = !!o.trabalhadorId && o.identificadoPorRosto;
+    const nomeTrabalhador = o.trabalhadorNome ?? 'Trabalhador vinculado';
+    const confiancaRosto =
+      o.confiancaIdentificacao != null ? ` · ${Math.round(o.confiancaIdentificacao)}%` : '';
     return (
       <article key={o.id} className={estilos.cartao} aria-label={`Ocorrência de ${titulo}`}>
         <div className={estilos.areaFoto}>
@@ -264,16 +270,64 @@ export function AlertasEpiTab() {
             {o.alertaEnviado ? <Checkmark16Regular aria-hidden="true" /> : <Warning16Regular aria-hidden="true" />}
             {o.alertaEnviado ? 'Alerta enviado ao Telegram' : 'Alerta não enviado'}
           </div>
-          {o.trabalhadorId && (
+          {porRosto && (
+            <>
+              <div className={mergeClasses(estilos.faixaTrabalhador, estilos.faixaComAvatar, estilos.faixaRosto)}>
+                <Avatar name={nomeTrabalhador} color="brand" size={36} aria-hidden="true" />
+                <div className={estilos.faixaTextos}>
+                  <span className={tipo.corpo}>
+                    <strong>{nomeTrabalhador}</strong>
+                  </span>
+                  <StatusChip tom="ok" icone={<Person16Regular />}>
+                    Identificado pelo rosto{confiancaRosto}
+                  </StatusChip>
+                </div>
+              </div>
+              <div className={mergeClasses(tipo.legenda, estilos.apoio)}>Confira a foto antes de confirmar.</div>
+            </>
+          )}
+          {o.trabalhadorId && !porRosto && (
             <div className={estilos.faixaTrabalhador}>
               <span className={tipo.corpo}>
-                <strong>{o.trabalhadorNome ?? 'Trabalhador vinculado'}</strong>
+                <strong>{nomeTrabalhador}</strong>
               </span>
               <span className={mergeClasses(tipo.legenda, estilos.apoio)}>Trabalhador vinculado</span>
             </div>
           )}
+          {!o.trabalhadorId && !falso && (
+            <div className={mergeClasses(estilos.faixaTrabalhador, estilos.faixaComAvatar)}>
+              <Avatar size={36} aria-hidden="true" />
+              <div className={estilos.faixaTextos}>
+                <span className={tipo.corpo}>
+                  <strong>Trabalhador não identificado</strong>
+                </span>
+                <span className={mergeClasses(tipo.legenda, estilos.apoio)}>Vincule quem aparece na foto.</span>
+              </div>
+            </div>
+          )}
           <div className={estilos.acoes}>
-            {!o.trabalhadorId ? (
+            {porRosto ? (
+              <>
+                <Button
+                  appearance="primary"
+                  className={estilos.botao}
+                  disabled={bloqueada}
+                  onClick={() =>
+                    void executar(
+                      o,
+                      // Regravar o mesmo trabalhador transforma o vínculo em manual e marca como conferida.
+                      () => api.cameras.vincularTrabalhador(o.id, o.trabalhadorId),
+                      'Trabalhador confirmado com sucesso.',
+                    )
+                  }
+                >
+                  Confirmar trabalhador
+                </Button>
+                <Button className={estilos.botao} disabled={bloqueada} onClick={() => abrirVinculo(o)}>
+                  Trocar
+                </Button>
+              </>
+            ) : !o.trabalhadorId ? (
               <Button
                 appearance="primary"
                 className={estilos.botao}

@@ -558,7 +558,16 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         _ => qualidade,
     };
 
-    public async Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct, bool exigirMargemSobreSegundoColocado = true)
+    public Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct, bool exigirMargemSobreSegundoColocado = true)
+        => IdentificarInternoAsync(obraId, fotoJpeg, exigirMargemSobreSegundoColocado, registrarFalhas: true, ct);
+
+    // Câmeras de EPI: a foto vem de longe e sem pose, então não reconhecer é o esperado e não indica
+    // cadastro fraco. Mesma identificação (com a margem sobre o segundo colocado), sem gravar a falha.
+    public Task<ResultadoIdentificacaoFacial> IdentificarSemRegistrarFalhaAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct)
+        => IdentificarInternoAsync(obraId, fotoJpeg, exigirMargemSobreSegundoColocado: true, registrarFalhas: false, ct);
+
+    private async Task<ResultadoIdentificacaoFacial> IdentificarInternoAsync(Guid obraId, byte[] fotoJpeg,
+        bool exigirMargemSobreSegundoColocado, bool registrarFalhas, CancellationToken ct)
     {
         var obra = await _db.Obras.FirstOrDefaultAsync(o => o.Id == obraId, ct)
             ?? throw new KeyNotFoundException("Obra não encontrada.");
@@ -608,23 +617,23 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
             }
         }
         if (candidato is null)
-            return await RejeitarAsync(obraId, MotivoRejeicaoFacial.RostoNaoReconhecido, null, null, ct);
+            return await RejeitarAsync(registrarFalhas, obraId,MotivoRejeicaoFacial.RostoNaoReconhecido, null, null, ct);
 
         if (candidato.Confidence < _options.LimiarConfiancaFacialMinimo)
-            return await RejeitarAsync(obraId, MotivoRejeicaoFacial.RostoNaoReconhecido, candidato.Confidence, null, ct, candidato.PersonId);
+            return await RejeitarAsync(registrarFalhas, obraId,MotivoRejeicaoFacial.RostoNaoReconhecido, candidato.Confidence, null, ct, candidato.PersonId);
 
         var trabalhador = await _db.Trabalhadores.FirstOrDefaultAsync(t => t.AzureFacePersonId == candidato.PersonId && t.ObraId == obraId, ct);
 
         // Confiança entre o mínimo e o limiar: o Azure tem quase certeza de quem é, e por isso é aqui
         // que a falha vira atribuível a um cadastro fraco.
         if (candidato.Confidence < _options.LimiarConfiancaFacial)
-            return await RejeitarAsync(obraId, MotivoRejeicaoFacial.ConfiancaBaixa, candidato.Confidence, trabalhador?.Id, ct, candidato.PersonId);
+            return await RejeitarAsync(registrarFalhas, obraId,MotivoRejeicaoFacial.ConfiancaBaixa, candidato.Confidence, trabalhador?.Id, ct, candidato.PersonId);
 
         // O Azure reconheceu o rosto com segurança, mas nenhum funcionário da obra aponta para essa pessoa:
         // é cadastro solto no grupo (vínculo quebrado), não rosto desconhecido. Antes caía como "não
         // reconhecido" sem o PersonId, e não dava para descobrir de quem era (Cuiá, 30/10).
         if (trabalhador is null)
-            return await RejeitarAsync(obraId, MotivoRejeicaoFacial.CadastroSemVinculo, candidato.Confidence, null, ct, candidato.PersonId);
+            return await RejeitarAsync(registrarFalhas, obraId,MotivoRejeicaoFacial.CadastroSemVinculo, candidato.Confidence, null, ct, candidato.PersonId);
 
         // Consentimento LGPD conferido também na hora de assinar (antes só no cadastro): quem revogou o
         // consentimento não pode continuar sendo identificado pelo rosto.
@@ -635,7 +644,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         // frente do segundo. Dois candidatos próximos = provável colega parecido, melhor usar a digital.
         if (exigirMargemSobreSegundoColocado && confiancaSegundo is { } segundo
             && candidato.Confidence - segundo < _options.MargemMinimaIdentificacaoFacial)
-            return await RejeitarAsync(obraId, MotivoRejeicaoFacial.RostoAmbiguo, candidato.Confidence, null, ct, candidato.PersonId);
+            return await RejeitarAsync(registrarFalhas, obraId,MotivoRejeicaoFacial.RostoAmbiguo, candidato.Confidence, null, ct, candidato.PersonId);
 
         // Rastro da validação para o log de assinaturas: modelo real do grupo (lido do Azure), grupo e
         // id da requisição. Nunca bloqueia a assinatura: se não vier, o log mostra "não informado".
@@ -648,8 +657,10 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
     // Registra a falha para a lista de cadastros fracos e devolve a rejeição. O registro é melhor esforço:
     // nunca atrapalha o fluxo de quem está assinando ou confirmando presença.
-    private async Task<ResultadoIdentificacaoFacial> RejeitarAsync(Guid obraId, MotivoRejeicaoFacial motivo, double? confianca, Guid? trabalhadorId, CancellationToken ct, string? personIdAzure = null)
+    private async Task<ResultadoIdentificacaoFacial> RejeitarAsync(bool registrarFalha, Guid obraId, MotivoRejeicaoFacial motivo, double? confianca, Guid? trabalhadorId, CancellationToken ct, string? personIdAzure = null)
     {
+        if (!registrarFalha) return new ResultadoIdentificacaoFacial(false, null, motivo, confianca, trabalhadorId);
+
         try
         {
             _db.FalhasReconhecimentoFacial.Add(new FalhaReconhecimentoFacial

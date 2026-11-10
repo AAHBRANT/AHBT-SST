@@ -2771,6 +2771,9 @@ export interface ResultadoQuadro {
   pessoas: number;
   semCapacete: number;
   semColete: number;
+  // Quem o reconhecimento facial identificou na ocorrência (só com uma pessoa na cena). Nulo = ninguém.
+  trabalhadorId?: string | null;
+  trabalhadorNome?: string | null;
 }
 
 export interface OcorrenciaEpi {
@@ -2789,6 +2792,10 @@ export interface OcorrenciaEpi {
   trabalhadorId: string | null;
   trabalhadorNome: string | null;
   situacao: number;
+  // true = trabalhador apontado pelo reconhecimento facial, ainda sem conferência do técnico.
+  identificadoPorRosto: boolean;
+  // Confiança do reconhecimento facial (0 a 100), só quando identificadoPorRosto.
+  confiancaIdentificacao: number | null;
 }
 
 export interface FiltroOcorrenciasEpi {

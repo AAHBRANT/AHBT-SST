@@ -87,8 +87,9 @@ public class CamerasEscopoTests
     public async Task AnalisarQuadro_CameraDeOutraObra_LancaKeyNotFound()
     {
         var (restrito, cameraB, _, _) = await Preparar(nameof(AnalisarQuadro_CameraDeOutraObra_LancaKeyNotFound));
+        // facial nulo: a câmera fora do escopo é recusada antes de qualquer análise ou identificação.
         var handler = new AnalisarQuadroCameraCommandHandler(restrito, new AnalisadorQueNaoDeveSerChamado(), new TelegramInerte(),
-            NullLogger<AnalisarQuadroCameraCommandHandler>.Instance);
+            facial: null!, NullLogger<AnalisarQuadroCameraCommandHandler>.Instance);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
             handler.Handle(new AnalisarQuadroCameraCommand(cameraB.Id, Jpeg, DateTime.UtcNow), default));

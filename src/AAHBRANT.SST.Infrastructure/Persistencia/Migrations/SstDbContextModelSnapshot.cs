@@ -7030,6 +7030,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("Confianca")
                         .HasColumnType("int");
 
+                    b.Property<double?>("ConfiancaIdentificacao")
+                        .HasColumnType("float");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -7039,6 +7042,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<byte[]>("Foto")
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
+
+                    b.Property<bool>("IdentificadoPorRosto")
+                        .HasColumnType("bit");
 
                     b.Property<Guid>("ObraId")
                         .HasColumnType("uniqueidentifier");

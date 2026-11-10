@@ -23,6 +23,8 @@ public class VincularTrabalhadorOcorrenciaEpiCommandHandler : IRequestHandler<Vi
             ocorrencia.TrabalhadorId = null;
             ocorrencia.VinculadoPorUsuarioId = null;
             ocorrencia.VinculadoEmUtc = null;
+            ocorrencia.IdentificadoPorRosto = false;
+            ocorrencia.ConfiancaIdentificacao = null;
             await _db.SaveChangesAsync(ct);
             return;
         }
@@ -30,6 +32,10 @@ public class VincularTrabalhadorOcorrenciaEpiCommandHandler : IRequestHandler<Vi
         if (!await _db.Trabalhadores.AnyAsync(t => t.Id == trabalhadorId, ct))
             throw new KeyNotFoundException("Trabalhador não encontrado.");
 
+        // Escolha do técnico vale sobre o reconhecimento facial: o vínculo passa a ser manual, inclusive
+        // quando ele confirma o mesmo trabalhador que o rosto apontou.
+        ocorrencia.IdentificadoPorRosto = false;
+        ocorrencia.ConfiancaIdentificacao = null;
         ocorrencia.TrabalhadorId = trabalhadorId;
         ocorrencia.VinculadoEmUtc = DateTime.UtcNow;
         ocorrencia.VinculadoPorUsuarioId = string.IsNullOrWhiteSpace(request.AzureAdObjectId)

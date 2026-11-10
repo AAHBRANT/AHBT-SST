@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Cameras;
 using AAHBRANT.SST.Application.Cameras.Commands;
 using AAHBRANT.SST.Application.Common.Interfaces;
@@ -69,8 +70,156 @@ public class AnalisarQuadroCameraTests
         return (db, camera);
     }
 
-    private static AnalisarQuadroCameraCommandHandler Criar(SstDbContext db, IAnalisadorEpiImagem analisador, ITelegramResumoService telegram)
-        => new(db, analisador, telegram, NullLogger<AnalisarQuadroCameraCommandHandler>.Instance);
+    private static AnalisarQuadroCameraCommandHandler Criar(SstDbContext db, IAnalisadorEpiImagem analisador, ITelegramResumoService telegram,
+        IAutenticacaoFacialService? facial = null)
+        => new(db, analisador, telegram, facial ?? new FacialFalso(NaoReconhecido), NullLogger<AnalisarQuadroCameraCommandHandler>.Instance);
+
+    private static ResultadoIdentificacaoFacial NaoReconhecido() => new(false, null, MotivoRejeicaoFacial.RostoNaoReconhecido, null);
+
+    private static ResultadoIdentificacaoFacial Reconhecido(Guid trabalhadorId)
+        => new(true, new ResultadoAutenticacaoAssinatura(trabalhadorId, MetodoAutenticacaoAssinatura.ReconhecimentoFacial, Confianca: 91), null, 0.91);
+
+    // Só a identificação sem registro de falha interessa às câmeras; o caminho da assinatura não pode ser usado.
+    private sealed class FacialFalso : IAutenticacaoFacialService
+    {
+        private readonly Func<ResultadoIdentificacaoFacial> _resposta;
+        public int Chamadas { get; private set; }
+        public Guid? ObraConsultada { get; private set; }
+        public FacialFalso(Func<ResultadoIdentificacaoFacial> resposta) => _resposta = resposta;
+
+        public Task<ResultadoIdentificacaoFacial> IdentificarSemRegistrarFalhaAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct)
+        {
+            Chamadas++;
+            ObraConsultada = obraId;
+            return Task.FromResult(_resposta());
+        }
+
+        public Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct, bool exigirMargemSobreSegundoColocado = true)
+            => throw new NotSupportedException("A câmera não pode registrar falha de cadastro fraco.");
+        public Task CadastrarAsync(Guid trabalhadorId, byte[] fotoJpeg, CancellationToken ct) => throw new NotSupportedException();
+        public Task RemoverCadastroAsync(Guid trabalhadorId, CancellationToken ct) => throw new NotSupportedException();
+        public Task RealocarCadastroAsync(Guid trabalhadorId, Guid obraAnteriorId, CancellationToken ct) => throw new NotSupportedException();
+        public Task<ResultadoMigracaoModeloFacial?> MigrarModeloReconhecimentoAsync(Guid obraId, CancellationToken ct) => throw new NotSupportedException();
+        public Task<DiagnosticoVinculosFacialDto> DiagnosticarVinculosAsync(Guid obraId, CancellationToken ct) => throw new NotSupportedException();
+    }
+
+    private static ResultadoAnaliseEpi UmaPessoaSemCapacete() => new(1, 1, 0, ConfiancaAnaliseEpi.Alta);
+
+    [Fact]
+    public async Task UmaPessoaReconhecidaPeloRosto_VinculaTrabalhadorECitaNomeNoAlerta()
+    {
+        var (db, camera) = await Preparar(nameof(UmaPessoaReconhecidaPeloRosto_VinculaTrabalhadorECitaNomeNoAlerta));
+        var trabalhador = new Trabalhador { ObraId = camera.ObraId, Nome = "João da Silva" };
+        db.Add(trabalhador);
+        await db.SaveChangesAsync();
+        var telegram = new TelegramFalso();
+        var facial = new FacialFalso(() => Reconhecido(trabalhador.Id));
+
+        var r = await Criar(db, new AnalisadorFalso(UmaPessoaSemCapacete), telegram, facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.Equal(trabalhador.Id, r.TrabalhadorId);
+        Assert.Equal("João da Silva", r.TrabalhadorNome);
+        Assert.Equal(camera.ObraId, facial.ObraConsultada);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(trabalhador.Id, ocorrencia.TrabalhadorId);
+        Assert.True(ocorrencia.IdentificadoPorRosto);
+        Assert.Equal(91, ocorrencia.ConfiancaIdentificacao);
+        Assert.NotNull(ocorrencia.VinculadoEmUtc);
+        Assert.Null(ocorrencia.VinculadoPorUsuarioId);
+        // Sem conferência humana, a ocorrência continua "nova".
+        Assert.Equal(SituacaoOcorrenciaEpi.Nova, ocorrencia.Situacao);
+        Assert.EndsWith("Trabalhador: João da Silva (identificado pelo rosto)", Assert.Single(telegram.Legendas));
+    }
+
+    [Fact]
+    public async Task MaisDeUmaPessoaNaCena_NaoTentaIdentificarPeloRosto()
+    {
+        var (db, camera) = await Preparar(nameof(MaisDeUmaPessoaNaCena_NaoTentaIdentificarPeloRosto));
+        var telegram = new TelegramFalso();
+        var facial = new FacialFalso(() => Reconhecido(Guid.NewGuid()));
+
+        var r = await Criar(db, new AnalisadorFalso(SemCapacete), telegram, facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(0, facial.Chamadas);
+        Assert.Null(r.TrabalhadorId);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Null(ocorrencia.TrabalhadorId);
+        Assert.False(ocorrencia.IdentificadoPorRosto);
+        Assert.EndsWith("Trabalhador não identificado", Assert.Single(telegram.Legendas));
+    }
+
+    [Fact]
+    public async Task RostoNaoReconhecido_GravaOcorrenciaSemTrabalhadorEAlertaComoNaoIdentificado()
+    {
+        var (db, camera) = await Preparar(nameof(RostoNaoReconhecido_GravaOcorrenciaSemTrabalhadorEAlertaComoNaoIdentificado));
+        var telegram = new TelegramFalso();
+        var facial = new FacialFalso(NaoReconhecido);
+
+        var r = await Criar(db, new AnalisadorFalso(UmaPessoaSemCapacete), telegram, facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(1, facial.Chamadas);
+        Assert.True(r.AlertaEnviado);
+        Assert.Null(r.TrabalhadorNome);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Null(ocorrencia.TrabalhadorId);
+        Assert.False(ocorrencia.IdentificadoPorRosto);
+        Assert.EndsWith("Trabalhador não identificado", Assert.Single(telegram.Legendas));
+    }
+
+    [Fact]
+    public async Task FacialIndisponivel_OcorrenciaEAlertaSaemSemTrabalhador()
+    {
+        var (db, camera) = await Preparar(nameof(FacialIndisponivel_OcorrenciaEAlertaSaemSemTrabalhador));
+        var telegram = new TelegramFalso();
+        var facial = new FacialFalso(() => throw new InvalidOperationException("Este método de assinatura não está habilitado para a obra."));
+
+        var r = await Criar(db, new AnalisadorFalso(UmaPessoaSemCapacete), telegram, facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.True(r.AlertaEnviado);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Null(ocorrencia.TrabalhadorId);
+        Assert.False(ocorrencia.IdentificadoPorRosto);
+        Assert.Single(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task CenaRegularComUmaPessoa_NaoChamaReconhecimentoFacial()
+    {
+        var (db, camera) = await Preparar(nameof(CenaRegularComUmaPessoa_NaoChamaReconhecimentoFacial));
+        var facial = new FacialFalso(() => Reconhecido(Guid.NewGuid()));
+
+        await Criar(db, new AnalisadorFalso(() => new ResultadoAnaliseEpi(1, 0, 0, ConfiancaAnaliseEpi.Alta)), new TelegramFalso(), facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(0, facial.Chamadas);
+    }
+
+    [Fact]
+    public async Task VinculoManualDepoisDoRosto_PassaASerManual()
+    {
+        var (db, camera) = await Preparar(nameof(VinculoManualDepoisDoRosto_PassaASerManual));
+        var apontado = new Trabalhador { ObraId = camera.ObraId, Nome = "João da Silva" };
+        var correto = new Trabalhador { ObraId = camera.ObraId, Nome = "Pedro Souza" };
+        db.AddRange(apontado, correto);
+        await db.SaveChangesAsync();
+        var r = await Criar(db, new AnalisadorFalso(UmaPessoaSemCapacete), new TelegramFalso(), new FacialFalso(() => Reconhecido(apontado.Id)))
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        await new VincularTrabalhadorOcorrenciaEpiCommandHandler(db).Handle(
+            new VincularTrabalhadorOcorrenciaEpiCommand(r.OcorrenciaId!.Value, correto.Id, null), default);
+
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(correto.Id, ocorrencia.TrabalhadorId);
+        Assert.False(ocorrencia.IdentificadoPorRosto);
+        Assert.Null(ocorrencia.ConfiancaIdentificacao);
+        Assert.Equal(SituacaoOcorrenciaEpi.Conferida, ocorrencia.Situacao);
+    }
 
     private static ResultadoAnaliseEpi SemCapacete() => new(2, 1, 0, ConfiancaAnaliseEpi.Alta);
     private static ResultadoAnaliseEpi CenaRegular() => new(2, 0, 0, ConfiancaAnaliseEpi.Alta);
