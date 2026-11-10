@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type ResultadoQuadro } from '../../lib/api';
 import { ALTURA_AMOSTRA, LARGURA_AMOSTRA, houveMovimento, paraCinza } from './detectorMovimento';
 
-export const INTERVALO_ENVIO_MS = 30_000; // teto do navegador; o servidor ignora abaixo de 25 s
+// Sem intervalo entre análises (decisão do usuário em 09/11/2026): havendo movimento, o próximo quadro sai
+// assim que a análise anterior termina. Só existe uma análise em andamento por vez.
+export const INTERVALO_ENVIO_MS = 0;
 const INTERVALO_AMOSTRA_MS = 1_000;
 const LADO_MAXIMO_FOTO = 1280;
 const QUALIDADE_JPEG = 0.8;
@@ -10,10 +12,31 @@ const TEMPO_LIMITE_ENVIO_MS = 60_000;
 const SEM_AMOSTRA_MS = 5_000;
 const AMOSTRAS_IGNORADAS = 2; // primeiros quadros após abrir a câmera (exposição ainda ajustando)
 
-// Último envio por câmera, fora do hook: parar e iniciar de novo não reabre o teto de 1 envio a cada 30 s.
+// Último envio por câmera, fora do hook: base do intervalo entre envios, se INTERVALO_ENVIO_MS voltar a ser usado.
 const ultimoEnvioPorCamera = new Map<string, number>();
 
 export type EstadoMonitoramento = 'parado' | 'iniciando' | 'monitorando' | 'erro';
+
+// Qual câmera do dispositivo filma: traseira (padrão, tablet apontado para a área) ou frontal.
+export type LadoCamera = 'traseira' | 'frontal';
+const CHAVE_LADO = 'sst.cameras.lado';
+
+// A escolha vale para o aparelho (fica no navegador), não para o cadastro da câmera.
+function lerLado(): LadoCamera {
+  try {
+    return window.localStorage.getItem(CHAVE_LADO) === 'frontal' ? 'frontal' : 'traseira';
+  } catch {
+    return 'traseira';
+  }
+}
+
+function gravarLado(lado: LadoCamera) {
+  try {
+    window.localStorage.setItem(CHAVE_LADO, lado);
+  } catch {
+    // sem armazenamento (aba privada): a escolha vale só enquanto a tela estiver aberta.
+  }
+}
 
 export interface AnaliseSessao extends ResultadoQuadro {
   em: Date;
@@ -64,6 +87,8 @@ export function useMonitoramentoCamera(cameraId: string) {
   const [ocorrenciasSessao, setOcorrenciasSessao] = useState<AnaliseSessao[]>([]);
   const [segundosParaProxima, setSegundosParaProxima] = useState(0);
   const [semAmostraRecente, setSemAmostraRecente] = useState(false);
+  const [lado, setLado] = useState<LadoCamera>(lerLado);
+  const ladoRef = useRef<LadoCamera>(lado);
 
   const parar = useCallback(() => {
     geracaoRef.current += 1;
@@ -188,7 +213,8 @@ export function useMonitoramentoCamera(cameraId: string) {
     if (detectado && restante <= 0 && !enviandoRef.current) void enviar(video);
   }, [cameraId, enviar]);
 
-  const iniciar = useCallback(async () => {
+  // manterSessao: reabertura da mesma sessão (virar a câmera) não zera contadores nem a lista.
+  const iniciar = useCallback(async (manterSessao = false) => {
     if (ativoRef.current || iniciandoRef.current) return;
     iniciandoRef.current = true;
     const geracao = geracaoRef.current;
@@ -196,7 +222,11 @@ export function useMonitoramentoCamera(cameraId: string) {
     setEstado('iniciando');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: {
+          facingMode: { ideal: ladoRef.current === 'frontal' ? 'user' : 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
         audio: false,
       });
       if (geracaoRef.current !== geracao) {
@@ -260,9 +290,11 @@ export function useMonitoramentoCamera(cameraId: string) {
         return;
       }
       aoMudarVisibilidade();
-      setContadores(CONTADORES_ZERADOS);
-      setOcorrenciasSessao([]);
-      setUltimaAnalise(null);
+      if (!manterSessao) {
+        setContadores(CONTADORES_ZERADOS);
+        setOcorrenciasSessao([]);
+        setUltimaAnalise(null);
+      }
       timerRef.current = window.setInterval(amostrar, INTERVALO_AMOSTRA_MS);
       setEstado('monitorando');
     } catch (e) {
@@ -272,6 +304,18 @@ export function useMonitoramentoCamera(cameraId: string) {
       parar();
     }
   }, [amostrar, parar]);
+
+  // Troca entre a câmera traseira e a frontal do dispositivo. Monitorando, reabre a câmera do outro lado
+  // sem perder a sessão; parado, só guarda a escolha para o próximo início.
+  const virarCamera = useCallback(() => {
+    const novo: LadoCamera = ladoRef.current === 'frontal' ? 'traseira' : 'frontal';
+    ladoRef.current = novo;
+    setLado(novo);
+    gravarLado(novo);
+    if (!ativoRef.current) return;
+    parar();
+    void iniciar(true);
+  }, [iniciar, parar]);
 
   // Sai da página ou troca de câmera: libera a câmera do dispositivo e zera o que era da câmera anterior.
   useEffect(
@@ -286,5 +330,5 @@ export function useMonitoramentoCamera(cameraId: string) {
     [parar, cameraId],
   );
 
-  return { estado, erro, videoRef, iniciar, parar, ultimaAnalise, contadores, ocorrenciasSessao, segundosParaProxima, movimento, enviando, semAmostraRecente };
+  return { estado, erro, videoRef, iniciar, parar, ultimaAnalise, contadores, ocorrenciasSessao, segundosParaProxima, movimento, enviando, semAmostraRecente, lado, virarCamera };
 }

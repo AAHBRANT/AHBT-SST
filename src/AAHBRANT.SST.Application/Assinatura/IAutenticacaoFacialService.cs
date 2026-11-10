@@ -84,4 +84,18 @@ public interface IAutenticacaoFacialService
     // em que a foto vem de longe e sem pose: não reconhecer é o esperado, não sinal de cadastro ruim.
     Task<ResultadoIdentificacaoFacial> IdentificarSemRegistrarFalhaAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct)
         => IdentificarAsync(obraId, fotoJpeg, ct);
+
+    // Câmeras de EPI com várias pessoas na cena: devolve todos os rostos encontrados na foto, cada um com a
+    // posição e, quando reconhecido com segurança (mesmos limiares e margem da identificação 1:N), o
+    // trabalhador. Não grava falha de cadastro fraco. Obra sem facial ou sem grupo: lista vazia.
+    Task<IReadOnlyList<RostoNaCena>> IdentificarRostosDaCenaAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct)
+        => Task.FromResult<IReadOnlyList<RostoNaCena>>(Array.Empty<RostoNaCena>());
+}
+
+// Rosto encontrado numa foto de cena. Posição em fração da imagem (0 a 1, a partir do canto superior
+// esquerdo). TrabalhadorId nulo = rosto visto, mas não reconhecido com segurança. Confiança de 0 a 100.
+public record RostoNaCena(double X, double Y, double Largura, double Altura, Guid? TrabalhadorId, double? Confianca)
+{
+    public double CentroX => X + Largura / 2;
+    public double CentroY => Y + Altura / 2;
 }

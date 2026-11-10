@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Cameras;
 using System.Net;
 using System.Text.Json;
 using AAHBRANT.SST.Domain.Enums;
@@ -67,6 +68,51 @@ public class ClaudeAnalisadorEpiImagemTests
         Assert.Contains(Convert.ToBase64String(imagem), handler.CorpoEnviado);
         Assert.Contains("image/jpeg", handler.CorpoEnviado);
         Assert.EndsWith("/v1/messages", handler.Requisicao!.RequestUri!.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task Analisar_ComPosicoesCoerentes_DevolveODetalheDeCadaPessoa()
+    {
+        var handler = new HandlerFalso(HttpStatusCode.OK, RespostaClaude(
+            "{\"pessoas\":2,\"semCapacete\":1,\"semColete\":0,\"confianca\":\"alta\",\"pessoasDetalhe\":[" +
+            "{\"cabecaX\":0.25,\"cabecaY\":0.3,\"semCapacete\":true,\"semColete\":false}," +
+            "{\"cabecaX\":1.4,\"cabecaY\":-0.2,\"semCapacete\":false,\"semColete\":false}]}"));
+
+        var resultado = await Criar(handler).AnalisarAsync(new byte[] { 0xFF, 0xD8, 0x01 }, default);
+
+        Assert.NotNull(resultado.Detalhe);
+        Assert.Equal(2, resultado.Detalhe!.Count);
+        Assert.Equal(new PessoaNaCena(0.25, 0.3, true, false), resultado.Detalhe[0]);
+        // Posição fora da imagem é trazida para a borda.
+        Assert.Equal(new PessoaNaCena(1, 0, false, false), resultado.Detalhe[1]);
+        Assert.Contains("pessoasDetalhe", handler.CorpoEnviado);
+    }
+
+    [Fact]
+    public async Task Analisar_PosicoesQueNaoBatemComAContagem_MantemContagensSemDetalhe()
+    {
+        var handler = new HandlerFalso(HttpStatusCode.OK, RespostaClaude(
+            "{\"pessoas\":3,\"semCapacete\":1,\"semColete\":0,\"confianca\":\"media\",\"pessoasDetalhe\":[" +
+            "{\"cabecaX\":0.25,\"cabecaY\":0.3,\"semCapacete\":true,\"semColete\":false}]}"));
+
+        var resultado = await Criar(handler).AnalisarAsync(new byte[] { 0xFF, 0xD8, 0x01 }, default);
+
+        Assert.Equal(3, resultado.Pessoas);
+        Assert.Equal(1, resultado.SemCapacete);
+        Assert.Null(resultado.Detalhe);
+    }
+
+    // A análise roda sem parar: usa o modelo barato das câmeras, não o Claude:Modelo das demais leituras.
+    [Fact]
+    public async Task Analisar_UsaOModeloDasCamerasENaoOModeloPadrao()
+    {
+        var handler = new HandlerFalso(HttpStatusCode.OK,
+            RespostaClaude("{\"pessoas\":0,\"semCapacete\":0,\"semColete\":0,\"confianca\":\"alta\"}"));
+
+        await Criar(handler).AnalisarAsync(new byte[] { 0xFF, 0xD8, 0x01 }, default);
+
+        Assert.Contains("\"model\":\"claude-haiku-5-5\"", handler.CorpoEnviado);
+        Assert.DoesNotContain("claude-sonnet", handler.CorpoEnviado);
     }
 
     [Fact]

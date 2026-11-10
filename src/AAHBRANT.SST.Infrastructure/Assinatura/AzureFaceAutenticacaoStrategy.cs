@@ -566,6 +566,126 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
     public Task<ResultadoIdentificacaoFacial> IdentificarSemRegistrarFalhaAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct)
         => IdentificarInternoAsync(obraId, fotoJpeg, exigirMargemSobreSegundoColocado: true, registrarFalhas: false, ct);
 
+    // O identify do Azure aceita até 10 rostos por chamada; cena com mais gente que isso fica com os 10 maiores.
+    private const int MaximoRostosPorCena = 10;
+
+    // Câmeras de EPI com várias pessoas: detecta todos os rostos da foto e identifica cada um no grupo da obra,
+    // com os mesmos limiares e a mesma margem sobre o segundo colocado da identificação 1:N. Só lê: não grava
+    // falha de cadastro fraco e não lança por rosto não reconhecido (o rosto volta sem trabalhador).
+    public async Task<IReadOnlyList<RostoNaCena>> IdentificarRostosDaCenaAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct)
+    {
+        var obra = await _db.Obras.FirstOrDefaultAsync(o => o.Id == obraId, ct);
+        if (obra?.AzureFacePersonGroupId is not { } grupo
+            || !obra.MetodosAutenticacaoHabilitados.HasFlag(MetodoAutenticacaoObra.ReconhecimentoFacial))
+            return Array.Empty<RostoNaCena>();
+
+        // O Azure devolve a posição do rosto em pixels; sem o tamanho da imagem não dá para cruzar com a IA.
+        if (DimensoesJpeg.Ler(fotoJpeg) is not var (larguraImagem, alturaImagem))
+            return Array.Empty<RostoNaCena>();
+
+        using var cliente = CriarCliente();
+        var modelo = await ObterModeloReconhecimentoDoGrupoAsync(cliente, grupo, ct);
+        var rostos = (await DetectarRostosComPosicaoAsync(cliente, fotoJpeg, modelo, ct))
+            .OrderByDescending(r => r.FaceRectangle.Width * r.FaceRectangle.Height)
+            .Take(MaximoRostosPorCena)
+            .ToList();
+        if (rostos.Count == 0) return Array.Empty<RostoNaCena>();
+
+        Dictionary<string, List<CandidatoResposta>> candidatosPorRosto;
+        try
+        {
+            candidatosPorRosto = await IdentificarVariosRostosAsync(cliente, grupo, rostos.Select(r => r.FaceId).ToList(), ct);
+        }
+        catch (ModeloReconhecimentoIncompativelException)
+        {
+            // Modelo em cache desatualizado: descarta para a próxima foto e devolve os rostos sem identificação.
+            ModelosPorGrupo.TryRemove(grupo, out _);
+            candidatosPorRosto = new Dictionary<string, List<CandidatoResposta>>();
+        }
+
+        // Melhor candidato de cada rosto, quando passa no limiar e na margem sobre o segundo colocado.
+        var aceitos = new Dictionary<string, CandidatoResposta>();
+        foreach (var rosto in rostos)
+        {
+            if (!candidatosPorRosto.TryGetValue(rosto.FaceId, out var candidatos) || candidatos.Count == 0) continue;
+            var primeiro = candidatos[0];
+            if (primeiro.Confidence < _options.LimiarConfiancaFacial) continue;
+            if (candidatos.Count > 1 && primeiro.Confidence - candidatos[1].Confidence < _options.MargemMinimaIdentificacaoFacial) continue;
+            aceitos[rosto.FaceId] = primeiro;
+        }
+
+        // A mesma pessoa apontada para dois rostos: fica só no de maior confiança.
+        var rostoPorPessoa = aceitos
+            .GroupBy(a => a.Value.PersonId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.Value.Confidence).First().Key);
+
+        var personIds = rostoPorPessoa.Keys.ToList();
+        // Só trabalhador da obra e com o Termo de Aceite e o consentimento de biometria ativos.
+        var trabalhadores = await _db.Trabalhadores
+            .Where(t => t.ObraId == obraId && t.AzureFacePersonId != null && personIds.Contains(t.AzureFacePersonId)
+                && t.TermoAceiteAssinaturaEletronicaEm != null && t.ConsentimentoBiometriaEm != null)
+            .Select(t => new { t.Id, t.AzureFacePersonId })
+            .ToListAsync(ct);
+        var trabalhadorPorPessoa = trabalhadores
+            .GroupBy(t => t.AzureFacePersonId!)
+            .Where(g => g.Count() == 1)
+            .ToDictionary(g => g.Key, g => g.Single().Id);
+
+        return rostos.Select(rosto =>
+        {
+            Guid? trabalhadorId = null;
+            double? confianca = null;
+            if (aceitos.TryGetValue(rosto.FaceId, out var aceito)
+                && rostoPorPessoa[aceito.PersonId] == rosto.FaceId
+                && trabalhadorPorPessoa.TryGetValue(aceito.PersonId, out var id))
+            {
+                trabalhadorId = id;
+                confianca = aceito.Confidence * 100;
+            }
+            var r = rosto.FaceRectangle;
+            return new RostoNaCena((double)r.Left / larguraImagem, (double)r.Top / alturaImagem,
+                (double)r.Width / larguraImagem, (double)r.Height / alturaImagem, trabalhadorId, confianca);
+        }).ToList();
+    }
+
+    private static async Task<List<RostoComPosicaoResposta>> DetectarRostosComPosicaoAsync(HttpClient cliente, byte[] fotoJpeg, string? modeloGrupo, CancellationToken ct)
+    {
+        var url = modeloGrupo is null
+            ? $"face/v1.0/detect?returnFaceId=true&detectionModel={ModeloDeteccao}"
+            : $"face/v1.0/detect?returnFaceId=true&detectionModel={ModeloDeteccao}&recognitionModel={modeloGrupo}";
+        var resposta = await EnviarComRetry429Async(async () =>
+        {
+            using var conteudo = new ByteArrayContent(fotoJpeg);
+            conteudo.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            return await cliente.PostAsync(url, conteudo, ct);
+        }, ct);
+        if (!resposta.IsSuccessStatusCode)
+            throw await ErroDeIndisponibilidadeAsync(resposta, "detect", ct);
+        return await resposta.Content.ReadFromJsonAsync<List<RostoComPosicaoResposta>>(cancellationToken: ct) ?? new List<RostoComPosicaoResposta>();
+    }
+
+    // Um identify para todos os rostos da foto. Devolve, por faceId, os candidatos do mais para o menos confiável.
+    private static async Task<Dictionary<string, List<CandidatoResposta>>> IdentificarVariosRostosAsync(
+        HttpClient cliente, string personGroupId, IReadOnlyList<string> faceIds, CancellationToken ct)
+    {
+        var corpo = new { personGroupId, faceIds, maxNumOfCandidatesReturned = 2, confidenceThreshold = 0.5 };
+        var resposta = await EnviarComRetry429Async(() => cliente.PostAsJsonAsync("face/v1.0/identify", corpo, ct), ct);
+        if (!resposta.IsSuccessStatusCode)
+        {
+            var erro = await LerErroAzureAsync(resposta, ct);
+            if (erro.Code is "PersonGroupNotFound" or "LargePersonGroupNotFound")
+                return new Dictionary<string, List<CandidatoResposta>>();
+            if (erro.Message.Contains("recognitionModel", StringComparison.OrdinalIgnoreCase))
+                throw new ModeloReconhecimentoIncompativelException();
+            throw ErroDeIndisponibilidade(resposta.StatusCode, MontarMensagemErroAzure("identify", erro));
+        }
+        var resultados = await resposta.Content.ReadFromJsonAsync<List<IdentificacaoResposta>>(cancellationToken: ct) ?? new List<IdentificacaoResposta>();
+        return resultados
+            .Where(r => !string.IsNullOrEmpty(r.FaceId))
+            .GroupBy(r => r.FaceId)
+            .ToDictionary(g => g.Key, g => g.First().Candidates.OrderByDescending(c => c.Confidence).ToList());
+    }
+
     private async Task<ResultadoIdentificacaoFacial> IdentificarInternoAsync(Guid obraId, byte[] fotoJpeg,
         bool exigirMargemSobreSegundoColocado, bool registrarFalhas, CancellationToken ct)
     {
@@ -974,6 +1094,12 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
     private class RetanguloRosto
     {
+        [JsonPropertyName("left")]
+        public int Left { get; set; }
+
+        [JsonPropertyName("top")]
+        public int Top { get; set; }
+
         [JsonPropertyName("width")]
         public int Width { get; set; }
 
@@ -989,8 +1115,21 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         public string? QualityForRecognition { get; set; }
     }
 
+    // Resposta do detect usado nas cenas das câmeras: além do faceId, a posição do rosto em pixels.
+    private class RostoComPosicaoResposta
+    {
+        [JsonPropertyName("faceId")]
+        public string FaceId { get; set; } = "";
+
+        [JsonPropertyName("faceRectangle")]
+        public RetanguloRosto FaceRectangle { get; set; } = new();
+    }
+
     private class IdentificacaoResposta
     {
+        [JsonPropertyName("faceId")]
+        public string FaceId { get; set; } = "";
+
         [JsonPropertyName("candidates")]
         public List<CandidatoResposta> Candidates { get; set; } = new();
     }

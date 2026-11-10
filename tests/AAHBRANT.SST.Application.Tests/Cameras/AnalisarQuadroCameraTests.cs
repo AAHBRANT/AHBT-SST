@@ -94,6 +94,15 @@ public class AnalisarQuadroCameraTests
             return Task.FromResult(_resposta());
         }
 
+        // Cena com várias pessoas: rostos devolvidos pelo reconhecimento (posição + trabalhador).
+        public Func<IReadOnlyList<RostoNaCena>> RostosDaCena { get; set; } = () => Array.Empty<RostoNaCena>();
+        public int ChamadasCena { get; private set; }
+        public Task<IReadOnlyList<RostoNaCena>> IdentificarRostosDaCenaAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct)
+        {
+            ChamadasCena++;
+            return Task.FromResult(RostosDaCena());
+        }
+
         public Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct, bool exigirMargemSobreSegundoColocado = true)
             => throw new NotSupportedException("A câmera não pode registrar falha de cadastro fraco.");
         public Task CadastrarAsync(Guid trabalhadorId, byte[] fotoJpeg, CancellationToken ct) => throw new NotSupportedException();
@@ -200,6 +209,228 @@ public class AnalisarQuadroCameraTests
         Assert.Equal(0, facial.Chamadas);
     }
 
+    // Duas pessoas afastadas: a da esquerda sem capacete, a da direita sem colete.
+    private static ResultadoAnaliseEpi DuasPessoasIrregulares() => new(2, 1, 1, ConfiancaAnaliseEpi.Alta, new[]
+    {
+        new PessoaNaCena(0.25, 0.30, true, false),
+        new PessoaNaCena(0.75, 0.30, false, true),
+    });
+
+    private static RostoNaCena RostoEm(double cx, double cy, Guid? trabalhadorId)
+        => new(cx - 0.03, cy - 0.05, 0.06, 0.10, trabalhadorId, trabalhadorId is null ? null : 92);
+
+    [Fact]
+    public async Task VariasPessoas_IdentificaCadaIrregularEEnviaUmAlertaComOsNomes()
+    {
+        var (db, camera) = await Preparar(nameof(VariasPessoas_IdentificaCadaIrregularEEnviaUmAlertaComOsNomes));
+        var joao = new Trabalhador { ObraId = camera.ObraId, Nome = "João da Silva" };
+        var pedro = new Trabalhador { ObraId = camera.ObraId, Nome = "Pedro Souza" };
+        db.AddRange(joao, pedro);
+        await db.SaveChangesAsync();
+        var telegram = new TelegramFalso();
+        var facial = new FacialFalso(NaoReconhecido)
+        {
+            RostosDaCena = () => new[] { RostoEm(0.75, 0.31, pedro.Id), RostoEm(0.25, 0.31, joao.Id) },
+        };
+
+        var r = await Criar(db, new AnalisadorFalso(DuasPessoasIrregulares), telegram, facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.True(r.AlertaEnviado);
+        Assert.Equal("João da Silva, Pedro Souza", r.TrabalhadorNome);
+        Assert.Equal(0, facial.Chamadas);
+        Assert.Equal(1, facial.ChamadasCena);
+
+        var ocorrencias = await db.OcorrenciasEpiCamera.ToListAsync();
+        Assert.Equal(2, ocorrencias.Count);
+        var doJoao = ocorrencias.Single(o => o.TrabalhadorId == joao.Id);
+        Assert.Equal((1, 0), (doJoao.SemCapacete, doJoao.SemColete));
+        Assert.True(doJoao.IdentificadoPorRosto);
+        Assert.True(doJoao.AlertaEnviado);
+        var doPedro = ocorrencias.Single(o => o.TrabalhadorId == pedro.Id);
+        Assert.Equal((0, 1), (doPedro.SemCapacete, doPedro.SemColete));
+        Assert.All(ocorrencias, o => Assert.Equal(2, o.PessoasNaCena));
+
+        var legenda = Assert.Single(telegram.Legendas);
+        Assert.Contains("2 pessoas na cena, 1 sem capacete, 1 sem colete", legenda);
+        Assert.EndsWith("Identificados pelo rosto: João da Silva (sem capacete), Pedro Souza (sem colete)", legenda);
+    }
+
+    [Fact]
+    public async Task VariasPessoas_SoUmReconhecido_OutroFicaNumaOcorrenciaSemTrabalhador()
+    {
+        var (db, camera) = await Preparar(nameof(VariasPessoas_SoUmReconhecido_OutroFicaNumaOcorrenciaSemTrabalhador));
+        var joao = new Trabalhador { ObraId = camera.ObraId, Nome = "João da Silva" };
+        db.Add(joao);
+        await db.SaveChangesAsync();
+        var telegram = new TelegramFalso();
+        var facial = new FacialFalso(NaoReconhecido)
+        {
+            RostosDaCena = () => new[] { RostoEm(0.25, 0.31, joao.Id), RostoEm(0.75, 0.31, null) },
+        };
+
+        var r = await Criar(db, new AnalisadorFalso(DuasPessoasIrregulares), telegram, facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(joao.Id, r.TrabalhadorId);
+        var ocorrencias = await db.OcorrenciasEpiCamera.ToListAsync();
+        Assert.Equal(2, ocorrencias.Count);
+        var semNome = ocorrencias.Single(o => o.TrabalhadorId == null);
+        Assert.Equal((0, 1), (semNome.SemCapacete, semNome.SemColete));
+        Assert.False(semNome.IdentificadoPorRosto);
+        Assert.True(semNome.AlertaEnviado);
+        var legenda = Assert.Single(telegram.Legendas);
+        Assert.Contains("Identificados pelo rosto: João da Silva (sem capacete)", legenda);
+        Assert.EndsWith("Não identificados: 1", legenda);
+    }
+
+    [Fact]
+    public async Task VariasPessoas_QuemFoiAlertadoNaUltimaHoraFicaForaDoAlerta()
+    {
+        var (db, camera) = await Preparar(nameof(VariasPessoas_QuemFoiAlertadoNaUltimaHoraFicaForaDoAlerta));
+        var joao = await ComAlertaAnterior(db, camera, minutosAtras: 15);
+        var pedro = new Trabalhador { ObraId = camera.ObraId, Nome = "Pedro Souza" };
+        db.Add(pedro);
+        await db.SaveChangesAsync();
+        var telegram = new TelegramFalso();
+        var facial = new FacialFalso(NaoReconhecido)
+        {
+            RostosDaCena = () => new[] { RostoEm(0.25, 0.31, joao.Id), RostoEm(0.75, 0.31, pedro.Id) },
+        };
+
+        await Criar(db, new AnalisadorFalso(DuasPessoasIrregulares), telegram, facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        var legenda = Assert.Single(telegram.Legendas);
+        Assert.DoesNotContain("João da Silva", legenda);
+        Assert.Contains("Pedro Souza (sem colete)", legenda);
+        var novaDoJoao = await db.OcorrenciasEpiCamera
+            .Where(o => o.TrabalhadorId == joao.Id).OrderByDescending(o => o.RecebidaEmUtc).FirstAsync();
+        Assert.False(novaDoJoao.AlertaEnviado);
+    }
+
+    [Fact]
+    public async Task VariasPessoas_TodosJaAlertadosNaHora_GravaSemEnviarNada()
+    {
+        var (db, camera) = await Preparar(nameof(VariasPessoas_TodosJaAlertadosNaHora_GravaSemEnviarNada));
+        var joao = await ComAlertaAnterior(db, camera, minutosAtras: 15);
+        var telegram = new TelegramFalso();
+        var facial = new FacialFalso(NaoReconhecido) { RostosDaCena = () => new[] { RostoEm(0.25, 0.31, joao.Id) } };
+        // A segunda pessoa está regular: só o João é irregular nesta cena.
+        var analise = new ResultadoAnaliseEpi(2, 1, 0, ConfiancaAnaliseEpi.Alta, new[]
+        {
+            new PessoaNaCena(0.25, 0.30, true, false),
+            new PessoaNaCena(0.75, 0.30, false, false),
+        });
+
+        var r = await Criar(db, new AnalisadorFalso(() => analise), telegram, facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.False(r.AlertaEnviado);
+        Assert.Empty(telegram.Legendas);
+        Assert.Equal(2, await db.OcorrenciasEpiCamera.CountAsync(o => o.TrabalhadorId == joao.Id));
+    }
+
+    [Fact]
+    public async Task VariasPessoas_NinguemReconhecido_UmaOcorrenciaComAsContagensDaCena()
+    {
+        var (db, camera) = await Preparar(nameof(VariasPessoas_NinguemReconhecido_UmaOcorrenciaComAsContagensDaCena));
+        var telegram = new TelegramFalso();
+
+        var r = await Criar(db, new AnalisadorFalso(DuasPessoasIrregulares), telegram, new FacialFalso(NaoReconhecido))
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Null(r.TrabalhadorNome);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal((2, 1, 1), (ocorrencia.PessoasNaCena, ocorrencia.SemCapacete, ocorrencia.SemColete));
+        Assert.Null(ocorrencia.TrabalhadorId);
+        Assert.EndsWith("Não identificados: 2", Assert.Single(telegram.Legendas));
+    }
+
+    [Fact]
+    public async Task VariasPessoas_FacialIndisponivel_SegueSemIdentificacao()
+    {
+        var (db, camera) = await Preparar(nameof(VariasPessoas_FacialIndisponivel_SegueSemIdentificacao));
+        var telegram = new TelegramFalso();
+        var facial = new FacialFalso(NaoReconhecido) { RostosDaCena = () => throw new HttpRequestException("Azure fora do ar") };
+
+        var r = await Criar(db, new AnalisadorFalso(DuasPessoasIrregulares), telegram, facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.True(r.AlertaEnviado);
+        Assert.Null((await db.OcorrenciasEpiCamera.SingleAsync()).TrabalhadorId);
+    }
+
+    // Semeia uma ocorrência anterior do trabalhador com alerta enviado há `minutosAtras` minutos.
+    private static async Task<Trabalhador> ComAlertaAnterior(SstDbContext db, Camera camera, int minutosAtras)
+    {
+        var trabalhador = new Trabalhador { ObraId = camera.ObraId, Nome = "João da Silva" };
+        var quando = DateTime.UtcNow.AddMinutes(-minutosAtras);
+        db.AddRange(trabalhador, new OcorrenciaEpiCamera
+        {
+            CameraId = camera.Id, ObraId = camera.ObraId, Foto = Jpeg, CapturadaEmUtc = quando, RecebidaEmUtc = quando,
+            PessoasNaCena = 1, SemCapacete = 1, TrabalhadorId = trabalhador.Id, IdentificadoPorRosto = true,
+            AlertaEnviado = true, AlertaEnviadoEmUtc = quando,
+        });
+        await db.SaveChangesAsync();
+        return trabalhador;
+    }
+
+    [Fact]
+    public async Task MesmoTrabalhadorAlertadoHaMenosDeUmaHora_GravaOcorrenciaSemNovoAlerta()
+    {
+        var (db, camera) = await Preparar(nameof(MesmoTrabalhadorAlertadoHaMenosDeUmaHora_GravaOcorrenciaSemNovoAlerta));
+        var trabalhador = await ComAlertaAnterior(db, camera, minutosAtras: 20);
+        var telegram = new TelegramFalso();
+
+        var r = await Criar(db, new AnalisadorFalso(UmaPessoaSemCapacete), telegram, new FacialFalso(() => Reconhecido(trabalhador.Id)))
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.False(r.AlertaEnviado);
+        Assert.Equal("João da Silva", r.TrabalhadorNome);
+        Assert.Empty(telegram.Legendas);
+        Assert.Equal(2, await db.OcorrenciasEpiCamera.CountAsync());
+    }
+
+    [Fact]
+    public async Task MesmoTrabalhadorAlertadoHaMaisDeUmaHora_AlertaDeNovo()
+    {
+        var (db, camera) = await Preparar(nameof(MesmoTrabalhadorAlertadoHaMaisDeUmaHora_AlertaDeNovo));
+        var trabalhador = await ComAlertaAnterior(db, camera, minutosAtras: 61);
+        var telegram = new TelegramFalso();
+
+        var r = await Criar(db, new AnalisadorFalso(UmaPessoaSemCapacete), telegram, new FacialFalso(() => Reconhecido(trabalhador.Id)))
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.True(r.AlertaEnviado);
+        Assert.Single(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task OutroTrabalhadorIdentificado_AlertaMesmoDentroDoIntervaloDaCamera()
+    {
+        var (db, camera) = await Preparar(nameof(OutroTrabalhadorIdentificado_AlertaMesmoDentroDoIntervaloDaCamera), c =>
+        {
+            c.IntervaloMinimoAlertasMinutos = 30;
+            c.UltimoAlertaEmUtc = DateTime.UtcNow.AddMinutes(-2);
+        });
+        await ComAlertaAnterior(db, camera, minutosAtras: 2);
+        var outro = new Trabalhador { ObraId = camera.ObraId, Nome = "Pedro Souza" };
+        db.Add(outro);
+        await db.SaveChangesAsync();
+        var telegram = new TelegramFalso();
+
+        var r = await Criar(db, new AnalisadorFalso(UmaPessoaSemCapacete), telegram, new FacialFalso(() => Reconhecido(outro.Id)))
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.True(r.AlertaEnviado);
+        Assert.EndsWith("Trabalhador: Pedro Souza (identificado pelo rosto)", Assert.Single(telegram.Legendas));
+    }
+
     [Fact]
     public async Task VinculoManualDepoisDoRosto_PassaASerManual()
     {
@@ -268,7 +499,7 @@ public class AnalisarQuadroCameraTests
     public async Task AnaliseRecente_IgnoraSemChamarAIa()
     {
         var (db, camera) = await Preparar(nameof(AnaliseRecente_IgnoraSemChamarAIa),
-            c => c.UltimaAnaliseEmUtc = DateTime.UtcNow.AddSeconds(-5));
+            c => c.UltimaAnaliseEmUtc = DateTime.UtcNow.AddMilliseconds(-200));
         var analisador = new AnalisadorFalso(SemCapacete);
 
         var r = await Criar(db, analisador, new TelegramFalso())

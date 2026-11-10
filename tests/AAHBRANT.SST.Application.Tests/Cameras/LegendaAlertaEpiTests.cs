@@ -47,6 +47,34 @@ public class LegendaAlertaEpiTests
     }
 
     [Fact]
+    public void Cena_ListaIdentificadosComOQueFaltaEContaOsDemais()
+    {
+        var legenda = LegendaAlertaEpi.MontarCena("Beira Rio", "Portaria", Momento, 4, 2, 2, new[]
+        {
+            new IdentificadoNaCena("João da Silva", true, false),
+            new IdentificadoNaCena(" Pedro Souza ", true, true),
+        }, naoIdentificados: 1);
+
+        Assert.Equal(
+            "⚠️ EPI — pessoa sem capacete e sem colete\n" +
+            "Obra Beira Rio · Câmera Portaria · 09/11 15:06\n" +
+            "4 pessoas na cena, 2 sem capacete, 2 sem colete\n" +
+            "Identificados pelo rosto: João da Silva (sem capacete), Pedro Souza (sem capacete e sem colete)\n" +
+            "Não identificados: 1",
+            legenda);
+    }
+
+    [Fact]
+    public void Cena_SemNinguemIdentificado_InformaQuantos()
+    {
+        var varios = LegendaAlertaEpi.MontarCena("Beira Rio", "Portaria", Momento, 3, 2, 0, Array.Empty<IdentificadoNaCena>(), 2);
+        var um = LegendaAlertaEpi.MontarCena("Beira Rio", "Portaria", Momento, 3, 1, 0, Array.Empty<IdentificadoNaCena>(), 1);
+
+        Assert.EndsWith("\nNão identificados: 2", varios);
+        Assert.EndsWith("\nTrabalhador não identificado", um);
+    }
+
+    [Fact]
     public void NomeEmBranco_SaiComoNaoIdentificado()
     {
         var legenda = LegendaAlertaEpi.Montar("Beira Rio", "Betoneira", Momento, 1, 1, 0, "  ");

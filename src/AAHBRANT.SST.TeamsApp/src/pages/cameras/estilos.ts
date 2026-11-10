@@ -41,6 +41,15 @@ export const useStyles = makeStyles({
     border: `1px solid ${designTokens.colorCardBorder}`,
   },
   seloTopo: { left: tokensUi.espaco.lg, top: tokensUi.espaco.lg },
+  // Linha abaixo do vídeo: qual câmera do aparelho está em uso e o botão de virar.
+  linhaLado: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokensUi.espaco.md,
+  },
+  botaoVirar: { minHeight: '44px' },
   seloBase: { right: tokensUi.espaco.lg, bottom: tokensUi.espaco.lg },
   linha: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: tokensUi.espaco.sm },
   cardInterno: { display: 'flex', flexDirection: 'column', gap: tokensUi.espaco.md },

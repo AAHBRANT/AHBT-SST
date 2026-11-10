@@ -1,8 +1,9 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Person16Regular, Play20Regular, Stop20Regular, Video24Regular } from '@fluentui/react-icons';
+import { CameraSwitch20Regular, Person16Regular, Play20Regular, Stop20Regular, Video24Regular } from '@fluentui/react-icons';
 import {
   Avatar,
   BotaoAcao,
+  Button,
   Card,
   Carregando,
   EstadoVazio,
@@ -15,6 +16,8 @@ import {
 } from '@ui';
 import { tipoCameraLabel, type CameraResumo } from '../../lib/api';
 import { useCameras } from '../../lib/consultas';
+import { CORES_DETECTOR, QuadradoRosto } from '../../components/camera/QuadradoRosto';
+import { useDetectorRosto } from '../../components/camera/useDetectorRosto';
 import { useMonitoramentoCamera, type EstadoMonitoramento } from './useMonitoramentoCamera';
 import { mergeClasses, useStyles } from './estilos';
 import { descreverIrregularidade, formatarHora, resumoCena } from './rotulos';
@@ -63,6 +66,9 @@ function Monitoramento({ camera }: { camera: CameraResumo }) {
   const chip = chipPorEstado[m.estado];
   const analise = m.ultimaAnalise;
   const ocorrencia = analise?.situacao === 'ocorrencia';
+  // Mesmo detector de rosto do cadastro e da assinatura facial, em modo "assinatura" (só exige um rosto
+  // no quadro). Aqui ele apenas mostra ao operador que o rosto está visível para a identificação.
+  const detector = useDetectorRosto(videoRef, monitorando, 'assinatura');
 
   let situacaoRotulo = '';
   let situacaoTom: Tom = 'ok';
@@ -112,6 +118,8 @@ function Monitoramento({ camera }: { camera: CameraResumo }) {
             )}
             {monitorando && !m.semAmostraRecente && (
               <>
+                {/* O vídeo do monitoramento não é espelhado, então o quadrado também não. */}
+                <QuadradoRosto caixa={detector.caixa} cor={CORES_DETECTOR.ok} espelhado={false} />
                 <div className={mergeClasses(estilos.selo, estilos.seloTopo, tipo.legenda)}>
                   {m.enviando ? 'Movimento detectado · analisando' : m.movimento ? 'Movimento detectado' : 'Cena parada'}
                 </div>
@@ -123,10 +131,23 @@ function Monitoramento({ camera }: { camera: CameraResumo }) {
               </>
             )}
           </div>
+          <div className={estilos.linhaLado}>
+            <span className={mergeClasses(tipo.corpo, estilos.rotuloMedio)}>
+              Usando a câmera {m.lado === 'frontal' ? 'frontal' : 'traseira'} do aparelho
+            </span>
+            <Button
+              className={estilos.botaoVirar}
+              icon={<CameraSwitch20Regular />}
+              disabled={abrindo}
+              onClick={m.virarCamera}
+            >
+              {m.lado === 'frontal' ? 'Usar câmera traseira' : 'Usar câmera frontal'}
+            </Button>
+          </div>
           <FeedbackInline tom="info">
             Mantenha esta tela aberta e o tablet ligado na tomada. Se a tela bloquear ou a página fechar, o
-            monitoramento para. A foto só é enviada para análise quando há movimento, no máximo uma a cada 30
-            segundos.
+            monitoramento para. Enquanto houver movimento, as fotos são analisadas uma após a outra, sem
+            intervalo.
           </FeedbackInline>
         </div>
 
