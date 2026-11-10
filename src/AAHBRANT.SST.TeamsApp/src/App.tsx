@@ -9,7 +9,7 @@ import { ThemeModeProvider, useThemeMode } from './theme/ThemeModeContext';
 import { UsuarioLogadoProvider } from './lib/UsuarioLogadoContext';
 import { ObraAtivaProvider } from './lib/ObraAtivaContext';
 import { processarLoginNavegadorPendente } from './lib/browserAuth';
-import { queryClient } from './lib/consultas';
+import { queryClient, useAcessoCamerasEstado } from './lib/consultas';
 import { AppShell } from './layout/AppShell';
 import { Carregando } from '@ui';
 
@@ -41,6 +41,8 @@ const AssinarNaoConformidadePage = lazy(() => import('./pages/naoconformidades/A
 const AlertasPage = lazy(() => import('./pages/alertas/AlertasPage').then((m) => ({ default: m.AlertasPage })));
 const RelatoriosPage = lazy(() => import('./pages/relatorios/RelatoriosPage').then((m) => ({ default: m.RelatoriosPage })));
 const CalendarioPage = lazy(() => import('./pages/calendario/CalendarioPage').then((m) => ({ default: m.CalendarioPage })));
+const CamerasPage = lazy(() => import('./pages/cameras/CamerasPage').then((m) => ({ default: m.CamerasPage })));
+const MonitorarCameraPage = lazy(() => import('./pages/cameras/MonitorarCameraPage').then((m) => ({ default: m.MonitorarCameraPage })));
 const AcidenteDetalhePage = lazy(() => import('./pages/acidentes/AcidenteDetalhePage').then((m) => ({ default: m.AcidenteDetalhePage })));
 const AssinarAcidentePage = lazy(() => import('./pages/acidentes/AssinarAcidentePage').then((m) => ({ default: m.AssinarAcidentePage })));
 const DdsSemanalDetalhePage = lazy(() => import('./pages/dds/DdsSemanalDetalhePage').then((m) => ({ default: m.DdsSemanalDetalhePage })));
@@ -79,6 +81,12 @@ function LayoutComTeams() {
 function RedirecionarComId({ para }: { para: (id: string) => string }) {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={id ? para(id) : '/'} replace />;
+}
+
+function RotasDoPilotoCameras() {
+  const { permitido, carregando } = useAcessoCamerasEstado();
+  if (carregando) return <Carregando variante="detalhe" linhas={6} />;
+  return permitido ? <Outlet /> : <Navigate to="/" replace />;
 }
 
 // Redireciona uma rota antiga (item que tinha link próprio na sidebar, antes da reformulação de
@@ -230,6 +238,10 @@ function AppRoteado() {
               <Route path="/alertas" element={<AlertasPage />} />
               <Route path="/relatorios" element={<RelatoriosPage />} />
               <Route path="/calendario" element={<CalendarioPage />} />
+              <Route path="/cameras" element={<RotasDoPilotoCameras />}>
+                <Route index element={<CamerasPage />} />
+                <Route path=":id/monitorar" element={<MonitorarCameraPage />} />
+              </Route>
               <Route path="/suporte-ia" element={<SuporteIaPage />} />
               <Route path="/suporte-ia/:id" element={<SuporteIaDetalhePage />} />
 

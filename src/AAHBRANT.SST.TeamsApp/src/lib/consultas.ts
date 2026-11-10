@@ -49,12 +49,13 @@ const chavesCameras = {
 };
 
 export function useAcessoCamerasEstado(): { permitido: boolean; carregando: boolean } {
-  const { data, isPending } = useQuery({
+  const { data, isLoading, isSuccess } = useQuery({
     queryKey: chaves.camerasAcesso,
-    queryFn: () => api.cameras.acesso().catch(() => ({ permitido: false })),
+    queryFn: () => api.cameras.acesso(),
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
-  return { permitido: data?.permitido === true, carregando: isPending };
+  return { permitido: isSuccess && data.permitido === true, carregando: isLoading };
 }
 
 export const useAcessoCameras = (): boolean => useAcessoCamerasEstado().permitido;
