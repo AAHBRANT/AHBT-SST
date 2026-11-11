@@ -97,7 +97,8 @@ public class RegistrarParticipanteCommandHandler : IRequestHandler<RegistrarPart
         var selecao = await _db.DdsFuncionariosSelecionados
             .Where(s => s.DdsId == dds.Id && s.TrabalhadorId == participante.TrabalhadorId).ToListAsync(ct);
         _db.DdsFuncionariosSelecionados.RemoveRange(selecao);
-        await _db.SaveChangesAsync(ct);
+        if (!await PresencaDdsUnica.GravarAsync(_db, participante, selecao, ct))
+            throw new InvalidOperationException("Este trabalhador já está registrado como participante deste DDS.");
 
         // Melhor esforço: a presença já registrada acima é o que importa de verdade — se o Motor de
         // Assinatura falhar por qualquer motivo (documento cancelado, trabalhador já assinou por

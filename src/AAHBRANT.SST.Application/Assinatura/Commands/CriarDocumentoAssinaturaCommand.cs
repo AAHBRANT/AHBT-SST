@@ -41,19 +41,8 @@ public class CriarDocumentoAssinaturaCommandHandler : IRequestHandler<CriarDocum
             || !await EscopoDocumentoAssinatura.PodeVerAsync(_db, request.EntidadeTipo, request.EntidadeId, ct))
             throw new KeyNotFoundException("Registro de origem não encontrado.");
 
-        var existente = await _db.DocumentosAssinatura.FirstOrDefaultAsync(
-            d => d.EntidadeTipo == request.EntidadeTipo && d.EntidadeId == request.EntidadeId,
-            ct);
-        if (existente is not null)
-            return existente.Id;
-
-        var documento = new DocumentoAssinatura
-        {
-            EntidadeTipo = request.EntidadeTipo,
-            EntidadeId = request.EntidadeId,
-        };
-        _db.DocumentosAssinatura.Add(documento);
-        await _db.SaveChangesAsync(ct);
+        // Vários tablets no mesmo DDS chamam isto ao mesmo tempo: a criação é única mesmo em corrida.
+        var documento = await DocumentoAssinaturaUnico.ObterOuCriarAsync(_db, request.EntidadeTipo, request.EntidadeId, ct);
         return documento.Id;
     }
 }

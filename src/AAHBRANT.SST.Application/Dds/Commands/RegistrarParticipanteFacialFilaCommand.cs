@@ -85,7 +85,9 @@ public class RegistrarParticipanteFacialFilaCommandHandler : IRequestHandler<Reg
         var selecao = await _db.DdsFuncionariosSelecionados
             .Where(s => s.DdsId == dds.Id && s.TrabalhadorId == trabalhador.Id).ToListAsync(ct);
         _db.DdsFuncionariosSelecionados.RemoveRange(selecao);
-        await _db.SaveChangesAsync(ct);
+        // Outro tablet confirmou a mesma pessoa no mesmo instante: para quem está na fila é "já confirmada".
+        if (!await PresencaDdsUnica.GravarAsync(_db, participante, selecao, ct))
+            return new ResultadoPresencaFacialFila(trabalhador.Id, trabalhador.Nome, JaConfirmado: true, identificacao.Confianca);
 
         // Melhor esforço, como na digital e no facial por linha: a presença gravada é o que importa.
         try

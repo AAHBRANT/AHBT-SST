@@ -85,7 +85,8 @@ public class RegistrarParticipanteFacialCommandHandler : IRequestHandler<Registr
         var selecao = await _db.DdsFuncionariosSelecionados
             .Where(s => s.DdsId == dds.Id && s.TrabalhadorId == participante.TrabalhadorId).ToListAsync(ct);
         _db.DdsFuncionariosSelecionados.RemoveRange(selecao);
-        await _db.SaveChangesAsync(ct);
+        if (!await PresencaDdsUnica.GravarAsync(_db, participante, selecao, ct))
+            throw new InvalidOperationException("Este trabalhador já está registrado como participante deste DDS.");
 
         // Melhor esforço, como na digital: a presença já gravada é o que importa; se o Motor de
         // Assinatura falhar, o trabalhador ainda pode assinar depois por "Assinar DDS".
