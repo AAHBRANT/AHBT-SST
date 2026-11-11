@@ -15,11 +15,13 @@ public class AtividadesFuncaoController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IUsuarioAtualResolver _usuarioAtual;
+    private readonly IConfiguration _configuracao;
 
-    public AtividadesFuncaoController(IMediator mediator, IUsuarioAtualResolver usuarioAtual)
+    public AtividadesFuncaoController(IMediator mediator, IUsuarioAtualResolver usuarioAtual, IConfiguration configuracao)
     {
         _mediator = mediator;
         _usuarioAtual = usuarioAtual;
+        _configuracao = configuracao;
     }
 
     public record DecidirAtividadesFuncaoRequest(List<DecidirAtividadeFuncaoItem> Itens);
@@ -45,7 +47,9 @@ public class AtividadesFuncaoController : ControllerBase
     {
         var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
         var itens = (corpo.Itens ?? new()).Select(i => new DecisaoAtividadeFuncao(i.AtividadeId, i.FuncaoId, i.Executa)).ToList();
-        var decididos = await _mediator.Send(new DecidirAtividadesFuncaoCommand(obraId, itens, usuarioId, User.FindFirst("name")?.Value), ct);
+        var decididos = await _mediator.Send(new DecidirAtividadesFuncaoCommand(obraId, itens, usuarioId, User.FindFirst("name")?.Value,
+            // Entra ID desligado (dev): não há identidade real, mantém o comportamento de dev.
+            ExigirEngenheiroNaObra: !string.IsNullOrWhiteSpace(_configuracao["AzureAd:TenantId"])), ct);
         return Ok(new { decididos });
     }
 }

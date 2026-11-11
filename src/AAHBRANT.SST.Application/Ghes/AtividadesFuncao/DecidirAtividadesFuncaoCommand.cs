@@ -15,8 +15,11 @@ public record DecisaoAtividadeFuncao(Guid AtividadeId, Guid FuncaoId, bool Execu
 // Engenheiro de Segurança confirma (Executa = true → Validada) ou descarta (false → Descartada) os pares
 // atividade × função. Quem decidiu vem do token (preenchido pelo controller), nunca do corpo. Cria o
 // registro quando ainda não existe (Origem Manual); descartar não apaga nada.
-public record DecidirAtividadesFuncaoCommand(Guid ObraId, List<DecisaoAtividadeFuncao> Itens, Guid? UsuarioId, string? NomeUsuario)
-    : IRequest<int>;
+// ExigirEngenheiroNaObra: a decisão libera a OS, então só vale para quem é Engenheiro de Segurança NA obra
+// da rota (vínculo ativo com a obra ou global). A policy de perfil sozinha aceita engenheiro de qualquer
+// obra. O controller desliga a checagem só com o Entra ID desligado (dev, sem identidade real).
+public record DecidirAtividadesFuncaoCommand(Guid ObraId, List<DecisaoAtividadeFuncao> Itens, Guid? UsuarioId, string? NomeUsuario,
+    bool ExigirEngenheiroNaObra) : IRequest<int>;
 
 public class DecidirAtividadesFuncaoCommandValidator : AbstractValidator<DecidirAtividadesFuncaoCommand>
 {
@@ -45,6 +48,9 @@ public class DecidirAtividadesFuncaoCommandHandler : IRequestHandler<DecidirAtiv
 
     public async Task<int> Handle(DecidirAtividadesFuncaoCommand request, CancellationToken ct)
     {
+        if (request.ExigirEngenheiroNaObra && !await EhEngenheiroNaObraAsync(request, ct))
+            throw new AcessoNegadoException("Só o Engenheiro de Segurança desta obra pode confirmar as atividades da função.");
+
         // Mesmo par repetido no lote: vale o último.
         var itens = request.Itens.GroupBy(i => (i.AtividadeId, i.FuncaoId)).Select(g => g.Last()).ToList();
         var atividadeIds = itens.Select(i => i.AtividadeId).Distinct().ToList();
@@ -104,8 +110,42 @@ public class DecidirAtividadesFuncaoCommandHandler : IRequestHandler<DecidirAtiv
         {
             await _auditoria.RegistrarAsync("AtividadeFuncao.Decidida", "AtividadeFuncao", request.ObraId,
                 request.UsuarioId, null, new { request.ObraId, Decisoes = alteradas }, ct);
-            await _db.SaveChangesAsync(ct);
+            await ConflitoAtividadesFuncao.SalvarAsync(_db, ct);
         }
         return alteradas.Count;
+    }
+
+    // Administrador não entra: a policy de perfil também não o aceita (PermissaoAuthorizationHandler).
+    private async Task<bool> EhEngenheiroNaObraAsync(DecidirAtividadesFuncaoCommand request, CancellationToken ct)
+    {
+        if (request.UsuarioId is not { } usuarioId) return false;
+        return await _db.UsuariosPerfilObra.AnyAsync(v => v.UsuarioId == usuarioId && v.Ativo
+            && (v.ObraId == null || v.ObraId == request.ObraId)
+            && v.PerfilAcesso != null && v.PerfilAcesso.Ativo && v.PerfilAcesso.Tipo == TipoPerfilAcesso.EngenheiroSeguranca, ct);
+    }
+}
+
+// Duplo clique ou duas pessoas ao mesmo tempo: o índice único (AtividadeId, FuncaoId) rejeita o segundo
+// INSERT. Vira resposta de negócio (400) em vez de 500, e as alterações pendentes são descartadas.
+internal static class ConflitoAtividadesFuncao
+{
+    public const string Mensagem = "Outra pessoa acabou de alterar estas atividades. Atualize e tente de novo.";
+
+    // Mesmo critério de TratamentoCpfDuplicado: a mensagem do SQL Server cita o índice violado.
+    public static bool EhChaveDuplicada(DbUpdateException ex)
+        => ex is not DbUpdateConcurrencyException
+            && (ex.InnerException?.Message ?? ex.Message).Contains("IX_AtividadesFuncoes_AtividadeId_FuncaoId");
+
+    public static async Task SalvarAsync(IAppDbContext db, CancellationToken ct)
+    {
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (EhChaveDuplicada(ex))
+        {
+            if (db is DbContext contexto) contexto.ChangeTracker.Clear();
+            throw new InvalidOperationException(Mensagem, ex);
+        }
     }
 }

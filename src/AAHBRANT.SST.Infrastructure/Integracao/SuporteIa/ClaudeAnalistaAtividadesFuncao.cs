@@ -21,8 +21,8 @@ public class ClaudeAnalistaAtividadesFuncao : IAnalistaAtividadesFuncao
         - NÃO marque uma etapa só porque ela acontece no mesmo ambiente ou no mesmo GHE.
         - Função de apoio ou de coordenação (ajudante, encarregado) marca só as atividades que a descrição cita.
         - justificativa: uma frase curta (até 200 caracteres) dizendo por que a função executa a atividade.
-        - Use EXATAMENTE os nomes das funções e os códigos das atividades da entrada. Não invente código
-          nem função. Função sem nenhuma atividade devolve lista vazia.
+        - Responda pelo CÓDIGO da função (ex.: F01) e pelo código da atividade (ex.: A001), exatamente como
+          na entrada. Não invente código nem função. Função sem nenhuma atividade devolve lista vazia.
         """;
 
     private static readonly object Schema = new
@@ -39,10 +39,10 @@ public class ClaudeAnalistaAtividadesFuncao : IAnalistaAtividadesFuncao
                 {
                     type = "object",
                     additionalProperties = false,
-                    required = new[] { "funcao", "atividades" },
+                    required = new[] { "codigo", "atividades" },
                     properties = new
                     {
-                        funcao = new { type = "string" },
+                        codigo = new { type = "string" },
                         atividades = new
                         {
                             type = "array",
@@ -80,7 +80,7 @@ public class ClaudeAnalistaAtividadesFuncao : IAnalistaAtividadesFuncao
 
     private sealed class RespostaFuncao
     {
-        public string? Funcao { get; set; }
+        public string? Codigo { get; set; }
         public List<RespostaAtividade>? Atividades { get; set; }
     }
 
@@ -95,9 +95,9 @@ public class ClaudeAnalistaAtividadesFuncao : IAnalistaAtividadesFuncao
         var pedido = new StringBuilder();
         pedido.AppendLine($"GHE {contexto.GheNumero:00}");
         if (!string.IsNullOrWhiteSpace(contexto.Ambiente)) pedido.AppendLine($"Ambiente: {contexto.Ambiente!.Trim()}");
-        pedido.AppendLine().AppendLine("FUNÇÕES (nome — descrição das atividades no PGR):");
+        pedido.AppendLine().AppendLine("FUNÇÕES (código — nome — descrição das atividades no PGR):");
         foreach (var f in contexto.Funcoes)
-            pedido.AppendLine($"- {f.Nome} — {(string.IsNullOrWhiteSpace(f.DescricaoNoPgr) ? "(sem descrição no PGR)" : f.DescricaoNoPgr!.Trim())}");
+            pedido.AppendLine($"- {f.Codigo} — {f.Nome} — {(string.IsNullOrWhiteSpace(f.DescricaoNoPgr) ? "(sem descrição no PGR)" : f.DescricaoNoPgr!.Trim())}");
         pedido.AppendLine().AppendLine("ATIVIDADES (código — nome):");
         foreach (var a in contexto.Atividades) pedido.AppendLine($"- {a.Codigo} — {a.Nome}");
 
@@ -107,7 +107,7 @@ public class ClaudeAnalistaAtividadesFuncao : IAnalistaAtividadesFuncao
             contexto.GheNumero, contexto.Funcoes.Count, contexto.Atividades.Count, tokensEntrada, tokensSaida);
 
         var funcoes = (r.Funcoes ?? new())
-            .Select(f => new SugestaoFuncaoIa(f.Funcao,
+            .Select(f => new SugestaoFuncaoIa(f.Codigo,
                 (f.Atividades ?? new()).Select(a => new SugestaoAtividadeIa(a.Codigo,
                     ClaudeChatJsonCliente.LimitarOuNulo(a.Justificativa, 300))).ToList()))
             .ToList();

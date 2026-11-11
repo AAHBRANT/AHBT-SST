@@ -78,7 +78,7 @@ public class AtividadesFuncaoTests
 
     private static Task Decidir(Cenario c, params (Atividade A, bool Executa)[] itens)
         => Decisor(c.Global).Handle(new DecidirAtividadesFuncaoCommand(ObraA,
-            itens.Select(i => new DecisaoAtividadeFuncao(i.A.Id, c.Armador.Id, i.Executa)).ToList(), Guid.NewGuid(), "Engenheiro"), default);
+            itens.Select(i => new DecisaoAtividadeFuncao(i.A.Id, c.Armador.Id, i.Executa)).ToList(), Guid.NewGuid(), "Engenheiro", false), default);
 
     private static Task<MinutaOrdemServicoDto?> Minuta(Cenario c)
         => new ObterMinutaOrdemServicoQueryHandler(c.Global).Handle(new ObterMinutaOrdemServicoQuery(c.Trabalhador.Id), default);
@@ -96,7 +96,7 @@ public class AtividadesFuncaoTests
         {
             new(c.Corte.Id, c.Armador.Id, true),
             new(c.Desforma.Id, c.Armador.Id, false),
-        }, usuario, "Engenheiro Fulano"), default);
+        }, usuario, "Engenheiro Fulano", false), default);
 
         Assert.Equal(2, n);
         var corte = await c.Global.AtividadesFuncoes.SingleAsync(x => x.AtividadeId == c.Corte.Id);
@@ -137,10 +137,10 @@ public class AtividadesFuncaoTests
 
         // Usuário restrito à obra A tentando decidir atividade da obra B (obra B na rota)...
         await Assert.ThrowsAsync<KeyNotFoundException>(() => Decisor(c.RestritoObraA).Handle(
-            new DecidirAtividadesFuncaoCommand(ObraB, new() { new(c.DeOutraObra.Id, c.Armador.Id, true) }, Guid.NewGuid(), "x"), default));
+            new DecidirAtividadesFuncaoCommand(ObraB, new() { new(c.DeOutraObra.Id, c.Armador.Id, true) }, Guid.NewGuid(), "x", false), default));
         // ... ou com a obra A na rota e a atividade da B no corpo.
         await Assert.ThrowsAsync<KeyNotFoundException>(() => Decisor(c.RestritoObraA).Handle(
-            new DecidirAtividadesFuncaoCommand(ObraA, new() { new(c.DeOutraObra.Id, c.Armador.Id, true) }, Guid.NewGuid(), "x"), default));
+            new DecidirAtividadesFuncaoCommand(ObraA, new() { new(c.DeOutraObra.Id, c.Armador.Id, true) }, Guid.NewGuid(), "x", false), default));
         Assert.Empty(await c.Global.AtividadesFuncoes.ToListAsync());
     }
 
@@ -149,9 +149,9 @@ public class AtividadesFuncaoTests
     {
         var c = await CriarAsync();
         await Assert.ThrowsAsync<KeyNotFoundException>(() => Decisor(c.Global).Handle(
-            new DecidirAtividadesFuncaoCommand(ObraA, new() { new(c.DeOutraObra.Id, c.Armador.Id, true) }, null, null), default));
+            new DecidirAtividadesFuncaoCommand(ObraA, new() { new(c.DeOutraObra.Id, c.Armador.Id, true) }, null, null, false), default));
         await Assert.ThrowsAsync<KeyNotFoundException>(() => Decisor(c.Global).Handle(
-            new DecidirAtividadesFuncaoCommand(ObraA, new() { new(Guid.NewGuid(), c.Armador.Id, true) }, null, null), default));
+            new DecidirAtividadesFuncaoCommand(ObraA, new() { new(Guid.NewGuid(), c.Armador.Id, true) }, null, null, false), default));
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public class AtividadesFuncaoTests
         var c = await CriarAsync();
 
         var erro = await Assert.ThrowsAsync<InvalidOperationException>(() => Decisor(c.Global).Handle(
-            new DecidirAtividadesFuncaoCommand(ObraA, new() { new(c.Corte.Id, c.Pedreiro.Id, true) }, null, null), default));
+            new DecidirAtividadesFuncaoCommand(ObraA, new() { new(c.Corte.Id, c.Pedreiro.Id, true) }, null, null, false), default));
 
         Assert.Contains("não pertence ao GHE", erro.Message);
         Assert.Empty(await c.Global.AtividadesFuncoes.ToListAsync());
@@ -175,7 +175,7 @@ public class AtividadesFuncaoTests
         var auditoria = new AuditoriaFalsa();
 
         var n = await Decisor(c.Global, auditoria).Handle(new DecidirAtividadesFuncaoCommand(ObraA,
-            new() { new(c.Corte.Id, c.Armador.Id, true) }, Guid.NewGuid(), "Outro"), default);
+            new() { new(c.Corte.Id, c.Armador.Id, true) }, Guid.NewGuid(), "Outro", false), default);
 
         Assert.Equal(0, n);
         Assert.Empty(auditoria.Registros);
@@ -189,12 +189,12 @@ public class AtividadesFuncaoTests
     {
         var c = await CriarAsync();
         var analista = new AnalistaFalso(
-            new SugestaoFuncaoIa("armador", new()
+            new SugestaoFuncaoIa("F01", new()
             {
                 new("A001", "Corta aço para a armadura"),
                 new("A999", "Código inventado"),
             }),
-            new SugestaoFuncaoIa("Soldador", new() { new("A002", "Função inventada") }));
+            new SugestaoFuncaoIa("F09", new() { new("A002", "Função inventada") }));
 
         var r = await new SugerirAtividadesFuncaoGheCommandHandler(c.Global, analista)
             .Handle(new SugerirAtividadesFuncaoGheCommand(ObraA, c.Ghe.Id), default);
@@ -212,6 +212,7 @@ public class AtividadesFuncaoTests
         // A IA recebe só as funções do GHE, com a descrição do PGR, e as atividades por código.
         var contexto = Assert.Single(analista.Contextos);
         var funcaoEnviada = Assert.Single(contexto.Funcoes);
+        Assert.Equal("F01", funcaoEnviada.Codigo);
         Assert.Equal("Armador", funcaoEnviada.Nome);
         Assert.Equal("Corta e monta armadura", funcaoEnviada.DescricaoNoPgr);
         Assert.Equal(new[] { "A001", "A002", "A003" }, contexto.Atividades.Select(a => a.Codigo));
@@ -226,7 +227,7 @@ public class AtividadesFuncaoTests
             new AtividadeFuncao { ObraId = ObraA, AtividadeId = c.Desforma.Id, FuncaoId = c.Armador.Id, Status = StatusMedidaPrevencao.Descartada, OrigemVinculo = OrigemMedidaPrevencao.Manual, ValidadoPorNome = "Eng" });
         await c.Global.SaveChangesAsync();
         // A IA tenta marcar tudo, inclusive o que já foi decidido.
-        var analista = new AnalistaFalso(new SugestaoFuncaoIa("Armador", new() { new("A001", "x"), new("A002", "y"), new("A003", "z"), new("A003", "repetida") }));
+        var analista = new AnalistaFalso(new SugestaoFuncaoIa("F01", new() { new("A001", "x"), new("A002", "y"), new("A003", "z"), new("A003", "repetida") }));
 
         var r = await new SugerirAtividadesFuncaoGheCommandHandler(c.Global, analista)
             .Handle(new SugerirAtividadesFuncaoGheCommand(ObraA, c.Ghe.Id), default);
@@ -397,5 +398,182 @@ public class AtividadesFuncaoTests
     {
         var antigo = System.Text.Json.JsonSerializer.Deserialize<MinutaOrdemServicoDto>("{\"TrabalhadorId\":\"" + Guid.NewGuid() + "\",\"Atividades\":[]}")!;
         Assert.True(antigo.AtividadesDaFuncaoConfirmadas);
+    }
+
+    // ---- Engenheiro na obra da rota ----
+
+    private static async Task<Guid> VincularAsync(Cenario c, TipoPerfilAcesso tipo, params Guid?[] obras)
+    {
+        var usuario = new Usuario { Nome = "Fulano", Email = $"{Guid.NewGuid()}@x.com", Status = StatusUsuario.Ativo };
+        c.Global.Usuarios.Add(usuario);
+        await c.Global.SaveChangesAsync();
+        foreach (var obra in obras)
+        {
+            var perfil = new PerfilAcesso { Tipo = tipo, Nome = tipo.ToString(), EhSistema = true };
+            c.Global.PerfisAcesso.Add(perfil);
+            await c.Global.SaveChangesAsync();
+            c.Global.UsuariosPerfilObra.Add(new UsuarioPerfilObra { UsuarioId = usuario.Id, PerfilAcessoId = perfil.Id, ObraId = obra });
+        }
+        await c.Global.SaveChangesAsync();
+        return usuario.Id;
+    }
+
+    private static Task<int> DecidirComo(Cenario c, Guid? usuario, Guid obra, Atividade a)
+        => Decisor(c.Global).Handle(new DecidirAtividadesFuncaoCommand(obra, new() { new(a.Id, c.Armador.Id, true) }, usuario, "Eng", true), default);
+
+    [Fact]
+    public async Task Decidir_EngenheiroNaObraANaoDecideNaObraBOndeETecnico()
+    {
+        var c = await CriarAsync();
+        var usuario = await VincularAsync(c, TipoPerfilAcesso.EngenheiroSeguranca, ObraA);
+        var tecnico = new PerfilAcesso { Tipo = TipoPerfilAcesso.TecnicoSeguranca, Nome = "Técnico", EhSistema = true };
+        c.Global.PerfisAcesso.Add(tecnico);
+        await c.Global.SaveChangesAsync();
+        c.Global.UsuariosPerfilObra.Add(new UsuarioPerfilObra { UsuarioId = usuario, ObraId = ObraB, PerfilAcessoId = tecnico.Id });
+        await c.Global.SaveChangesAsync();
+
+        var erro = await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() => DecidirComo(c, usuario, ObraB, c.DeOutraObra));
+
+        Assert.Contains("Engenheiro de Segurança desta obra", erro.Message);
+        Assert.Empty(await c.Global.AtividadesFuncoes.ToListAsync());
+        // Na obra A, onde é engenheiro, decide normalmente.
+        Assert.Equal(1, await DecidirComo(c, usuario, ObraA, c.Corte));
+    }
+
+    [Fact]
+    public async Task Decidir_EngenheiroDaObraBDecideNaB_EGlobalDecideEmQualquer()
+    {
+        var c = await CriarAsync();
+        var daB = await VincularAsync(c, TipoPerfilAcesso.EngenheiroSeguranca, ObraB);
+        var global = await VincularAsync(c, TipoPerfilAcesso.EngenheiroSeguranca, (Guid?)null);
+
+        Assert.Equal(1, await DecidirComo(c, daB, ObraB, c.DeOutraObra));
+        Assert.Equal(1, await DecidirComo(c, global, ObraA, c.Corte));
+        await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() => DecidirComo(c, daB, ObraA, c.Desforma));
+    }
+
+    [Fact]
+    public async Task Decidir_SemUsuarioOuAdministrador_NegadoQuandoExigeEngenheiro()
+    {
+        var c = await CriarAsync();
+        var admin = await VincularAsync(c, TipoPerfilAcesso.Administrador, (Guid?)null);
+
+        await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() => DecidirComo(c, null, ObraA, c.Corte));
+        await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() => DecidirComo(c, admin, ObraA, c.Corte));
+    }
+
+    // ---- Casos da OS ----
+
+    [Fact]
+    public async Task Minuta_FuncaoEmDoisGhesComDecisaoSoEmUm_Bloqueia()
+    {
+        var c = await CriarAsync();
+        var ghe2 = new Ghe { ObraId = ObraA, Numero = 4 };
+        var emGhe2 = new Atividade { ObraId = ObraA, GheId = ghe2.Id, Nome = "Estaqueamento" };
+        c.Global.AddRange(ghe2, emGhe2);
+        c.Global.GheFuncoes.Add(new GheFuncao { GheId = ghe2.Id, FuncaoId = c.Armador.Id });
+        await c.Global.SaveChangesAsync();
+        await Decidir(c, (c.Corte, true), (c.Desforma, false), (c.Montagem, false));
+
+        var m = (await Minuta(c))!;
+
+        Assert.False(m.PodeEmitir);
+        Assert.False(m.AtividadesDaFuncaoConfirmadas);
+        var p = Assert.Single(m.Pendencias, x => x.Tipo == "AtividadesFuncaoSemDecisao");
+        Assert.Contains("Estaqueamento", p.Titulo);
+    }
+
+    [Fact]
+    public async Task Minuta_AtividadeNovaNoGheDepoisDaConfirmacao_Bloqueia()
+    {
+        var c = await CriarAsync();
+        await Decidir(c, (c.Corte, true), (c.Desforma, false), (c.Montagem, false));
+        Assert.True((await Minuta(c))!.AtividadesDaFuncaoConfirmadas);
+        c.Global.Atividades.Add(new Atividade { ObraId = ObraA, GheId = c.Ghe.Id, Nome = "Concretagem nova" });
+        await c.Global.SaveChangesAsync();
+
+        var m = (await Minuta(c))!;
+
+        Assert.False(m.PodeEmitir);
+        Assert.Contains("Concretagem nova", Assert.Single(m.Pendencias, x => x.Tipo == "AtividadesFuncaoSemDecisao").Titulo);
+    }
+
+    [Fact]
+    public async Task Minuta_DecisoesSemNenhumaValidada_ComAtividadeSemDecisao_NaoDizInventarioVazio()
+    {
+        var c = await CriarAsync();
+        await Decidir(c, (c.Corte, false), (c.Desforma, false));
+
+        var m = (await Minuta(c))!;
+
+        Assert.Empty(m.Atividades);
+        Assert.Contains(m.Pendencias, x => x.Tipo == "AtividadesFuncaoSemDecisao");
+        Assert.DoesNotContain(m.Pendencias, x => x.Tipo == "SemAtividades");
+    }
+
+    // ---- Emissão: OS aguardando assinatura vem antes das pendências ----
+
+    private sealed class NumeroFalso : IGeradorNumeroDocumentoService
+    {
+        public Task<string> GerarAsync(string prefixo, CancellationToken ct) => Task.FromResult($"{prefixo}-T-001");
+    }
+
+    private static EmitirOrdemServicoCommandHandler Emissor(Cenario c)
+    {
+        var mediator = new MediatorSimulado(req => req switch
+        {
+            ObterMinutaOrdemServicoQuery q => new ObterMinutaOrdemServicoQueryHandler(c.Global).Handle(q, default).GetAwaiter().GetResult(),
+            ListarOrdensServicoQuery q => new ListarOrdensServicoQueryHandler(c.Global).Handle(q, default).GetAwaiter().GetResult(),
+            _ => throw new NotSupportedException(),
+        });
+        return new EmitirOrdemServicoCommandHandler(c.Global, mediator, new NumeroFalso(), new AuditoriaFalsa());
+    }
+
+    [Fact]
+    public async Task Emitir_OsAguardandoAssinatura_VoltaMesmoComPendenciaNova()
+    {
+        var c = await CriarAsync();
+        var os = new OrdemServico { TrabalhadorId = c.Trabalhador.Id, ObraId = ObraA, Numero = "OS-1", Revisao = 0, EmitidaEm = DateTime.UtcNow, ConteudoJson = "{}" };
+        c.Global.OrdensServico.Add(os);
+        c.Global.DocumentosAssinatura.Add(new DocumentoAssinatura
+        {
+            EntidadeTipo = OrdemServico.EntidadeTipoAssinatura, EntidadeId = os.Id, ObraId = ObraA, Status = StatusDocumentoAssinatura.EmAndamento,
+        });
+        await c.Global.SaveChangesAsync();
+        Assert.False((await Minuta(c))!.PodeEmitir);
+
+        var r = await Emissor(c).Handle(new EmitirOrdemServicoCommand(c.Trabalhador.Id), default);
+
+        Assert.Equal(os.Id, r.Id);
+        Assert.Equal(1, await c.Global.OrdensServico.CountAsync());
+    }
+
+    [Fact]
+    public async Task Emitir_SemOsAguardando_ComPendencia_NaoEmiteOsNova()
+    {
+        var c = await CriarAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Emissor(c).Handle(new EmitirOrdemServicoCommand(c.Trabalhador.Id), default));
+
+        Assert.Empty(await c.Global.OrdensServico.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Sugerir_DuasFuncoesComNomeParecido_CadaUmaRecebeSuaSugestaoPeloCodigo()
+    {
+        var c = await CriarAsync();
+        var outra = new Funcao { Nome = "armador" };
+        c.Global.Funcoes.Add(outra);
+        c.Global.GheFuncoes.Add(new GheFuncao { GheId = c.Ghe.Id, FuncaoId = outra.Id });
+        await c.Global.SaveChangesAsync();
+        var analista = new AnalistaFalso(new SugestaoFuncaoIa("F02", new() { new("A001", "só a segunda") }));
+
+        await new SugerirAtividadesFuncaoGheCommandHandler(c.Global, analista)
+            .Handle(new SugerirAtividadesFuncaoGheCommand(ObraA, c.Ghe.Id), default);
+
+        Assert.Equal(2, analista.Contextos.Single().Funcoes.Count);
+        var gravado = await c.Global.AtividadesFuncoes.SingleAsync();
+        Assert.NotEqual(Guid.Empty, gravado.FuncaoId);
+        Assert.Equal(c.Global.GheFuncoes.Where(g => g.GheId == c.Ghe.Id).Count(), 2);
     }
 }

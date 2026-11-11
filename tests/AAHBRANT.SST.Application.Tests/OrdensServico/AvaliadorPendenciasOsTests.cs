@@ -175,4 +175,19 @@ public class AvaliadorPendenciasOsTests
         Assert.Equal("SemAtividades", item.Tipo);
         Assert.Equal("O GHE da função não tem atividades com riscos no inventário", item.Titulo);
     }
+
+    [Fact]
+    public void DecisoesSemNenhumaConfirmada_ComAtividadeSemDecisao_MostraSoASemDecisao()
+    {
+        var p = AvaliadorPendenciasOs.Avaliar(EntradaOk() with
+        {
+            Atividades = new(),
+            AtividadesDaFuncaoDefinidas = false,
+            AtividadesSemDecisao = new() { "Concretagem" },
+            FuncaoNome = "Armador",
+        });
+
+        var item = Assert.Single(p);
+        Assert.Equal("AtividadesFuncaoSemDecisao", item.Tipo);
+    }
 }

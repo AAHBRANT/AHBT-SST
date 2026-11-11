@@ -60,7 +60,9 @@ public static class AvaliadorPendenciasOs
                 "A OS só lista as atividades que a função executa, confirmadas pelo Engenheiro de Segurança. Sem essa confirmação a OS traria etapas da obra inteira.",
                 "SST", "pgr", pgr));
         }
-        else if (e.FuncaoTemGhe && e.Atividades.Count == 0)
+        // Com atividades ainda sem decisão e nenhuma confirmada, quem explica é AtividadesFuncaoSemDecisao: o
+        // inventário não está vazio.
+        else if (e.FuncaoTemGhe && e.Atividades.Count == 0 && (e.AtividadesDaFuncaoDefinidas || semDecisao.Count == 0))
         {
             if (e.TodasDescartadas)
                 p.Add(new("SemAtividades", $"Nenhuma atividade confirmada para a função {funcao}",

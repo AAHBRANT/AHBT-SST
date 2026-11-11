@@ -29,7 +29,7 @@ public class SugerirAtividadesFuncaoGheCommandHandler : IRequestHandler<SugerirA
         _analista = analista;
     }
 
-    private sealed record FuncaoDoGhe(Guid FuncaoId, string Nome, string? Descricao);
+    private sealed record FuncaoDoGhe(string Codigo, Guid FuncaoId, string Nome, string? Descricao);
 
     public async Task<ResultadoSugestaoAtividadesFuncao> Handle(SugerirAtividadesFuncaoGheCommand request, CancellationToken ct)
     {
@@ -53,10 +53,11 @@ public class SugerirAtividadesFuncaoGheCommandHandler : IRequestHandler<SugerirA
         // Código curto por atividade e nome único por função, só para esta análise.
         var codigoDaAtividade = atividades.Select((a, i) => (Codigo: $"A{i + 1:000}", a.Id, a.Nome)).ToList();
         var porCodigo = codigoDaAtividade.ToDictionary(x => x.Codigo);
+        // Função também por código curto: duas funções com nome parecido não se confundem.
         var funcoes = gheFuncoes
-            .Select(f => new FuncaoDoGhe(f.FuncaoId, nomes.GetValueOrDefault(f.FuncaoId) ?? string.Empty, f.DescricaoAtividades))
+            .Select(f => (f.FuncaoId, Nome: nomes.GetValueOrDefault(f.FuncaoId) ?? string.Empty, f.DescricaoAtividades))
             .Where(f => f.Nome.Length > 0)
-            .GroupBy(f => f.Nome, StringComparer.OrdinalIgnoreCase).Select(g => g.First()).ToList();
+            .Select((f, i) => new FuncaoDoGhe($"F{i + 1:00}", f.FuncaoId, f.Nome, f.DescricaoAtividades)).ToList();
 
         bool SemRegistro(Guid funcaoId, Guid atividadeId) => !existentes.Contains((atividadeId, funcaoId));
         var funcoesComLacuna = funcoes.Where(f => atividades.Any(a => SemRegistro(f.FuncaoId, a.Id))).ToList();
@@ -73,7 +74,7 @@ public class SugerirAtividadesFuncaoGheCommandHandler : IRequestHandler<SugerirA
             var codigosDoBloco = blocoAtividades.Select(a => a.Codigo).ToHashSet();
             var contexto = new ContextoAtividadesFuncao(
                 ghe.Numero, ghe.DescricaoAmbiente,
-                blocoFuncoes.Select(f => new FuncaoParaAnalise(f.Nome, f.Descricao)).ToList(),
+                blocoFuncoes.Select(f => new FuncaoParaAnalise(f.Codigo, f.Nome, f.Descricao)).ToList(),
                 blocoAtividades.Select(a => new AtividadeParaAnalise(a.Codigo, a.Nome)).ToList());
 
             var resposta = await _analista.SugerirAsync(contexto, ct);
@@ -84,7 +85,7 @@ public class SugerirAtividadesFuncaoGheCommandHandler : IRequestHandler<SugerirA
             foreach (var porFuncao in resposta.Funcoes ?? Array.Empty<SugestaoFuncaoIa>())
             {
                 // Função que a IA inventou (fora da entrada) é descartada.
-                var funcao = blocoFuncoes.FirstOrDefault(f => string.Equals(f.Nome, porFuncao.Funcao?.Trim(), StringComparison.OrdinalIgnoreCase));
+                var funcao = blocoFuncoes.FirstOrDefault(f => string.Equals(f.Codigo, porFuncao.Codigo?.Trim(), StringComparison.OrdinalIgnoreCase));
                 if (funcao is null) continue;
                 foreach (var s in porFuncao.Atividades ?? new List<SugestaoAtividadeIa>())
                 {
@@ -108,7 +109,7 @@ public class SugerirAtividadesFuncaoGheCommandHandler : IRequestHandler<SugerirA
             }
         }
 
-        if (sugeridos > 0) await _db.SaveChangesAsync(ct);
+        if (sugeridos > 0) await ConflitoAtividadesFuncao.SalvarAsync(_db, ct);
         return new ResultadoSugestaoAtividadesFuncao(sugeridos, totalPares - paresSemRegistro, chamadas, tokensEntrada, tokensSaida);
     }
 

@@ -12,7 +12,8 @@ public interface IAnalistaAtividadesFuncao
 // Codigo é um identificador curto da atividade só para esta chamada (ex.: "A001"); o servidor converte de volta no Id.
 public record AtividadeParaAnalise(string Codigo, string Nome);
 
-public record FuncaoParaAnalise(string Nome, string? DescricaoNoPgr);
+// Codigo da função ("F01"...) vale só para esta chamada; a IA responde pelo código, não pelo nome.
+public record FuncaoParaAnalise(string Codigo, string Nome, string? DescricaoNoPgr);
 
 public record ContextoAtividadesFuncao(
     int GheNumero,
@@ -22,6 +23,6 @@ public record ContextoAtividadesFuncao(
 
 public record SugestaoAtividadeIa(string? Codigo, string? Justificativa);
 
-public record SugestaoFuncaoIa(string? Funcao, List<SugestaoAtividadeIa>? Atividades);
+public record SugestaoFuncaoIa(string? Codigo, List<SugestaoAtividadeIa>? Atividades);
 
 public record ResultadoAnaliseAtividadesFuncao(IReadOnlyList<SugestaoFuncaoIa> Funcoes, int TokensEntrada = 0, int TokensSaida = 0);

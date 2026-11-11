@@ -31,9 +31,6 @@ public class EmitirOrdemServicoCommandHandler : IRequestHandler<EmitirOrdemServi
     {
         var minuta = await _mediator.Send(new ObterMinutaOrdemServicoQuery(request.TrabalhadorId), ct)
             ?? throw new KeyNotFoundException("Trabalhador não encontrado.");
-        if (!minuta.PodeEmitir)
-            throw new InvalidOperationException(
-                $"A Ordem de Serviço ainda tem {minuta.Pendencias.Count} pendência(s). Resolva as pendências antes de emitir.");
 
         var obraId = minuta.Obra.Id;
         var anteriores = await _db.OrdensServico
@@ -50,6 +47,11 @@ public class EmitirOrdemServicoCommandHandler : IRequestHandler<EmitirOrdemServi
             var lista = await _mediator.Send(new ListarOrdensServicoQuery(request.TrabalhadorId), ct);
             return lista.First(o => o.Id == aguardando.Value);
         }
+
+        // Pendências só barram a emissão NOVA: quem já tem OS aguardando assinatura segue para a assinatura.
+        if (!minuta.PodeEmitir)
+            throw new InvalidOperationException(
+                $"A Ordem de Serviço ainda tem {minuta.Pendencias.Count} pendência(s). Resolva as pendências antes de emitir.");
 
         var os = new OrdemServico
         {
