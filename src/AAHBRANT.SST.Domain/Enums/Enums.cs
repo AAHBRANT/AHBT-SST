@@ -805,9 +805,7 @@ public enum StatusDocumentoAssinatura
 {
     EmAndamento = 1,
     Finalizado = 2,
-    Cancelado = 3,
-    // Troca de função/transferência de quem já tinha o pacote em dia: sem ficha, mas fica o registro (gravado como inteiro).
-    Dispensado = 4
+    Cancelado = 3
 }
 
 // Método efetivamente usado por UM signatário em UMA assinatura — distinto de
@@ -1045,9 +1043,7 @@ public enum StatusContrato
 {
     Validado = 1,
     Encerrado = 2,
-    Cancelado = 3,
-    // Troca de função/transferência de quem já tinha o pacote em dia: sem ficha, mas fica o registro (gravado como inteiro).
-    Dispensado = 4
+    Cancelado = 3
 }
 
 // Lançamento retroativo de certificados (pedido do usuário, 22/09): a obra já está em andamento e
