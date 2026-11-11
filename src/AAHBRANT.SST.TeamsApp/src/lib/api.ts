@@ -838,6 +838,31 @@ export interface SessaoTreinamento {
   totalParticipantes: number;
   totalPresencasConfirmadas: number;
   totalFotosEvidencia: number;
+  // Certificados ligados à turma (inclusive excluídos); > 0 trava a exclusão definitiva.
+  totalCertificadosEmitidos?: number;
+}
+
+// Exclusão definitiva de turma (só Administrador): o que vai junto e se pode ser excluída.
+export interface PreviaExclusaoSessaoTreinamento {
+  id: string;
+  numeroCertificado?: string | null;
+  cursoNome: string;
+  obraNome: string;
+  dataRealizacao: string;
+  inscricoes: number;
+  presencas: number;
+  fotosEvidencia: number;
+  certificadosEmitidos: number;
+  listaPresencaGerada?: boolean;
+  podeExcluir: boolean;
+  motivo?: string | null;
+}
+
+export interface ResultadoExclusaoTurma {
+  id: string;
+  numero?: string | null;
+  resultado: 'excluida' | 'bloqueada' | 'naoEncontrada' | 'falhou';
+  motivo?: string | null;
 }
 
 export interface NovaSessaoTreinamento {
@@ -5832,6 +5857,11 @@ export const api = {
       request<{ id: string }>('/api/instrutores', { method: 'PUT', body: JSON.stringify(corpo) }),
   },
   sessoesTreinamento: {
+    previaExclusao: (id: string) => request<PreviaExclusaoSessaoTreinamento>(`/api/sessoestreinamento/${id}/previa-exclusao`),
+    // Exclusão DEFINITIVA (só Administrador): apaga a turma, as inscrições e as fotos de evidência do banco.
+    excluir: (id: string) => request<void>(`/api/sessoestreinamento/${id}`, { method: 'DELETE' }),
+    excluirLote: (ids: string[]) =>
+      request<ResultadoExclusaoTurma[]>('/api/sessoestreinamento/excluir-lote', { method: 'POST', body: JSON.stringify({ ids }) }),
     definirInstrutor: (sessaoId: string, instrutorTrabalhadorId: string) =>
       request<void>(`/api/sessoestreinamento/${sessaoId}/instrutor`, {
         method: 'PUT',

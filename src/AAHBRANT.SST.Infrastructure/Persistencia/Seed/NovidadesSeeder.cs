@@ -2723,6 +2723,40 @@ public static class NovidadesSeeder
                     "Escolher o tamanho exigia abrir uma lista e conferir o saldo em outro lugar do card.",
                     "Os tamanhos viram botões com o saldo da obra embaixo de cada um, e a quantidade tem botões de mais e menos. O carrinho fica sempre visível ao lado."),
             }),
+        new(
+            Versao: "5.156.0",
+            Titulo: "Quem criou e quem alterou cada registro",
+            DataPublicacao: new DateTime(2026, 11, 10, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Responsável por cada revisão do PGR e do PCMSO",
+                    "A tabela de revisões não mostrava quem tinha criado cada revisão.",
+                    "Cada revisão nova mostra o nome de quem a criou, o que facilita conferir o histórico do documento."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Aviso no Teams ao fim da leitura com IA",
+                    "Quem pedia a leitura do PGR ou do PCMSO com IA precisava voltar à tela para saber se ela tinha terminado.",
+                    "Agora você recebe um aviso no Teams quando a leitura ficar pronta ou quando ela não conseguir terminar."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Registro de quem criou e de quem alterou",
+                    "Os registros não guardavam quem os criou nem quem fez a última alteração.",
+                    "O sistema passa a guardar quem criou e quem fez a última alteração de cada registro, para facilitar a conferência."),
+            }),
+        new(
+            Versao: "5.157.0",
+            Titulo: "Excluir turma de treinamento",
+            DataPublicacao: new DateTime(2026, 11, 10, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Excluir turma criada por engano",
+                    "Não havia como apagar uma turma de treinamento criada por engano.",
+                    "Quem é Administrador da obra da turma (ou Administrador geral) pode excluir a turma pelo detalhe dela ou marcar várias turmas na lista e excluir de uma vez. Antes de apagar, o sistema mostra o que vai junto (inscrições, presenças e fotos) e pede para digitar EXCLUIR. A exclusão é definitiva e fica registrada na trilha de auditoria."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Turma com certificado ou documento assinado não é excluída",
+                    "Certificado e documento assinado precisam continuar valendo.",
+                    "Se a turma já tiver certificado emitido ou documento com assinatura, o sistema mostra o motivo e mantém a turma."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

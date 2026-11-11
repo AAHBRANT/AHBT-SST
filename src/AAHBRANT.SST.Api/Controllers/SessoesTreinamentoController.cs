@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.SessoesTreinamento.Commands;
 using AAHBRANT.SST.Application.SessoesTreinamento.Queries;
 using MediatR;
@@ -48,6 +49,45 @@ public class SessoesTreinamentoController : ControllerBase
     {
         var detalhe = await _mediator.Send(new ObterSessaoTreinamentoDetalheQuery(id), ct);
         return detalhe is null ? NotFound() : Ok(detalhe);
+    }
+
+    // Exclusão DEFINITIVA de turma (10/11/2026, pedido explícito do usuário): só Administrador, como toda exclusão do sistema.
+    // A turma com certificado emitido ou documento assinado é recusada (400 com o motivo); o filtro de obras vale (404 fora do escopo).
+    [Authorize(Policy = PoliticasAutorizacao.SomenteAdministrador)]
+    [HttpGet("{id:guid}/previa-exclusao")]
+    public async Task<IActionResult> PreviaExclusao(Guid id, CancellationToken ct)
+    {
+        var previa = await _mediator.Send(new ObterPreviaExclusaoSessaoTreinamentoQuery(id), ct);
+        return previa is null ? NotFound() : Ok(previa);
+    }
+
+    [Authorize(Policy = PoliticasAutorizacao.SomenteAdministrador)]
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Excluir(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new ExcluirSessaoTreinamentoCommand(id), ct);
+        return NoContent();
+    }
+
+    // Lote: cada turma é decidida sozinha (200 com o resultado de cada uma; bloqueada não impede as outras).
+    [Authorize(Policy = PoliticasAutorizacao.SomenteAdministrador)]
+    [HttpPost("excluir-lote")]
+    public async Task<IActionResult> ExcluirLote(ExcluirSessoesTreinamentoLoteRequestBody body, CancellationToken ct)
+    {
+        var resultados = await _mediator.Send(new ExcluirSessoesTreinamentoLoteCommand(body.Ids ?? []), ct);
+        return Ok(resultados.Select(r => new
+        {
+            r.Id,
+            r.Numero,
+            Resultado = r.Status switch
+            {
+                StatusExclusaoTurma.Excluida => "excluida",
+                StatusExclusaoTurma.Bloqueada => "bloqueada",
+                StatusExclusaoTurma.NaoEncontrada => "naoEncontrada",
+                _ => "falhou",
+            },
+            r.Motivo,
+        }));
     }
 
     [Authorize(Policy = "treinamento:criar")]
@@ -202,3 +242,4 @@ public class AnexarFotoEvidenciaSessaoTreinamentoRequestBody
 
 public record AlterarDataSessaoTreinamentoRequestBody(DateTime DataRealizacao);
 public record DefinirInstrutorRequestBody(Guid InstrutorTrabalhadorId);
+public record ExcluirSessoesTreinamentoLoteRequestBody(List<Guid>? Ids);
