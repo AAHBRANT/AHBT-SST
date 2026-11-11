@@ -360,17 +360,35 @@ public class SstDbContext : DbContext, IAppDbContext
     {
         RegistrarEventosNcGQuali();
         AplicarAuditoria();
-        return base.SaveChanges();
+        try { return base.SaveChanges(); }
+        finally { _exclusaoFisica.Clear(); }
     }
 
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         RegistrarEventosNcGQuali();
         AplicarAuditoria();
-        return base.SaveChangesAsync(cancellationToken);
+        try { return await base.SaveChangesAsync(cancellationToken); }
+        finally { _exclusaoFisica.Clear(); }
     }
 
-    public void DescartarAlteracoesPendentes() => ChangeTracker.Clear();
+    public void DescartarAlteracoesPendentes()
+    {
+        ChangeTracker.Clear();
+        _exclusaoFisica.Clear();
+    }
+
+    // Exclusão física explícita e restrita (hoje só ExcluirSessaoTreinamentoCommand, pedido do usuário em 10/11/2026).
+    // Por padrão toda exclusão vira lógica (AplicarAuditoria); só a entidade marcada aqui, por referência, é removida de
+    // verdade. Quem chama marca também os dependentes carregados: o EF os poria como Deleted e AplicarAuditoria os
+    // converteria em exclusão lógica, deixando filhos apontando para um pai que não existe mais.
+    private readonly HashSet<object> _exclusaoFisica = new(ReferenceEqualityComparer.Instance);
+
+    public void MarcarExclusaoFisica<T>(T entidade) where T : class
+    {
+        _exclusaoFisica.Add(entidade);
+        Remove(entidade);
+    }
 
     public bool EscopoObraGlobal => _usuarioAtual.TemAcessoGlobal;
     public IReadOnlyList<Guid> ObrasNoEscopo => _usuarioAtual.ObrasPermitidas;
@@ -430,6 +448,9 @@ public class SstDbContext : DbContext, IAppDbContext
                 case EntityState.Modified:
                     entry.Entity.UpdatedAtUtc = agora;
                     AplicarUpdatedBy(entry.Entity);
+                    break;
+                case EntityState.Deleted when _exclusaoFisica.Contains(entry.Entity):
+                    // Exclusão física pedida explicitamente por MarcarExclusaoFisica: segue como Deleted.
                     break;
                 case EntityState.Deleted:
                     // Nenhum registro crítico é excluído fisicamente — converter em soft-delete.
