@@ -591,9 +591,10 @@ export interface UsuarioLogado {
   // Administrador é o único que pode excluir registro operacional (regra fixa no servidor, não
   // configurável pela matriz de permissões — ver PoliticasAutorizacao no backend).
   ehAdministrador: boolean;
-  // Só o Engenheiro de Segurança confirma atividades por função. O servidor ainda não informa isto
-  // aqui (ausente = desconhecido): a tela libera a edição e trata a recusa (403) do servidor.
+  // Só o Engenheiro de Segurança confirma atividades por função: global ou nas obras da lista.
   ehEngenheiroSeguranca?: boolean;
+  engenheiroSegurancaGlobal?: boolean;
+  obrasEngenheiroSeguranca?: string[];
   permissoes: string[];
   // Onde cada permissão vale (Responsável x Supervisão, 06/11/2026). global = todas as obras;
   // obras = obras atribuídas. Ausente = servidor antigo ou acesso total.

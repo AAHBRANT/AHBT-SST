@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button, Card, Carregando, EstadoVazio, FeedbackInline, Select, StatusChip, Text, designTokens, tokensUi,
 } from '@ui';
@@ -81,15 +81,30 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
   const [sugerindo, setSugerindo] = useState(false);
   const [recusado, setRecusado] = useState(false);
 
-  // O servidor decide de verdade (só o Engenheiro de Segurança grava). Se ele já informar o perfil, usamos;
-  // senão liberamos a edição a quem pode editar riscos e tratamos a recusa (403) quando ela vier.
+  // Só o Engenheiro de Segurança desta obra confirma (global ou com a obra na lista). O servidor decide de
+  // verdade; a recusa (403) também é tratada abaixo.
   const podeEditarRiscos = podeNaObra(usuario, 'risco:editar', obraId);
-  const podeDecidir = !recusado && (usuario?.ehEngenheiroSeguranca ?? podeEditarRiscos);
+  const podeDecidir = !recusado
+    && !!usuario && (usuario.engenheiroSegurancaGlobal === true || (usuario.obrasEngenheiroSeguranca ?? []).includes(obraId));
+  // Trava contra duplo clique: o estado só atualiza no próximo render, a ref vale na hora.
+  const emAndamento = useRef(false);
+  const ocupado = sugerindo || salvando;
 
-  const carregar = useCallback(async (id: string) => {
+  // Outra pessoa alterou as atividades (400 do servidor): mostra a mensagem, descarta o rascunho deste
+  // GHE (seria aplicado sobre dados que já mudaram) e recarrega a matriz.
+  async function tratarConflito(msg: string): Promise<boolean> {
+    if (!/Outra pessoa acabou de alterar/i.test(msg)) return false;
+    setRascunhos((todos) => ({ ...todos, [gheId]: {} }));
+    setErro(`${msg} As marcações não salvas deste GHE foram descartadas.`);
+    await carregar(gheId, false);
+    await aoAlterar();
+    return true;
+  }
+
+  const carregar = useCallback(async (id: string, limparErro = true) => {
     if (!id) return;
     try {
-      setErro(null);
+      if (limparErro) setErro(null);
       const m = await api.estruturaSst.obterMatrizAtividadesFuncao(obraId, id);
       setMatriz(m);
       setFuncaoId((atual) => (atual && m.funcoes.some((f) => f.funcaoId === atual) ? atual : (m.funcoes[0]?.funcaoId ?? null)));
@@ -154,6 +169,8 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
     .sort((a, b) => (b.validadoEmUtc ?? '').localeCompare(a.validadoEmUtc ?? ''))[0];
 
   async function sugerirComIa() {
+    if (emAndamento.current) return;
+    emAndamento.current = true;
     setSugerindo(true);
     setErro(null);
     setSucesso(null);
@@ -167,13 +184,16 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
           : 'A IA não encontrou vínculos novos para este GHE.',
       );
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Não foi possível pedir as sugestões à IA.');
+      const msg = e instanceof Error ? e.message : 'Não foi possível pedir as sugestões à IA.';
+      if (!(await tratarConflito(msg))) setErro(msg);
     } finally {
+      emAndamento.current = false;
       setSugerindo(false);
     }
   }
 
   function confirmarTodasSugeridas() {
+    if (emAndamento.current) return;
     setSucesso(null);
     definirRascunho((r) => {
       const copia = { ...r };
@@ -190,7 +210,8 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
       const [atividadeId, fId] = k.split('|');
       return { atividadeId, funcaoId: fId, executa };
     });
-    if (itens.length === 0) return;
+    if (itens.length === 0 || emAndamento.current) return;
+    emAndamento.current = true;
     setSalvando(true);
     setErro(null);
     try {
@@ -203,11 +224,12 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
       const msg = e instanceof Error ? e.message : 'Não foi possível salvar.';
       if (/\(403\)/.test(msg)) {
         setRecusado(true);
-        setErro('Só o Engenheiro de Segurança confirma as atividades por função. Suas alterações não foram salvas.');
-      } else {
+        setErro('Só o Engenheiro de Segurança desta obra pode confirmar as atividades da função.');
+      } else if (!(await tratarConflito(msg))) {
         setErro(msg);
       }
     } finally {
+      emAndamento.current = false;
       setSalvando(false);
     }
   }
@@ -238,7 +260,7 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
     <div>
       {!podeDecidir && (
         <Aviso tom="info">
-          <b>Somente leitura.</b> Só o Engenheiro de Segurança confirma as atividades por função. Você pode consultar o que está definido.
+          <b>Somente leitura.</b> Só o Engenheiro de Segurança desta obra confirma as atividades da função. Você pode consultar o que está definido.
         </Aviso>
       )}
       {matriz && nuncaAvaliado && (
@@ -299,16 +321,18 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
             size="large"
             appearance={nuncaAvaliado ? 'primary' : 'secondary'}
             icon={<Sparkle16Regular />}
-            disabled={sugerindo || salvando || !matriz || !podeEditarRiscos}
+            disabled={ocupado || !matriz || !podeEditarRiscos}
             onClick={() => void sugerirComIa()}
           >
             {sugerindo ? 'Sugerindo…' : 'Sugerir com IA'}
           </Button>
+          {podeDecidir && (
+            <>
           <Button
             size="large"
             appearance={sugeridasNoGhe > 0 ? 'primary' : 'secondary'}
             icon={<Checkmark16Regular />}
-            disabled={!podeDecidir || sugeridasNoGhe === 0 || salvando}
+            disabled={sugeridasNoGhe === 0 || ocupado}
             onClick={confirmarTodasSugeridas}
           >
             Confirmar todas as sugeridas{sugeridasNoGhe > 0 ? ` (${sugeridasNoGhe})` : ''}
@@ -317,11 +341,13 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
             size="large"
             appearance={alteracoes > 0 ? 'primary' : 'secondary'}
             icon={<Save16Regular />}
-            disabled={!podeDecidir || alteracoes === 0 || salvando}
+            disabled={alteracoes === 0 || ocupado}
             onClick={() => void salvar()}
           >
             {salvando ? 'Salvando…' : 'Salvar'}
           </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -402,7 +428,7 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
                       role="checkbox"
                       aria-checked={on}
                       aria-label={`${funcao.nome} executa ${a.nome}`}
-                      disabled={!podeDecidir || salvando}
+                      disabled={!podeDecidir || ocupado}
                       onClick={() => alternar(a.atividadeId, funcao.funcaoId)}
                       style={{
                         width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center',
