@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAtividadesPorFuncaoStyles } from './AtividadesPorFuncaoTab.styles';
 import {
   Button, Card, Carregando, EstadoVazio, FeedbackInline, Select, StatusChip, Text, designTokens, tokensUi,
 } from '@ui';
@@ -104,6 +105,7 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
   aoAlterar: (gheId: string) => Promise<void>;
   aoVincularProcedimento: (atividadeId: string) => void;
 }) {
+  const styles = useAtividadesPorFuncaoStyles();
   const { usuario } = useUsuarioLogado();
   const [gheId, setGheId] = useState<string>(() => ghes[0]?.id ?? '');
   const [matriz, setMatriz] = useState<MatrizAtividadesFuncao | null>(null);
@@ -122,6 +124,7 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
     && !!usuario && (usuario.engenheiroSegurancaGlobal === true || (usuario.obrasEngenheiroSeguranca ?? []).includes(obraId));
   // Trava contra duplo clique: o estado só atualiza no próximo render, a ref vale na hora.
   const emAndamento = useRef(false);
+  const consultaAtual = useRef(0);
   const ocupado = sugerindo || salvando;
 
   // Outra pessoa alterou as atividades (400 do servidor): mostra a mensagem, descarta o rascunho deste
@@ -137,19 +140,24 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
 
   const carregar = useCallback(async (id: string, limparErro = true) => {
     if (!id) return;
+    const consulta = ++consultaAtual.current;
     try {
       if (limparErro) setErro(null);
       const m = await api.estruturaSst.obterMatrizAtividadesFuncao(obraId, id);
+      if (consulta !== consultaAtual.current) return;
       setMatriz(m);
       setFuncaoId((atual) => (atual && m.funcoes.some((f) => f.funcaoId === atual) ? atual : (m.funcoes[0]?.funcaoId ?? null)));
     } catch (e) {
+      if (consulta !== consultaAtual.current) return;
       setErro(e instanceof Error ? e.message : 'Falha ao carregar as atividades por função.');
     }
   }, [obraId]);
 
   useEffect(() => {
     setMatriz(null);
+    setSucesso(null);
     void carregar(gheId);
+    return () => { consultaAtual.current++; };
   }, [gheId, carregar]);
 
   const celulas = useMemo(() => {
@@ -187,7 +195,7 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
 
   function alternar(atividadeId: string, fId: string) {
     setSucesso(null);
-    const linha = { ...(rascunho[fId] ?? linhaBase(fId, false)) };
+    const linha = { ...(rascunho[fId] ?? linhaBase(fId, true)) };
     linha[atividadeId] = !linha[atividadeId];
     // Linha já decidida que volta a ser igual à salva: não há o que gravar.
     const igualBase = linhaDecidida(fId) && atividades.every((a) => linha[a.atividadeId] === executaNaBase(celulaDe(a.atividadeId, fId)));
@@ -213,16 +221,8 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
     .filter((c) => c.validadoEmUtc && c.validadoPorNome)
     .sort((a, b) => (b.validadoEmUtc ?? '').localeCompare(a.validadoEmUtc ?? ''))[0];
 
-  // O que "Salvar" envia: as funções que o engenheiro alterou e, se ainda não decidida, a função aberta na tela
-  // (com as sugeridas dela marcadas) quando tem sugestão da IA aguardando. Função que ele não abriu nem alterou nunca é enviada.
-  const linhasParaSalvar = useMemo(() => {
-    const linhas: Rascunho = { ...rascunho };
-    if (funcao && funcao.pendentes > 0 && !(funcao.funcaoId in linhas) && !linhaDecidida(funcao.funcaoId)) {
-      linhas[funcao.funcaoId] = linhaBase(funcao.funcaoId, true);
-    }
-    return linhas;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rascunho, funcao, matriz]);
+  // Só salva linhas que o engenheiro alterou ou confirmou explicitamente.
+  const linhasParaSalvar = rascunho;
   const alteracoes = Object.keys(linhasParaSalvar).length;
   const nomeFuncao = (fId: string) => funcoes.find((f) => f.funcaoId === fId)?.nome ?? '';
 
@@ -291,22 +291,19 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
     return <EstadoVazio titulo="Esta obra ainda não tem GHE cadastrado. Gere ou importe o PGR para definir as funções." />;
   }
 
-  // A IA já olhou esta função (há sugerida ou decisão): o que ela não sugeriu aparece como "Não executa".
-  const iaJaOlhou = (fId: string) => atividades.some((a) => celulaDe(a.atividadeId, fId)?.estado !== 'SemDecisao');
-
-  const seloDe = (c: CelulaMatriz | undefined, on: boolean, editada: boolean, fId: string) => {
+  const seloDe = (c: CelulaMatriz | undefined, on: boolean, editada: boolean) => {
     if (editada) return on
       ? <StatusChip tom="ok" icone={<Checkmark16Regular />}>Confirmada</StatusChip>
       : <StatusChip tom="neutro">Não executa</StatusChip>;
     if (c?.estado === 'Pendente') return <StatusChip tom="info" icone={<Sparkle16Regular />}>Sugerida pela IA</StatusChip>;
     if (c?.estado === 'Validada') return <StatusChip tom="ok" icone={<Checkmark16Regular />}>Confirmada</StatusChip>;
-    if (c?.estado === 'Descartada' || iaJaOlhou(fId)) return <StatusChip tom="neutro">Não executa</StatusChip>;
+    if (c?.estado === 'Descartada') return <StatusChip tom="neutro">Não executa</StatusChip>;
     return <StatusChip tom="neutro">Sem vínculo</StatusChip>;
   };
 
-  const motivoDe = (c: CelulaMatriz | undefined, on: boolean, editada: boolean, fId: string) => {
+  const motivoDe = (c: CelulaMatriz | undefined, on: boolean, editada: boolean) => {
     if (editada) return on ? 'Marcada para confirmar. Salve para valer na OS.' : 'Desmarcada. Ao salvar, fica como "Não executa" e sai da OS desta função.';
-    if (!c || c.estado === 'SemDecisao') return iaJaOlhou(fId) ? 'IA: sem relação com o ofício desta função' : 'Ainda não avaliada para esta função';
+    if (!c || c.estado === 'SemDecisao') return 'Ainda não avaliada para esta função';
     if (c.estado === 'Pendente') return c.justificativaIa ? `IA: ${c.justificativaIa}` : 'Sugerida pela IA, aguardando o engenheiro';
     if (c.estado === 'Validada') return c.justificativaIa ?? (c.origem === 'Pgr' ? 'Atividade descrita no PGR' : 'Confirmada pelo engenheiro');
     return c.justificativaIa ? `IA: ${c.justificativaIa}` : 'Desmarcada pelo engenheiro';
@@ -355,7 +352,7 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
         </Aviso>
       )}
 
-      {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
+      {erro && <FeedbackInline tom="erro" aoFechar={matriz ? () => setErro(null) : undefined} acao={!matriz ? { rotulo: 'Tentar de novo', aoClicar: () => void carregar(gheId) } : undefined}>{erro}</FeedbackInline>}
       {sucesso && <FeedbackInline tom="sucesso" aoFechar={() => setSucesso(null)}>{sucesso}</FeedbackInline>}
       {sugerindo && (
         <FeedbackInline tom="info">
@@ -374,8 +371,9 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
           <Text size={200}>GHE</Text>
           <Select
             aria-label="GHE"
-            style={{ flex: 1 }}
+            style={{ flex: 1, minWidth: 0 }}
             value={gheId}
+            disabled={ocupado}
             onChange={(_, d) => setGheId(d.value)}
           >
             {ghes.map((g) => (
@@ -435,8 +433,7 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
           <div role="group" aria-label="Função do GHE" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, marginBottom: 12 }}>
             {funcoes.map((f) => {
               const ativa = f.funcaoId === funcao.funcaoId;
-              const ponto = f.pendentes > 0 ? tokensUi.status.info.tinta
-                : f.semDecisao === totalAtividades ? tokensUi.bordaSuave : tokensUi.status.ok.tinta;
+              const ponto = f.pendentes > 0 || f.semDecisao > 0 ? tokensUi.status.atencao.tinta : tokensUi.status.ok.tinta;
               return (
                 <button
                   key={f.funcaoId}
@@ -487,9 +484,8 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
                 return (
                   <div
                     key={a.atividadeId}
+                    className={styles.linha}
                     style={{
-                      display: 'grid', gridTemplateColumns: '48px minmax(0, 1fr) auto', columnGap: 10, alignItems: 'center',
-                      padding: '6px 14px 6px 6px', minHeight: 72, borderBottom: `1px solid ${designTokens.colorCardBorder}`,
                       background: `color-mix(in srgb, ${fundo} 55%, transparent)`,
                     }}
                   >
@@ -521,9 +517,9 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
                         {codigo && <span style={{ opacity: 0.65, marginRight: 6, fontVariantNumeric: 'tabular-nums' }}>{codigo}</span>}
                         {resto}
                       </Text>
-                      <Text size={200} style={{ display: 'block', opacity: 0.8 }}>{motivoDe(c, on, mudou, funcao.funcaoId)}</Text>
+                      <Text size={200} style={{ display: 'block', opacity: 0.8 }}>{motivoDe(c, on, mudou)}</Text>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <div className={styles.situacao}>
                       {confirmada && (a.procedimentos > 0
                         ? <StatusChip tom="neutro">{a.procedimentos} procedimento(s)</StatusChip>
                         : (
@@ -539,7 +535,7 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
                             Vincular procedimento
                           </Button>
                         ))}
-                      {seloDe(c, on, mudou, funcao.funcaoId)}
+                      {seloDe(c, on, mudou)}
                     </div>
                   </div>
                 );
@@ -562,7 +558,7 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
             <Text size={200}>
               Vale para toda a obra: a OS de qualquer {funcao.nome.toLowerCase()} deste GHE lista só estas atividades.
             </Text>
-            <Text size={200}>Uma nova revisão pela EAP mantém os vínculos; atividade nova entra como "Sem vínculo".</Text>
+            <Text size={200}>Atividade nova entra como "Sem vínculo". Confira as atividades por função após cada revisão do PGR.</Text>
           </div>
         </>
       )}

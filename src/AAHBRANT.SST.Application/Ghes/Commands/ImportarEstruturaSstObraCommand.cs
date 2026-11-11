@@ -135,6 +135,9 @@ public class ImportarEstruturaSstObraCommandHandler : IRequestHandler<ImportarEs
         if (!_db.ObraNoEscopo(request.ObraId) || !await _db.Obras.AnyAsync(o => o.Id == request.ObraId, ct))
             throw new KeyNotFoundException("Obra não encontrada.");
 
+        var detalhesAnteriores = request.Ghes.Count > 0
+            ? await PreservacaoAtividadesOs.CarregarAsync(_db, request.ObraId, ct)
+            : null;
         if (request.Ghes.Count > 0)
         {
             var ghesAtuais = await _db.Ghes.Include(g => g.Funcoes).Where(g => g.ObraId == request.ObraId).ToListAsync(ct);
@@ -204,6 +207,7 @@ public class ImportarEstruturaSstObraCommandHandler : IRequestHandler<ImportarEs
         var perigosCriados = 0;
         var riscos = 0;
         var semExposicao = 0;
+        var novosGhes = new List<Ghe>();
 
         foreach (var g in request.Ghes.OrderBy(x => x.Numero))
         {
@@ -219,6 +223,7 @@ public class ImportarEstruturaSstObraCommandHandler : IRequestHandler<ImportarEs
                 MedidasProtecaoExistentes = g.MedidasProtecaoExistentes,
             };
             _db.Ghes.Add(ghe);
+            novosGhes.Add(ghe);
 
             foreach (var f in g.Funcoes)
             {
@@ -282,6 +287,8 @@ public class ImportarEstruturaSstObraCommandHandler : IRequestHandler<ImportarEs
                 riscos++;
             }
         }
+
+        detalhesAnteriores?.Aplicar(_db, novosGhes);
 
         Pgr? pgr = null;
         if (request.PgrIdExistente is { } pgrId)

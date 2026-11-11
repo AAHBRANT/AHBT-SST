@@ -20,7 +20,14 @@ public class ObterMinutaOrdemServicoQueryHandler : IRequestHandler<ObterMinutaOr
 {
     private readonly IAppDbContext _db;
 
-    public ObterMinutaOrdemServicoQueryHandler(IAppDbContext db) => _db = db;
+    private readonly Microsoft.Extensions.Options.IOptions<AAHBRANT.SST.Application.Integracoes.OpcoesIntegracao>? _opcoes;
+
+    public ObterMinutaOrdemServicoQueryHandler(IAppDbContext db,
+        Microsoft.Extensions.Options.IOptions<AAHBRANT.SST.Application.Integracoes.OpcoesIntegracao>? opcoes = null)
+    {
+        _db = db;
+        _opcoes = opcoes;
+    }
 
     public async Task<MinutaOrdemServicoDto?> Handle(ObterMinutaOrdemServicoQuery request, CancellationToken ct)
     {
@@ -166,7 +173,10 @@ public class ObterMinutaOrdemServicoQueryHandler : IRequestHandler<ObterMinutaOr
         var cursoIds = isento
             ? new List<Guid>()
             : await ExigenciasTreinamento.CursosAsync(_db, t.ObraId, t.FuncaoId, ct);
-        var cursos = await _db.CursosTreinamento.Where(c => cursoIds.Contains(c.Id))
+        // Com o atendimento "Realizar integração" ligado, a Integração de Segurança não é exigida para emitir a OS: a OS é a
+        // última etapa da própria integração e a Integração deixou de gerar certificado. Desligado, tudo como antes.
+        var semIntegracao = _opcoes?.Value.AtendimentoHabilitado == true;
+        var cursos = await _db.CursosTreinamento.Where(c => cursoIds.Contains(c.Id) && (!semIntegracao || !c.EhIntegracaoSeguranca))
             .Select(c => new { c.Id, c.Nome, c.NormaReferencia }).ToListAsync(ct);
         var feitos = await _db.Treinamentos.Where(x => x.TrabalhadorId == t.Id && cursoIds.Contains(x.CursoTreinamentoId))
             .Select(x => new { x.CursoTreinamentoId, x.DataValidade }).ToListAsync(ct);
