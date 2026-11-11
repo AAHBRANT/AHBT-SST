@@ -19,6 +19,8 @@ public class SessaoTreinamentoDto
     public int TotalParticipantes { get; set; }
     public int TotalPresencasConfirmadas { get; set; }
     public int TotalFotosEvidencia { get; set; }
+    // Certificados (Treinamento) ligados à turma, inclusive os excluídos logicamente. Só a lista preenche; > 0 trava a exclusão.
+    public int TotalCertificadosEmitidos { get; set; }
 }
 
 public class ParticipanteSessaoTreinamentoDto

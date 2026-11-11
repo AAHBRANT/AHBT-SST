@@ -2742,6 +2742,21 @@ public static class NovidadesSeeder
                     "Os registros não guardavam quem os criou nem quem fez a última alteração.",
                     "O sistema passa a guardar quem criou e quem fez a última alteração de cada registro, para facilitar a conferência."),
             }),
+        new(
+            Versao: "5.157.0",
+            Titulo: "Excluir turma de treinamento",
+            DataPublicacao: new DateTime(2026, 11, 10, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Excluir turma criada por engano",
+                    "Não havia como apagar uma turma de treinamento criada por engano.",
+                    "Quem é Administrador da obra da turma (ou Administrador geral) pode excluir a turma pelo detalhe dela ou marcar várias turmas na lista e excluir de uma vez. Antes de apagar, o sistema mostra o que vai junto (inscrições, presenças e fotos) e pede para digitar EXCLUIR. A exclusão é definitiva e fica registrada na trilha de auditoria."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Turma com certificado ou documento assinado não é excluída",
+                    "Certificado e documento assinado precisam continuar valendo.",
+                    "Se a turma já tiver certificado emitido ou documento com assinatura, o sistema mostra o motivo e mantém a turma."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

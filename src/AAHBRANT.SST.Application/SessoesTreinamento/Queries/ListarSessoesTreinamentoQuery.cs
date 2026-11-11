@@ -24,7 +24,18 @@ public class ListarSessoesTreinamentoQueryHandler : IRequestHandler<ListarSessoe
             query = query.Where(s => s.ObraId == request.ObraId.Value);
 
         var lista = await query.OrderByDescending(s => s.CreatedAtUtc).ToListAsync(ct);
-        return lista.Select(MapearParaDto).ToList();
+        var dtos = lista.Select(MapearParaDto).ToList();
+
+        // Contagem de certificados por turma em uma consulta só (a lista mostra o cadeado de quem não pode ser excluída).
+        var ids = dtos.Select(d => d.Id).ToList();
+        var certificados = await _db.Treinamentos.IgnoreQueryFilters()
+            .Where(t => t.SessaoTreinamentoId != null && ids.Contains(t.SessaoTreinamentoId.Value))
+            .GroupBy(t => t.SessaoTreinamentoId!.Value)
+            .Select(g => new { Id = g.Key, Total = g.Count() })
+            .ToDictionaryAsync(x => x.Id, x => x.Total, ct);
+        foreach (var d in dtos)
+            d.TotalCertificadosEmitidos = certificados.GetValueOrDefault(d.Id);
+        return dtos;
     }
 
     internal static SessaoTreinamentoDto MapearParaDto(Domain.Entidades.SessaoTreinamento sessao) => new()

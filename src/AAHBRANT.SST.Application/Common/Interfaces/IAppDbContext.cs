@@ -201,6 +201,11 @@ public interface IAppDbContext
     // seguinte no mesmo lote.
     void DescartarAlteracoesPendentes();
 
+    // Exclusão FÍSICA da entidade (e só dela, por referência) no próximo SaveChanges. O padrão do sistema é
+    // exclusão lógica (SstDbContext.AplicarAuditoria converte todo Remove em Ativo=false); este é o caminho
+    // explícito e restrito para quando o usuário pediu apagar de verdade. Marque também cada dependente carregado.
+    void MarcarExclusaoFisica<T>(T entidade) where T : class;
+
     // Escopo por obra do usuário atual (o mesmo que o filtro global aplica), exposto para as
     // entidades que NÃO têm filtro global por ObraId e chegam à obra só pelo Trabalhador (Aso,
     // ExameComplementar, Aptidão, Treinamento, EntregaEpi...). Ficaram fora do filtro global de

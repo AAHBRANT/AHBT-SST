@@ -46,6 +46,8 @@ import { BotaoBiometriaDigital } from '../../components/assinatura/BotaoBiometri
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { formatarHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 import { BlocoInstrutorTurma } from './BlocoInstrutorTurma';
+import { BotaoExcluirTurma, ExcluirTurmaDialog } from '../../components/treinamentos/ExcluirTurmaDialog';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 const TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS = 3;
 
@@ -111,6 +113,9 @@ export function SessaoTreinamentoDetalhePage() {
   contextoFila.current = { detalhe, dispositivo: dispositivoLocal };
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [baixandoAta, setBaixandoAta] = useState(false);
+  // Exclusao definitiva: so Administrador ve o botao (o servidor tambem recusa os demais).
+  const souAdministrador = useSouAdministrador();
+  const [excluindoTurma, setExcluindoTurma] = useState(false);
 
   async function carregar() {
     if (!id) return;
@@ -420,6 +425,7 @@ export function SessaoTreinamentoDetalhePage() {
             >
               Baixar lista de presença
             </BotaoAcao>
+            {souAdministrador && <BotaoExcluirTurma onClick={() => setExcluindoTurma(true)} />}
           </div>
         ),
       }}
@@ -590,6 +596,13 @@ export function SessaoTreinamentoDetalhePage() {
       />
       <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
       {dialogoVisualizador}
+      {excluindoTurma && (
+        <ExcluirTurmaDialog
+          alvo={{ tipo: 'unica', turmaId: sessao.id }}
+          aoFechar={() => setExcluindoTurma(false)}
+          aoExcluir={() => navigate('/treinamentos')}
+        />
+      )}
     </DetailPageLayout>
   );
 }
