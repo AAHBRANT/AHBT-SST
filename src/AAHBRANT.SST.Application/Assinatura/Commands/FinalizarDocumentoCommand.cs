@@ -140,6 +140,14 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
 
         await _db.SaveChangesAsync(ct);
 
+        // OS assinada pelos dois lados: se a pessoa estava numa integração já concluída (OS que ficou pendente), completa o
+        // registro "Integração realizada" dela. Melhor esforço: a OS já está finalizada e não pode falhar por causa disto.
+        if (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura)
+        {
+            try { await AAHBRANT.SST.Application.IntegracoesAtendimento.RegistroIntegracaoSincronizador.SincronizarPorOrdemServicoAsync(_db, documento.EntidadeId, ct); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { }
+        }
+
         return new DocumentoAssinaturaDto(
             documento.Id, documento.EntidadeTipo, documento.EntidadeId, documento.Status, signatariosDto,
             documento.ConteudoHash, documento.FinalizadoEm, TemPdf: true, TokenValidacaoPublica: token);

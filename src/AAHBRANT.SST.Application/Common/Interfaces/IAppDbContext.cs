@@ -7,6 +7,13 @@ namespace AAHBRANT.SST.Application.Common.Interfaces;
 // preservando a regra de dependência do Clean Architecture). Implementada por SstDbContext.
 public interface IAppDbContext
 {
+    DbSet<IntegracaoAtendimento> IntegracoesAtendimento { get; }
+    DbSet<ParticipanteIntegracao> ParticipantesIntegracao { get; }
+    DbSet<IntegracaoEtapa> IntegracaoEtapas { get; }
+    DbSet<PeriodoEtapaIntegracao> PeriodosEtapaIntegracao { get; }
+    DbSet<RegistroIntegracao> RegistrosIntegracao { get; }
+    DbSet<NaoAssinouEtapaIntegracao> NaoAssinouEtapasIntegracao { get; }
+    DbSet<TokenCapturaFoto> TokensCapturaFoto { get; }
     DbSet<Obra> Obras { get; }
     DbSet<Setor> Setores { get; }
     DbSet<Equipe> Equipes { get; }

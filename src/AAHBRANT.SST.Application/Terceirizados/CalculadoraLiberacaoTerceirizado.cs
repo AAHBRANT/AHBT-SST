@@ -39,6 +39,9 @@ public static class CalculadoraLiberacaoTerceirizado
             {
                 var integracaoValida = await db.Treinamentos.AnyAsync(t => t.TrabalhadorId == trabalhadorId
                     && t.CursoTreinamentoId == cursoIntegracao.Id && t.DataValidade.Date >= hoje, ct);
+                // Realizar integração: a Integração de Segurança deixou de gerar certificado; o registro "Integração realizada" vale.
+                if (!integracaoValida)
+                    integracaoValida = await db.RegistrosIntegracao.IgnoreQueryFilters().AnyAsync(r => r.Ativo && r.TrabalhadorId == trabalhadorId, ct);
                 if (!integracaoValida) pendencias.Add("Integração de Segurança pendente");
             }
 

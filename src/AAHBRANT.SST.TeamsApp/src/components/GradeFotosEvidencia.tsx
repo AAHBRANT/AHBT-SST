@@ -31,6 +31,10 @@ interface GradeFotosEvidenciaProps {
   onRemoverFoto: (fotoId: string) => void | Promise<void>;
   onErroValidacao?: (mensagem: string) => void;
   tamanhoMaximoMb?: number;
+  /** Só câmera ao vivo, sem galeria nem arquivo (evidência da integração em etapas, 11/11/2026). */
+  exigirCamera?: boolean;
+  /** Câmera aberta no quadro `ordem` (ex.: pedir o token de captura). */
+  aoAbrirCamera?: (ordem: number) => void;
 }
 
 // Grade de evidências fotográficas em quadros individuais (pedido do usuário, 04/09 — modelo visual
@@ -52,6 +56,8 @@ export function GradeFotosEvidencia({
   onRemoverFoto,
   onErroValidacao,
   tamanhoMaximoMb = 5,
+  exigirCamera = false,
+  aoAbrirCamera,
 }: GradeFotosEvidenciaProps) {
   const estilos = useEstilos();
   const porOrdem = new Map(fotos.map((f) => [f.ordem, f]));
@@ -86,6 +92,8 @@ export function GradeFotosEvidencia({
               aoSelecionarArquivo={(arquivo) => onSelecionarFoto(ordem, arquivo)}
               aoErroValidacao={onErroValidacao}
               tamanhoMaximoMb={tamanhoMaximoMb}
+              exigirCamera={exigirCamera}
+              aoAbrirCamera={aoAbrirCamera ? () => aoAbrirCamera(ordem) : undefined}
             />
           );
         })}

@@ -13,6 +13,8 @@ public record TurmaAgendada(Guid SessaoTreinamentoId, string CursoNome, DateTime
 
 // Agendamento automático dos treinamentos do funcionário que entra na obra (especificação de
 // 21/10/2026, etapa 3). Ordem: Integração de Segurança e NR-06 primeiro, depois os demais cursos da função.
+// semCombo (chave Integracao:AtendimentoHabilitado): o combo (NR-06, NR-12, NR-18, NR-35 e Integração de Segurança) não é mais
+// agendado em turma nenhuma, nem na dispensa: quem conduz é o atendimento "Realizar integração".
 // Com excluirPacote (chave Integracao:PacotePeloFluxoRealizarIntegracao, ver PacoteIntegracao), só os cursos
 // FORA do pacote: o pacote é agendado em lote pelo fluxo "Realizar integração". Cada curso entra na próxima turma aberta da obra; sem turma, uma nova é criada com o
 // padrão da NR e data sugerida — o técnico confirma ou ajusta a data depois.
@@ -25,6 +27,11 @@ public static class AgendaTreinamentosIntegracao
     private static readonly TimeZoneInfo FusoBrasilia = ObterFusoBrasilia();
 
     public static DateTime HojeBrasilia() => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, FusoBrasilia).Date;
+
+    public static DateTime AgoraBrasilia() => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, FusoBrasilia);
+
+    public static DateTime DataBrasilia(DateTime utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), FusoBrasilia).Date;
 
     // Início do dia de Brasília (data sem hora) em UTC — janela do "hoje" para consultas por CreatedAtUtc.
     public static DateTime InicioDoDiaUtc(DateTime diaBrasilia) =>
@@ -44,9 +51,11 @@ public static class AgendaTreinamentosIntegracao
 
     public static async Task<List<TurmaAgendada>> AgendarAsync(
         IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero, Trabalhador trabalhador, CancellationToken ct,
-        bool excluirPacote = false, bool dispensa = false)
+        bool excluirPacote = false, bool dispensa = false, bool semCombo = false, bool semAgenda = false)
     {
         var agendadas = new List<TurmaAgendada>();
+        // Realizar integração ligado (Q4): nenhum curso da função é agendado automaticamente.
+        if (semAgenda) return agendadas;
         var funcaoNome = await db.Funcoes.Where(f => f.Id == trabalhador.FuncaoId).Select(f => f.Nome).FirstOrDefaultAsync(ct);
         // Mesma isenção de CalculadoraLiberacaoTerceirizado: o Técnico de Segurança é quem conduz as turmas.
         if (FuncaoSstClassifier.EhTecnicoSeguranca(funcaoNome)) return agendadas;
@@ -60,7 +69,9 @@ public static class AgendaTreinamentosIntegracao
             // Ficha dispensada (pacote em dia): só o que a função/obra nova exige, sem a Integração/NR-06 "fixas".
             // Cada curso exigido que a pessoa não tem válido (por id) entra; os já válidos saem abaixo. Vale com a
             // chave do fluxo ligada ou não: quem está sem ficha não passa pelo lote.
-            foreach (var curso in cursos.Where(c => idsDaFuncao.Contains(c.Id)).OrderBy(c => c.Nome))
+            foreach (var curso in cursos.Where(c => idsDaFuncao.Contains(c.Id))
+                .Where(c => !semCombo || !(PacoteIntegracao.EhCursoDoPacote(c) || c.EhIntegracaoSeguranca))
+                .OrderBy(c => c.Nome))
                 ordem.Add((curso, curso.EhIntegracaoSeguranca || curso.AtendeNr6));
         }
         else if (excluirPacote)

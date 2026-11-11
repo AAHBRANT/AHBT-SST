@@ -18,6 +18,13 @@ public class SstDbContext : DbContext, IAppDbContext
     }
 
     public DbSet<Obra> Obras => Set<Obra>();
+    public DbSet<IntegracaoAtendimento> IntegracoesAtendimento => Set<IntegracaoAtendimento>();
+    public DbSet<ParticipanteIntegracao> ParticipantesIntegracao => Set<ParticipanteIntegracao>();
+    public DbSet<IntegracaoEtapa> IntegracaoEtapas => Set<IntegracaoEtapa>();
+    public DbSet<PeriodoEtapaIntegracao> PeriodosEtapaIntegracao => Set<PeriodoEtapaIntegracao>();
+    public DbSet<RegistroIntegracao> RegistrosIntegracao => Set<RegistroIntegracao>();
+    public DbSet<NaoAssinouEtapaIntegracao> NaoAssinouEtapasIntegracao => Set<NaoAssinouEtapaIntegracao>();
+    public DbSet<TokenCapturaFoto> TokensCapturaFoto => Set<TokenCapturaFoto>();
     public DbSet<Setor> Setores => Set<Setor>();
     public DbSet<Equipe> Equipes => Set<Equipe>();
     public DbSet<Funcao> Funcoes => Set<Funcao>();
@@ -205,6 +212,13 @@ public class SstDbContext : DbContext, IAppDbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SstDbContext).Assembly);
+        modelBuilder.Entity<IntegracaoAtendimento>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
+        modelBuilder.Entity<ParticipanteIntegracao>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
+        modelBuilder.Entity<IntegracaoEtapa>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
+        modelBuilder.Entity<PeriodoEtapaIntegracao>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
+        modelBuilder.Entity<RegistroIntegracao>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
+        modelBuilder.Entity<NaoAssinouEtapaIntegracao>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
+        modelBuilder.Entity<TokenCapturaFoto>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
 
         // Sincronização offline: RowVersion (já existente em AuditableEntity para todas as
         // entidades, mas até aqui nunca configurado) passa a ser o token de concorrência otimista.

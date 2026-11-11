@@ -31,6 +31,7 @@ public class DefinirInstrutorSessaoTreinamentoCommandHandler : IRequestHandler<D
     {
         var sessao = await _db.SessoesTreinamento.FirstOrDefaultAsync(s => s.Id == request.SessaoTreinamentoId, ct)
             ?? throw new KeyNotFoundException("Turma não encontrada.");
+        await AAHBRANT.SST.Application.IntegracoesAtendimento.ProtecaoTurmaIntegracao.GarantirEtapaEmAndamentoAsync(_db, sessao.Id, ct);
 
         var perfil = await _db.PerfisInstrutor.FirstOrDefaultAsync(p => p.TrabalhadorId == request.InstrutorTrabalhadorId, ct)
             ?? throw new InvalidOperationException("Este trabalhador não tem perfil de instrutor cadastrado.");

@@ -2776,6 +2776,29 @@ public static class NovidadesSeeder
                     "Quem mudava de função ou de obra gerava uma ficha nova, mesmo já tendo NR-06, NR-18 e NR-35 em dia.",
                     "Se a pessoa já tem essas três NRs em dia, nenhuma ficha nova é aberta. O sistema registra a dispensa, agenda só os cursos que a nova função ou obra exige e que ainda faltam, separa o kit e avisa o técnico."),
             }),
+        new(
+            Versao: "5.159.0",
+            Titulo: "Realizar integração em etapas",
+            DataPublicacao: new DateTime(2026, 11, 11, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Integração conduzida em etapas, na ordem das NRs",
+                    "A integração dos funcionários novos dependia de turmas agendadas à parte e de datas combinadas com antecedência.",
+                    "O técnico inicia a integração da obra e segue em etapas, sempre na mesma ordem: NR-06, NR-12, NR-18, NR-35 e Ordem de Serviço. Etapa de NR que ninguém do grupo precisa é pulada, e a pessoa que já tem a NR em dia não repete o curso."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Cada NR tem carga horária, fotos e assinatura próprias",
+                    "O certificado de uma NR podia aproveitar fotos e assinaturas de outra.",
+                    "Cada etapa de curso exige a carga mínima da NR, 3 fotos tiradas na hora pela câmera e uma assinatura biométrica (digital ou facial) por curso de cada participante. A mesma foto não vale para duas etapas, e a etapa só avança quando tudo está completo. O sistema mostra o que ainda falta."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Ordem de Serviço assinada ao final da integração",
+                    "A Ordem de Serviço era emitida à parte, e a Integração de Segurança gerava um certificado.",
+                    "Na última etapa cada pessoa lê e assina a própria Ordem de Serviço, com as pendências iguais agrupadas na tela. Ao concluir, o perfil recebe o registro \"Integração realizada\", sem certificado. Os certificados antigos continuam no histórico."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Funcionário novo sem data de turma",
+                    "O pop-up \"Funcionário novo\" agendava as turmas da integração e pedia a data de cada uma.",
+                    "O pop-up passa a mostrar se a integração está pendente, em andamento (com a etapa) ou feita, e leva direto para \"Iniciar integração\" ou \"Continuar integração\". Não há mais data de turma para a integração."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

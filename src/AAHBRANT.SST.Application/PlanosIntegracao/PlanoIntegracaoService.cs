@@ -147,14 +147,16 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
             && opcoes.DispensarFichaComPacoteValido
             && planosAbertos.Count == 0
             && trabalhador.Vinculo != TipoVinculo.Terceirizado
-            && await PacoteValidoAsync(trabalhadorId, ct);
+            && (opcoes.AtendimentoHabilitado
+                ? await SemNrPendenteAsync(trabalhador, ct)
+                : await PacoteValidoAsync(trabalhadorId, ct));
         var avisar = false;
         if (dispensaFicha)
         {
             // Modo dispensa: agenda todo curso EXIGIDO pela função/obra nova que a pessoa não tem válido, comparando
             // por curso (CursoTreinamentoId, como a liberação) — inclusive NR-12, Integração de Segurança e um NR-35
             // de outro curso. Quem já tem o curso exigido válido é pulado, então o pacote em dia não se repete.
-            var turmasNovas = await AgendaTreinamentosIntegracao.AgendarAsync(_db, _geradorNumero, trabalhador, ct, dispensa: true);
+            var turmasNovas = await AgendaTreinamentosIntegracao.AgendarAsync(_db, _geradorNumero, trabalhador, ct, dispensa: true, semCombo: opcoes.AtendimentoHabilitado, semAgenda: opcoes.AtendimentoHabilitado);
             avisar = turmasNovas.Count > 0 || novasReservas > 0;
 
             // Rastro da dispensa: plano já encerrado com status Dispensado (não aparece no pop-up nem impede uma
@@ -187,7 +189,8 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
         }
         else if (motivo is not null)
         {
-            await AgendaTreinamentosIntegracao.AgendarAsync(_db, _geradorNumero, trabalhador, ct, opcoes.PacotePeloFluxoRealizarIntegracao);
+            await AgendaTreinamentosIntegracao.AgendarAsync(_db, _geradorNumero, trabalhador, ct,
+                opcoes.PacotePeloFluxoRealizarIntegracao || opcoes.AtendimentoHabilitado, semAgenda: opcoes.AtendimentoHabilitado);
             foreach (var plano in planosAbertos) Encerrar(plano, StatusPlanoIntegracao.Cancelado, agora);
             planoNovo = new PlanoIntegracao
             {
@@ -202,10 +205,21 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
         await _db.SaveChangesAsync(ct);
 
         if (planoNovo is not null || avisar)
-            await AvisarTecnicosAsync(trabalhador, opcoes.PacotePeloFluxoRealizarIntegracao, ct);
+            await AvisarTecnicosAsync(trabalhador, opcoes.PacotePeloFluxoRealizarIntegracao || opcoes.AtendimentoHabilitado, ct);
 
         // Separar ou cancelar kit muda o disponível da obra (alerta de estoque mínimo, Módulo 2).
         if (_verificacaoMinimo is not null) await _verificacaoMinimo.VerificarAsync(trabalhador.ObraId, ct);
+    }
+
+    // Com o atendimento "Realizar integração" ligado, o "pacote em dia" deixa de ser a lista fixa NR-06/NR-18/NR-35: vale a
+    // mesma regra das etapas (CalculadoraEtapasIntegracao) — a pessoa não precisa de nenhuma etapa de curso (NR-06 e NR-18 de
+    // todos; NR-12 e NR-35 pelo PGR da obra e função novas; Técnico de Segurança isento).
+    private async Task<bool> SemNrPendenteAsync(Trabalhador trabalhador, CancellationToken ct)
+    {
+        var pessoas = await IntegracoesAtendimento.ExigenciasEtapasIntegracao.CarregarPessoasAsync(_db, [trabalhador], trabalhador.ObraId, ct);
+        var etapas = IntegracoesAtendimento.CalculadoraEtapasIntegracao.Calcular(
+            pessoas, new Dictionary<TipoEtapaIntegracao, IntegracoesAtendimento.CursoEtapaIntegracao>());
+        return etapas.Where(e => e.Tipo != TipoEtapaIntegracao.OrdemServico).All(e => e.Participantes.Count == 0);
     }
 
     // NR-06, NR-18 e NR-35 com treinamento dentro da validade. A comparação é POR NORMA (não por curso

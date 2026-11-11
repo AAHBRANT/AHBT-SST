@@ -143,6 +143,7 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
+            <Text weight="semibold" size={500} style={{ display: 'block', marginBottom: 6 }}>Ordem de Serviço (NR-01)</Text>
             {minuta.podeEmitir
               ? <StatusChip tom="ok">PRONTA PARA EMISSÃO</StatusChip>
               : <StatusChip tom="alerta">MINUTA — EMISSÃO BLOQUEADA</StatusChip>}

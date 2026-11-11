@@ -23,6 +23,8 @@ public record DadosCapturaFoto
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
+    public static string Serializar(DadosCapturaFoto dados) => JsonSerializer.Serialize(dados, Json);
+
     public static DadosCapturaFoto? Ler(string? json) => string.IsNullOrWhiteSpace(json)
         ? null : JsonSerializer.Deserialize<DadosCapturaFoto>(json, Json);
 

@@ -38,6 +38,7 @@ public class AlterarDataSessaoTreinamentoCommandHandler : IRequestHandler<Altera
     {
         var sessao = await _db.SessoesTreinamento.FirstOrDefaultAsync(s => s.Id == request.Id, ct)
             ?? throw new KeyNotFoundException("Turma de treinamento não encontrada.");
+        await AAHBRANT.SST.Application.IntegracoesAtendimento.ProtecaoTurmaIntegracao.RecusarSeDeIntegracaoAsync(_db, sessao.Id, "mudar de data", ct);
         if (sessao.Status != StatusSessaoTreinamento.EmAndamento)
             throw new InvalidOperationException("Esta turma já foi encerrada.");
         if (request.DataRealizacao.Date < AgendaTreinamentosIntegracao.HojeBrasilia())

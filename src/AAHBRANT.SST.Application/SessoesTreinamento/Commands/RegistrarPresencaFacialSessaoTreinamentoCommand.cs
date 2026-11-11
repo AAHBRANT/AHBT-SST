@@ -45,6 +45,7 @@ public class RegistrarPresencaFacialSessaoTreinamentoCommandHandler : IRequestHa
 
     public async Task<Guid> Handle(RegistrarPresencaFacialSessaoTreinamentoCommand request, CancellationToken ct)
     {
+        await AAHBRANT.SST.Application.IntegracoesAtendimento.ProtecaoTurmaIntegracao.GarantirEtapaEmAndamentoAsync(_db, request.SessaoTreinamentoId, ct);
         var identificacao = await _autenticacaoFacial.IdentificarAsync(request.ObraId, request.FotoJpeg, ct);
         if (!identificacao.Aceito)
         {

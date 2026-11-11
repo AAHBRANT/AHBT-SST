@@ -74,9 +74,12 @@ internal static class ExclusaoSessaoTreinamento
         if (comAssinatura)
             return (0, "Esta turma tem um documento com assinatura já registrada, e documento assinado precisa continuar valendo. Por isso ela não pode ser excluída.");
 
-        // PONTO DE EXTENSÃO: "turma pertence a uma integração em andamento" (mockup, situação 3). Depende de uma entidade
-        // que liga a turma à integração, que ainda não existe no domínio; quando existir, a checagem entra aqui e devolve
-        // o motivo (ex.: "Esta turma pertence a uma integração em andamento..."). Não foi inventada para não adivinhar o modelo.
+        // Turma que é etapa de uma integração (Realizar integração): quem a conduz é o atendimento; apagar por aqui
+        // deixaria o atendimento sem a etapa e sem o certificado dela.
+        var integracaoId = await db.SessoesTreinamento.IgnoreQueryFilters()
+            .Where(s => s.Id == sessaoId).Select(s => s.IntegracaoAtendimentoId).FirstOrDefaultAsync(ct);
+        if (integracaoId is not null)
+            return (0, "Esta turma é uma etapa de uma integração (Realizar integração) e não pode ser excluída por aqui.");
 
         return (0, null);
     }

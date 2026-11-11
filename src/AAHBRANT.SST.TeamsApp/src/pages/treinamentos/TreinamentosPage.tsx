@@ -4,15 +4,17 @@ import { Abas, PageHeader, useAbaNaUrl } from '@ui';
 import { CursosTreinamentoTab } from '../pessoas/CursosTreinamentoTab';
 import { MatrizTreinamentoTab } from '../pessoas/MatrizTreinamentoTab';
 import { TurmasTab } from './TurmasTab';
+import { IntegracoesTab } from './IntegracoesTab';
+import { useIntegracaoHabilitada } from './useIntegracaoHabilitada';
 import { CursosObrigatoriosObraTab } from './CursosObrigatoriosObraTab';
 import { RegrasCursoObrigatorioTab } from './RegrasCursoObrigatorioTab';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 // 'certificados' saiu em 07/11/2026: certificado é dado de cada funcionário e fica no perfil (aba Treinamentos).
-type AbaTreinamentos = 'turmas' | 'obrigatorios' | 'configuracoes';
+type AbaTreinamentos = 'turmas' | 'integracao' | 'obrigatorios' | 'configuracoes';
 type AbaConfiguracao = 'cursos' | 'regras' | 'matriz';
 
-const ABAS: AbaTreinamentos[] = ['turmas', 'obrigatorios', 'configuracoes'];
+const ABAS: AbaTreinamentos[] = ['turmas', 'integracao', 'obrigatorios', 'configuracoes'];
 const CONFIGURACOES: AbaConfiguracao[] = ['cursos', 'regras', 'matriz'];
 
 // Item "Treinamentos" da sidebar (02/09): módulo próprio. Aba "Turmas" (04/09): turma com
@@ -23,6 +25,8 @@ const CONFIGURACOES: AbaConfiguracao[] = ['cursos', 'regras', 'matriz'];
 export function TreinamentosPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = {}) {
   // Configurações (catálogo, regras por NR, matriz) só para o Admin (07/11/2026): vale para todas as obras.
   const souAdmin = useSouAdministrador();
+  // A aba Integração só existe com Integracao:AtendimentoHabilitado ligada.
+  const integracaoLigada = useIntegracaoHabilitada();
   const [searchParams, setSearchParams] = useSearchParams();
   const abaAntiga = searchParams.get('aba');
   // Sub-aba de Configurações fica na URL (?sub=), para o link sobreviver ao recarregar.
@@ -65,12 +69,14 @@ export function TreinamentosPage({ mostrarTitulo = true }: { mostrarTitulo?: boo
         aria-label="Seções de Treinamentos"
         abas={[
           { valor: 'turmas', rotulo: 'Turmas' },
+          ...(integracaoLigada ? [{ valor: 'integracao' as const, rotulo: 'Integração' }] : []),
           { valor: 'obrigatorios', rotulo: 'Cursos obrigatórios por obra' },
           ...(souAdmin ? [{ valor: 'configuracoes' as const, rotulo: 'Configurações' }] : []),
         ]}
       />
 
       {aba === 'turmas' && <TurmasTab />}
+      {aba === 'integracao' && integracaoLigada && <IntegracoesTab />}
       {aba === 'obrigatorios' && <CursosObrigatoriosObraTab />}
       {aba === 'configuracoes' && souAdmin && (
         <>

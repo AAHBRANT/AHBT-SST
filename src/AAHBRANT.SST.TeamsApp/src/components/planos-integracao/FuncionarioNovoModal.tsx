@@ -18,15 +18,18 @@ import {
   ChevronRight20Regular,
   ArrowLeft20Regular,
   PersonAvailable20Regular,
+  PlayCircle20Regular,
 } from '@fluentui/react-icons';
 import { CampoData } from '../CampoData';
 import {
   api,
   MotivoPlanoIntegracao,
+  type AtendimentoEmAndamentoResumo,
   type PlanoIntegracao,
   type SituacaoItemKit,
   type SituacaoPassoIntegracao,
 } from '../../lib/api';
+import { botaoIntegracao } from '../../pages/integracao/componentes/helpers';
 
 // Pop-up "Funcionário novo" (especificação 21/10/2026, Módulo 1): aparece depois das Novidades para o
 // Técnico de Segurança e o Administrador. Com vários funcionários pendentes, abre numa lista — o
@@ -192,12 +195,15 @@ const useStyles = makeStyles({
     fontSize: tokens.fontSizeBase200,
   },
   campoData: { width: '140px' },
+  acaoIntegracao: { padding: '6px 0 2px 38px', '@media (max-width: 480px)': { paddingLeft: 0 } },
+  botaoIntegracao: { width: '100%', minHeight: '44px', fontWeight: tokens.fontWeightSemibold, whiteSpace: 'normal' },
 });
 
 const ROTULO_PASSO: Record<SituacaoPassoIntegracao, string> = {
   feito: 'Feito',
   pendente: 'Pendente',
   agendado: 'Agendado',
+  emAndamento: 'Em andamento',
   aguardando: 'Aguardando',
   naoConfigurado: 'Sem curso no catálogo',
 };
@@ -213,6 +219,10 @@ const ROTULO_MOTIVO: Record<MotivoPlanoIntegracao, string> = {
   [MotivoPlanoIntegracao.TrocaFuncao]: 'Troca de função',
   [MotivoPlanoIntegracao.TransferenciaObra]: 'Transferência de obra',
 };
+
+// Passo "Integração de Segurança" do plano. Com Integracao:AtendimentoHabilitado ligado ele abre o atendimento
+// em etapas (sem turma agendada); desligado, o pop-up segue como antes (turma agendada e ajuste de data).
+const ehPassoIntegracao = (codigo: string) => codigo === 'integracao';
 
 function iniciais(nome: string) {
   const partes = nome.trim().split(/\s+/).filter(Boolean);
@@ -268,7 +278,32 @@ export function FuncionarioNovoModal({ planos, aoFechar }: Props) {
   const [novaData, setNovaData] = useState('');
   const [salvandoData, setSalvandoData] = useState(false);
   const [erroData, setErroData] = useState<string | null>(null);
+  // Por obra: se a integração em etapas está ligada e o atendimento aberto (null = não há). Ausente = ainda não consultado.
+  const [integracaoPorObra, setIntegracaoPorObra] = useState<Record<string, { habilitada: boolean; emAndamento: AtendimentoEmAndamentoResumo | null }>>({});
   const selecionado = planosAtuais.find((p) => p.id === selecionadoId) ?? null;
+  const obraSelecionadaId = selecionado?.obraId ?? null;
+
+  useEffect(() => {
+    if (!obraSelecionadaId || obraSelecionadaId in integracaoPorObra) return;
+    let ativo = true;
+    api.integracoesAtendimento
+      .entrada(obraSelecionadaId)
+      .then((r) => ativo && setIntegracaoPorObra((m) => ({ ...m, [obraSelecionadaId]: { habilitada: r.habilitada, emAndamento: r.atendimentoEmAndamento ?? null } })))
+      // Sem a consulta vale o comportamento antigo (chave tratada como desligada).
+      .catch(() => ativo && setIntegracaoPorObra((m) => ({ ...m, [obraSelecionadaId]: { habilitada: false, emAndamento: null } })));
+    return () => {
+      ativo = false;
+    };
+  }, [obraSelecionadaId, integracaoPorObra]);
+
+  const infoIntegracao = obraSelecionadaId ? integracaoPorObra[obraSelecionadaId] : undefined;
+  const integracaoEmEtapas = infoIntegracao?.habilitada === true;
+  const emAndamento = infoIntegracao?.emAndamento ?? null;
+  const acaoIntegracao = botaoIntegracao(emAndamento);
+
+  function abrirIntegracao(plano: PlanoIntegracao) {
+    irPara(emAndamento ? `/treinamentos/integracao/${emAndamento.id}` : `/treinamentos/integracao/nova?obraId=${plano.obraId}`);
+  }
 
   function irPara(rota?: string | null) {
     if (!rota) return;
@@ -313,6 +348,7 @@ export function FuncionarioNovoModal({ planos, aoFechar }: Props) {
     s === 'feito' ? estilos.chipOk
       : s === 'pendente' ? estilos.chipNeutro
       : s === 'agendado' ? estilos.chipAtencao
+      : s === 'emAndamento' ? estilos.chipAtencao
       : estilos.chipNeutro;
   const chipKit = (s: SituacaoItemKit) =>
     s === 'emFalta' ? estilos.chipCritico : s === 'separado' ? estilos.chipOk : estilos.chipNeutro;
@@ -403,13 +439,35 @@ export function FuncionarioNovoModal({ planos, aoFechar }: Props) {
                         </span>
                         <span>
                           <span className={estilos.tituloPasso}>{passo.titulo}</span>
-                          {passo.detalhe && <span className={estilos.textoSecundario}>{passo.detalhe}</span>}
+                          {integracaoEmEtapas && ehPassoIntegracao(passo.codigo) && passo.situacao !== 'feito'
+                            ? <span className={estilos.textoSecundario}>{acaoIntegracao.detalhe}</span>
+                            : passo.detalhe && !(integracaoEmEtapas && passo.situacao === 'agendado') && <span className={estilos.textoSecundario}>{passo.detalhe}</span>}
                         </span>
-                        <span className={mergeClasses(estilos.chip, i === primeiroPendente ? estilos.chipMarca : chipPasso(passo.situacao))}>
-                          {i === primeiroPendente ? 'Fazer agora' : ROTULO_PASSO[passo.situacao]}
-                        </span>
+                        {(() => {
+                          // Com a integração em etapas ligada não existe turma agendada: o passo aparece como pendente / em andamento.
+                          const andando = integracaoEmEtapas && ehPassoIntegracao(passo.codigo) && passo.situacao !== 'feito'
+                            && (acaoIntegracao.situacao === 'continuar' || passo.situacao === 'emAndamento');
+                          const rotulo = integracaoEmEtapas && passo.situacao === 'agendado' ? 'Pendente' : ROTULO_PASSO[passo.situacao];
+                          return (
+                            <span className={mergeClasses(estilos.chip, andando ? estilos.chipAtencao : i === primeiroPendente ? estilos.chipMarca : chipPasso(passo.situacao))}>
+                              {andando ? 'Em andamento' : i === primeiroPendente ? 'Fazer agora' : rotulo}
+                            </span>
+                          );
+                        })()}
                       </button>
-                      {passo.situacao === 'agendado' && passo.sessaoTreinamentoId && (
+                      {integracaoEmEtapas && ehPassoIntegracao(passo.codigo) && passo.situacao !== 'feito' && (
+                        <div className={estilos.acaoIntegracao}>
+                          <Button
+                            appearance="primary"
+                            className={estilos.botaoIntegracao}
+                            icon={<PlayCircle20Regular />}
+                            onClick={() => abrirIntegracao(selecionado)}
+                          >
+                            {acaoIntegracao.rotulo}
+                          </Button>
+                        </div>
+                      )}
+                      {!integracaoEmEtapas && passo.situacao === 'agendado' && passo.sessaoTreinamentoId && (
                         <div className={estilos.ajusteData}>
                           {editandoData === passo.codigo ? (
                             <>

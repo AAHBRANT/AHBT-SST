@@ -14,4 +14,9 @@ public class OpcoesIntegracao
     // do pacote (NR-06, NR-18, NR-35, NR-12 e Integração de Segurança). Desligada (padrão), a ficha agenda
     // tudo como sempre agendou.
     public bool PacotePeloFluxoRealizarIntegracao { get; set; } = false;
+
+    // Liga o atendimento "Realizar integração" em etapas (NR-06, NR-12, NR-18, NR-35 e OS): a ficha de entrada deixa de
+    // agendar o combo (NR-06, NR-12, NR-18, NR-35 e Integração de Segurança), o pop-up troca "agendado" por "Iniciar/Continuar
+    // integração" e a API api/integracoes-atendimento passa a aceitar atendimentos. Desligada (padrão), tudo como antes.
+    public bool AtendimentoHabilitado { get; set; } = false;
 }

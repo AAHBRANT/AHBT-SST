@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AAHBRANT.SST.Api.Autorizacao;
+using AAHBRANT.SST.Application.IntegracoesAtendimento.Commands;
 using AAHBRANT.SST.Application.SessoesTreinamento.Commands;
 using AAHBRANT.SST.Application.SessoesTreinamento.Queries;
 using MediatR;
@@ -111,6 +112,7 @@ public class SessoesTreinamentoController : ControllerBase
     [HttpPost("{id:guid}/presenca")]
     public async Task<IActionResult> RegistrarPresenca(Guid id, RegistrarPresencaSessaoTreinamentoRequestBody body, CancellationToken ct)
     {
+        await GarantirAcessoTurmaIntegracaoAsync(id, null, ct);
         var command = new RegistrarPresencaSessaoTreinamentoCommand(id, body.TrabalhadorId, body.DispositivoId, body.SegredoDispositivo, body.Score,
             body.Desafio, body.AssinaturaLeitura, body.ImagemDigital, body.Localizacao?.ParaDominio());
         await _mediator.Send(command, ct);
@@ -122,6 +124,7 @@ public class SessoesTreinamentoController : ControllerBase
     [RequestSizeLimit(6_000_000)]
     public async Task<IActionResult> RegistrarPresencaFacial(Guid id, [FromForm] RegistrarPresencaFacialSessaoTreinamentoRequestBody body, CancellationToken ct)
     {
+        await GarantirAcessoTurmaIntegracaoAsync(id, null, ct);
         await using var stream = new MemoryStream();
         await body.Foto.CopyToAsync(stream, ct);
 
@@ -142,12 +145,27 @@ public class SessoesTreinamentoController : ControllerBase
     [RequestSizeLimit(6_000_000)]
     public async Task<IActionResult> AnexarFotoEvidencia(Guid id, [FromForm] AnexarFotoEvidenciaSessaoTreinamentoRequestBody body, CancellationToken ct)
     {
+        await GarantirAcessoTurmaIntegracaoAsync(id, null, ct);
         await using var stream = new MemoryStream();
         await body.Foto.CopyToAsync(stream, ct);
 
-        var fotoId = await _mediator.Send(new AnexarFotoEvidenciaSessaoTreinamentoCommand(id, body.Ordem, stream.ToArray(), body.Foto.ContentType, body.Metadados), ct);
+        var fotoId = await _mediator.Send(new AnexarFotoEvidenciaSessaoTreinamentoCommand(id, body.Ordem, stream.ToArray(), body.Foto.ContentType, body.Metadados, body.TokenCaptura), ct);
         return Ok(new { id = fotoId });
     }
+
+    // Turma de etapa de integração em andamento: token de captura de foto (uso único, 5 min, desta turma e deste usuário). A foto de
+    // turma de integração só é aceita com ele (campo tokenCaptura do envio) e a hora da captura passa a ser a do servidor.
+    [Authorize(Policy = "treinamento:criar")]
+    [HttpGet("{id:guid}/fotos-evidencia/token-captura")]
+    public async Task<IActionResult> TokenCapturaFoto(Guid id, CancellationToken ct)
+    {
+        await GarantirAcessoTurmaIntegracaoAsync(id, null, ct);
+        return Ok(await _mediator.Send(new EmitirTokenCapturaFotoCommand(id), ct));
+    }
+
+    // Turma de integração: só Técnico/Admin com vínculo na obra (senão 404). Turma comum não é afetada.
+    private Task<bool> GarantirAcessoTurmaIntegracaoAsync(Guid? sessaoId, Guid? fotoId, CancellationToken ct) =>
+        _mediator.Send(new GarantirAcessoTurmaIntegracaoQuery(sessaoId, fotoId, AzureAdObjectId, AutenticacaoHabilitada), ct);
 
     [Authorize(Policy = "treinamento:ver")]
     [HttpGet("fotos-evidencia/{fotoId:guid}")]
@@ -161,6 +179,7 @@ public class SessoesTreinamentoController : ControllerBase
     [HttpDelete("fotos-evidencia/{fotoId:guid}")]
     public async Task<IActionResult> RemoverFotoEvidencia(Guid fotoId, CancellationToken ct)
     {
+        await GarantirAcessoTurmaIntegracaoAsync(null, fotoId, ct);
         await _mediator.Send(new RemoverFotoEvidenciaSessaoTreinamentoCommand(fotoId), ct);
         return NoContent();
     }
@@ -183,6 +202,7 @@ public class SessoesTreinamentoController : ControllerBase
     [HttpPut("{id:guid}/instrutor")]
     public async Task<IActionResult> DefinirInstrutor(Guid id, DefinirInstrutorRequestBody body, CancellationToken ct)
     {
+        await GarantirAcessoTurmaIntegracaoAsync(id, null, ct);
         await _mediator.Send(new DefinirInstrutorSessaoTreinamentoCommand(id, body.InstrutorTrabalhadorId), ct);
         return NoContent();
     }
@@ -235,6 +255,7 @@ public class RegistrarPresencaFacialSessaoTreinamentoRequestBody
 
 public class AnexarFotoEvidenciaSessaoTreinamentoRequestBody
 {
+    public string? TokenCaptura { get; set; }
     public string? Metadados { get; set; }
     public IFormFile Foto { get; set; } = null!;
     public int Ordem { get; set; }

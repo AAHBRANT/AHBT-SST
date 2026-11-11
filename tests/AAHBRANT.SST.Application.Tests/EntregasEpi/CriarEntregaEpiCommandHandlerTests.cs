@@ -369,7 +369,7 @@ public class CriarEntregaEpiCommandHandlerTests
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(ComandoPara(trabalhador, catalogo), default));
 
-        Assert.Contains("vencido", ex.Message);
+        Assert.Contains("renovada", ex.Message);
     }
 
     [Fact]
