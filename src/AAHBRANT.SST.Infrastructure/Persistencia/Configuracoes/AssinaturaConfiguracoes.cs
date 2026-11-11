@@ -14,7 +14,9 @@ public class DocumentoAssinaturaConfiguracao : IEntityTypeConfiguration<Document
         builder.Property(d => d.HashPdf).HasMaxLength(64);
         builder.Property(d => d.TokenValidacaoPublica).HasMaxLength(64);
 
-        builder.HasIndex(d => new { d.EntidadeTipo, d.EntidadeId });
+        // Um documento por registro de origem, mesmo com requisições simultâneas (vários tablets no mesmo
+        // DDS). Só os ativos: os duplicados antigos ficaram desativados (ver DocumentoAssinaturaUnico).
+        builder.HasIndex(d => new { d.EntidadeTipo, d.EntidadeId }).IsUnique().HasFilter("[Ativo] = 1");
         builder.HasIndex(d => d.ObraId);
         // Filtrado: só documentos finalizados têm token — evita colisão de múltiplos NULL sob índice
         // único (SQL Server trata cada NULL como distinto, mas o filtro deixa a intenção explícita).

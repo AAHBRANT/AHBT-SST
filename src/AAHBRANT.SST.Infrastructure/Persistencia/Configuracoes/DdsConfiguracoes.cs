@@ -167,7 +167,8 @@ public class DdsParticipanteConfiguracao : IEntityTypeConfiguration<DdsParticipa
             .HasForeignKey(p => p.TrabalhadorId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(p => new { p.DdsId, p.TrabalhadorId });
+        // Uma presença por pessoa no DDS, mesmo se dois tablets a confirmarem no mesmo instante.
+        builder.HasIndex(p => new { p.DdsId, p.TrabalhadorId }).IsUnique().HasFilter("[Ativo] = 1");
         builder.HasQueryFilter(p => p.Ativo);
     }
 }

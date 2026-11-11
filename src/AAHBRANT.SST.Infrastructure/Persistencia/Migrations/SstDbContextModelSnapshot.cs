@@ -3179,7 +3179,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.HasIndex("TrabalhadorId");
 
-                    b.HasIndex("DdsId", "TrabalhadorId");
+                    b.HasIndex("DdsId", "TrabalhadorId")
+                        .IsUnique()
+                        .HasFilter("[Ativo] = 1");
 
                     b.ToTable("DdsParticipantes");
                 });
@@ -3563,7 +3565,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .IsUnique()
                         .HasFilter("[TokenValidacaoPublica] IS NOT NULL");
 
-                    b.HasIndex("EntidadeTipo", "EntidadeId");
+                    b.HasIndex("EntidadeTipo", "EntidadeId")
+                        .IsUnique()
+                        .HasFilter("[Ativo] = 1");
 
                     b.ToTable("DocumentosAssinatura");
                 });

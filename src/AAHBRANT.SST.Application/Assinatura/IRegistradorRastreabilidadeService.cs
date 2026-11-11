@@ -43,15 +43,7 @@ public class RegistradorRastreabilidadeService : IRegistradorRastreabilidadeServ
 
     public async Task<RastreabilidadeDocumentoResultado> GarantirAsync(string entidadeTipo, Guid entidadeId, CancellationToken ct)
     {
-        var documento = await _db.DocumentosAssinatura
-            .Include(d => d.Signatarios)
-            .FirstOrDefaultAsync(d => d.EntidadeTipo == entidadeTipo && d.EntidadeId == entidadeId, ct);
-
-        if (documento is null)
-        {
-            documento = new DocumentoAssinatura { EntidadeTipo = entidadeTipo, EntidadeId = entidadeId };
-            _db.DocumentosAssinatura.Add(documento);
-        }
+        var documento = await DocumentoAssinaturaUnico.ObterOuCriarAsync(_db, entidadeTipo, entidadeId, ct);
 
         if (documento.TokenValidacaoPublica is null)
         {

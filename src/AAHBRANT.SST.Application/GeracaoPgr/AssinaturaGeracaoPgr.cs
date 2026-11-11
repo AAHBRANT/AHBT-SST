@@ -45,13 +45,7 @@ public static class AssinaturaGeracaoPgr
     public static async Task AssinarAsync(
         IAppDbContext db, IRegistradorAssinaturaService registrador, Guid geracaoId, Guid trabalhadorId, PapelAssinatura papel, CancellationToken ct)
     {
-        var documento = await db.DocumentosAssinatura.FirstOrDefaultAsync(d => d.EntidadeTipo == EntidadeTipo && d.EntidadeId == geracaoId, ct);
-        if (documento is null)
-        {
-            documento = new DocumentoAssinatura { EntidadeTipo = EntidadeTipo, EntidadeId = geracaoId };
-            db.DocumentosAssinatura.Add(documento);
-            await db.SaveChangesAsync(ct);
-        }
+        var documento = await Assinatura.DocumentoAssinaturaUnico.ObterOuCriarAsync(db, EntidadeTipo, geracaoId, ct);
 
         var jaAssinou = await db.DocumentoSignatarios.AnyAsync(
             s => s.DocumentoAssinaturaId == documento.Id && s.TrabalhadorId == trabalhadorId && s.Papel == papel, ct);
