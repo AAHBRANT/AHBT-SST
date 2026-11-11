@@ -2723,6 +2723,25 @@ public static class NovidadesSeeder
                     "Escolher o tamanho exigia abrir uma lista e conferir o saldo em outro lugar do card.",
                     "Os tamanhos viram botões com o saldo da obra embaixo de cada um, e a quantidade tem botões de mais e menos. O carrinho fica sempre visível ao lado."),
             }),
+        new(
+            Versao: "5.158.0",
+            Titulo: "Fichas de entrada mais organizadas",
+            DataPublicacao: new DateTime(2026, 11, 11, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Um aviso por obra e por dia para o técnico de segurança",
+                    "Cada ficha de entrada gerava um aviso separado para o técnico, e o calendário do Teams recebia um evento para cada uma.",
+                    "O técnico recebe um único aviso por obra, com o total de pessoas que entram ou mudam de função no dia. O aviso é atualizado a cada nova ficha e o Teams avisa só no primeiro do dia."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Terceirizados passam a ter ficha de entrada",
+                    "Pessoas terceirizadas não geravam ficha de entrada, por isso não apareciam no pop-up \"Funcionário novo\".",
+                    "Terceirizados aparecem no pop-up \"Funcionário novo\". O kit de integração deles continua seguindo o contrato da empresa."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Troca de função ou obra sem ficha repetida",
+                    "Quem mudava de função ou de obra gerava uma ficha nova, mesmo já tendo NR-06, NR-18 e NR-35 em dia.",
+                    "Se a pessoa já tem essas três NRs em dia, nenhuma ficha nova é aberta. O sistema registra a dispensa, agenda só os cursos que a nova função ou obra exige e que ainda faltam, separa o kit e avisa o técnico."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
