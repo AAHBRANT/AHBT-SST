@@ -4,6 +4,7 @@ import {
   Button,
   Campo,
   Card,
+  Checkbox,
   CampoData,
   ListaSelecaoMultipla,
   DataTable,
@@ -21,7 +22,7 @@ import {
   type Coluna,
   type Tom,
 } from '@ui';
-import { Add24Regular } from '@fluentui/react-icons';
+import { Add24Regular, CheckmarkCircle24Regular, Delete24Regular, LockClosed16Regular } from '@fluentui/react-icons';
 import {
   api,
   statusSessaoTreinamentoLabel,
@@ -35,6 +36,8 @@ import {
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { hoje } from '../../lib/valoresPadrao';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { ExcluirTurmaDialog, type AlvoExclusaoTurma } from '../../components/treinamentos/ExcluirTurmaDialog';
 
 function turmaVazia(): NovaSessaoTreinamento {
   return {
@@ -84,6 +87,28 @@ export function TurmasTab() {
   const [padrao, setPadrao] = useState<PadraoTurmaTreinamento | null>(null);
   const [nomeUsuario, setNomeUsuario] = useState('');
   const sucessoToast = useSucessoToast();
+  // Selecao em massa para exclusao definitiva (mockup turma-excluir-2026-11-10): so Administrador.
+  const souAdministrador = useSouAdministrador();
+  const [selecionando, setSelecionando] = useState(false);
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
+  const [alvoExclusao, setAlvoExclusao] = useState<AlvoExclusaoTurma | null>(null);
+  const travada = (t: SessaoTreinamento) => (t.totalCertificadosEmitidos ?? 0) > 0;
+  const podemSelecionar = turmas.filter((t) => !travada(t));
+  const todasMarcadas = podemSelecionar.length > 0 && podemSelecionar.every((t) => selecionadas.has(t.id));
+
+  function alternar(id: string) {
+    setSelecionadas((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  }
+
+  function alternarSelecao() {
+    setSelecionando((v) => !v);
+    setSelecionadas(new Set());
+  }
   // Sem padrão carregado ainda, trava: o servidor decide quem edita (Técnico de Segurança/Admin).
   const podeEditar = padrao?.podeEditar ?? false;
 
@@ -194,9 +219,47 @@ export function TurmasTab() {
     !abaixoDoMinimo &&
     novaTurma.trabalhadoresIds.length > 0;
 
+  const colunaSelecao: Coluna<SessaoTreinamento> = {
+    chave: 'selecao',
+    largura: '56px',
+    rotulo: (
+      <Checkbox
+        aria-label="Selecionar todas que podem ser excluídas"
+        checked={todasMarcadas}
+        onChange={() => setSelecionadas(todasMarcadas ? new Set() : new Set(podemSelecionar.map((t) => t.id)))}
+      />
+    ),
+    render: (t) =>
+      travada(t) ? (
+        <span aria-label="Não pode ser excluída" title="Não pode ser excluída">
+          <LockClosed16Regular />
+        </span>
+      ) : (
+        <span onClick={(ev) => ev.stopPropagation()}>
+          <Checkbox aria-label={`Selecionar ${t.numeroCertificado ?? 'turma'}`} checked={selecionadas.has(t.id)} onChange={() => alternar(t.id)} />
+        </span>
+      ),
+  };
+
   const colunas: Coluna<SessaoTreinamento>[] = [
+    ...(souAdministrador && selecionando ? [colunaSelecao] : []),
     { chave: 'certificado', rotulo: 'Nº certificado', render: (t) => t.numeroCertificado },
-    { chave: 'curso', rotulo: 'Curso', render: (t) => t.cursoTreinamentoNome || nomeCurso(t.cursoTreinamentoId) },
+    {
+      chave: 'curso',
+      rotulo: 'Curso',
+      render: (t) => (
+        <>
+          {t.cursoTreinamentoNome || nomeCurso(t.cursoTreinamentoId)}
+          {souAdministrador && selecionando && travada(t) && (
+            <div>
+              <StatusChip tom="neutro" icone={<LockClosed16Regular />}>
+                {t.totalCertificadosEmitidos === 1 ? '1 certificado' : `${t.totalCertificadosEmitidos} certificados`}
+              </StatusChip>
+            </div>
+          )}
+        </>
+      ),
+    },
     { chave: 'obra', rotulo: 'Obra', render: (t) => t.obraNome },
     { chave: 'data', rotulo: 'Data', render: (t) => t.dataRealizacao?.slice(0, 10) },
     {
@@ -217,6 +280,17 @@ export function TurmasTab() {
       <PageHeader
         titulo="Turmas de treinamento"
         acoes={
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {souAdministrador && (
+            <Button
+              appearance="secondary"
+              icon={<CheckmarkCircle24Regular />}
+              aria-pressed={selecionando}
+              onClick={alternarSelecao}
+            >
+              {selecionando ? 'Selecionando' : 'Selecionar'}
+            </Button>
+          )}
           <Button
             appearance="primary"
             icon={<Add24Regular />}
@@ -226,6 +300,7 @@ export function TurmasTab() {
           >
             {painelAberto ? 'Fechar' : 'Nova turma'}
           </Button>
+          </div>
         }
       />
 
@@ -233,6 +308,32 @@ export function TurmasTab() {
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}
         </FeedbackInline>
+      )}
+
+      {souAdministrador && selecionando && (
+        <Legenda>Selecione turmas para excluir de uma vez. Quem tem certificado fica travada.</Legenda>
+      )}
+      {souAdministrador && selecionando && selecionadas.size > 0 && (
+        <div
+          style={{
+            display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap',
+            padding: '10px 14px', borderRadius: 14, background: 'var(--sst-acao-marca-fundo)', color: '#fff',
+          }}
+        >
+          <b>{selecionadas.size === 1 ? '1 turma selecionada' : `${selecionadas.size} turmas selecionadas`}</b>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button appearance="outline" style={{ color: '#fff', borderColor: 'rgba(255,255,255,.6)' }} onClick={() => setSelecionadas(new Set())}>
+              Limpar seleção
+            </Button>
+            <Button
+              appearance="secondary"
+              icon={<Delete24Regular />}
+              onClick={() => setAlvoExclusao({ tipo: 'lote', turmas: turmas.filter((t) => selecionadas.has(t.id)) })}
+            >
+              Excluir selecionadas ({selecionadas.size})
+            </Button>
+          </div>
+        </div>
       )}
 
       <div id="painel-nova-turma">
@@ -406,9 +507,28 @@ export function TurmasTab() {
             titulo: 'Nenhuma turma de treinamento criada ainda.',
             acao: { rotulo: 'Nova turma', aoClicar: () => setPainelAberto(true) },
           }}
-          aoClicarLinha={(t) => navigate(`/treinamentos/turma/${t.id}`)}
+          aoClicarLinha={(t) => {
+            if (selecionando && souAdministrador) {
+              if (!travada(t)) alternar(t.id);
+              return;
+            }
+            navigate(`/treinamentos/turma/${t.id}`);
+          }}
         />
       </Card>
+      {alvoExclusao && (
+        <ExcluirTurmaDialog
+          alvo={alvoExclusao}
+          aoFechar={() => setAlvoExclusao(null)}
+          aoExcluir={(resultados) => {
+            const n = resultados.filter((r) => r.resultado === 'excluida').length;
+            setAlvoExclusao(null);
+            setSelecionadas(new Set());
+            void carregar();
+            sucessoToast(n === 1 ? 'Turma excluída definitivamente.' : 'Turmas excluídas definitivamente.');
+          }}
+        />
+      )}
     </div>
   );
 }
