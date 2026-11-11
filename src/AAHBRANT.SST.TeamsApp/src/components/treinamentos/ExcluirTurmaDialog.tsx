@@ -287,6 +287,11 @@ export function ExcluirTurmaDialog({ alvo, aoFechar, aoExcluir }: Props) {
                       <span className={`${e.numero} ${contagens.fotos === 0 ? e.zerado : ''}`}>{contagens.fotos}</span>
                     </div>
                   </div>
+                  {contagens.presencas > 0 || (!lote && previa?.listaPresencaGerada) ? (
+                    <FeedbackInline tom="aviso">
+                      As presenças registradas e a lista de presença (inclusive a validação pelo QR de uma lista já impressa) deixam de existir.
+                    </FeedbackInline>
+                  ) : null}
                   <FeedbackInline tom="erro">
                     Ação definitiva e irreversível.{lote ? '' : ' Se a turma ainda vai acontecer, prefira não excluir.'}
                   </FeedbackInline>

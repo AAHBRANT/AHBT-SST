@@ -19,6 +19,7 @@ import {
   Select,
   StatusChip,
   Textarea,
+  designTokens,
   type Coluna,
   type Tom,
 } from '@ui';
@@ -38,6 +39,9 @@ import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { hoje } from '../../lib/valoresPadrao';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { ExcluirTurmaDialog, type AlvoExclusaoTurma } from '../../components/treinamentos/ExcluirTurmaDialog';
+
+// Limite do servidor por exclusão em lote (ExcluirSessoesTreinamentoLoteCommandValidator.MaximoPorLote).
+const MAXIMO_POR_LOTE = 100;
 
 function turmaVazia(): NovaSessaoTreinamento {
   return {
@@ -92,22 +96,36 @@ export function TurmasTab() {
   const [selecionando, setSelecionando] = useState(false);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [alvoExclusao, setAlvoExclusao] = useState<AlvoExclusaoTurma | null>(null);
+  const [avisoLimite, setAvisoLimite] = useState(false);
   const travada = (t: SessaoTreinamento) => (t.totalCertificadosEmitidos ?? 0) > 0;
   const podemSelecionar = turmas.filter((t) => !travada(t));
-  const todasMarcadas = podemSelecionar.length > 0 && podemSelecionar.every((t) => selecionadas.has(t.id));
+  const todasMarcadas = podemSelecionar.length > 0 && podemSelecionar.slice(0, MAXIMO_POR_LOTE).every((t) => selecionadas.has(t.id));
 
   function alternar(id: string) {
+    setAvisoLimite(false);
     setSelecionadas((atual) => {
       const novo = new Set(atual);
       if (novo.has(id)) novo.delete(id);
+      else if (novo.size >= MAXIMO_POR_LOTE) setAvisoLimite(true);
       else novo.add(id);
       return novo;
     });
   }
 
+  function alternarTodas() {
+    if (todasMarcadas) {
+      setSelecionadas(new Set());
+      setAvisoLimite(false);
+      return;
+    }
+    setSelecionadas(new Set(podemSelecionar.slice(0, MAXIMO_POR_LOTE).map((t) => t.id)));
+    setAvisoLimite(podemSelecionar.length > MAXIMO_POR_LOTE);
+  }
+
   function alternarSelecao() {
     setSelecionando((v) => !v);
     setSelecionadas(new Set());
+    setAvisoLimite(false);
   }
   // Sem padrão carregado ainda, trava: o servidor decide quem edita (Técnico de Segurança/Admin).
   const podeEditar = padrao?.podeEditar ?? false;
@@ -226,7 +244,7 @@ export function TurmasTab() {
       <Checkbox
         aria-label="Selecionar todas que podem ser excluídas"
         checked={todasMarcadas}
-        onChange={() => setSelecionadas(todasMarcadas ? new Set() : new Set(podemSelecionar.map((t) => t.id)))}
+        onChange={alternarTodas}
       />
     ),
     render: (t) =>
@@ -313,16 +331,21 @@ export function TurmasTab() {
       {souAdministrador && selecionando && (
         <Legenda>Selecione turmas para excluir de uma vez. Quem tem certificado fica travada.</Legenda>
       )}
+      {souAdministrador && selecionando && avisoLimite && (
+        <FeedbackInline tom="aviso" aoFechar={() => setAvisoLimite(false)}>
+          Limite de {MAXIMO_POR_LOTE} turmas por exclusão: a seleção foi limitada às primeiras {MAXIMO_POR_LOTE}. Exclua este grupo e selecione as demais depois.
+        </FeedbackInline>
+      )}
       {souAdministrador && selecionando && selecionadas.size > 0 && (
         <div
           style={{
             display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap',
-            padding: '10px 14px', borderRadius: 14, background: 'var(--sst-acao-marca-fundo)', color: '#fff',
+            padding: '10px 14px', borderRadius: 14, background: 'var(--sst-acao-assinar-fundo)', color: designTokens.colorWhite,
           }}
         >
           <b>{selecionadas.size === 1 ? '1 turma selecionada' : `${selecionadas.size} turmas selecionadas`}</b>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Button appearance="outline" style={{ color: '#fff', borderColor: 'rgba(255,255,255,.6)' }} onClick={() => setSelecionadas(new Set())}>
+            <Button appearance="outline" style={{ color: designTokens.colorWhite, borderColor: designTokens.colorWhite }} onClick={() => setSelecionadas(new Set())}>
               Limpar seleção
             </Button>
             <Button

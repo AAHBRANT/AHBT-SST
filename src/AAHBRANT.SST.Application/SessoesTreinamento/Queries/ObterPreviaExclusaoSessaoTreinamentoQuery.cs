@@ -20,6 +20,8 @@ public class PreviaExclusaoSessaoTreinamentoDto
     public int Presencas { get; set; }
     public int FotosEvidencia { get; set; }
     public int CertificadosEmitidos { get; set; }
+    // Já existe registro da lista de presença da turma (a Ata foi gerada; o QR de uma lista impressa deixa de validar).
+    public bool ListaPresencaGerada { get; set; }
     public bool PodeExcluir { get; set; }
     public string? Motivo { get; set; }
 }
@@ -27,7 +29,12 @@ public class PreviaExclusaoSessaoTreinamentoDto
 public class ObterPreviaExclusaoSessaoTreinamentoQueryHandler : IRequestHandler<ObterPreviaExclusaoSessaoTreinamentoQuery, PreviaExclusaoSessaoTreinamentoDto?>
 {
     private readonly IAppDbContext _db;
-    public ObterPreviaExclusaoSessaoTreinamentoQueryHandler(IAppDbContext db) => _db = db;
+    private readonly ICurrentUserService _usuario;
+    public ObterPreviaExclusaoSessaoTreinamentoQueryHandler(IAppDbContext db, ICurrentUserService usuario)
+    {
+        _db = db;
+        _usuario = usuario;
+    }
 
     public async Task<PreviaExclusaoSessaoTreinamentoDto?> Handle(ObterPreviaExclusaoSessaoTreinamentoQuery request, CancellationToken ct)
     {
@@ -35,11 +42,14 @@ public class ObterPreviaExclusaoSessaoTreinamentoQueryHandler : IRequestHandler<
             .Include(s => s.Obra).Include(s => s.CursoTreinamento)
             .FirstOrDefaultAsync(s => s.Id == request.Id, ct);
         if (sessao is null) return null;
+        if (!await ExclusaoSessaoTreinamento.EhAdministradorNaObraAsync(_db, _usuario.UsuarioId, sessao.ObraId, ct)) return null;
 
         var presencas = await _db.ParticipantesSessaoTreinamento
             .Where(p => p.SessaoTreinamentoId == sessao.Id && p.Ativo)
             .Select(p => p.PresencaConfirmadaEm).ToListAsync(ct);
         var fotos = await _db.FotosEvidenciaSessaoTreinamento.CountAsync(f => f.SessaoTreinamentoId == sessao.Id && f.Ativo, ct);
+        var listaGerada = await _db.DocumentosAssinatura.IgnoreQueryFilters()
+            .AnyAsync(d => d.EntidadeTipo == ExclusaoSessaoTreinamento.TipoDocumentoAta && d.EntidadeId == sessao.Id, ct);
         var (certificados, motivo) = await ExclusaoSessaoTreinamento.AvaliarBloqueioAsync(_db, sessao.Id, ct);
 
         return new PreviaExclusaoSessaoTreinamentoDto
@@ -53,6 +63,7 @@ public class ObterPreviaExclusaoSessaoTreinamentoQueryHandler : IRequestHandler<
             Presencas = presencas.Count(p => p is not null),
             FotosEvidencia = fotos,
             CertificadosEmitidos = certificados,
+            ListaPresencaGerada = listaGerada,
             PodeExcluir = motivo is null,
             Motivo = motivo,
         };

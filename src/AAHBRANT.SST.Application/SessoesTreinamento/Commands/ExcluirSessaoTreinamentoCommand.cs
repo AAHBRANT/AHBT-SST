@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -37,7 +38,7 @@ public class ExcluirSessaoTreinamentoCommandHandler : IRequestHandler<ExcluirSes
     {
         var resultado = await ExclusaoSessaoTreinamento.ExecutarAsync(_db, _auditoria, _usuario.UsuarioId, request.Id, ct);
         if (resultado.Status == StatusExclusaoTurma.NaoEncontrada)
-            throw new KeyNotFoundException($"Turma de treinamento {request.Id} não encontrada.");
+            throw new KeyNotFoundException(resultado.Motivo ?? $"Turma de treinamento {request.Id} não encontrada.");
         if (resultado.Status is StatusExclusaoTurma.Bloqueada or StatusExclusaoTurma.Falhou)
             throw new InvalidOperationException(resultado.Motivo);
     }
@@ -80,6 +81,19 @@ internal static class ExclusaoSessaoTreinamento
         return (0, null);
     }
 
+    // A exclusão é irreversível, então o escopo do Administrador é checado aqui, e não só pela policy global (que aprova quem é
+    // Administrador em QUALQUER vínculo): precisa ser Administrador na obra da turma ou Administrador global (vínculo com
+    // ObraId nulo). Sem usuário resolvido (Entra desligado em dev) mantém o comportamento de dev; token de serviço nem passa
+    // pela policy SomenteAdministrador.
+    public static async Task<bool> EhAdministradorNaObraAsync(IAppDbContext db, Guid? usuarioId, Guid obraId, CancellationToken ct)
+    {
+        if (usuarioId is null) return true;
+        return await db.UsuariosPerfilObra.IgnoreQueryFilters()
+            .AnyAsync(v => v.UsuarioId == usuarioId && v.Ativo
+                && v.PerfilAcesso != null && v.PerfilAcesso.Ativo && v.PerfilAcesso.Tipo == TipoPerfilAcesso.Administrador
+                && (v.ObraId == null || v.ObraId == obraId), ct);
+    }
+
     public static async Task<ResultadoExclusaoTurma> ExecutarAsync(
         IAppDbContext db, IAuditoriaService auditoria, Guid? usuarioId, Guid sessaoId, CancellationToken ct)
     {
@@ -89,6 +103,10 @@ internal static class ExclusaoSessaoTreinamento
             .Include(s => s.CursoTreinamento)
             .FirstOrDefaultAsync(s => s.Id == sessaoId, ct);
         if (sessao is null)
+            return new ResultadoExclusaoTurma(sessaoId, StatusExclusaoTurma.NaoEncontrada, "Turma não encontrada.");
+
+        // Fora da regra: não revela que a turma existe.
+        if (!await EhAdministradorNaObraAsync(db, usuarioId, sessao.ObraId, ct))
             return new ResultadoExclusaoTurma(sessaoId, StatusExclusaoTurma.NaoEncontrada, "Turma não encontrada.");
 
         var numero = sessao.NumeroCertificado;
@@ -132,6 +150,12 @@ internal static class ExclusaoSessaoTreinamento
 
             await db.SaveChangesAsync(ct);
             return new ResultadoExclusaoTurma(sessaoId, StatusExclusaoTurma.Excluida, null, numero);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Outro Administrador excluiu a turma entre a leitura e a gravação.
+            db.DescartarAlteracoesPendentes();
+            return new ResultadoExclusaoTurma(sessaoId, StatusExclusaoTurma.NaoEncontrada, "Esta turma já foi excluída.", numero);
         }
         catch (DbUpdateException)
         {

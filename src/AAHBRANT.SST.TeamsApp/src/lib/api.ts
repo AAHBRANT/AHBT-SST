@@ -849,6 +849,7 @@ export interface PreviaExclusaoSessaoTreinamento {
   presencas: number;
   fotosEvidencia: number;
   certificadosEmitidos: number;
+  listaPresencaGerada?: boolean;
   podeExcluir: boolean;
   motivo?: string | null;
 }

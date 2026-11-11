@@ -240,11 +240,99 @@ public class ExcluirSessaoTreinamentoTests
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => ExcluirAsync(db, daB.Id));
         Assert.True(await global.SessoesTreinamento.IgnoreQueryFilters().AnyAsync(s => s.Id == daB.Id));
-        Assert.Null(await new ObterPreviaExclusaoSessaoTreinamentoQueryHandler(db)
+        Assert.Null(await new ObterPreviaExclusaoSessaoTreinamentoQueryHandler(db, new CurrentUserService())
             .Handle(new ObterPreviaExclusaoSessaoTreinamentoQuery(daB.Id), CancellationToken.None));
 
         await ExcluirAsync(db, daA.Id);
         Assert.False(await global.SessoesTreinamento.IgnoreQueryFilters().AnyAsync(s => s.Id == daA.Id));
+    }
+
+    // Escopo do Administrador (revisão da entrega 2): a policy global aprova Admin em qualquer vínculo; a exclusão exige Admin NA obra.
+    private static async Task<(Guid UsuarioId, SstDbContext Db, SessaoTreinamento DaA, SessaoTreinamento DaB)> CenarioVinculosAsync(
+        params (TipoPerfilAcesso Tipo, Guid? Obra)[] vinculos)
+    {
+        var banco = Guid.NewGuid().ToString();
+        var global = NovoContexto(banco);
+        var daA = await CriarTurmaAsync(global, ObraA);
+        var daB = await CriarTurmaAsync(global, ObraB);
+        var usuario = new Usuario { Nome = "Admin", Email = "a@b.c", AzureAdObjectId = Guid.NewGuid().ToString() };
+        global.Usuarios.Add(usuario);
+        foreach (var (tipo, obra) in vinculos)
+        {
+            var perfil = new PerfilAcesso { Nome = tipo.ToString() + Guid.NewGuid(), Tipo = tipo };
+            global.PerfisAcesso.Add(perfil);
+            global.UsuariosPerfilObra.Add(new UsuarioPerfilObra { UsuarioId = usuario.Id, PerfilAcessoId = perfil.Id, ObraId = obra });
+        }
+        await global.SaveChangesAsync();
+        // Escopo do usuário = união das obras dos vínculos (como o EscopoPorObraMiddleware calcula).
+        var atual = new CurrentUserService();
+        atual.DefinirUsuarioId(usuario.Id);
+        var obras = vinculos.Where(v => v.Obra.HasValue).Select(v => v.Obra!.Value).ToList();
+        atual.DefinirEscopo(vinculos.Any(v => v.Obra is null), obras);
+        return (usuario.Id, NovoContexto(banco, atual), daA, daB);
+    }
+
+    private static Task<List<ResultadoExclusaoTurma>> LoteComoAsync(SstDbContext db, Guid usuarioId, params Guid[] ids)
+        => new ExcluirSessoesTreinamentoLoteCommandHandler(db, new AuditoriaGravando(db), ComUsuario(usuarioId, db))
+            .Handle(new ExcluirSessoesTreinamentoLoteCommand(ids), CancellationToken.None);
+
+    private static CurrentUserService ComUsuario(Guid usuarioId, SstDbContext db)
+    {
+        var u = new CurrentUserService();
+        u.DefinirUsuarioId(usuarioId);
+        u.DefinirEscopo(db.EscopoObraGlobal, db.ObrasNoEscopo);
+        return u;
+    }
+
+    [Fact]
+    public async Task AdminEmAComTecnicoEmB_NaoExcluiTurmaDeB_NemNoLoteNemNaPrevia()
+    {
+        var (uid, db, daA, daB) = await CenarioVinculosAsync((TipoPerfilAcesso.Administrador, ObraA), (TipoPerfilAcesso.TecnicoSeguranca, ObraB));
+
+        var r = await LoteComoAsync(db, uid, daB.Id);
+        Assert.Equal(StatusExclusaoTurma.NaoEncontrada, r.Single().Status);
+        Assert.True(await db.SessoesTreinamento.IgnoreQueryFilters().AnyAsync(s => s.Id == daB.Id));
+
+        var handler = new ExcluirSessaoTreinamentoCommandHandler(db, new AuditoriaGravando(db), ComUsuario(uid, db));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => handler.Handle(new ExcluirSessaoTreinamentoCommand(daB.Id), CancellationToken.None));
+
+        Assert.Null(await new ObterPreviaExclusaoSessaoTreinamentoQueryHandler(db, ComUsuario(uid, db))
+            .Handle(new ObterPreviaExclusaoSessaoTreinamentoQuery(daB.Id), CancellationToken.None));
+        Assert.Empty(await db.TrilhaAuditoria.ToListAsync());
+    }
+
+    [Fact]
+    public async Task AdminEmA_ExcluiTurmaDeA()
+    {
+        var (uid, db, daA, _) = await CenarioVinculosAsync((TipoPerfilAcesso.Administrador, ObraA), (TipoPerfilAcesso.TecnicoSeguranca, ObraB));
+
+        var r = await LoteComoAsync(db, uid, daA.Id);
+
+        Assert.Equal(StatusExclusaoTurma.Excluida, r.Single().Status);
+        Assert.False(await db.SessoesTreinamento.IgnoreQueryFilters().AnyAsync(s => s.Id == daA.Id));
+    }
+
+    [Fact]
+    public async Task AdminGlobal_ExcluiTurmaDeQualquerObra()
+    {
+        var (uid, db, daA, daB) = await CenarioVinculosAsync((TipoPerfilAcesso.Administrador, null));
+
+        var r = await LoteComoAsync(db, uid, daA.Id, daB.Id);
+
+        Assert.All(r, x => Assert.Equal(StatusExclusaoTurma.Excluida, x.Status));
+    }
+
+    [Fact]
+    public async Task Previa_InformaListaDePresencaGerada()
+    {
+        var db = NovoContexto(Guid.NewGuid().ToString());
+        var sessao = await CriarTurmaAsync(db, ObraA);
+        var handler = new ObterPreviaExclusaoSessaoTreinamentoQueryHandler(db, new CurrentUserService());
+        Assert.False((await handler.Handle(new ObterPreviaExclusaoSessaoTreinamentoQuery(sessao.Id), CancellationToken.None))!.ListaPresencaGerada);
+
+        db.DocumentosAssinatura.Add(new DocumentoAssinatura { EntidadeTipo = "SessaoTreinamento", EntidadeId = sessao.Id });
+        await db.SaveChangesAsync();
+        Assert.True((await handler.Handle(new ObterPreviaExclusaoSessaoTreinamentoQuery(sessao.Id), CancellationToken.None))!.ListaPresencaGerada);
     }
 
     [Fact]
@@ -254,7 +342,7 @@ public class ExcluirSessaoTreinamentoTests
         var livre = await CriarTurmaAsync(db, ObraA);
         var travada = await CriarTurmaAsync(db, ObraA);
         await AdicionarCertificadoAsync(db, travada);
-        var handler = new ObterPreviaExclusaoSessaoTreinamentoQueryHandler(db);
+        var handler = new ObterPreviaExclusaoSessaoTreinamentoQueryHandler(db, new CurrentUserService());
 
         var p1 = await handler.Handle(new ObterPreviaExclusaoSessaoTreinamentoQuery(livre.Id), CancellationToken.None);
         Assert.NotNull(p1);
