@@ -21,6 +21,10 @@ public class CurrentUserService : ICurrentUserService
     public bool TemAcessoGlobal { get; private set; } = true;
     public IReadOnlyList<Guid> ObrasPermitidas { get; private set; } = Array.Empty<Guid>();
 
+    public Guid? UsuarioId { get; private set; }
+
+    public void DefinirUsuarioId(Guid? usuarioId) => UsuarioId = usuarioId;
+
     public void DefinirEscopo(bool temAcessoGlobal, IReadOnlyList<Guid> obrasPermitidas)
     {
         TemAcessoGlobal = temAcessoGlobal;

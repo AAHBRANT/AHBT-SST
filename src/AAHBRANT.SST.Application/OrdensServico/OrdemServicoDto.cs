@@ -16,6 +16,10 @@ public class MinutaOrdemServicoDto
     // Descrição das atividades da função, por GHE, como está no PGR.
     public List<GheOsDto> Ghes { get; set; } = new();
     public List<AtividadeOsDto> Atividades { get; set; } = new();
+    // false = a lista de atividades ainda não é a definitiva da função: nenhuma decisão do engenheiro
+    // (a minuta traz todas as atividades do GHE, como prévia) ou decisão parcial (traz só as confirmadas).
+    // O padrão é true para o ConteudoJson das OS já emitidas, que não tem este campo e não muda.
+    public bool AtividadesDaFuncaoConfirmadas { get; set; } = true;
     public List<EpiOsDto> Epis { get; set; } = new();
     public List<TreinamentoOsDto> Treinamentos { get; set; } = new();
     public AsoOsDto? Aso { get; set; }

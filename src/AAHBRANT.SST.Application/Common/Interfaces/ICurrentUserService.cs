@@ -20,5 +20,12 @@ public interface ICurrentUserService
     // Só é relevante quando TemAcessoGlobal é false.
     IReadOnlyList<Guid> ObrasPermitidas { get; }
 
+    // Id da entidade Usuario do usuário humano logado, usado para preencher CreatedBy/UpdatedBy
+    // (auditoria de quem criou/alterou). Nulo em Worker, jobs, Entra ID desligado e chamadas de
+    // sistema (ex.: App Role do G-RH). Resolvido uma vez por requisição pelo EscopoPorObraMiddleware.
+    Guid? UsuarioId { get; }
+
+    void DefinirUsuarioId(Guid? usuarioId);
+
     void DefinirEscopo(bool temAcessoGlobal, IReadOnlyList<Guid> obrasPermitidas);
 }

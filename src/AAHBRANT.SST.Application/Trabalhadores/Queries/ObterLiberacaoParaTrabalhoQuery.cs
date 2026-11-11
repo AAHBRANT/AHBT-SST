@@ -88,6 +88,15 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
             .Where(t => t.DataValidade.Date >= hoje)
             .Select(t => (t.TrabalhadorId, t.CursoTreinamentoId))
             .ToHashSet();
+        // Realizar integração: quem tem o registro "Integração realizada" conta como tendo a Integração de Segurança válida
+        // (o curso deixou de gerar certificado). Só muda quem a exige: o terceirizado.
+        if (cursoIntegracaoId is { } cursoIntegracaoRegistro)
+        {
+            var comRegistro = await _db.RegistrosIntegracao.IgnoreQueryFilters()
+                .Where(r => r.Ativo && ids.Contains(r.TrabalhadorId)).Select(r => r.TrabalhadorId).Distinct().ToListAsync(ct);
+            foreach (var trabalhadorId in comRegistro)
+                treinamentosValidos.Add((trabalhadorId, cursoIntegracaoRegistro));
+        }
         var ultimaValidadeTreinamento = todosTreinamentos
             .GroupBy(t => (t.TrabalhadorId, t.CursoTreinamentoId))
             .ToDictionary(g => g.Key, g => g.Max(t => t.DataValidade));

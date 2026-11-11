@@ -1,6 +1,9 @@
 using AAHBRANT.SST.Application.CursosObrigatorios;
 using AAHBRANT.SST.Application.Asos;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Integracoes;
+using AAHBRANT.SST.Domain.Entidades;
+using Microsoft.Extensions.Options;
 using AAHBRANT.SST.Application.SessoesTreinamento;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
@@ -17,12 +20,14 @@ public static class SituacaoPasso
     public const string Aguardando = "aguardando";
     // Curso não cadastrado no catálogo: não trava o plano, mas o técnico precisa saber.
     public const string NaoConfigurado = "naoConfigurado";
+    // Atendimento "Realizar integração" em andamento com a pessoa dentro (Detalhe diz a etapa).
+    public const string EmAndamento = "emAndamento";
 }
 
 // SessaoTreinamentoId/DataTurma: preenchidos quando o passo é uma turma agendada — o pop-up deixa
 // ajustar a data dali mesmo.
 public record PassoPlanoIntegracaoDto(string Codigo, string Titulo, string Situacao, string? Detalhe, string? Rota,
-    Guid? SessaoTreinamentoId = null, DateTime? DataTurma = null);
+    Guid? SessaoTreinamentoId = null, DateTime? DataTurma = null, Guid? IntegracaoAtendimentoId = null);
 public record ItemKitEpiDto(Guid CatalogoEpiId, string Nome, string? Tamanho, string Situacao);
 public record PlanoIntegracaoDto(
     Guid Id, Guid TrabalhadorId, string Nome, string? Matricula, string Funcao, Guid ObraId, string ObraNome,
@@ -35,24 +40,33 @@ public record PlanoIntegracaoDto(
 // obra vem do filtro global de PlanoIntegracao. Os passos são recalculados a cada consulta a partir
 // dos dados reais — quando todos estão feitos, o plano é encerrado como concluído aqui mesmo.
 public record ListarPlanosIntegracaoPendentesQuery(
-    Guid? PlanoId = null, string? AzureAdObjectId = null, bool AutenticacaoHabilitada = false) : IRequest<List<PlanoIntegracaoDto>>;
+    Guid? PlanoId = null, string? AzureAdObjectId = null, bool AutenticacaoHabilitada = false,
+    Guid? ObraId = null, bool SomenteConsultar = false, IReadOnlyList<Guid>? PlanosIds = null) : IRequest<List<PlanoIntegracaoDto>>;
 
 public class ListarPlanosIntegracaoPendentesQueryHandler : IRequestHandler<ListarPlanosIntegracaoPendentesQuery, List<PlanoIntegracaoDto>>
 {
     private readonly IAppDbContext _db;
-    public ListarPlanosIntegracaoPendentesQueryHandler(IAppDbContext db) => _db = db;
+    private readonly IOptions<OpcoesIntegracao>? _opcoes;
+    public ListarPlanosIntegracaoPendentesQueryHandler(IAppDbContext db, IOptions<OpcoesIntegracao>? opcoes = null)
+    {
+        _db = db;
+        _opcoes = opcoes;
+    }
 
     public async Task<List<PlanoIntegracaoDto>> Handle(ListarPlanosIntegracaoPendentesQuery request, CancellationToken ct)
     {
         if (!await PerfilTecnicoSeguranca.PodeEditarDadosTreinamentoAsync(_db, request.AzureAdObjectId, request.AutenticacaoHabilitada, ct))
             return new List<PlanoIntegracaoDto>();
 
-        var consulta = _db.PlanosIntegracao.Where(p => p.Status == StatusPlanoIntegracao.Aberto);
+        var consulta = _db.PlanosIntegracao.AsQueryable();
+        consulta = consulta.Where(p => p.Status == StatusPlanoIntegracao.Aberto);
+        if (request.PlanosIds is { } ids) consulta = consulta.Where(p => ids.Contains(p.Id));
+        if (request.ObraId is { } obraId) consulta = consulta.Where(p => p.ObraId == obraId);
         if (request.PlanoId is { } planoId) consulta = consulta.Where(p => p.Id == planoId);
+        if (!request.SomenteConsultar) consulta = consulta.OrderByDescending(p => p.CreatedAtUtc).Take(50);
         // Projeção (e não Include do Trabalhador): a foto de perfil fica fora da memória.
         var planos = await consulta
             .OrderByDescending(p => p.CreatedAtUtc)
-            .Take(50)
             .Select(p => new
             {
                 p.Id, p.ObraId, p.Motivo, p.CreatedAtUtc, p.AssumidoEm,
@@ -70,10 +84,38 @@ public class ListarPlanosIntegracaoPendentesQueryHandler : IRequestHandler<Lista
         if (planos.Count == 0) return new List<PlanoIntegracaoDto>();
 
         var cursos = await _db.CursosTreinamento
-            .Select(c => new { c.Id, c.Nome, c.EhIntegracaoSeguranca, c.AtendeNr6 })
+            .Select(c => new { c.Id, c.Nome, c.EhIntegracaoSeguranca, c.AtendeNr6, c.NormaReferencia })
             .ToListAsync(ct);
         var resultado = new List<PlanoIntegracaoDto>();
         var concluidosAgora = new List<Guid>();
+
+        // Atendimento "Realizar integração" ligado: quem está num atendimento em andamento e quem já tem o registro
+        // "Integração realizada". Consultas simples por tabela (sem navegação).
+        var habilitado = _opcoes?.Value.AtendimentoHabilitado == true;
+        var emAtendimento = new Dictionary<(Guid Trabalhador, Guid Obra), (Guid Id, int? Etapa)>();
+        var comRegistro = new HashSet<(Guid Trabalhador, Guid Obra)>();
+        var idsCombo = new HashSet<Guid>();
+        if (habilitado)
+        {
+            var idsPessoas = planos.Select(p => p.Trabalhador.Id).ToList();
+            // Sem depender do escopo de obras de quem consulta (IgnoreQueryFilters), mas só da MESMA obra do plano.
+            var vinculos = await _db.ParticipantesIntegracao.IgnoreQueryFilters()
+                .Where(p => p.Ativo && idsPessoas.Contains(p.TrabalhadorId))
+                .Select(p => new { p.TrabalhadorId, p.ObraId, p.IntegracaoAtendimentoId }).ToListAsync(ct);
+            var idsAtendimentos = vinculos.Select(v => v.IntegracaoAtendimentoId).Distinct().ToList();
+            var abertos = await _db.IntegracoesAtendimento.IgnoreQueryFilters()
+                .Where(a => a.Ativo && idsAtendimentos.Contains(a.Id) && a.Status == StatusIntegracaoAtendimento.EmAndamento)
+                .Select(a => new { a.Id, a.EtapaAtualOrdem }).ToListAsync(ct);
+            foreach (var v in vinculos)
+                if (abertos.FirstOrDefault(a => a.Id == v.IntegracaoAtendimentoId) is { } aberto)
+                    emAtendimento[(v.TrabalhadorId, v.ObraId)] = (aberto.Id, aberto.EtapaAtualOrdem);
+            comRegistro = (await _db.RegistrosIntegracao.IgnoreQueryFilters()
+                .Where(r => r.Ativo && idsPessoas.Contains(r.TrabalhadorId))
+                .Select(r => new { r.TrabalhadorId, r.ObraId }).Distinct().ToListAsync(ct)).Select(r => (r.TrabalhadorId, r.ObraId)).ToHashSet();
+            idsCombo = cursos.Where(c => PacoteIntegracao.EhNormaDoPacote(
+                    CatalogoNormasRegulamentadoras.NormalizarNumero(c.NormaReferencia) ?? (c.AtendeNr6 ? PacoteIntegracao.Nr06 : null)))
+                .Select(c => c.Id).ToHashSet();
+        }
 
         foreach (var plano in planos)
         {
@@ -123,10 +165,40 @@ public class ListarPlanosIntegracaoPendentesQueryHandler : IRequestHandler<Lista
             // 3. Integração de Segurança e 4. NR-06
             var idsIntegracao = cursos.Where(c => c.EhIntegracaoSeguranca).Select(c => c.Id).ToList();
             var idsNr6 = cursos.Where(c => c.AtendeNr6).Select(c => c.Id).ToList();
-            passos.Add(PassoCurso("integracao", "Integração de Segurança", idsIntegracao,
-                "Nenhum curso marcado como Integração de Segurança no catálogo."));
-            var passoNr6 = PassoCurso("nr06", "NR-06 (uso de EPI)", idsNr6, "Nenhum curso marcado como NR-06 no catálogo.");
-            passos.Add(passoNr6);
+            PassoPlanoIntegracaoDto passoNr6;
+            if (habilitado)
+            {
+                // "Realizar integração": sem turma agendada; o passo é Pendente / Em andamento — etapa X de 5 / Feito. A
+                // Integração de Segurança deixou de gerar certificado: o passo fecha com o registro "Integração realizada"
+                // (ou com certificado antigo válido do curso).
+                emAtendimento.TryGetValue((t.Id, plano.ObraId), out var atendimento);
+                var etapaTexto = atendimento.Etapa is { } etapaN ? $"etapa {etapaN} de 5" : "em andamento";
+                var rotaAtendimento = atendimento.Id == Guid.Empty ? $"/treinamentos/integracao/nova?obraId={t.ObraId}" : $"/treinamentos/integracao/{atendimento.Id}";
+                var integracaoFeita = comRegistro.Contains((t.Id, plano.ObraId)) || idsIntegracao.Any(validos.Contains);
+                passos.Add(integracaoFeita
+                    ? new("integracao", "Integração (NRs e Ordem de Serviço)", SituacaoPasso.Feito, null, rotaPerfil)
+                    : atendimento.Id != Guid.Empty
+                        ? new("integracao", "Integração (NRs e Ordem de Serviço)", SituacaoPasso.EmAndamento, $"Em andamento — {etapaTexto}.", rotaAtendimento,
+                            IntegracaoAtendimentoId: atendimento.Id)
+                        : new("integracao", "Integração (NRs e Ordem de Serviço)", SituacaoPasso.Pendente,
+                            "Aguardando a integração em etapas da obra.", rotaAtendimento));
+                passoNr6 = idsNr6.Count == 0
+                    ? new("nr06", "NR-06 (uso de EPI)", SituacaoPasso.NaoConfigurado, "Nenhum curso marcado como NR-06 no catálogo.", "/gestao-sst?secao=treinamentos")
+                    : idsNr6.Any(validos.Contains)
+                        ? new("nr06", "NR-06 (uso de EPI)", SituacaoPasso.Feito, null, rotaPerfil)
+                        : atendimento.Id != Guid.Empty
+                            ? new("nr06", "NR-06 (uso de EPI)", SituacaoPasso.EmAndamento, $"Na integração — {etapaTexto}.", rotaAtendimento,
+                                IntegracaoAtendimentoId: atendimento.Id)
+                            : new("nr06", "NR-06 (uso de EPI)", SituacaoPasso.Pendente, "Será feita na integração em etapas.", rotaAtendimento);
+                passos.Add(passoNr6);
+            }
+            else
+            {
+                passos.Add(PassoCurso("integracao", "Integração de Segurança", idsIntegracao,
+                    "Nenhum curso marcado como Integração de Segurança no catálogo."));
+                passoNr6 = PassoCurso("nr06", "NR-06 (uso de EPI)", idsNr6, "Nenhum curso marcado como NR-06 no catálogo.");
+                passos.Add(passoNr6);
+            }
 
             // 5. Demais cursos obrigatórios da função
             var idsExigidos = await ExigenciasTreinamento.CursosAsync(_db, t.ObraId, t.FuncaoId, ct);
@@ -135,6 +207,9 @@ public class ListarPlanosIntegracaoPendentesQueryHandler : IRequestHandler<Lista
                 .Select(c => new { CursoTreinamentoId = c.Id, c.Nome })
                 .ToListAsync(ct);
             outrosCursos = outrosCursos.Where(c => !idsIntegracao.Contains(c.CursoTreinamentoId) && !idsNr6.Contains(c.CursoTreinamentoId)).ToList();
+            // Com o atendimento ligado, NR-12, NR-18 e NR-35 também são etapas da integração (não "demais cursos").
+            if (habilitado)
+                outrosCursos = outrosCursos.Where(c => !idsCombo.Contains(c.CursoTreinamentoId)).ToList();
             var pendentesCurso = outrosCursos.Where(c => !validos.Contains(c.CursoTreinamentoId)).ToList();
             if (outrosCursos.Count == 0 || pendentesCurso.Count == 0)
             {
@@ -179,7 +254,7 @@ public class ListarPlanosIntegracaoPendentesQueryHandler : IRequestHandler<Lista
             passos.Add(new("kit", "Retirar o kit de EPI e assinar", kitSituacao, kitDetalhe, "/operacao?secao=epi"));
 
             var concluidos = passos.Count(p => p.Situacao is SituacaoPasso.Feito or SituacaoPasso.NaoConfigurado);
-            if (concluidos == passos.Count)
+            if (concluidos == passos.Count && !request.SomenteConsultar)
             {
                 concluidosAgora.Add(plano.Id);
                 continue;

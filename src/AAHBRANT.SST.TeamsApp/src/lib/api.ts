@@ -591,6 +591,10 @@ export interface UsuarioLogado {
   // Administrador é o único que pode excluir registro operacional (regra fixa no servidor, não
   // configurável pela matriz de permissões — ver PoliticasAutorizacao no backend).
   ehAdministrador: boolean;
+  // Só o Engenheiro de Segurança confirma atividades por função: global ou nas obras da lista.
+  ehEngenheiroSeguranca?: boolean;
+  engenheiroSegurancaGlobal?: boolean;
+  obrasEngenheiroSeguranca?: string[];
   permissoes: string[];
   // Onde cada permissão vale (Responsável x Supervisão, 06/11/2026). global = todas as obras;
   // obras = obras atribuídas. Ausente = servidor antigo ou acesso total.
@@ -834,6 +838,31 @@ export interface SessaoTreinamento {
   totalParticipantes: number;
   totalPresencasConfirmadas: number;
   totalFotosEvidencia: number;
+  // Certificados ligados à turma (inclusive excluídos); > 0 trava a exclusão definitiva.
+  totalCertificadosEmitidos?: number;
+}
+
+// Exclusão definitiva de turma (só Administrador): o que vai junto e se pode ser excluída.
+export interface PreviaExclusaoSessaoTreinamento {
+  id: string;
+  numeroCertificado?: string | null;
+  cursoNome: string;
+  obraNome: string;
+  dataRealizacao: string;
+  inscricoes: number;
+  presencas: number;
+  fotosEvidencia: number;
+  certificadosEmitidos: number;
+  listaPresencaGerada?: boolean;
+  podeExcluir: boolean;
+  motivo?: string | null;
+}
+
+export interface ResultadoExclusaoTurma {
+  id: string;
+  numero?: string | null;
+  resultado: 'excluida' | 'bloqueada' | 'naoEncontrada' | 'falhou';
+  motivo?: string | null;
 }
 
 export interface NovaSessaoTreinamento {
@@ -1486,6 +1515,26 @@ export interface Ghe {
   medidasProtecaoExistentes: string | null;
   funcoes: GheFuncao[];
   riscos: GheRisco[];
+}
+
+// Atividades por função na OS (Entrega 4, 10/11/2026): a IA sugere, o Engenheiro de Segurança confirma.
+export type EstadoAtividadeFuncao = 'SemDecisao' | 'Pendente' | 'Validada' | 'Descartada';
+export interface FuncaoMatrizAtividades {
+  funcaoId: string; nome: string; descricaoNoPgr?: string | null;
+  validadas: number; pendentes: number; descartadas: number; semDecisao: number;
+}
+export interface AtividadeMatriz { atividadeId: string; nome: string; procedimentos: number }
+export interface CelulaMatriz {
+  atividadeId: string; funcaoId: string; estado: EstadoAtividadeFuncao;
+  origem: 'Pgr' | 'SugestaoIa' | 'Manual' | null;
+  justificativaIa?: string | null; validadoPorNome?: string | null; validadoEmUtc?: string | null;
+}
+export interface MatrizAtividadesFuncao {
+  obraId: string; gheId: string; gheNumero: number;
+  funcoes: FuncaoMatrizAtividades[]; atividades: AtividadeMatriz[]; celulas: CelulaMatriz[];
+}
+export interface ResultadoSugestaoAtividadesFuncao {
+  sugeridos: number; preexistentesIgnorados: number; chamadasIa: number; tokensEntrada: number; tokensSaida: number;
 }
 
 export interface ExameFuncaoObra {
@@ -3159,6 +3208,8 @@ export interface MinutaOrdemServico {
   aso?: { resultado: number; validade?: string | null; valido: boolean } | null;
   politicas: { titulo: string; codigo?: string | null; revisao?: string | null; formaConsulta?: string | null }[];
   pendencias: PendenciaOs[];
+  // false = prévia (função sem confirmação do engenheiro ou decisão parcial). Ausente em servidor antigo.
+  atividadesDaFuncaoConfirmadas?: boolean;
 }
 
 // Gerador de PGR pela EAP (21/10/2026). Status: 1 Rascunho, 2 Aguardando aprovação, 3 Aprovado, 4 Devolvido.
@@ -5205,7 +5256,7 @@ export interface NovaNovidadeVersao {
 
 // Plano de integração do funcionário novo (especificação 21/10/2026, Módulo 1) — pop-up que aparece
 // depois das Novidades para o Técnico de Segurança e o Administrador.
-export type SituacaoPassoIntegracao = 'feito' | 'pendente' | 'agendado' | 'aguardando' | 'naoConfigurado';
+export type SituacaoPassoIntegracao = 'feito' | 'pendente' | 'agendado' | 'aguardando' | 'naoConfigurado' | 'emAndamento';
 export type SituacaoItemKit = 'separado' | 'emFalta' | 'entregue';
 // Pop-up de pendências automáticas por obra (03/11): recadastro facial e digitais (uma de cada mão).
 export const TipoPendenciaAutomatica = {
@@ -5257,6 +5308,8 @@ export interface PassoPlanoIntegracao {
   rota?: string | null;
   sessaoTreinamentoId?: string | null;
   dataTurma?: string | null;
+  /** Com a integração em etapas ligada: atendimento em que o passo está. */
+  integracaoAtendimentoId?: string | null;
 }
 export interface ItemKitEpi {
   catalogoEpiId: string;
@@ -5282,6 +5335,198 @@ export interface PlanoIntegracao {
   passosConcluidos: number;
   passos: PassoPlanoIntegracao[];
   kit: ItemKitEpi[];
+}
+
+// ---- Realizar integração em etapas (11/11/2026) ----
+// Contrato de api/integracoes-atendimento (IntegracaoAtendimentoDtos.cs; docs/2026-11-11-realizar-integracao-
+// contrato.md). Ordem fixa das etapas: NR-06, NR-12, NR-18, NR-35 e Ordem de Serviço (NR-01). Uma assinatura
+// biométrica por curso e por pessoa (a presença da turma da etapa); a OS tem assinatura própria. Nesta API os
+// enums saem como texto camelCase (não como número).
+export type TipoEtapaIntegracao = 'nr06' | 'nr12' | 'nr18' | 'nr35' | 'ordemServico';
+export type StatusIntegracaoAtendimento = 'emAndamento' | 'concluido' | 'cancelado';
+export type StatusEtapaIntegracao = 'pendente' | 'emAndamento' | 'concluida' | 'pulada';
+
+export interface BloqueioIntegracao {
+  codigo: string;
+  mensagem: string;
+  rota?: string | null;
+}
+
+export interface AtendimentoEmAndamentoResumo {
+  id: string;
+  numero: string;
+  status: StatusIntegracaoAtendimento;
+  etapaAtualOrdem?: number | null;
+}
+
+export type SituacaoPessoaEtapaIntegracao = 'nestaIntegracao' | 'valido' | 'naoExigido';
+
+export interface CandidatoIntegracao {
+  trabalhadorId: string;
+  nome: string;
+  funcaoId: string;
+  funcao: string;
+  planoIntegracaoId?: string | null;
+  temPlanoAberto: boolean;
+  jaParticipa: boolean;
+  /** Prévia das 5 etapas da pessoa, pela calculadora do servidor. */
+  etapas?: { tipo: TipoEtapaIntegracao; ordem: number; situacao: SituacaoPessoaEtapaIntegracao; detalhe?: string | null }[];
+}
+
+export interface InstrutorIntegracao {
+  trabalhadorId: string;
+  nome: string;
+  registro?: string | null;
+}
+
+export interface EntradaIntegracao {
+  habilitada: boolean;
+  obraId: string;
+  obraNome: string;
+  atendimentoEmAndamento?: AtendimentoEmAndamentoResumo | null;
+  podeIniciar: boolean;
+  bloqueios: BloqueioIntegracao[];
+  candidatos: CandidatoIntegracao[];
+  instrutores: InstrutorIntegracao[];
+}
+
+export interface ParticipanteIntegracaoAtendimento {
+  trabalhadorId: string;
+  nome: string;
+  funcaoId: string;
+  funcao: string;
+  planoIntegracaoId?: string | null;
+  ordemServicoId?: string | null;
+}
+
+export interface PeriodoEtapaIntegracao {
+  id: string;
+  /** yyyy-MM-dd */
+  data: string;
+  /** HH:mm */
+  inicio: string;
+  /** HH:mm */
+  fim: string;
+  minutos: number;
+}
+
+export interface ParticipanteEtapaIntegracao {
+  trabalhadorId: string;
+  nome: string;
+  /** A presença biométrica confirmada é a assinatura do certificado do curso. */
+  presencaConfirmada: boolean;
+  presencaEmUtc?: string | null;
+  /** 'biometria' (digital) | 'reconhecimentoFacial' */
+  metodo?: 'biometria' | 'reconhecimentoFacial' | string | null;
+  temDigital: boolean;
+  temFacial: boolean;
+  /** Marcado pelo técnico: a pessoa não assinou o curso, não recebe certificado e sai da lista de presença. */
+  naoAssinou?: boolean;
+  motivoNaoAssinou?: string | null;
+}
+
+export interface EtapaIntegracao {
+  id: string;
+  ordem: number;
+  tipo: TipoEtapaIntegracao;
+  titulo: string;
+  /** Conteúdo programático do curso (null na OS). */
+  conteudo?: string | null;
+  /** Ex.: "Vale para Pedreiro, Carpinteiro e Armador"; null quando é de todos. */
+  aplicabilidade?: string | null;
+  status: StatusEtapaIntegracao;
+  cursoTreinamentoId?: string | null;
+  /** Só existe com a etapa de curso em andamento ou concluída. */
+  sessaoTreinamentoId?: string | null;
+  /** Carga mínima em horas (0 = sem trava). */
+  cargaMinimaHoras: number;
+  /** Soma dos períodos lançados, em minutos. */
+  cargaLancadaMinutos: number;
+  iniciadaEmUtc?: string | null;
+  concluidaEmUtc?: string | null;
+  fotosRegistradas: number;
+  fotosNecessarias: number;
+  participantes: ParticipanteEtapaIntegracao[];
+  periodos: PeriodoEtapaIntegracao[];
+  /** Só na etapa em andamento: o que ainda impede o "Avançar" (texto do servidor). */
+  faltas: string[];
+}
+
+export interface IntegracaoAtendimentoDetalhe {
+  id: string;
+  numero: string;
+  obraId: string;
+  obraNome: string;
+  status: StatusIntegracaoAtendimento;
+  etapaAtualOrdem?: number | null;
+  iniciadaEmUtc: string;
+  concluidaEmUtc?: string | null;
+  responsavelUsuarioId?: string | null;
+  /** Opcional: nome de quem iniciou, quando o servidor informar. */
+  responsavelNome?: string | null;
+  instrutorTrabalhadorId: string;
+  instrutorNome?: string | null;
+  versao: number;
+  podeEditarParticipantes: boolean;
+  participantes: ParticipanteIntegracaoAtendimento[];
+  etapas: EtapaIntegracao[];
+}
+
+/** "naoEmitida" | "aguardandoFuncionario" | "aguardandoTecnico" | "assinada" | "pendente" (RH) | "bloqueada" (PGR/engenheiro, segura a conclusão) */
+export type SituacaoOsIntegracao = 'naoEmitida' | 'aguardandoFuncionario' | 'aguardandoTecnico' | 'assinada' | 'pendente' | 'bloqueada';
+
+export interface LinhaOsIntegracao {
+  trabalhadorId: string;
+  nome: string;
+  funcao: string;
+  situacao: SituacaoOsIntegracao;
+  ordemServicoId?: string | null;
+  numero?: string | null;
+  assinadaEmUtc?: string | null;
+  podeEmitir: boolean;
+  pendencias: string[];
+}
+
+export interface PendenciaAgrupadaOs {
+  tipo: string;
+  titulo: string;
+  quemResolve: string;
+  trabalhadoresIds: string[];
+  nomes: string[];
+}
+
+export interface OsIntegracao {
+  integracaoId: string;
+  etapaOsEmAndamento: boolean;
+  totalPessoas: number;
+  assinadas: number;
+  pendentes: number;
+  podeConcluir: boolean;
+  pessoas: LinhaOsIntegracao[];
+  pendenciasAgrupadas: PendenciaAgrupadaOs[];
+}
+
+export interface ResumoIntegracaoAtendimento {
+  id: string;
+  numero: string;
+  obraNome: string;
+  status: StatusIntegracaoAtendimento;
+  etapaAtualOrdem?: number | null;
+  etapaAtualTitulo?: string | null;
+  participantes: number;
+  iniciadaEmUtc: string;
+  concluidaEmUtc?: string | null;
+  responsavelNome?: string | null;
+}
+
+export interface RegistroIntegracaoRealizada {
+  id: string;
+  realizadaEmUtc: string;
+  obraId: string;
+  obraNome: string;
+  tecnicoNome: string;
+  funcaoNome?: string | null;
+  numeroAtendimento: string;
 }
 
 // 05/11: localização do aparelho na presença por facial (campos do formulário). Nunca bloqueia.
@@ -5626,6 +5871,12 @@ export const api = {
   },
   estruturaSst: {
     listarGhes: (obraId: string) => request<Ghe[]>(`/api/obras/${obraId}/ghes`),
+    obterMatrizAtividadesFuncao: (obraId: string, gheId: string) =>
+      request<MatrizAtividadesFuncao>(`/api/obras/${obraId}/ghes/${gheId}/atividades-funcao`),
+    sugerirAtividadesFuncaoComIa: (obraId: string, gheId: string) =>
+      request<ResultadoSugestaoAtividadesFuncao>(`/api/obras/${obraId}/ghes/${gheId}/atividades-funcao/sugerir-com-ia`, { method: 'POST' }),
+    decidirAtividadesFuncao: (obraId: string, itens: { atividadeId: string; funcaoId: string; executa: boolean }[]) =>
+      request<{ decididos: number }>(`/api/obras/${obraId}/atividades-funcao/decidir`, { method: 'POST', body: JSON.stringify({ itens }) }),
     listarExamesFuncao: (obraId: string, funcaoId?: string) =>
       request<ExameFuncaoObra[]>(`/api/obras/${obraId}/exames-funcao${funcaoId ? `?funcaoId=${funcaoId}` : ''}`),
   },
@@ -5800,6 +6051,11 @@ export const api = {
       request<{ id: string }>('/api/instrutores', { method: 'PUT', body: JSON.stringify(corpo) }),
   },
   sessoesTreinamento: {
+    previaExclusao: (id: string) => request<PreviaExclusaoSessaoTreinamento>(`/api/sessoestreinamento/${id}/previa-exclusao`),
+    // Exclusão DEFINITIVA (só Administrador): apaga a turma, as inscrições e as fotos de evidência do banco.
+    excluir: (id: string) => request<void>(`/api/sessoestreinamento/${id}`, { method: 'DELETE' }),
+    excluirLote: (ids: string[]) =>
+      request<ResultadoExclusaoTurma[]>('/api/sessoestreinamento/excluir-lote', { method: 'POST', body: JSON.stringify({ ids }) }),
     definirInstrutor: (sessaoId: string, instrutorTrabalhadorId: string) =>
       request<void>(`/api/sessoestreinamento/${sessaoId}/instrutor`, {
         method: 'PUT',
@@ -5852,9 +6108,13 @@ export const api = {
     },
     encerrar: (id: string) => request<void>(`/api/sessoestreinamento/${id}/encerrar`, { method: 'POST' }),
     // Slot fixo por ordem (04/09) — reanexar no mesmo quadro substitui a foto existente.
-    anexarFotoEvidencia: async (sessaoId: string, ordem: number, foto: File) => {
+    // Foto de evidência da integração: token de uso único (5 min), pedido ao abrir a câmera.
+    obterTokenCapturaFoto: (sessaoId: string) =>
+      request<{ token: string; expiraEmUtc: string }>(`/api/sessoestreinamento/${sessaoId}/fotos-evidencia/token-captura`),
+    anexarFotoEvidencia: async (sessaoId: string, ordem: number, foto: File, tokenCaptura?: string | null) => {
       const formData = new FormData();
       formData.append('foto', foto);
+      if (tokenCaptura) formData.append('tokenCaptura', tokenCaptura);
       formData.set('metadados', JSON.stringify(dadosEvidencia(foto, sessaoId)));
       formData.append('ordem', String(ordem));
       const authHeaders = await montarHeadersAuth();
@@ -7386,6 +7646,61 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify({ dataRealizacao }),
       }),
+  },
+  integracoesAtendimento: {
+    listar: (filtros?: { obraId?: string; status?: StatusIntegracaoAtendimento }) => {
+      const params = new URLSearchParams();
+      if (filtros?.obraId) params.set('obraId', filtros.obraId);
+      if (filtros?.status) params.set('status', filtros.status);
+      const qs = params.toString();
+      return request<ResumoIntegracaoAtendimento[]>(`/api/integracoes-atendimento${qs ? `?${qs}` : ''}`);
+    },
+    // "Não assinou": a pessoa fica fora do certificado e da lista de presença da etapa; dá para desfazer antes de avançar.
+    marcarNaoAssinou: (id: string, etapaId: string, trabalhadorId: string, motivo: string) =>
+      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/participantes/${trabalhadorId}/nao-assinou`, {
+        method: 'POST',
+        body: JSON.stringify({ motivo }),
+      }),
+    desfazerNaoAssinou: (id: string, etapaId: string, trabalhadorId: string) =>
+      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/participantes/${trabalhadorId}/nao-assinou`, {
+        method: 'DELETE',
+      }),
+    entrada: (obraId: string) =>
+      request<EntradaIntegracao>(`/api/integracoes-atendimento/entrada?obraId=${encodeURIComponent(obraId)}`),
+    iniciar: (obraId: string, trabalhadoresIds: string[], instrutorTrabalhadorId: string) =>
+      request<IntegracaoAtendimentoDetalhe>('/api/integracoes-atendimento', {
+        method: 'POST',
+        body: JSON.stringify({ obraId, trabalhadoresIds, instrutorTrabalhadorId }),
+      }),
+    obter: (id: string) => request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}`),
+    incluirParticipantes: (id: string, trabalhadoresIds: string[]) =>
+      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/participantes`, {
+        method: 'POST',
+        body: JSON.stringify({ trabalhadoresIds }),
+      }),
+    retirarParticipante: (id: string, trabalhadorId: string) =>
+      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/participantes/${trabalhadorId}`, { method: 'DELETE' }),
+    registrarPeriodo: (id: string, etapaId: string, periodo: { data: string; inicio: string; fim: string }) =>
+      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/periodos`, {
+        method: 'POST',
+        body: JSON.stringify(periodo),
+      }),
+    removerPeriodo: (id: string, etapaId: string, periodoId: string) =>
+      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/periodos/${periodoId}`, {
+        method: 'DELETE',
+      }),
+    // 409 devolve { erro, faltas[] } (instrutor, carga, fotos, assinaturas). etapaOrdem torna o reenvio idempotente.
+    avancar: (id: string, etapaOrdem: number) =>
+      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapa-atual/avancar`, {
+        method: 'POST',
+        body: JSON.stringify({ etapaOrdem }),
+      }),
+    ordensServico: (id: string) => request<OsIntegracao>(`/api/integracoes-atendimento/${id}/ordens-servico`),
+    concluir: (id: string) =>
+      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/concluir`, { method: 'POST' }),
+    // Registro "Integração realizada" do perfil (sem certificado). Falhou (ex.: 404 fora da obra): o bloco some.
+    registrosDoTrabalhador: (trabalhadorId: string) =>
+      request<RegistroIntegracaoRealizada[]>(`/api/integracoes-atendimento/registros?trabalhadorId=${encodeURIComponent(trabalhadorId)}`),
   },
   novidades: {
     listar: () => request<NovidadeVersao[]>('/api/novidades'),

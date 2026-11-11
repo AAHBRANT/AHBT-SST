@@ -1,9 +1,10 @@
 import type { ReactElement } from 'react';
 import { Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import { Grid24Regular } from '@fluentui/react-icons';
+import { tokensUi, type Tom } from '../../tokens/tokens';
 import { useAbasStyles } from './Abas.styles';
 
-export interface AbaItem<T extends string> { valor: T; rotulo: string; contador?: number; icone?: ReactElement }
+export interface AbaItem<T extends string> { valor: T; rotulo: string; contador?: number; ponto?: { tom: Tom; titulo: string }; icone?: ReactElement }
 
 export interface AbasProps<T extends string> {
   nivel: 'pilar' | 'modulo' | 'interno';
@@ -22,6 +23,14 @@ export function Abas<T extends string>({ nivel, abas, valor, aoMudar, 'aria-labe
       {abas.map((a) => (
         <Tab key={a.valor} value={a.valor} icon={a.icone ?? <Grid24Regular />}>
           {a.rotulo}
+          {a.ponto && (
+            <span
+              role="img"
+              aria-label={a.ponto.titulo}
+              title={a.ponto.titulo}
+              style={{ width: 8, height: 8, borderRadius: '50%', marginLeft: 8, display: 'inline-block', background: tokensUi.status[a.ponto.tom].tinta }}
+            />
+          )}
           {a.contador !== undefined && <span className={estilos.contador}>{a.contador}</span>}
         </Tab>
       ))}

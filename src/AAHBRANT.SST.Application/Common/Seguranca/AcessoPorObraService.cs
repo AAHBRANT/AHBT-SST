@@ -54,4 +54,9 @@ public sealed class AcessoPorObraService(IAppDbContext db) : IAcessoPorObraServi
     }
 }
 
-public sealed class AcessoNegadoException() : Exception("Você não tem permissão para acessar este recurso nesta obra.");
+public sealed class AcessoNegadoException : Exception
+{
+    public AcessoNegadoException() : base("Você não tem permissão para acessar este recurso nesta obra.") { }
+
+    public AcessoNegadoException(string mensagem) : base(mensagem) { }
+}

@@ -7,6 +7,13 @@ namespace AAHBRANT.SST.Application.Common.Interfaces;
 // preservando a regra de dependência do Clean Architecture). Implementada por SstDbContext.
 public interface IAppDbContext
 {
+    DbSet<IntegracaoAtendimento> IntegracoesAtendimento { get; }
+    DbSet<ParticipanteIntegracao> ParticipantesIntegracao { get; }
+    DbSet<IntegracaoEtapa> IntegracaoEtapas { get; }
+    DbSet<PeriodoEtapaIntegracao> PeriodosEtapaIntegracao { get; }
+    DbSet<RegistroIntegracao> RegistrosIntegracao { get; }
+    DbSet<NaoAssinouEtapaIntegracao> NaoAssinouEtapasIntegracao { get; }
+    DbSet<TokenCapturaFoto> TokensCapturaFoto { get; }
     DbSet<Obra> Obras { get; }
     DbSet<Setor> Setores { get; }
     DbSet<Equipe> Equipes { get; }
@@ -70,6 +77,7 @@ public interface IAppDbContext
     DbSet<AtividadeEpc> AtividadeEpcs { get; }
     DbSet<AtividadeDocumento> AtividadeDocumentos { get; }
     DbSet<AtividadeItemOs> AtividadeItensOs { get; }
+    DbSet<AtividadeFuncao> AtividadesFuncoes { get; }
     DbSet<Ghe> Ghes { get; }
     DbSet<GheFuncao> GheFuncoes { get; }
     DbSet<Perigo> Perigos { get; }
@@ -200,6 +208,11 @@ public interface IAppDbContext
     // onde uma entidade que falhou ao salvar ficaria presa no rastreamento e derrubaria toda tentativa
     // seguinte no mesmo lote.
     void DescartarAlteracoesPendentes();
+
+    // Exclusão FÍSICA da entidade (e só dela, por referência) no próximo SaveChanges. O padrão do sistema é
+    // exclusão lógica (SstDbContext.AplicarAuditoria converte todo Remove em Ativo=false); este é o caminho
+    // explícito e restrito para quando o usuário pediu apagar de verdade. Marque também cada dependente carregado.
+    void MarcarExclusaoFisica<T>(T entidade) where T : class;
 
     // Escopo por obra do usuário atual (o mesmo que o filtro global aplica), exposto para as
     // entidades que NÃO têm filtro global por ObraId e chegam à obra só pelo Trabalhador (Aso,

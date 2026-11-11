@@ -41,6 +41,8 @@ export interface UseCapturaFotoOptions {
   // Câmera de rosto: 'cadastro' (padrão) exige o rosto inteiro dentro da moldura 3×4 para liberar o
   // Capturar; 'assinatura' (04/11) usa a moldura só como guia e libera com 1 rosto inteiro na câmera. Ver avaliarRosto.ts.
   modoCaptura?: ModoCapturaRosto;
+  // Chamado toda vez que a câmera é aberta (ex.: pedir o token de captura da foto de evidência da integração).
+  aoAbrirCamera?: () => void;
 }
 
 // Lógica de captura/seleção de foto extraída de SeletorFotoCamera (14/09) para ser reaproveitada
@@ -85,6 +87,7 @@ export function useCapturaFoto({
   exigirCamera: somenteCamera = false,
   permitirCapturaAutomatica = false,
   modoCaptura = 'cadastro',
+  aoAbrirCamera,
   contextoFoto,
 }: UseCapturaFotoOptions) {
   const exigirCamera = somenteCamera || !!contextoFoto;
@@ -248,6 +251,7 @@ export function useCapturaFoto({
   }
 
   async function abrirCamera() {
+    aoAbrirCamera?.();
     if (contextoFoto?.local) setLocalFoto(contextoFoto.local);
     tentarLocalizacao();
     if (!permitirCamera || !navigator.mediaDevices?.getUserMedia) {

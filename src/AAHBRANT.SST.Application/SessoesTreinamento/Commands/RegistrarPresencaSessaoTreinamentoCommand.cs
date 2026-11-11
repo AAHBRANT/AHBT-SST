@@ -53,6 +53,7 @@ public class RegistrarPresencaSessaoTreinamentoCommandHandler : IRequestHandler<
 
     public async Task Handle(RegistrarPresencaSessaoTreinamentoCommand request, CancellationToken ct)
     {
+        await AAHBRANT.SST.Application.IntegracoesAtendimento.ProtecaoTurmaIntegracao.GarantirEtapaEmAndamentoAsync(_db, request.SessaoTreinamentoId, ct);
         var participante = await _db.ParticipantesSessaoTreinamento
             .FirstOrDefaultAsync(p => p.SessaoTreinamentoId == request.SessaoTreinamentoId && p.TrabalhadorId == request.TrabalhadorId, ct)
             ?? throw new KeyNotFoundException("Este trabalhador não está inscrito nesta turma.");

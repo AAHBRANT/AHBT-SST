@@ -2723,6 +2723,82 @@ public static class NovidadesSeeder
                     "Escolher o tamanho exigia abrir uma lista e conferir o saldo em outro lugar do card.",
                     "Os tamanhos viram botões com o saldo da obra embaixo de cada um, e a quantidade tem botões de mais e menos. O carrinho fica sempre visível ao lado."),
             }),
+        new(
+            Versao: "5.156.0",
+            Titulo: "Quem criou e quem alterou cada registro",
+            DataPublicacao: new DateTime(2026, 11, 10, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Responsável por cada revisão do PGR e do PCMSO",
+                    "A tabela de revisões não mostrava quem tinha criado cada revisão.",
+                    "Cada revisão nova mostra o nome de quem a criou, o que facilita conferir o histórico do documento."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Aviso no Teams ao fim da leitura com IA",
+                    "Quem pedia a leitura do PGR ou do PCMSO com IA precisava voltar à tela para saber se ela tinha terminado.",
+                    "Agora você recebe um aviso no Teams quando a leitura ficar pronta ou quando ela não conseguir terminar."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Registro de quem criou e de quem alterou",
+                    "Os registros não guardavam quem os criou nem quem fez a última alteração.",
+                    "O sistema passa a guardar quem criou e quem fez a última alteração de cada registro, para facilitar a conferência."),
+            }),
+        new(
+            Versao: "5.157.0",
+            Titulo: "Excluir turma de treinamento",
+            DataPublicacao: new DateTime(2026, 11, 10, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Excluir turma criada por engano",
+                    "Não havia como apagar uma turma de treinamento criada por engano.",
+                    "Quem é Administrador da obra da turma (ou Administrador geral) pode excluir a turma pelo detalhe dela ou marcar várias turmas na lista e excluir de uma vez. Antes de apagar, o sistema mostra o que vai junto (inscrições, presenças e fotos) e pede para digitar EXCLUIR. A exclusão é definitiva e fica registrada na trilha de auditoria."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Turma com certificado ou documento assinado não é excluída",
+                    "Certificado e documento assinado precisam continuar valendo.",
+                    "Se a turma já tiver certificado emitido ou documento com assinatura, o sistema mostra o motivo e mantém a turma."),
+            }),
+        new(
+            Versao: "5.158.0",
+            Titulo: "Fichas de entrada mais organizadas",
+            DataPublicacao: new DateTime(2026, 11, 11, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Um aviso por obra e por dia para o técnico de segurança",
+                    "Cada ficha de entrada gerava um aviso separado para o técnico, e o calendário do Teams recebia um evento para cada uma.",
+                    "O técnico recebe um único aviso por obra, com o total de pessoas que entram ou mudam de função no dia. O aviso é atualizado a cada nova ficha e o Teams avisa só no primeiro do dia."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Terceirizados passam a ter ficha de entrada",
+                    "Pessoas terceirizadas não geravam ficha de entrada, por isso não apareciam no pop-up \"Funcionário novo\".",
+                    "Terceirizados aparecem no pop-up \"Funcionário novo\". O kit de integração deles continua seguindo o contrato da empresa."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Troca de função ou obra sem ficha repetida",
+                    "Quem mudava de função ou de obra gerava uma ficha nova, mesmo já tendo NR-06, NR-18 e NR-35 em dia.",
+                    "Se a pessoa já tem essas três NRs em dia, nenhuma ficha nova é aberta. O sistema registra a dispensa, agenda só os cursos que a nova função ou obra exige e que ainda faltam, separa o kit e avisa o técnico."),
+            }),
+        new(
+            Versao: "5.159.0",
+            Titulo: "Realizar integração em etapas",
+            DataPublicacao: new DateTime(2026, 11, 11, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Integração conduzida em etapas, na ordem das NRs",
+                    "A integração dos funcionários novos dependia de turmas agendadas à parte e de datas combinadas com antecedência.",
+                    "O técnico inicia a integração da obra e segue em etapas, sempre na mesma ordem: NR-06, NR-12, NR-18, NR-35 e Ordem de Serviço. Etapa de NR que ninguém do grupo precisa é pulada, e a pessoa que já tem a NR em dia não repete o curso."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Cada NR tem carga horária, fotos e assinatura próprias",
+                    "O certificado de uma NR podia aproveitar fotos e assinaturas de outra.",
+                    "Cada etapa de curso exige a carga mínima da NR, 3 fotos tiradas na hora pela câmera e uma assinatura biométrica (digital ou facial) por curso de cada participante. A mesma foto não vale para duas etapas, e a etapa só avança quando tudo está completo. O sistema mostra o que ainda falta."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Ordem de Serviço assinada ao final da integração",
+                    "A Ordem de Serviço era emitida à parte, e a Integração de Segurança gerava um certificado.",
+                    "Na última etapa cada pessoa lê e assina a própria Ordem de Serviço, com as pendências iguais agrupadas na tela. Ao concluir, o perfil recebe o registro \"Integração realizada\", sem certificado. Os certificados antigos continuam no histórico."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Funcionário novo sem data de turma",
+                    "O pop-up \"Funcionário novo\" agendava as turmas da integração e pedia a data de cada uma.",
+                    "O pop-up passa a mostrar se a integração está pendente, em andamento (com a etapa) ou feita, e leva direto para \"Iniciar integração\" ou \"Continuar integração\". Não há mais data de turma para a integração."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

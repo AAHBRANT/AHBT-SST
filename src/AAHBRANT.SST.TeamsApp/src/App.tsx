@@ -57,6 +57,7 @@ const MembroCipaDetalhePage = lazy(() => import('./pages/cipa/MembroCipaDetalheP
 const ReuniaoCipaDetalhePage = lazy(() => import('./pages/cipa/ReuniaoCipaDetalhePage').then((m) => ({ default: m.ReuniaoCipaDetalhePage })));
 const EventoSipatDetalhePage = lazy(() => import('./pages/cipa/EventoSipatDetalhePage').then((m) => ({ default: m.EventoSipatDetalhePage })));
 const AssinarTreinamentoPage = lazy(() => import('./pages/treinamentos/AssinarTreinamentoPage').then((m) => ({ default: m.AssinarTreinamentoPage })));
+const RealizarIntegracaoPage = lazy(() => import('./pages/integracao/RealizarIntegracaoPage').then((m) => ({ default: m.RealizarIntegracaoPage })));
 const SessaoTreinamentoDetalhePage = lazy(() => import('./pages/treinamentos/SessaoTreinamentoDetalhePage').then((m) => ({ default: m.SessaoTreinamentoDetalhePage })));
 const GaleriaPage = lazy(() => import('./ui/galeria/GaleriaPage').then((m) => ({ default: m.GaleriaPage })));
 const TerceirizadoPage = lazy(() => import('./pages/terceirizados/TerceirizadoPage').then((m) => ({ default: m.TerceirizadoPage })));
@@ -207,6 +208,8 @@ function AppRoteado() {
               <Route path="/prevencao/pcmso/:id" element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />} />
               <Route path="/treinamentos" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="treinamentos" />} />
               <Route path="/treinamentos/turma/:id" element={<SessaoTreinamentoDetalhePage />} />
+              <Route path="/treinamentos/integracao/nova" element={<RealizarIntegracaoPage />} />
+              <Route path="/treinamentos/integracao/:id" element={<RealizarIntegracaoPage />} />
               <Route path="/epi" element={<RedirecionarParaPilar pilar="/operacao" secao="epi" />} />
               <Route path="/requisitos-legais" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="requisitos-legais" />} />
               <Route path="/gestao-sst/documentos" element={<Navigate to="/gestao-sst?secao=documentos" replace />} />

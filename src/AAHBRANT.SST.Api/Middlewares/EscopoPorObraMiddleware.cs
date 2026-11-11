@@ -64,11 +64,14 @@ public class EscopoPorObraMiddleware
             .Where(v => v.Ativo && v.Usuario != null && v.Usuario.Ativo
                 && v.Usuario.Status == StatusUsuario.Ativo && v.Usuario.AzureAdObjectId == azureAdObjectId
                 && v.PerfilAcesso != null && v.PerfilAcesso.Ativo)
-            .Select(v => v.ObraId)
+            .Select(v => new { v.ObraId, v.UsuarioId })
             .ToListAsync();
 
-        var temAcessoGlobal = obrasVinculadas.Any(obraId => obraId == null);
-        var obrasPermitidas = obrasVinculadas.Where(obraId => obraId.HasValue).Select(obraId => obraId!.Value).ToList();
+        // Mesma consulta do escopo: o Usuario.Id sai de graça (sem ida extra ao banco) e alimenta CreatedBy/UpdatedBy.
+        usuarioAtual.DefinirUsuarioId(obrasVinculadas.Select(v => (Guid?)v.UsuarioId).FirstOrDefault());
+
+        var temAcessoGlobal = obrasVinculadas.Any(v => v.ObraId == null);
+        var obrasPermitidas = obrasVinculadas.Where(v => v.ObraId.HasValue).Select(v => v.ObraId!.Value).ToList();
 
         var escopo = new EscopoPermissao(temAcessoGlobal, obrasPermitidas);
         var politicas = contexto.GetEndpoint()?.Metadata.GetOrderedMetadata<IAuthorizeData>()

@@ -3,6 +3,7 @@ using AAHBRANT.SST.Application.Usuarios.Queries;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Infrastructure.Persistencia;
+using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.Tests.Usuarios;
 
@@ -125,5 +126,48 @@ public class ObterUsuarioLogadoQueryTests
         var eu = await handler.Handle(new ObterUsuarioLogadoQuery(null, AutenticacaoHabilitada: false), default);
 
         Assert.True(eu.EhAdministrador);
+    }
+
+    [Fact]
+    public async Task Handle_EngenheiroSeguranca_ExpoeFlagEObras()
+    {
+        var db = DbContextFactory.Criar();
+        var usuario = await SemearUsuarioAsync(db, TipoPerfilAcesso.EngenheiroSeguranca);
+        var obra = new Obra { Codigo = "OB-X", Nome = "Obra X" };
+        var vinculoGlobal = await db.UsuariosPerfilObra.SingleAsync(v => v.UsuarioId == usuario.Id);
+        vinculoGlobal.ObraId = obra.Id;
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+
+        var eu = await new ObterUsuarioLogadoQueryHandler(db).Handle(new ObterUsuarioLogadoQuery(ObjectIdEntra, true), default);
+
+        Assert.True(eu.EhEngenheiroSeguranca);
+        Assert.False(eu.EngenheiroSegurancaGlobal);
+        Assert.Equal(new[] { obra.Id }, eu.ObrasEngenheiroSeguranca);
+    }
+
+    [Fact]
+    public async Task Handle_EngenheiroSegurancaGlobal_MarcaGlobal()
+    {
+        var db = DbContextFactory.Criar();
+        await SemearUsuarioAsync(db, TipoPerfilAcesso.EngenheiroSeguranca);
+
+        var eu = await new ObterUsuarioLogadoQueryHandler(db).Handle(new ObterUsuarioLogadoQuery(ObjectIdEntra, true), default);
+
+        Assert.True(eu.EhEngenheiroSeguranca);
+        Assert.True(eu.EngenheiroSegurancaGlobal);
+        Assert.Empty(eu.ObrasEngenheiroSeguranca!);
+    }
+
+    [Fact]
+    public async Task Handle_TecnicoOuVisitante_NaoEhEngenheiro()
+    {
+        var db = DbContextFactory.Criar();
+        await SemearUsuarioAsync(db, TipoPerfilAcesso.TecnicoSeguranca);
+        var handler = new ObterUsuarioLogadoQueryHandler(db);
+
+        Assert.False((await handler.Handle(new ObterUsuarioLogadoQuery(ObjectIdEntra, true), default)).EhEngenheiroSeguranca);
+        Assert.False((await handler.Handle(new ObterUsuarioLogadoQuery("sem-cadastro", true), default)).EhEngenheiroSeguranca);
+        Assert.True((await handler.Handle(new ObterUsuarioLogadoQuery(null, false), default)).EhEngenheiroSeguranca);
     }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Button, Card, Checkbox, DataTable, EstadoVazio, FeedbackInline, Select, StatusChip, Text, Textarea,
   type Coluna, type Tom,
@@ -68,12 +68,22 @@ const colunasRiscos: Coluna<RiscoClassificado>[] = [
 // (§16) — leitura agregada dos registros de Atividade/Risco já cadastrados para a Obra do PGR. Uma
 // DataTable por atividade. Ordem de Serviço (20/10/2026): cada risco abre um painel com a confirmação
 // da avaliação e as medidas por fase; só medida validada vai para a OS.
-export function InventarioTab({ atividades, aoAlterar }: { atividades: AtividadeCaracterizada[]; aoAlterar: () => Promise<void> }) {
+export function InventarioTab({ atividades, aoAlterar, atividadeEmFoco }: {
+  atividades: AtividadeCaracterizada[];
+  aoAlterar: () => Promise<void>;
+  // Vem da aba "Atividades por função" (Vincular procedimento): abre os "Detalhes para a OS" desta atividade.
+  atividadeEmFoco?: string | null;
+}) {
   const [aberto, setAberto] = useState<string | null>(null);
   const [soPendencias, setSoPendencias] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [progresso, setProgresso] = useState<string | null>(null);
-  const [detalhesAberto, setDetalhesAberto] = useState<string | null>(null);
+  const [detalhesAberto, setDetalhesAberto] = useState<string | null>(atividadeEmFoco ?? null);
+
+  useEffect(() => {
+    if (!atividadeEmFoco) return;
+    document.getElementById(`atividade-${atividadeEmFoco}`)?.scrollIntoView({ block: 'start' });
+  }, [atividadeEmFoco]);
 
   if (atividades.length === 0) {
     return <EstadoVazio titulo="Nenhuma atividade com avaliação de risco cadastrada para a obra deste PGR." />;
@@ -131,8 +141,8 @@ export function InventarioTab({ atividades, aoAlterar }: { atividades: Atividade
         if (soPendencias && linhas.length === 0 && atividade.itensOsPendentes === 0) return null;
         const detalhesAbertos = detalhesAberto === atividade.atividadeId;
         return (
+          <div key={atividade.atividadeId} id={`atividade-${atividade.atividadeId}`}>
           <Card
-            key={atividade.atividadeId}
             titulo={atividade.atividadeNome}
             acoes={
               <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -166,6 +176,7 @@ export function InventarioTab({ atividades, aoAlterar }: { atividades: Atividade
               vazio={{ titulo: 'Nenhum risco classificado para esta atividade.' }}
             />
           </Card>
+          </div>
         );
       })}
     </div>

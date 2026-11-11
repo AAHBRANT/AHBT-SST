@@ -18,6 +18,13 @@ public class SstDbContext : DbContext, IAppDbContext
     }
 
     public DbSet<Obra> Obras => Set<Obra>();
+    public DbSet<IntegracaoAtendimento> IntegracoesAtendimento => Set<IntegracaoAtendimento>();
+    public DbSet<ParticipanteIntegracao> ParticipantesIntegracao => Set<ParticipanteIntegracao>();
+    public DbSet<IntegracaoEtapa> IntegracaoEtapas => Set<IntegracaoEtapa>();
+    public DbSet<PeriodoEtapaIntegracao> PeriodosEtapaIntegracao => Set<PeriodoEtapaIntegracao>();
+    public DbSet<RegistroIntegracao> RegistrosIntegracao => Set<RegistroIntegracao>();
+    public DbSet<NaoAssinouEtapaIntegracao> NaoAssinouEtapasIntegracao => Set<NaoAssinouEtapaIntegracao>();
+    public DbSet<TokenCapturaFoto> TokensCapturaFoto => Set<TokenCapturaFoto>();
     public DbSet<Setor> Setores => Set<Setor>();
     public DbSet<Equipe> Equipes => Set<Equipe>();
     public DbSet<Funcao> Funcoes => Set<Funcao>();
@@ -83,6 +90,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<AtividadeEpc> AtividadeEpcs => Set<AtividadeEpc>();
     public DbSet<AtividadeDocumento> AtividadeDocumentos => Set<AtividadeDocumento>();
     public DbSet<AtividadeItemOs> AtividadeItensOs => Set<AtividadeItemOs>();
+    public DbSet<AtividadeFuncao> AtividadesFuncoes => Set<AtividadeFuncao>();
     public DbSet<Ghe> Ghes => Set<Ghe>();
     public DbSet<GheFuncao> GheFuncoes => Set<GheFuncao>();
     public DbSet<Perigo> Perigos => Set<Perigo>();
@@ -204,6 +212,13 @@ public class SstDbContext : DbContext, IAppDbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SstDbContext).Assembly);
+        modelBuilder.Entity<IntegracaoAtendimento>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
+        modelBuilder.Entity<ParticipanteIntegracao>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
+        modelBuilder.Entity<IntegracaoEtapa>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
+        modelBuilder.Entity<PeriodoEtapaIntegracao>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
+        modelBuilder.Entity<RegistroIntegracao>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
+        modelBuilder.Entity<NaoAssinouEtapaIntegracao>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
+        modelBuilder.Entity<TokenCapturaFoto>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
 
         // Sincronização offline: RowVersion (já existente em AuditableEntity para todas as
         // entidades, mas até aqui nunca configurado) passa a ser o token de concorrência otimista.
@@ -270,6 +285,8 @@ public class SstDbContext : DbContext, IAppDbContext
         modelBuilder.Entity<PcmsoDetalhe>().HasQueryFilter(p =>
             p.Ativo && (_usuarioAtual.TemAcessoGlobal || (p.ObraId.HasValue && _usuarioAtual.ObrasPermitidas.Contains(p.ObraId.Value))));
         modelBuilder.Entity<Atividade>().HasQueryFilter(a =>
+            a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<AtividadeFuncao>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
         modelBuilder.Entity<Ghe>().HasQueryFilter(g =>
             g.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(g.ObraId)));
@@ -360,17 +377,35 @@ public class SstDbContext : DbContext, IAppDbContext
     {
         RegistrarEventosNcGQuali();
         AplicarAuditoria();
-        return base.SaveChanges();
+        try { return base.SaveChanges(); }
+        finally { _exclusaoFisica.Clear(); }
     }
 
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         RegistrarEventosNcGQuali();
         AplicarAuditoria();
-        return base.SaveChangesAsync(cancellationToken);
+        try { return await base.SaveChangesAsync(cancellationToken); }
+        finally { _exclusaoFisica.Clear(); }
     }
 
-    public void DescartarAlteracoesPendentes() => ChangeTracker.Clear();
+    public void DescartarAlteracoesPendentes()
+    {
+        ChangeTracker.Clear();
+        _exclusaoFisica.Clear();
+    }
+
+    // Exclusão física explícita e restrita (hoje só ExcluirSessaoTreinamentoCommand, pedido do usuário em 10/11/2026).
+    // Por padrão toda exclusão vira lógica (AplicarAuditoria); só a entidade marcada aqui, por referência, é removida de
+    // verdade. Quem chama marca também os dependentes carregados: o EF os poria como Deleted e AplicarAuditoria os
+    // converteria em exclusão lógica, deixando filhos apontando para um pai que não existe mais.
+    private readonly HashSet<object> _exclusaoFisica = new(ReferenceEqualityComparer.Instance);
+
+    public void MarcarExclusaoFisica<T>(T entidade) where T : class
+    {
+        _exclusaoFisica.Add(entidade);
+        Remove(entidade);
+    }
 
     public bool EscopoObraGlobal => _usuarioAtual.TemAcessoGlobal;
     public IReadOnlyList<Guid> ObrasNoEscopo => _usuarioAtual.ObrasPermitidas;
@@ -404,6 +439,17 @@ public class SstDbContext : DbContext, IAppDbContext
         }
     }
 
+    // UpdatedBy sempre reflete quem fez ESTA alteração; só não é tocado quando o próprio código
+    // já o definiu nesta gravação (valor diferente do original) ou quando não há usuário.
+    private void AplicarUpdatedBy(AuditableEntity entidade)
+    {
+        var usuarioId = _usuarioAtual.UsuarioId;
+        if (usuarioId is null) return;
+        var prop = Entry(entidade).Property(e => e.UpdatedBy);
+        if (prop.IsModified && prop.CurrentValue != prop.OriginalValue) return;
+        entidade.UpdatedBy = usuarioId;
+    }
+
     private void AplicarAuditoria()
     {
         var agora = DateTime.UtcNow;
@@ -413,15 +459,22 @@ public class SstDbContext : DbContext, IAppDbContext
             {
                 case EntityState.Added:
                     entry.Entity.CreatedAtUtc = agora;
+                    // Não sobrescreve valor definido pelo código; sem usuário (Worker/sistema) fica nulo.
+                    entry.Entity.CreatedBy ??= _usuarioAtual.UsuarioId;
                     break;
                 case EntityState.Modified:
                     entry.Entity.UpdatedAtUtc = agora;
+                    AplicarUpdatedBy(entry.Entity);
+                    break;
+                case EntityState.Deleted when _exclusaoFisica.Contains(entry.Entity):
+                    // Exclusão física pedida explicitamente por MarcarExclusaoFisica: segue como Deleted.
                     break;
                 case EntityState.Deleted:
                     // Nenhum registro crítico é excluído fisicamente — converter em soft-delete.
                     entry.State = EntityState.Modified;
                     entry.Entity.Ativo = false;
                     entry.Entity.UpdatedAtUtc = agora;
+                    AplicarUpdatedBy(entry.Entity);
                     break;
             }
         }

@@ -1068,7 +1068,9 @@ public enum StatusPlanoIntegracao
 {
     Aberto = 1,
     Concluido = 2,
-    Cancelado = 3
+    Cancelado = 3,
+    // Troca de função/transferência de quem já tinha o pacote em dia: sem ficha, mas fica o registro (gravado como inteiro).
+    Dispensado = 4
 }
 
 public enum StatusReservaEpi

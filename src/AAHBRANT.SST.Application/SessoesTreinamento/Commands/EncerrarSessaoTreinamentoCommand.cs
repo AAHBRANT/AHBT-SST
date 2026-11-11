@@ -23,7 +23,8 @@ namespace AAHBRANT.SST.Application.SessoesTreinamento.Commands;
 // melhor esforço: se falharem por qualquer motivo (ex.: usuário não vinculado a um Trabalhador), o
 // certificado é gerado do mesmo jeito, sem assinatura — a tela de "Assinar" no detalhe da turma
 // continua disponível como reforço/correção manual.
-public record EncerrarSessaoTreinamentoCommand(Guid Id, string? AzureAdObjectId = null) : IRequest;
+// ViaIntegracao: só o atendimento (Avançar etapa) encerra a turma que é etapa de integração; pela tela comum é recusado.
+public record EncerrarSessaoTreinamentoCommand(Guid Id, string? AzureAdObjectId = null, bool ViaIntegracao = false) : IRequest;
 
 public class EncerrarSessaoTreinamentoCommandValidator : AbstractValidator<EncerrarSessaoTreinamentoCommand>
 {
@@ -66,6 +67,9 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
         if (sessao.Status == StatusSessaoTreinamento.Concluida)
             throw new InvalidOperationException("Esta turma já foi encerrada.");
 
+        if (sessao.IntegracaoAtendimentoId is not null && !request.ViaIntegracao)
+            throw new InvalidOperationException("Esta turma é uma etapa de integração e só é encerrada ao avançar a etapa em \"Realizar integração\".");
+
         var totalFotos = await _db.FotosEvidenciaSessaoTreinamento.CountAsync(f => f.SessaoTreinamentoId == sessao.Id && f.Ativo, ct);
         if (totalFotos < TotalFotosObrigatorias)
             throw new InvalidOperationException(
@@ -87,12 +91,16 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
         var geradosParaAssinar = new List<(Guid TreinamentoId, ParticipanteSessaoTreinamento Participante)>();
         foreach (var participante in participantes.Where(p => p.PresencaConfirmadaEm is not null && p.TreinamentoGeradoId is null))
         {
+            // Realizar integração (Q6): a data do certificado é a do dia em que a pessoa assinou (presença biométrica) este curso.
+            var dataCertificado = sessao.IntegracaoAtendimentoId is not null && participante.PresencaConfirmadaEm is { } assinouEm
+                ? AAHBRANT.SST.Application.PlanosIntegracao.AgendaTreinamentosIntegracao.DataBrasilia(assinouEm)
+                : sessao.DataRealizacao;
             var treinamento = new Treinamento
             {
                 TrabalhadorId = participante.TrabalhadorId,
                 CursoTreinamentoId = sessao.CursoTreinamentoId,
-                DataRealizacao = sessao.DataRealizacao,
-                DataValidade = sessao.DataRealizacao.AddMonths(validadeEmMeses),
+                DataRealizacao = dataCertificado,
+                DataValidade = dataCertificado.AddMonths(validadeEmMeses),
                 CargaHorariaRealizada = sessao.CargaHorariaRealizada,
                 InstituicaoInstrutor = sessao.InstituicaoInstrutor,
                 InstrutorRegistroProfissional = sessao.InstrutorRegistroProfissional,
@@ -172,6 +180,16 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
 
             // Certificado com as assinaturas da turma encerrada: fecha o documento.
             await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, documentoId.Value, ct);
+        }
+
+        // Quem concluiu o curso que faltava para uma integração já concluída recebe o registro "Integração realizada" (melhor esforço).
+        foreach (var (_, participante) in geradosParaAssinar)
+        {
+            try { await AAHBRANT.SST.Application.IntegracoesAtendimento.RegistroIntegracaoSincronizador.SincronizarPorTrabalhadorAsync(_db, participante.TrabalhadorId, sessao.ObraId, ct); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "Não foi possível sincronizar o registro de integração do trabalhador {TrabalhadorId}.", participante.TrabalhadorId);
+            }
         }
     }
 }

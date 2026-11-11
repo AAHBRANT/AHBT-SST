@@ -173,11 +173,12 @@ export function SlotFoto({
   permitirCamera,
   exigirCamera,
   modoCaptura,
+  aoAbrirCamera,
   contextoFoto,
   dadosFoto,
 }: SlotFotoProps) {
   const estilos = useEstilos();
-  const captura = useCapturaFoto({ contextoFoto, exigirCamera, aoSelecionarArquivo, aoErroValidacao, tamanhoMaximoMb, modoCamera, permitirCamera, modoCaptura });
+  const captura = useCapturaFoto({ contextoFoto, exigirCamera, aoSelecionarArquivo, aoErroValidacao, tamanhoMaximoMb, modoCamera, permitirCamera, modoCaptura, aoAbrirCamera });
   const { inputRef, processando, abrirCamera, onInputChange } = captura;
   const compacta = tamanho === 'compacta';
   const ocupado = processando || carregandoMiniatura;

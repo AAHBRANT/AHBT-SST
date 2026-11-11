@@ -2,6 +2,7 @@ using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Assinatura.Commands;
 using AAHBRANT.SST.Application.Cbo;
 using AAHBRANT.SST.Application.MatrizRisco;
+using AAHBRANT.SST.Application.Ghes;
 using System.Text.Json;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
@@ -771,6 +772,7 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
 
         var agora = DateTime.UtcNow;
         var aprovador = await SerializacaoGeracao.NomeUsuarioAsync(_db, request.UsuarioId, request.NomeUsuario, ct);
+        var detalhesAnteriores = await PreservacaoAtividadesOs.CarregarAsync(_db, g.ObraId, ct);
 
         // Estrutura e PGR anteriores da obra saem de uso (não são apagados: APR/PT emitidas apontam para eles).
         foreach (var antigo in await _db.Ghes.Include(x => x.Funcoes).Where(x => x.ObraId == g.ObraId).ToListAsync(ct))
@@ -839,6 +841,7 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
 
         var perigos = await _db.Perigos.ToDictionaryAsync(p => p.Nome, p => p, StringComparer.OrdinalIgnoreCase, ct);
         var funcoesDaGeracao = new Dictionary<string, Funcao>();
+        var novosGhes = new List<Ghe>();
         foreach (var gg in e.Ghes.OrderBy(x => x.Numero))
         {
             var ghe = new Ghe
@@ -852,6 +855,7 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
                     .Where(a => a.Riscos.Any(r => !r.Excluido && Nivel(matriz, r) >= NivelRisco.Alto)).Select(a => a.Nome)),
             };
             _db.Ghes.Add(ghe);
+            novosGhes.Add(ghe);
             foreach (var f in gg.Funcoes)
             {
                 var funcaoDoGhe = Resolver(f);
@@ -910,6 +914,8 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
                 }
             }
         }
+
+        detalhesAnteriores.Aplicar(_db, novosGhes);
 
         // Matriz de EPI da obra a partir do PGR (04/11/2026): só liga ao catálogo que já existe; o que falta vira ação do plano.
         var episSemItem = await MatrizEpiDoPgr.AplicarAsync(_db, e, g.ObraId, funcoesDaGeracao, ct);

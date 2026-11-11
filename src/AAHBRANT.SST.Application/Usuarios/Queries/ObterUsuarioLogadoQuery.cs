@@ -25,7 +25,14 @@ public record UsuarioLogadoDto(
     // Onde cada permissão vale (06/11/2026 — Responsável x Supervisão): a tela usa para esconder
     // criar/editar nas obras que o usuário só acompanha. Mesma regra de AcessoPorObraService.
     // Nulo = acesso total (Entra desligado).
-    Dictionary<string, AlcancePermissaoDto>? Alcance = null);
+    Dictionary<string, AlcancePermissaoDto>? Alcance = null,
+    // Engenheiro de Segurança (Entrega 4 da OS): só ele confirma as atividades da função. Verdadeiro com
+    // vínculo ativo desse perfil em alguma obra ou global. Entra desligado (dev) = verdadeiro, como Admin.
+    bool EhEngenheiroSeguranca = false,
+    // Vínculo global (sem obra): vale em todas as obras.
+    bool EngenheiroSegurancaGlobal = false,
+    // Obras em que ele é engenheiro por vínculo de obra. Vazio quando só é global ou não é engenheiro.
+    List<Guid>? ObrasEngenheiroSeguranca = null);
 
 public record AlcancePermissaoDto(bool Global, List<Guid> Obras);
 
@@ -41,7 +48,8 @@ public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogado
         // total. Responder "não é administrador" aqui esconderia na tela botões que o servidor
         // aceitaria — o pior dos dois mundos para quem está desenvolvendo.
         if (!request.AutenticacaoHabilitada)
-            return new UsuarioLogadoDto("Usuário", null, EhAdministrador: true, new List<string>());
+            return new UsuarioLogadoDto("Usuário", null, EhAdministrador: true, new List<string>(),
+                EhEngenheiroSeguranca: true, EngenheiroSegurancaGlobal: true, ObrasEngenheiroSeguranca: new List<Guid>());
 
         if (string.IsNullOrWhiteSpace(request.AzureAdObjectId))
             return new UsuarioLogadoDto(string.Empty, null, EhAdministrador: false, new List<string>());
@@ -89,6 +97,11 @@ public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogado
             alcance[codigo] = new AlcancePermissaoDto(global, obras.ToList());
         }
 
-        return new UsuarioLogadoDto(usuario.Nome, usuario.Email, ehAdministrador, permissoes, alcance);
+        var engenheiro = perfis.Where(p => p.Tipo == TipoPerfilAcesso.EngenheiroSeguranca).ToList();
+        var obrasEngenheiro = engenheiro.Where(p => p.ObraId is not null).Select(p => p.ObraId!.Value).Distinct().ToList();
+        return new UsuarioLogadoDto(usuario.Nome, usuario.Email, ehAdministrador, permissoes, alcance,
+            EhEngenheiroSeguranca: engenheiro.Count > 0,
+            EngenheiroSegurancaGlobal: engenheiro.Any(p => p.ObraId is null),
+            ObrasEngenheiroSeguranca: obrasEngenheiro);
     }
 }

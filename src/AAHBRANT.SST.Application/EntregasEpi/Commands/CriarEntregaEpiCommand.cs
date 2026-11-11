@@ -41,9 +41,12 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
 {
     private readonly IAppDbContext _db;
     private readonly IVerificacaoEstoqueMinimoService? _verificacaoMinimo;
+    private readonly Microsoft.Extensions.Options.IOptions<AAHBRANT.SST.Application.Integracoes.OpcoesIntegracao>? _opcoes;
 
-    public CriarEntregaEpiCommandHandler(IAppDbContext db, IVerificacaoEstoqueMinimoService? verificacaoMinimo = null)
+    public CriarEntregaEpiCommandHandler(IAppDbContext db, IVerificacaoEstoqueMinimoService? verificacaoMinimo = null,
+        Microsoft.Extensions.Options.IOptions<AAHBRANT.SST.Application.Integracoes.OpcoesIntegracao>? opcoes = null)
     {
+        _opcoes = opcoes;
         _db = db;
         _verificacaoMinimo = verificacaoMinimo;
     }
@@ -82,7 +85,13 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
                 "Lance o certificado em Treinamentos › Certificados (o curso precisa estar marcado como \"Habilita EPI (NR-06)\" no Catálogo).");
         if (treinamentoNr6.DataValidade.Date < HojeBrasilia())
             throw new InvalidOperationException(
-                $"O treinamento de NR-06 deste funcionário está vencido (validade {treinamentoNr6.DataValidade:dd/MM/yyyy}) — não é possível registrar a entrega de EPI.");
+                $"A NR-06 deste funcionário precisa ser renovada (validade até {treinamentoNr6.DataValidade:dd/MM/yyyy}) — não é possível registrar a entrega de EPI até a renovação.");
+
+        // Realizar integração ligado (Q7): só libera com a NR-06 válida E assinada pelo trabalhador (ou certificado externo com
+        // arquivo anexado, a prova do lançamento retroativo). Registro "Integração realizada" e certificado antigo de Integração
+        // não liberam EPI. Desligado, a regra de sempre.
+        if (_opcoes?.Value.AtendimentoHabilitado == true)
+            await GarantirNr6AssinadaAsync(_db, request.TrabalhadorId, ct);
 
         // Bloqueio de entrega com CA vencido e de estoque insuficiente: decisões confirmadas com o
         // usuário — não apenas um aviso, a entrega não é registrada.
@@ -167,6 +176,26 @@ public class CriarEntregaEpiCommandHandler : IRequestHandler<CriarEntregaEpiComm
             mensagem += " Há saldo em: " + string.Join(", ", emOutras.Select(x => $"{x.Nome} ({x.Saldo})")) +
                 ". Se o estoque foi lançado na obra errada, use Estoque › Transferir.";
         return mensagem;
+    }
+
+    private static async Task GarantirNr6AssinadaAsync(IAppDbContext db, Guid trabalhadorId, CancellationToken ct)
+    {
+        var hoje = HojeBrasilia();
+        var validos = await db.Treinamentos
+            .Where(t => t.TrabalhadorId == trabalhadorId && t.DataValidade.Date >= hoje
+                && t.CursoTreinamento != null && t.CursoTreinamento.AtendeNr6)
+            .Select(t => new { t.Id, t.OrigemCertificado, TemArquivo = t.ArquivoCertificado != null })
+            .ToListAsync(ct);
+        if (validos.Any(t => t.OrigemCertificado == OrigemCertificadoTreinamento.Externo && t.TemArquivo)) return;
+        var ids = validos.Select(t => t.Id).ToList();
+        var documentos = await db.DocumentosAssinatura
+            .Where(d => d.EntidadeTipo == "Treinamento" && ids.Contains(d.EntidadeId)).Select(d => d.Id).ToListAsync(ct);
+        var assinou = documentos.Count > 0 && await db.DocumentoSignatarios.AnyAsync(s =>
+            documentos.Contains(s.DocumentoAssinaturaId) && s.TrabalhadorId == trabalhadorId
+            && s.MetodoAutenticacao != MetodoAutenticacaoAssinatura.SessaoLogada, ct);
+        if (!assinou)
+            throw new InvalidOperationException(
+                "A NR-06 deste funcionário está registrada, mas ainda falta a assinatura dele no certificado — assine para liberar a entrega de EPI.");
     }
 
     // "Hoje" no fuso de Brasília: UtcNow.Date vira o dia seguinte às 21h e declararia vencido um

@@ -162,3 +162,20 @@ public class GheFuncaoConfiguracao : IEntityTypeConfiguration<GheFuncao>
         builder.HasQueryFilter(f => f.Ativo);
     }
 }
+
+// Vínculo atividade ↔ função (Entrega 4 da OS). Sem cascade: apagar atividade ou função nunca leva a
+// decisão do engenheiro junto. O filtro global (Ativo + obra) fica no SstDbContext, como o de Atividade.
+public class AtividadeFuncaoConfiguracao : IEntityTypeConfiguration<AtividadeFuncao>
+{
+    public void Configure(EntityTypeBuilder<AtividadeFuncao> builder)
+    {
+        builder.ToTable("AtividadesFuncoes");
+        builder.Property(x => x.JustificativaIa).HasMaxLength(300);
+        builder.Property(x => x.ValidadoPorNome).HasMaxLength(200);
+        builder.HasOne<Obra>().WithMany().HasForeignKey(x => x.ObraId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Atividade>().WithMany().HasForeignKey(x => x.AtividadeId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Funcao>().WithMany().HasForeignKey(x => x.FuncaoId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(x => new { x.AtividadeId, x.FuncaoId }).IsUnique().HasFilter("[Ativo] = 1");
+        builder.HasIndex(x => new { x.ObraId, x.FuncaoId });
+    }
+}

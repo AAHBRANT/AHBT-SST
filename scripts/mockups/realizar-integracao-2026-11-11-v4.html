@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Realizar integração - mockup v4</title>
+<style>
+/* Tokens copiados de src/theme.ts (rampa vinho #670000, Roboto, raios 8/14, fundo escuro padrão do app #151824/#0f1220). */
+:root{
+  --bg:#eeeeff; --card:#ffffff; --card2:#f6f6fb; --stroke:#e0e0ea; --stroke2:#cfcfdd;
+  --txt:#1a1a24; --txt2:#4b4d5e; --txt3:#767890;
+  --brand:#670000; --brandfg:#670000; --brandbg2:#f6e4e4; --onbrand:#fff; --bege:#ebe9ad; --bege-txt:#4a4700;
+  --ok-bg:#dff6dd; --ok-fg:#0e700e; --at-bg:#fff4ce; --at-fg:#7a5600; --er-bg:#fbdadc; --er-fg:#a4262c; --ne-bg:#ececf3; --ne-fg:#4b4d5e;
+  --shadow:0 1px 2px rgba(0,0,0,.06);
+}
+:root[data-theme="dark"]{
+  --bg:#0f1220; --card:#151824; --card2:#1b1f31; --stroke:#2c3150; --stroke2:#3b4166;
+  --txt:#f3f3f8; --txt2:#c4c6d6; --txt3:#9093a8;
+  --brand:#7a0101; --brandfg:#ec8484; --brandbg2:#3a1216; --onbrand:#fff; --bege:#ebe9ad; --bege-txt:#ebe9ad;
+  --ok-bg:#16401c; --ok-fg:#8fe39a; --at-bg:#4a3a0a; --at-fg:#f6d870; --er-bg:#4d1418; --er-fg:#ffa3a8; --ne-bg:#242944; --ne-fg:#c4c6d6;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:'Roboto',-apple-system,'Segoe UI',Arial,sans-serif;font-weight:500;font-size:14px;line-height:20px}
+button{font:inherit;color:inherit;cursor:pointer}
+h1,h2,h3,p{margin:0}
+
+/* ---------- moldura do mockup (NAO faz parte do app) ---------- */
+.mk{max-width:1640px;margin:0 auto;padding:16px}
+.ctl{position:sticky;top:0;z-index:50;background:var(--card);border:2px dashed var(--bege);border-radius:14px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;margin-bottom:16px}
+.ctl .tag{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bege-txt);background:color-mix(in srgb,var(--bege) 22%,transparent);padding:3px 8px;border-radius:99px}
+.ctl .grp{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ctl .grp>span{font-size:12px;color:var(--txt3)}
+.seg{border:1px solid var(--stroke2);background:var(--card2);padding:6px 12px;border-radius:99px;font-size:12px;font-weight:600}
+.seg[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+.ctl label{font-size:12px;display:flex;gap:6px;align-items:center}
+.intro{margin:4px 2px 14px;color:var(--txt2);max-width:1100px}
+.intro b{color:var(--txt)}
+.titulo-bloco{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin:26px 2px 10px}
+.frames{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.fwrap{display:flex;flex-direction:column;gap:6px}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);padding-left:4px}
+.frame{container-type:inline-size;container-name:f;background:var(--bg);border:1px solid var(--stroke2);border-radius:18px;overflow:auto;position:relative}
+.frame.janela{max-height:880px}
+.f-desktop{width:1100px;max-width:100%}
+.f-tablet{width:820px;max-width:100%}
+.f-phone{width:390px;max-width:100%;border-radius:30px;border:6px solid #000}
+.doc{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:18px 20px;margin-bottom:14px;max-width:1100px}
+.doc h3{font-size:16px;margin-bottom:8px}
+.doc li{margin:4px 0;color:var(--txt2)}
+.doc li b{color:var(--txt)}
+.some{border-color:var(--er-fg)}
+
+/* ---------- app ---------- */
+.shell{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--stroke);position:sticky;top:0;z-index:20}
+.shell .voltar{width:40px;height:40px;border-radius:99px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;color:var(--txt)}
+.crumb{font-size:12px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crumb b{color:var(--txt2)}
+.pg{padding:16px}
+.layout{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+.side{display:none}
+.bar{display:flex;position:sticky;bottom:0;z-index:20;gap:10px;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--card);border-top:1px solid var(--stroke)}
+.bar .resumo-b{font-size:12px;color:var(--txt2)}
+@container f (min-width:700px){.pg{padding:24px}}
+@container f (min-width:980px){.layout{grid-template-columns:minmax(0,1fr) 300px}.side{display:block}.bar{display:none}}
+.main{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:18px;box-shadow:var(--shadow)}
+.card.travada{opacity:.62}
+.sec-h{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:1px solid var(--stroke2);color:var(--txt2);flex:none}
+.num.feito{background:var(--ok-bg);color:var(--ok-fg);border:none}
+.num.atual{background:var(--brand);color:#fff;border:none}
+.sec-h h2{font-size:16px;line-height:22px;font-weight:700}
+.sec-h .sub{font-size:12px;color:var(--txt3);flex-basis:100%;padding-left:38px;margin-top:-6px}
+.sec-h .dir{margin-left:auto}
+.mut{color:var(--txt3);font-size:12px}
+.txt2{color:var(--txt2)}
+
+/* chips (StatusChip) */
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:99px;font-size:11px;line-height:16px;font-weight:700;white-space:nowrap}
+.c-ok{background:var(--ok-bg);color:var(--ok-fg)}.c-at{background:var(--at-bg);color:var(--at-fg)}.c-er{background:var(--er-bg);color:var(--er-fg)}
+.c-ma{background:var(--brandbg2);color:var(--brandfg)}.c-ne{background:var(--ne-bg);color:var(--ne-fg)}
+.chip.grande{font-size:12px;padding:4px 12px}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic.p{width:14px;height:14px}
+
+/* botoes: alvo de toque >= 48px nas acoes principais (luva e sol) */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:8px;border:1px solid var(--stroke2);background:var(--card2);font-weight:600;font-size:14px;white-space:nowrap}
+.btn:hover{background:var(--card)}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.big{min-height:52px;font-size:15px;padding:0 22px}
+.btn.verde{background:#0e700e;border-color:#0e700e;color:#fff}
+.btn.sm{min-height:40px;padding:0 14px;font-size:13px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.full{width:100%}
+
+.aviso{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:8px;font-size:13px;line-height:19px;border:1px solid transparent}
+.aviso.at{background:var(--at-bg);color:var(--at-fg)}
+.aviso.info{background:var(--brandbg2);color:var(--brandfg)}
+.aviso.ok{background:var(--ok-bg);color:var(--ok-fg)}
+.aviso b{font-weight:700}
+
+/* cabecalho */
+.cab{background:linear-gradient(135deg,var(--brand),#3d0000);color:#fff;border:none}
+.cab h1{font-size:20px;line-height:26px;font-weight:700}
+.cab .linha1{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.cab .meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;margin-top:14px}
+@container f (min-width:700px){.cab .meta{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.cab .meta small{display:block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;opacity:.75}
+.cab .meta span{font-weight:600}
+.cab .chip{background:rgba(255,255,255,.16);color:#fff}
+.cab .chip.fin{background:var(--ok-bg);color:var(--ok-fg)}
+
+/* stepper */
+.steps{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.stp{display:flex;align-items:center;gap:8px;border:1px solid var(--stroke);background:var(--card);border-radius:99px;padding:6px 14px 6px 6px;min-height:44px;white-space:nowrap;font-size:13px;font-weight:600;flex:none}
+.stp.atual{border-color:var(--brand);background:var(--brandbg2)}
+.stp.travado{color:var(--txt3)}
+
+/* pessoas */
+.pwrap{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+@container f (min-width:700px){.pwrap{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}}
+.plist{display:flex;flex-direction:column;gap:8px}
+.prow{display:grid;grid-template-columns:44px minmax(0,1fr) 22px;align-items:center;gap:12px;width:100%;padding:10px 12px;min-height:64px;border:1px solid var(--stroke);border-radius:8px;background:var(--card);text-align:left}
+.prow:hover{background:var(--card2)}
+.prow[aria-checked="true"]{border-color:var(--brand);background:var(--brandbg2);box-shadow:inset 0 0 0 1px var(--brand)}
+.av{width:44px;height:44px;border-radius:50%;background:var(--brandbg2);color:var(--brandfg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:none}
+.av.sm{width:36px;height:36px;font-size:13px}
+.prow[aria-checked="true"] .av{background:var(--brand);color:#fff}
+.pn{font-weight:700;display:block}
+.pf{font-size:12px;color:var(--txt3)}
+.dots{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+.dot{font-size:10px;font-weight:700;border-radius:6px;padding:1px 6px}
+.radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--stroke2)}
+.prow[aria-checked="true"] .radio{border:6px solid var(--brand)}
+.detp{border:1px solid var(--stroke);border-radius:14px;background:var(--card2);padding:14px}
+.detp .topo{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.mrow{display:grid;grid-template-columns:78px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--stroke)}
+.mrow:first-of-type{border-top:none}
+.mcod{font-weight:700;font-size:12px;color:var(--brandfg)}
+.mrow small{display:block;color:var(--txt3);font-size:12px;line-height:16px}
+@container f (max-width:520px){.mrow{grid-template-columns:70px minmax(0,1fr)}.mrow .chip{grid-column:2;justify-self:start}}
+
+/* modulos */
+.mod{border:1px solid var(--stroke);border-radius:14px;padding:16px;background:var(--card);display:flex;flex-direction:column;gap:10px}
+.mod.nao{background:var(--card2)}
+.mod .h{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.mod .cod{font-size:12px;font-weight:700;letter-spacing:.05em;color:var(--brandfg)}
+.mod h3{font-size:16px;line-height:22px}
+.kv{display:grid;grid-template-columns:96px minmax(0,1fr);gap:4px 12px;font-size:13px}
+.kv dt{color:var(--txt3)}.kv dd{margin:0;color:var(--txt)}
+.carga{background:var(--card2);border-radius:8px;padding:10px 12px}
+.carga .l{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.carga strong{font-size:20px;line-height:26px}
+.prog{height:8px;border-radius:99px;background:var(--ne-bg);overflow:hidden;margin:8px 0 6px}
+.prog i{display:block;height:100%;background:#2e9e3e;border-radius:99px}
+.prog i.em{background:#d9a400}
+.aberto{border:1px dashed var(--at-fg);color:var(--at-fg);background:transparent}
+.restr{display:flex;gap:8px;align-items:center;font-size:12px;background:var(--brandbg2);color:var(--brandfg);padding:8px 10px;border-radius:8px;font-weight:600}
+
+/* fotos (SlotFoto) */
+.fotos{display:grid;gap:12px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.slot{aspect-ratio:1/1;border-radius:8px;border:2px dashed var(--stroke2);background:var(--card2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--txt3);font-size:12px;font-weight:600;position:relative;overflow:hidden;padding:4px;text-align:center}
+.slot.vazio{cursor:pointer}.slot.vazio:hover{border-color:var(--brand);color:var(--brandfg)}
+.slot.cheio{border:1px solid var(--stroke);color:#fff}
+.slot.cheio .carimbo{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);font-size:10px;line-height:13px;padding:4px 6px;text-align:left;font-weight:500}
+.slot.cheio .tit{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.55);font-size:11px;padding:2px 8px;border-radius:99px}
+.g1{background:linear-gradient(160deg,#6b7a8f,#2f3a4a 60%,#56452f)}
+.g2{background:linear-gradient(200deg,#8a8f9a,#3a4150 55%,#2d3d33)}
+.g3{background:linear-gradient(120deg,#7d6b55,#3f3a33 60%,#2a3446)}
+.fh{font-size:11px;color:var(--txt3);margin-top:6px;text-align:center}
+
+/* presenca */
+.leit{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.pcard{border:1px solid var(--stroke);border-radius:14px;padding:14px;background:var(--card);display:flex;flex-direction:column;gap:10px}
+.pcard .t{display:flex;gap:10px;align-items:center}
+.pcard .t>div:nth-child(2){flex:1;min-width:0}
+.mods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.mp{border-radius:8px;padding:8px 10px;min-height:48px;font-size:12px;line-height:16px;font-weight:600;display:flex;flex-direction:column;justify-content:center;border:1px solid transparent}
+.mp b{font-size:13px}
+.mp.ok{background:var(--ok-bg);color:var(--ok-fg)}.mp.em{background:var(--at-bg);color:var(--at-fg)}.mp.er{background:var(--er-bg);color:var(--er-fg)}.mp.ne{background:var(--ne-bg);color:var(--ne-fg)}
+.mp.aguarda{background:transparent;border:1px dashed var(--stroke2);color:var(--txt3)}
+.saiu{background:var(--er-bg);color:var(--er-fg);border-radius:8px;padding:10px 12px;font-size:12px;line-height:17px}
+.saiu b{display:block;font-size:13px}
+.sel{margin-top:6px;width:100%;min-height:44px;border-radius:8px;border:1px solid var(--stroke2);background:var(--card);color:var(--txt);padding:0 10px;font:inherit}
+
+/* revisao */
+.rev li{list-style:none;display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;padding:10px 0;border-top:1px solid var(--stroke)}
+.rev li:first-child{border-top:none}
+.rev ul{margin:0;padding:0}
+.bola{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.bola.ok{background:var(--ok-bg);color:var(--ok-fg)}.bola.at{background:var(--at-bg);color:var(--at-fg)}
+.acoes{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px}
+.titulo-mini{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--txt3);margin:14px 0 6px}
+
+/* certificados e OS */
+.crow{display:grid;grid-template-columns:36px minmax(0,1fr);gap:12px;padding:12px 0;border-top:1px solid var(--stroke);align-items:center}
+.crow:first-of-type{border-top:none}
+.cbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.grupo{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 14px;align-items:center;border:1px solid var(--stroke);border-left:4px solid var(--er-fg);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:var(--card)}
+@container f (max-width:560px){.grupo{grid-template-columns:minmax(0,1fr)}}
+.grupo .nomes{font-size:13px;color:var(--txt2);margin-top:4px}
+.grupo .res{font-size:12px;color:var(--txt3);margin-top:2px}
+.orow{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--stroke);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--card)}
+@container f (max-width:560px){.orow{grid-template-columns:36px minmax(0,1fr)}.orow .btn{grid-column:1/-1}}
+.leg{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:12px;font-size:12px;color:var(--txt3);align-items:center}
+
+/* lateral */
+.side .card{position:sticky;top:76px}
+.side h3{font-size:14px;margin-bottom:10px}
+.res-l{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--stroke);font-size:13px}
+.res-l:first-of-type{border-top:none}
+
+/* popup */
+.pops{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));max-width:1100px}
+.dlg{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:18px;box-shadow:0 8px 28px rgba(0,0,0,.28)}
+.dlg h4{margin:0;font-size:16px}
+.perfil{display:flex;gap:12px;align-items:center;background:var(--brand);color:#fff;border-radius:14px;padding:12px 14px;margin:12px 0 4px}
+.perfil .av{background:#fff;color:#670000;width:48px;height:48px}
+.perfil b{font-size:16px;display:block;line-height:22px}.perfil small{opacity:.9}
+.passo{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--stroke);border-radius:8px;margin-bottom:6px;background:var(--card)}
+.passo small{display:block;color:var(--txt3);font-size:12px;line-height:15px}
+.passo.novo{border-color:var(--ok-fg);box-shadow:inset 0 0 0 1px var(--ok-fg)}
+.sai{border:2px dashed var(--er-fg);border-radius:10px;padding:6px;margin-bottom:6px;position:relative}
+.sai .passo{margin:0;opacity:.8}
+.sai::before{content:"SAI DESTA TELA";position:absolute;top:-10px;right:10px;background:var(--er-fg);color:var(--card);font-size:10px;font-weight:700;letter-spacing:.06em;padding:1px 8px;border-radius:99px}
+.novo-tag{display:inline-block;background:var(--ok-fg);color:var(--card);font-size:10px;font-weight:700;letter-spacing:.06em;padding:1px 8px;border-radius:99px;margin-left:6px;vertical-align:middle}
+.kit{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.kit span{border:1px solid var(--stroke);border-radius:8px;padding:5px 9px;font-size:12px}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th,.tbl td{text-align:left;padding:8px 8px;border-top:1px solid var(--stroke);vertical-align:top}
+.tbl th{font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;border-top:none}
+.grid2{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+@container f (min-width:700px){.grid2{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.selo{display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:12px;line-height:17px;color:var(--txt3)}
+.falt{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--txt2)}.falt li{margin:3px 0}
+@media (max-width:640px){.mk{padding:10px}}
+
+/* ---------- v4: trilha de etapas ---------- */
+.trilha{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none}
+.et{display:flex;gap:10px;align-items:center;border:1px solid var(--stroke);background:var(--card);border-radius:14px;padding:10px 12px;min-height:64px;min-width:0;text-align:left}
+.et .tx{min-width:0}
+.et b{display:block;font-size:13px;line-height:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.et small{display:block;font-size:11px;line-height:14px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.et.feito{border-color:var(--ok-fg);background:var(--ok-bg)}
+.et.feito b,.et.feito small{color:var(--ok-fg)}
+.et.atual{background:var(--brand);border-color:var(--brand);color:#fff}
+.et.atual small{color:rgba(255,255,255,.85)}
+.et.atual .num{background:#fff;color:var(--brand)}
+.et.trav{background:var(--card2);color:var(--txt3)}
+.et.trav b{color:var(--txt3)}
+.et.pul{border-style:dashed;background:transparent;color:var(--txt3)}
+.et.pul.cur{border-style:solid;border-color:var(--brand)}
+.legtr{font-size:12px;color:var(--txt3);margin-top:8px}
+.legtr b{color:var(--txt2)}
+@container f (max-width:700px){
+  .trilha{display:flex;gap:6px}
+  .et{flex:none;width:48px;min-height:48px;padding:0;justify-content:center;border-radius:99px}
+  .et .tx{display:none}
+  .et.atual,.et.pul.cur{flex:1 1 auto;width:auto;padding:0 14px 0 8px;justify-content:flex-start;min-width:0}
+  .et.atual .tx,.et.pul.cur .tx{display:block}
+}
+.fwrap{max-width:100%}
+.foot{display:block}
+@container f (min-width:980px){.foot{display:none}}
+.bar .resumo-b{flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.bar .btn{white-space:normal;text-align:center;line-height:18px;padding-top:8px;padding-bottom:8px}
+@container f (max-width:520px){.bar{flex-direction:column;align-items:stretch}.bar .btn{width:100%}}
+.btn.full{white-space:normal;text-align:center;line-height:18px;padding-top:8px;padding-bottom:8px}
+.cab .meta span{overflow-wrap:anywhere}
+.sel{margin-top:0}
+.campo{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.campo label{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--txt3)}
+.sumrow{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--stroke)}
+.sumrow:first-of-type{border-top:none}
+.sumrow .chip{justify-self:end}
+@container f (max-width:560px){.sumrow{grid-template-columns:36px minmax(0,1fr)}.sumrow .chip{grid-column:2;justify-self:start}}
+.pops{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.dlg .btn.full{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="mk">
+
+  <div class="ctl" role="group" aria-label="Controles do mockup">
+    <span class="tag">Controle do mockup, fora do app</span>
+    <div class="grp"><span>Ir para:</span>
+      <button class="seg" data-a="etapa" data-v="inicio">Início</button>
+      <button class="seg" data-a="etapa" data-v="1">1 · NR-06</button>
+      <button class="seg" data-a="etapa" data-v="2">2 · NR-12</button>
+      <button class="seg" data-a="etapa" data-v="3">3 · NR-18</button>
+      <button class="seg" data-a="etapa" data-v="4">4 · NR-35</button>
+      <button class="seg" data-a="etapa" data-v="5">5 · Ordem de Serviço</button>
+      <button class="seg" data-a="etapa" data-v="concluida">Concluída</button>
+    </div>
+    <div class="grp"><span>Vista:</span>
+      <button class="seg" data-a="vista" data-v="dc">Desktop + celular</button>
+      <button class="seg" data-a="vista" data-v="tab">Tablet</button>
+    </div>
+    <div class="grp"><span>Altura:</span>
+      <button class="seg" data-a="altura" data-v="janela">Janela</button>
+      <button class="seg" data-a="altura" data-v="completa">Completa</button>
+    </div>
+    <div class="grp"><span>Tema:</span>
+      <button class="seg" data-a="tema" data-v="dark">Escuro (padrão do app)</button>
+      <button class="seg" data-a="tema" data-v="light">Claro</button>
+    </div>
+    <label><input type="checkbox" data-a="retomado"> Mostrar aviso "Atendimento retomado"</label>
+    <label><input type="checkbox" data-a="pula12"> Simular NR-12 sem ninguém (etapa pulada)</label>
+    <button class="seg" data-a="zerar">Zerar a etapa atual</button>
+  </div>
+
+  <p class="intro"><b>Realizar integração, mockup v4 (11/11/2026).</b> Atualiza a v3: a assinatura deixa de ser única. Agora há <b>uma assinatura biométrica por curso, por pessoa</b>, e a <b>Ordem de Serviço tem assinatura própria</b>. O atendimento vira um fluxo de 5 etapas em ordem fixa: NR-06, NR-12, NR-18, NR-35 e Ordem de Serviço (NR-01). Cada etapa tem as próprias fotos, carga, lista de participantes e botão de avançar. Use a barra acima para ver cada etapa: ao pular, a etapa abre em andamento (parcial); ao tocar em "Avançar", a próxima abre do zero. Nomes, horas e validades são de exemplo.</p>
+
+  <div class="titulo-bloco">A tela, em desktop e celular (mesma página, mesmo componente)</div>
+  <div class="frames" id="frames"></div>
+
+  <div class="titulo-bloco">Pop-up "Funcionário novo": o que sai e o que entra</div>
+  <div class="pops" id="pops"></div>
+
+  <div class="titulo-bloco">Resumo para aprovação</div>
+  <div class="doc"><h3>Novo</h3><ul>
+    <li><b>Trilha de etapas sempre visível no topo</b> (5 etapas, ordem fixa). Estados: concluída (verde, com o nº de assinaturas), em andamento (vinho), bloqueada (cinza, cadeado) e pulada ("Ninguém precisa"). No celular a trilha fica compacta: círculos, e só a etapa atual mostra o nome.</li>
+    <li><b>Tela de início</b>: escolher obra e pessoas, com o combo por pessoa (Válido, Não exigido, Nesta integração) e o botão "Começar pela NR-06".</li>
+    <li><b>Uma assinatura biométrica por curso e por pessoa.</b> Cada assinatura gera o certificado daquela NR para aquela pessoa.</li>
+    <li><b>Lista de participantes por etapa</b> com o estado da assinatura (Aguardando, Assinado por digital, Assinado por facial, Sem biometria com "Cadastrar biometria agora") e o botão grande "Coletar assinaturas".</li>
+    <li><b>3 fotos por etapa</b> (evidência do curso), no lugar das 3 fotos únicas do encontro. <b>Nunca reaproveitadas entre cursos</b>, mesmo no mesmo dia: só câmera ao vivo (sem galeria nem envio), em blocos de horário distintos, com carimbo (data/hora, geolocalização, curso) e selo "Foto exclusiva desta etapa". Foto repetida é recusada: "Esta foto já foi usada na NR-06. Tire uma nova foto desta etapa." O resumo final lista os horários por etapa.</li>
+    <li><b>Botão "Avançar para &lt;próxima etapa&gt;"</b> travado até a carga mínima, as 3 fotos e as assinaturas de todos da etapa, com a lista do que falta.</li>
+    <li><b>Confirmação ao avançar</b>: "NR-06 concluída, 5 certificados gerados, cada um com a assinatura do trabalhador".</li>
+    <li><b>Etapa de Ordem de Serviço</b>: cada pessoa lê a própria OS (só a função dela) e assina à parte. Pendências que impedem emitir (ex.: Sem ASO, RH) ficam agrupadas.</li>
+    <li><b>Tela "Integração concluída"</b> com resumo por etapa (certificados por NR e OS assinadas) e o selo "Integração realizada" por pessoa, sem certificado.</li>
+    <li><b>Retomar</b>: o botão do pop-up vira "Continuar integração, etapa 3 de 5 (NR-18)".</li>
+    <li><b>Etapa pulada</b> quando ninguém da turma precisa do curso (simulável na barra de controle com NR-12).</li>
+  </ul></div>
+  <div class="doc"><h3>Muda</h3><ul>
+    <li><b>Assinatura única da turma vira uma assinatura por curso e por pessoa</b>; a Ordem de Serviço tem a dela, separada.</li>
+    <li><b>De página única com seções empilhadas (Pessoas, Módulos, Fotos, Assinatura, Revisão, Certificados, OS) para fluxo sequencial de etapas.</b> Pessoas e combo ficam no início; fotos, carga e assinatura passam para dentro de cada etapa.</li>
+    <li><b>Fotos:</b> de uma vez só para todos os módulos (v3) para 3 por etapa (premissa deste mockup; ver ponto em aberto 4).</li>
+    <li><b>Certificados:</b> de gerados todos juntos no encerramento (v3) para gerados ao concluir cada etapa. Total do exemplo: 14 (5 de NR-06, 2 de NR-12, 5 de NR-18, 2 de NR-35) mais 3 OS assinadas.</li>
+    <li><b>Ordem dos cursos:</b> NR-06, NR-12, NR-18, NR-35 (na v3 era NR-06, NR-18, NR-12, NR-35).</li>
+    <li><b>Encerramento:</b> deixa de ser um botão único "Encerrar integração" e passa a ser "Concluir integração" na última etapa (OS).</li>
+    <li>O resumo lateral no desktop passa a mostrar a etapa atual (carga, fotos, assinaturas) e o botão de avançar; no celular o botão fica numa barra fixa embaixo.</li>
+    <li>Pop-up: o passo de integração mostra "Realizar integração" antes de iniciar e "Continuar integração, etapa N de 5" depois.</li>
+  </ul></div>
+  <div class="doc some"><h3>Some (a confirmar pelo usuário antes de qualquer código)</h3><ul>
+    <li><b>Assinatura única da turma</b> (uma assinatura que valia para todos os módulos): deixa de existir.</li>
+    <li><b>Fotos únicas do encontro</b> (3 posições para todos os módulos): somem, no lugar entram as fotos por etapa.</li>
+    <li><b>Seção "Revisão antes de encerrar"</b> e o botão "Revisar e encerrar" da v3: somem. A conferência passa a ser feita em cada etapa (lista "Falta:") e a visão geral fica na tela "Integração concluída". Se for desejada uma revisão final antes de concluir, dizer.</li>
+    <li><b>Seção "Módulos do encontro"</b> (cards de todos os módulos numa tela): some. O conteúdo de cada curso aparece dentro da etapa dele.</li>
+    <li>No pop-up "Funcionário novo": <b>botão "Alterar data da turma"</b>, o campo de data, "Salvar data" e "Cancelar" desse ajuste.</li>
+    <li>No pop-up: <b>chip "Agendado"</b> e o texto com a <b>data da turma</b> no passo de integração.</li>
+    <li>Do fluxo de integração: <b>qualquer agendamento de turma</b> (datas de turma, "turma agendada").</li>
+    <li>Do fluxo de integração: <b>presença manual</b> ou sem leitura biométrica, se existir hoje (não conferido no código nesta revisão). Na página nova só vale digital ou facial.</li>
+    <li><b>"Integração de Segurança" como etapa ou curso com certificado</b>: não aparece mais. No lugar entra só o selo "Integração realizada" no perfil. Confirmar o que acontece com o curso de mesmo nome que existe hoje no catálogo (não conferido no código).</li>
+    <li>Nenhum outro elemento do pop-up (perfil, responsável com "Assumir", passo a passo, Kit de EPI, "Ver perfil") sai.</li>
+  </ul></div>
+
+  <div class="titulo-bloco">Pontos em aberto</div>
+  <div class="doc">
+    <table class="tbl"><thead><tr><th style="width:36px">#</th><th>Ponto</th><th style="width:150px">Quem decide</th></tr></thead><tbody>
+      <tr><td>1</td><td><b>Carga mínima da NR-06.</b> Ainda sem definição. A tela mostra "Mínimo: a definir pelo QSMS" e, enquanto isso, só exige que a carga seja registrada.</td><td>QSMS</td></tr>
+      <tr><td>2</td><td><b>Quais funções exigem NR-35?</b> O mockup aplica a Carpinteiro e Armador só como exemplo. Sugestão: a exigência vir do PGR / da função.</td><td>SST</td></tr>
+      <tr><td>3</td><td><b>NR-12: faixa de 8 a 16 h.</b> O mockup avança com o mínimo de 8 h. O que define se a turma faz 8 ou 16 h (função, risco da máquina, obra)?</td><td>SST / QSMS</td></tr>
+      <tr><td>4</td><td><b>Fotos por etapa ou uma vez só?</b> O mockup assume 3 fotos por etapa. Se bastar uma vez, a seção de fotos sai das etapas e volta a ser única.</td><td>SST / QSMS</td></tr>
+      <tr><td>5</td><td><b>Selo "Integração realizada" para quem ficou com a OS bloqueada (Sem ASO).</b> O mockup conclui a integração com 3 OS assinadas e entrega o selo só a elas; Diego e Lucas recebem o selo quando a OS for assinada. Confirmar.</td><td>SST / RH</td></tr>
+      <tr><td>6</td><td><b>Voltar a uma etapa já concluída.</b> O mockup não permite (concluída é fechada, certificados já gerados). Confirmar se precisa de correção por perfil de gestão.</td><td>SST</td></tr>
+    </tbody></table>
+  </div>
+</div>
+
+<script>
+const S={recusa:null,etapa:'inicio',vista:'dc',altura:'janela',tema:'dark',retomado:false,pula12:false,sel:'rafael',lucasBio:false,conf:null,st:{},os:{}};
+const P=[
+ {id:'rafael',nome:'Rafael Moura',funcao:'Pedreiro',ini:'RM',nr12:true,nr35:false,bio:['Digital','07:26']},
+ {id:'diego',nome:'Diego Nascimento',funcao:'Carpinteiro',ini:'DN',nr12:true,nr35:true,bio:['Facial','07:28']},
+ {id:'lucas',nome:'Lucas Ferraz',funcao:'Apontador',ini:'LF',nr12:false,nr35:false,bio:null},
+ {id:'bruno',nome:'Bruno Teixeira',funcao:'Servente',ini:'BT',nr12:false,nr35:false,bio:['Digital','07:27']},
+ {id:'eduardo',nome:'Eduardo Pires',funcao:'Armador',ini:'EP',nr12:true,nr35:true,bio:['Facial','07:29']}
+];
+const pid=id=>P.find(p=>p.id===id);
+const prim=p=>p.nome.split(' ')[0];
+const ALL=['rafael','diego','lucas','bruno','eduardo'];
+const CUR={
+ nr06:{cod:'NR-06',nome:'EPI',min:null,h:60,cont:'Uso, guarda, conservação e substituição do EPI. Conferência do kit entregue.',pes:ALL},
+ nr12:{cod:'NR-12',nome:'Máquinas e equipamentos',min:480,faixa:'8 a 16 h',h:480,cont:'Riscos e proteções de máquinas e equipamentos usados na função.',restr:'Vale só para Pedreiro, Carpinteiro e Armador',pes:['rafael','diego'],ja:'Eduardo já tem NR-12 válida (fora desta etapa)'},
+ nr18:{cod:'NR-18',nome:'Condições e meio ambiente na construção',min:240,h:240,cont:'Condições de trabalho na indústria da construção: áreas de vivência, proteção coletiva e escavações (resumo).',pes:ALL},
+ nr35:{cod:'NR-35',nome:'Trabalho em altura',min:480,h:480,cont:'Riscos de queda, proteção contra quedas, uso de cinto e linha de vida, e resgate (resumo).',restr:'Vale só para funções com trabalho em altura (exemplo: Carpinteiro e Armador)',novo:true,pes:['diego','eduardo']}
+};
+const ORD=['nr06','nr12','nr18','nr35','os'];
+const LAB={nr06:'NR-06',nr12:'NR-12',nr18:'NR-18',nr35:'NR-35',os:'OS (NR-01)'};
+const BLOQ_OS=['diego','lucas'];
+const OS_PRONTAS=['rafael','bruno','eduardo'];
+const fmt=m=>`${Math.floor(m/60)} h ${String(m%60).padStart(2,'0')}`;
+const idx=k=>ORD.indexOf(k)+1;
+const pes=k=>(k==='nr12'&&S.pula12)?[]:CUR[k].pes;
+const temBio=p=>!!p.bio||(p.id==='lucas'&&S.lucasBio);
+const metodo=p=>p.bio?p.bio[0].toLowerCase():'digital';
+const ic=(n,c='')=>{const d={
+ check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',camera:'<path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+ finger:'<path d="M12 4a7 7 0 0 0-7 7v2"/><path d="M12 8a3 3 0 0 0-3 3v4c0 2-1 3-2 4"/><path d="M12 12v3c0 2.5-.8 4.2-2 5.5"/><path d="M16 11a4 4 0 0 0-1-2.6"/><path d="M19 12v1c0 3-1 5-2.5 7"/>',
+ doc:'<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9.5 12h6M9.5 15.5h6"/>',lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+ alert:'<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/>',flag:'<path d="M6 21V4M6 5h11l-2 4 2 4H6"/>',back:'<path d="M15 5l-7 7 7 7"/>',
+ pen:'<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.5"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 20c1-4 4-6 8-6s7 2 8 6"/>',
+ dash:'<path d="M6 12h12"/>'}[n];
+ return `<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;};
+const chip=(t,tom,x='')=>`<span class="chip c-${tom} ${x}">${t}</span>`;
+
+/* ---- estado das etapas ---- */
+function initStep(k,modo){
+  if(k==='os'){S.os=modo==='parcial'?{rafael:2,bruno:1,eduardo:0}:{rafael:0,bruno:0,eduardo:0};return;}
+  const par={
+   nr06:{carga:60,fotos:3,sig:{rafael:'digital',diego:'facial',eduardo:'facial'}},
+   nr12:{carga:390,fotos:2,sig:{rafael:'digital'}},
+   nr18:{carga:240,fotos:3,sig:{rafael:'digital',diego:'facial',bruno:'digital',eduardo:'facial'}},
+   nr35:{carga:390,fotos:3,sig:{diego:'facial'}}}[k];
+  S.st[k]=modo==='parcial'?JSON.parse(JSON.stringify(par)):{carga:0,fotos:0,sig:{}};
+}
+function goto(e,modo){
+  S.etapa=e;S.conf=null;S.recusa=null;
+  if(typeof e==='number')initStep(ORD[e-1],modo);
+}
+function faltas(k){
+  const f=[];
+  if(k==='os'){const n=OS_PRONTAS.filter(id=>S.os[id]!==2).map(id=>prim(pid(id)));if(n.length)f.push(`assinatura da OS de ${n.join(', ')}`);return f;}
+  const c=CUR[k],s=S.st[k],ps=pes(k);
+  if(!ps.length)return f;
+  if(c.min){if(s.carga<c.min)f.push(`carga ${fmt(c.min-s.carga)}`);}else if(s.carga<=0)f.push('carga registrada');
+  if(s.fotos<3){const n=3-s.fotos;f.push(`${n} foto${n>1?'s':''} da etapa`);}
+  const pend=ps.filter(id=>!s.sig[id]).map(id=>prim(pid(id)));
+  if(pend.length)f.push(`assinatura${pend.length>1?'s':''} de ${pend.join(', ')}`);
+  return f;
+}
+function acao(){
+  const e=S.etapa;
+  if(e==='inicio')return{lab:'Começar pela NR-06',f:[],a:'comecar',txt:'5 pessoas selecionadas'};
+  if(e==='concluida')return{lab:'Voltar ao perfil',f:[],a:'nada',txt:'Integração concluída'};
+  const f=faltas(ORD[e-1]);
+  const lab=e===5?'Concluir integração':e===4?'Avançar para a Ordem de Serviço':`Avançar para ${LAB[ORD[e]]}`;
+  return{lab,f,a:'avancar',txt:f.length?'Falta: '+f.join('; '):'Tudo pronto para avançar'};
+}
+const btnAcao=a=>`<button class="btn pri big full" data-a="${a.a}" ${a.f.length?'disabled':''}>${a.f.length?ic('lock'):''}<span>${a.lab}</span></button>`+(a.f.length?`<div class="mut" style="margin-top:10px">Falta:</div><ul class="falt">${a.f.map(x=>`<li>${x}</li>`).join('')}</ul>`:'');
+
+/* ---- partes da tela ---- */
+function cabecalho(){
+  const e=S.etapa;
+  const st=e==='concluida'?'<span class="chip fin grande">Concluída</span>':e==='inicio'?'<span class="chip grande">Não iniciada</span>':'<span class="chip grande">Em andamento</span>';
+  return `<section class="card cab" id="s0">
+   <div class="linha1"><div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.75">Integração de admitidos</div><h1>Realizar integração</h1></div>${st}</div>
+   <div class="meta"><div><small>Obra</small><span>Residencial Parque das Acácias</span></div><div><small>Período</small><span>${e==='inicio'?'A iniciar':'10/11 a 12/11/2026'}</span></div><div><small>Técnico responsável</small><span>Marcos Tavares</span></div><div><small>Admitidos</small><span>5 pessoas</span></div></div>
+   ${S.retomado&&e!=='inicio'?`<div class="aviso info" style="margin-top:14px;background:rgba(255,255,255,.14);color:#fff">${ic('info')}<div><b>Atendimento retomado.</b> Este atendimento já estava aberto desde 10/11 às 07:30. Etapas concluídas, fotos e assinaturas já registradas foram mantidas.</div></div>`:''}
+  </section>`;
+}
+function conf(){return S.conf?`<div class="aviso ok">${ic('check')}<div><b>${S.conf}</b></div></div>`:'';}
+
+function trilha(){
+  const e=S.etapa;
+  const itens=ORD.map((k,i0)=>{
+    const i=i0+1;const skip=(k==='nr12'&&S.pula12);
+    let s=e==='concluida'?'feito':e==='inicio'?'trav':i<e?'feito':i===e?'atual':'trav';
+    let sub,icn;
+    const nAss=k==='os'?OS_PRONTAS.length:pes(k).length;
+    if(skip){s='pul';sub='Ninguém precisa';icn='–';}
+    else if(s==='feito'){sub=`${nAss} assinaturas`;icn=ic('check','p');}
+    else if(s==='atual'){sub='Em andamento';icn=i;}
+    else{sub='Bloqueada';icn=ic('lock','p');}
+    const cur=(skip&&e===i)?' cur':'';
+    const numc=s==='feito'?'feito':s==='atual'?'atual':'';
+    return `<li class="et ${s}${cur}" aria-label="Etapa ${i}: ${LAB[k]}, ${sub}"><span class="num ${numc}">${icn}</span><span class="tx"><b>${LAB[k]}</b><small>${sub}</small></span></li>`;
+  }).join('');
+  let leg='A trilha mostra a ordem fixa: NR-06, NR-12, NR-18, NR-35 e Ordem de Serviço.';
+  if(typeof e==='number')leg=`<b>Etapa ${e} de 5 · ${LAB[ORD[e-1]]}.</b> Cada etapa só libera a próxima depois de concluída.`;
+  if(e==='concluida')leg='<b>5 de 5 etapas concluídas.</b>';
+  return `<div><ol class="trilha" style="margin:0;padding:0;list-style:none">${itens}</ol><div class="legtr">${leg}</div></div>`;
+}
+
+/* inicio */
+function modPessoa(p,k){
+  if(k==='nr12'&&!p.nr12)return{tom:'ne',lab:'Não exigido',hint:`Não exigido para ${p.funcao}`};
+  if(k==='nr12'&&p.id==='eduardo')return{tom:'ok',lab:'Válido',hint:'Já tem. Válido até 14/03/2027 (exemplo)'};
+  if(k==='nr35'&&!p.nr35)return{tom:'ne',lab:'Não exigido',hint:`Não exigido para ${p.funcao} (funções a confirmar)`};
+  if(k==='os')return{tom:'ma',lab:'Nesta integração',hint:`OS própria, só a função de ${prim(p)}. Assinatura à parte`};
+  return{tom:'ma',lab:'Nesta integração',hint:'Assinatura biométrica própria neste curso'};
+}
+function inicio(){
+  const sel=pid(S.sel);
+  const dots=p=>ORD.map(k=>{const m=modPessoa(p,k);return `<span class="dot c-${m.tom}" title="${LAB[k]}: ${m.lab}">${LAB[k]}${m.tom==='ne'?' ·':m.tom==='ok'?' ✓':''}</span>`}).join('');
+  const lista=P.map(p=>`<button class="prow" role="radio" aria-checked="${p.id===S.sel}" data-a="sel" data-v="${p.id}">
+    <span class="av">${p.ini}</span><span><span class="pn">${p.nome}</span><span class="pf">${p.funcao}</span><span class="dots">${dots(p)}</span></span><span class="radio"></span></button>`).join('');
+  const det=ORD.map(k=>{const m=modPessoa(sel,k);const nm=k==='os'?'Ordem de Serviço (NR-01)':CUR[k].nome;
+    return `<div class="mrow"><span class="mcod">${LAB[k]}</span><span><b>${nm}</b><small>${m.hint}</small></span>${chip(m.lab,m.tom)}</div>`}).join('');
+  return `<section class="card" id="s1"><div class="sec-h"><span class="num atual">1</span><h2>Obra e pessoas</h2><span class="sub">Escolha a obra e confira, por pessoa, em quais etapas ela entra.</span></div>
+   <div class="campo"><label for="obra">Obra</label><select class="sel" id="obra"><option>Residencial Parque das Acácias</option><option>Edifício Vista do Parque</option><option>Galpão Logístico Norte</option></select></div>
+   <div class="titulo-mini" style="margin-top:0">Admitidos desta obra (5 selecionados)</div>
+   <div class="pwrap"><div class="plist" role="radiogroup" aria-label="Admitidos da obra">${lista}</div>
+   <div class="detp"><div class="topo"><span class="av">${sel.ini}</span><div><b style="font-size:16px">${sel.nome}</b><div class="pf">${sel.funcao} · Admissão 03/11/2026</div></div></div>
+   <div class="titulo-mini" style="margin-top:4px">Etapas da integração, em ordem</div>${det}
+   <div class="mut" style="margin-top:8px">${sel.nr12?'NR-12 entra na função. ':`NR-12 não entra em ${sel.funcao}. `}${sel.nr35?'NR-35 entra (trabalho em altura).':'NR-35 não entra nesta função.'}</div></div></div>
+   <div class="aviso info" style="margin-top:14px">${ic('info')}<div>Cada curso gera um certificado por pessoa, com a <b>assinatura biométrica dela</b> naquele curso. A <b>Ordem de Serviço tem assinatura própria</b>, à parte.</div></div>
+  </section>`;
+}
+
+/* etapa de curso */
+const FT={nr06:['10/11/2026 08:02','10/11/2026 08:20','10/11/2026 08:41'],nr12:['10/11/2026 13:32','10/11/2026 14:05','10/11/2026 15:10'],nr18:['11/11/2026 08:05','11/11/2026 08:50','11/11/2026 09:35'],nr35:['11/11/2026 13:40','11/11/2026 14:30','11/11/2026 15:20']};
+function fotosHtml(k){
+  const s=S.st[k],n=s.fotos,c=CUR[k],i=idx(k);
+  const tit=['Grupo completo','Durante a instrução','Local do curso'];
+  const html=[0,1,2].map(j=>j<n?`<div class="slot cheio g${j+1}"><span class="tit">Foto ${j+1} · ${tit[j]}</span><span class="carimbo">${FT[k][j]} · ${c.cod}<br>Geo: -23,5489 / -46,6388 (exemplo)<br><b>Foto exclusiva desta etapa</b></span></div>`
+   :`<button class="slot vazio" data-a="foto" data-v="${k}">${ic('camera')}<span>Foto ${j+1} · ${tit[j]}</span><span>Tirar agora pela câmera</span></button>`).join('');
+  const ant=i>1?LAB[ORD[i-2]]:null;
+  return `<section class="card"><div class="sec-h"><span class="num ${n===3?'feito':''}">${n===3?ic('check','p'):'·'}</span><h2>Fotos da etapa (${n}/3)</h2><span class="sub">Evidência do ${c.cod}. Só câmera ao vivo, sem galeria nem envio de arquivo. As fotos nunca valem para outro curso.</span></div>
+   ${S.recusa===k&&ant?`<div class="aviso" style="margin-bottom:12px;background:var(--er-bg);color:var(--er-fg)">${ic('alert')}<div><b>Foto recusada.</b> Esta foto já foi usada na ${ant}. Tire uma nova foto desta etapa.</div></div>`:''}
+   ${n<3?`<div class="aviso at" style="margin-bottom:12px">${ic('alert')}<div><b>Tire as 3 fotos desta etapa, em horário próprio.</b> A etapa só avança com as 3 fotos.</div></div>`:''}
+   <div class="fotos">${html}</div><div class="fh">Cada foto leva carimbo de data/hora, geolocalização e curso. Mesmo no mesmo dia, cada curso tem o seu bloco de horário (ex.: NR-06 de manhã, NR-12 à tarde).</div>
+   ${ant?`<button class="btn sm" style="margin-top:8px" data-a="recusa" data-v="${k}">Demonstração: tentar reaproveitar foto da ${ant}</button>`:''}</section>`;
+}
+function curso(k){
+  const c=CUR[k],s=S.st[k],ps=pes(k),i=idx(k);
+  if(!ps.length)return `<section class="card"><div class="sec-h"><span class="num">–</span><h2>${c.cod} · ${c.nome}</h2><span class="dir">${chip('Etapa pulada','ne')}</span></div>
+    <div class="aviso info">${ic('info')}<div><b>Ninguém precisa.</b> Nenhuma pessoa desta turma tem ${c.cod} a fazer nesta integração. A etapa é pulada, sem fotos nem assinaturas.</div></div></section>`;
+  const cargaOk=c.min?s.carga>=c.min:s.carga>0;
+  const pct=c.min?Math.min(100,Math.round(s.carga/c.min*100)):(s.carga>0?100:0);
+  const minChip=c.min?chip(`Mínimo da NR: ${c.min/60} h`,'ma'):`<span class="chip aberto">${ic('flag','p')} Mínimo: a definir pelo QSMS</span>`;
+  const msg=c.min?(cargaOk?`Carga atende o mínimo de ${c.min/60} h.`:`Faltam ${fmt(c.min-s.carga)} para o mínimo de ${c.min/60} h. A etapa só avança com a carga atendida.`)+(c.faixa?` Faixa prevista: ${c.faixa}.`:''):(cargaOk?'Carga registrada. Sem trava de mínimo até o QSMS definir (ponto em aberto 1).':'Registre a carga cumprida.');
+  const nAss=ps.filter(id=>s.sig[id]).length;
+  const prox=ps.find(id=>!s.sig[id]&&temBio(pid(id)));
+  const rows=ps.map(id=>{const p=pid(id);const g=s.sig[id];const tb=temBio(p);let ch,btn='';
+    if(g)ch=chip(`Assinado por ${g}`,'ok');
+    else if(!tb){ch=chip('Sem biometria','er');btn=`<button class="btn pri" data-a="bio">${ic('finger')} Cadastrar biometria agora</button>`;}
+    else ch=chip('Aguardando','at');
+    return `<div class="orow"><span class="av sm">${p.ini}</span><div><b>${p.nome}</b> <span class="pf">${p.funcao}</span><div style="margin-top:4px">${ch}</div></div>${btn}</div>`;}).join('');
+  const done=nAss===ps.length;
+  return `<section class="card"><div class="sec-h"><span class="num atual">${i}</span><h2>${c.cod} · ${c.nome}</h2><span class="dir">${chip(S.etapa>i?'Concluída':'Em andamento','at')}</span></div>
+    ${c.restr?`<div class="restr" style="margin-bottom:12px">${ic('user','p')} ${c.restr}</div>`:''}
+    <div class="carga"><div class="l"><span class="mut">Carga horária cumprida</span>${minChip}</div>
+      <strong>${fmt(s.carga)}</strong>${c.min?` <span class="mut">de ${c.min/60} h</span>`:''}
+      <div class="prog" aria-hidden="true"><i class="${cargaOk?'':'em'}" style="width:${pct}%"></i></div><div class="mut">${msg}</div>
+      ${cargaOk?'':`<button class="btn sm" style="margin-top:8px" data-a="carga" data-v="${k}">Demonstração: completar a carga</button>`}</div>
+    ${k==='nr35'?`<div class="aviso at" style="padding:8px 10px;font-size:12px;margin-top:12px">${ic('flag')}<div><b>Ponto em aberto:</b> quais funções exigem NR-35? (sugestão: vem do PGR/função)</div></div>`:''}
+    <dl class="kv" style="margin:12px 0 0"><dt>Conteúdo</dt><dd>${c.cont}</dd><dt>Instrutor</dt><dd>Marcos Tavares, Técnico de Segurança</dd><dt>Participantes</dt><dd><b>${ps.length}</b> (${ps.length===5?'todos os admitidos':ps.map(id=>prim(pid(id))).join(', ')})${c.ja?`<div class="mut">${c.ja}</div>`:''}</dd></dl>
+  </section>
+  ${fotosHtml(k)}
+  <section class="card"><div class="sec-h"><span class="num ${done?'feito':''}">${done?ic('check','p'):'·'}</span><h2>Assinaturas do ${c.cod} (${nAss}/${ps.length})</h2><span class="sub">Uma assinatura biométrica por pessoa neste curso, por digital ou facial. Cada uma gera o certificado da pessoa.</span></div>
+   <div style="margin-bottom:12px"><button class="btn pri big full" data-a="coletar" data-v="${k}" ${prox?'':'disabled'}>${ic('finger')}<span>Coletar assinaturas</span></button>
+   <div class="mut" style="margin-top:6px">${done?'Todas as assinaturas deste curso foram coletadas.':prox?`Abre a fila de leitura por digital ou facial. Demonstração: cada toque registra a próxima assinatura (${prim(pid(prox))}).`:'Sem ninguém na fila: cadastre a biometria de quem está sem.'}</div></div>
+   ${rows}</section>`;
+}
+
+/* etapa 5: OS */
+function os(){
+  const rows=OS_PRONTAS.map(id=>{const p=pid(id);const s=S.os[id];
+    const lab=s===2?chip(`Assinada por ${metodo(p)}`,'ok'):s===1?chip('Aguardando assinatura','at'):chip('Aguardando leitura','at');
+    const b=s===2?`<button class="btn sm" data-a="nada">${ic('doc','p')} Ver PDF</button>`:s===1?`<button class="btn pri" data-a="osavanca" data-v="${id}">${ic('pen')} Assinar com ${metodo(p)}</button>`:`<button class="btn pri" data-a="osavanca" data-v="${id}">${ic('doc')} Ler a OS com ${prim(p)}</button>`;
+    return `<div class="orow"><span class="av sm">${p.ini}</span><div><b>${p.nome}</b> <span class="pf">${p.funcao}</span><div style="margin-top:4px">${lab}</div><div class="mut" style="margin-top:4px">Conteúdo da OS: só a função de ${prim(p)} (${p.funcao})</div></div>${b}</div>`;}).join('');
+  const nOk=OS_PRONTAS.filter(id=>S.os[id]===2).length;
+  return `<section class="card"><div class="sec-h"><span class="num atual">5</span><h2>Ordem de Serviço (NR-01)</h2><span class="dir">${chip('Em andamento','at')}</span><span class="sub">Cada pessoa lê a própria OS e assina à parte. A OS assinada vale como NR-01, em registro isolado no perfil, sem certificado.</span></div>
+   <div class="aviso info" style="margin-bottom:12px">${ic('info')}<div><b>Conteúdo da OS: só a função de cada pessoa</b>, com as atividades, os riscos e os EPIs dela. A assinatura é por digital ou facial, separada das assinaturas dos cursos.</div></div>
+   <div class="titulo-mini" style="margin-top:0">Bloqueadas (agrupadas por motivo)</div>
+   <div class="grupo"><div><div>${chip('Bloqueada','er')} <b>Sem ASO</b></div><div class="nomes"><b>2 pessoas:</b> Diego Nascimento, Lucas Ferraz</div><div class="res">Quem resolve: RH (envio do ASO). Não trava a conclusão da integração.</div></div><button class="btn sm" data-a="nada">Ver ASO</button></div>
+   <div class="titulo-mini">Prontas para leitura e assinatura (${nOk}/3)</div>${rows}
+   <div class="selo">${ic('info','p')}<span>Ao assinar a OS, o perfil da pessoa recebe o selo <b>Integração realizada</b> (sem certificado).</span></div>
+  </section>`;
+}
+
+/* concluida */
+function concluida(){
+  const cert=['nr06','nr12','nr18','nr35'];
+  const total=cert.reduce((a,k)=>a+pes(k).length,0);
+  const linhas=cert.map(k=>{const c=CUR[k],ps=pes(k);
+    if(!ps.length)return `<div class="sumrow"><span class="num">–</span><div><b>${c.cod}</b><div class="mut">Ninguém precisava desta etapa. Pulada.</div></div>${chip('Ninguém precisa','ne')}</div>`;
+    return `<div class="sumrow"><span class="num feito">${ic('check','p')}</span><div><b>${c.cod} · ${ps.length} certificado${ps.length>1?'s':''}</b><div class="mut">${ps.length===5?'Rafael, Diego, Lucas, Bruno e Eduardo':ps.map(id=>prim(pid(id))).join(' e ')}. ${ps.length} assinatura${ps.length>1?'s':''} biométrica${ps.length>1?'s':''}.${c.ja?' '+c.ja+'.':''}</div></div>${chip(`${ps.length} assinaturas`,'ok')}</div>`;}).join('');
+  const fotosRes=cert.filter(k=>pes(k).length).map(k=>`<div class="sumrow"><span class="num">${ic('camera','p')}</span><div><b>${CUR[k].cod}</b><div class="mut">${FT[k].join(' · ')}</div></div>${chip('3 fotos exclusivas','ma')}</div>`).join('');
+  const sel=P.map(p=>{const ok=OS_PRONTAS.includes(p.id);
+    return `<div class="sumrow"><span class="av sm">${p.ini}</span><div><b>${p.nome}</b> <span class="pf">${p.funcao}</span><div class="mut">${ok?'OS assinada. Perfil atualizado.':'OS bloqueada: sem ASO (RH). O selo sai quando a OS for assinada.'}</div></div>${ok?chip('Integração realizada','ok'):chip('Aguardando OS','at')}</div>`;}).join('');
+  return `<section class="card"><div class="sec-h"><span class="num feito">${ic('check','p')}</span><h2>Integração concluída</h2><span class="dir">${chip(`${total} certificados · 3 OS`,'ok')}</span></div>
+   <div class="aviso ok">${ic('check')}<div><b>Integração concluída em 12/11/2026 às 16:40</b> por Marcos Tavares. Cada curso teve a assinatura biométrica de cada participante, e a OS foi assinada à parte.</div></div>
+   <div class="titulo-mini">Resumo por etapa</div>${linhas}
+   <div class="sumrow"><span class="num feito">${ic('check','p')}</span><div><b>Ordem de Serviço (NR-01) · 3 OS assinadas</b><div class="mut">Rafael, Bruno e Eduardo. Diego e Lucas ficam com a OS bloqueada por falta de ASO (RH). Registro isolado no perfil, sem certificado.</div></div>${chip('3 assinaturas','ok')}</div>
+  </section>
+  <section class="card"><div class="sec-h"><span class="num">${ic('camera','p')}</span><h2>Fotos por etapa</h2><span class="sub">Cada curso tem as próprias 3 fotos, em horários distintos, nunca reaproveitadas.</span></div>${fotosRes}</section>
+  <section class="card"><div class="sec-h"><span class="num">·</span><h2>Selo no perfil de cada pessoa</h2><span class="sub">O selo "Integração realizada" não é um certificado: é só o registro de que a integração foi feita.</span></div>${sel}</section>`;
+}
+
+function corpo(){
+  const e=S.etapa;
+  if(e==='inicio')return inicio();
+  if(e==='concluida')return concluida();
+  return e===5?os():curso(ORD[e-1]);
+}
+function lateral(){
+  const e=S.etapa;const a=acao();let rows='';
+  if(e==='inicio')rows=`<div class="res-l"><span class="txt2">Pessoas</span><b>5</b></div><div class="res-l"><span class="txt2">Etapas</span><b>5 (NR-12 para 2, NR-35 para 2)</b></div><div class="res-l"><span class="txt2">Primeira etapa</span><b>NR-06</b></div>`;
+  else if(e==='concluida')rows=`<div class="res-l"><span class="txt2">Etapas</span><b>5 de 5</b></div><div class="res-l"><span class="txt2">Certificados</span><b>${['nr06','nr12','nr18','nr35'].reduce((x,k)=>x+pes(k).length,0)}</b></div><div class="res-l"><span class="txt2">OS assinadas</span><b>3 de 5</b></div><div class="res-l"><span class="txt2">Pendência</span><b>2 sem ASO (RH)</b></div>`;
+  else if(e===5){const n=OS_PRONTAS.filter(id=>S.os[id]===2).length;rows=`<div class="res-l"><span class="txt2">Etapa</span><b>5 de 5 · OS (NR-01)</b></div><div class="res-l"><span class="txt2">OS assinadas</span><b>${n}/3</b></div><div class="res-l"><span class="txt2">Bloqueadas</span><b>2 sem ASO (RH)</b></div>`;}
+  else{const k=ORD[e-1],s=S.st[k],ps=pes(k),c=CUR[k];
+    rows=`<div class="res-l"><span class="txt2">Etapa</span><b>${e} de 5 · ${c.cod}</b></div>`+(ps.length?`<div class="res-l"><span class="txt2">Carga</span><b>${fmt(s.carga)}${c.min?' de '+c.min/60+' h':''}</b></div><div class="res-l"><span class="txt2">Fotos</span><b>${s.fotos}/3</b></div><div class="res-l"><span class="txt2">Assinaram</span><b>${ps.filter(id=>s.sig[id]).length}/${ps.length}</b></div>`:`<div class="res-l"><span class="txt2">Situação</span><b>Ninguém precisa</b></div>`);}
+  const btn=e==='concluida'?`<button class="btn pri big full" data-a="nada">Voltar ao perfil</button>`:btnAcao(a);
+  return `<aside class="side"><div class="card"><h3>Resumo da etapa</h3>${rows}<div style="margin-top:12px">${btn}</div></div></aside>`;
+}
+function rodapeMain(){
+  if(S.etapa==='concluida')return '';
+  return `<section class="card foot"><h3 style="font-size:14px;margin-bottom:10px">Para avançar</h3>${btnAcao(acao())}</section>`;
+}
+function barra(){
+  const a=acao();
+  return `<div class="bar"><span class="resumo-b">${a.txt}</span><button class="btn pri big" data-a="${a.a}" ${a.f.length?'disabled':''}>${a.f.length?ic('lock'):''}<span>${a.lab}</span></button></div>`;
+}
+function app(){
+  return `<div class="shell"><button class="voltar" aria-label="Voltar">${ic('back')}</button><div class="crumb">Pessoas · Funcionário novo · <b>Realizar integração</b></div></div>
+  <div class="pg"><div class="layout"><div class="main">${cabecalho()}${conf()}${trilha()}${corpo()}${rodapeMain()}</div>${lateral()}</div></div>${barra()}`;
+}
+
+/* ---- popup Funcionario novo ---- */
+function popups(){
+  const perfil=`<div class="perfil"><span class="av">RM</span><div><b>Rafael Moura</b><small>Pedreiro · Admissão 03/11/2026 · Residencial Parque das Acácias</small></div></div>
+   <div class="mut" style="margin:8px 0 10px">Responsável: Marcos Tavares</div><div class="titulo-mini" style="margin-top:0">Passo a passo</div>`;
+  const outros=`<div class="passo"><span class="num feito">${ic('check','p')}</span><div><b>ASO admissional</b><small>Apto</small></div>${chip('Feito','ok')}</div>`;
+  const kit=`<div class="titulo-mini">Kit de EPI</div><div class="kit"><span>Capacete <b style="color:var(--ok-fg)">Separado</b></span><span>Botina <b style="color:var(--ok-fg)">Separado</b></span><span>Óculos <b style="color:var(--at-fg)">Em falta</b></span></div>`;
+  const rodape=`<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn sm">Fechar</button><button class="btn sm pri">Ver perfil</button></div>`;
+  const hoje=`<div class="dlg"><div class="flabel" style="margin-bottom:6px">Hoje (master)</div><h4>Funcionário novo</h4>${perfil}${outros}
+   <div class="sai"><div class="passo"><span class="num atual">2</span><div><b>Integração</b><small>Turma agendada para 14/11/2026</small></div>${chip('Agendado','at')}</div>
+   <div style="padding:6px 6px 2px 40px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="btn sm" style="min-height:34px">Alterar data da turma</span><span class="mut">(abre campo de data + "Salvar data")</span></div></div>
+   ${kit}${rodape}</div>`;
+  const novo=`<div class="dlg" style="border-color:var(--ok-fg)"><div class="flabel" style="margin-bottom:6px">Proposto, antes de iniciar <span class="novo-tag">NOVO</span></div><h4>Funcionário novo</h4>${perfil}${outros}
+   <div class="passo novo"><span class="num atual">2</span><div><b>Integração <span class="novo-tag">NOVO</span></b><small>5 etapas em ordem: NR-06, NR-12 (Pedreiro), NR-18, NR-35 e Ordem de Serviço (NR-01).</small></div>${chip('Pendente','at')}</div>
+   <button class="btn pri sm full">${ic('check','p')} Realizar integração</button>
+   <div class="mut" style="margin:8px 0">Sem datas de turma, sem chip "Agendado" e sem "Alterar data da turma".</div>
+   ${kit}${rodape}</div>`;
+  const ret=`<div class="dlg" style="border-color:var(--ok-fg)"><div class="flabel" style="margin-bottom:6px">Proposto, atendimento em andamento <span class="novo-tag">NOVO</span></div><h4>Funcionário novo</h4>${perfil}${outros}
+   <div class="passo novo"><span class="num atual">2</span><div><b>Integração <span class="novo-tag">NOVO</span></b><small>Etapa 3 de 5 (NR-18). NR-06 e NR-12 concluídas.</small></div>${chip('Em andamento','at')}</div>
+   <button class="btn pri sm full">${ic('pen','p')} Continuar integração — etapa 3 de 5 (NR-18)</button>
+   <div class="mut" style="margin:8px 0">O botão leva direto à etapa em que o atendimento parou.</div>
+   ${kit}${rodape}</div>`;
+  return hoje+novo+ret;
+}
+
+/* ---- render ---- */
+function frames(){
+  const alt=S.altura==='janela'?'janela':'';
+  const fr=(cls,label)=>`<div class="fwrap"><div class="flabel">${label}</div><div class="frame ${cls} ${alt}" data-frame>${app()}</div></div>`;
+  return S.vista==='dc'?fr('f-desktop','Desktop no Teams (1100 px)')+fr('f-phone','Celular (390 px)'):fr('f-tablet','Tablet (820 px)')+fr('f-phone','Celular (390 px)');
+}
+function render(top){
+  document.documentElement.dataset.theme=S.tema;
+  const scr=[...document.querySelectorAll('[data-frame]')].map(f=>f.scrollTop);
+  document.getElementById('frames').innerHTML=frames();
+  document.querySelectorAll('[data-frame]').forEach((f,i)=>{if(!top&&scr[i])f.scrollTop=scr[i];});
+  document.querySelectorAll('.ctl .seg[data-a]').forEach(b=>{const a=b.dataset.a,v=b.dataset.v;
+    if(a==='zerar')return;
+    const cur=a==='etapa'?String(S.etapa):S[a];
+    b.setAttribute('aria-pressed',String(cur===v));});
+}
+document.getElementById('pops').innerHTML=popups();
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-a]');if(!t)return;
+  const a=t.dataset.a,v=t.dataset.v;let top=false;
+  if(a==='vista'){S.vista=v;} else if(a==='altura'){S.altura=v;} else if(a==='tema'){S.tema=v;}
+  else if(a==='retomado'){S.retomado=t.checked;}
+  else if(a==='pula12'){S.pula12=t.checked;}
+  else if(a==='sel'){S.sel=v;}
+  else if(a==='etapa'){const n=(v==='inicio'||v==='concluida')?v:+v;S.lucasBio=!(n==='inicio'||n===1);goto(n,'parcial');top=true;}
+  else if(a==='zerar'){if(typeof S.etapa==='number'){goto(S.etapa,'zero');top=true;}}
+  else if(a==='comecar'){goto(1,'zero');top=true;}
+  else if(a==='avancar'){const e2=S.etapa;if(typeof e2!=='number'||faltas(ORD[e2-1]).length)return;
+    if(e2===5){goto('concluida');}
+    else{const c=CUR[ORD[e2-1]];const n=pes(ORD[e2-1]).length;const msg=n?`${c.cod} concluída — ${n} certificado${n>1?'s':''} gerado${n>1?'s':''}, cada um com a assinatura do trabalhador`:`${c.cod} pulada — ninguém precisava desta etapa`;goto(e2+1,'zero');S.conf=msg;}
+    top=true;}
+  else if(a==='carga'){const c=CUR[v];S.st[v].carga=Math.max(S.st[v].carga,c.min||c.h);}
+  else if(a==='foto'){S.recusa=null;S.st[v].fotos=Math.min(3,S.st[v].fotos+1);}
+  else if(a==='recusa'){S.recusa=v;}
+  else if(a==='bio'){S.lucasBio=true;}
+  else if(a==='coletar'){const s=S.st[v];const id=pes(v).find(i=>!s.sig[i]&&temBio(pid(i)));if(id)s.sig[id]=metodo(pid(id));}
+  else if(a==='osavanca'){S.os[v]=Math.min(2,(S.os[v]||0)+1);}
+  else return;
+  render(top);
+});
+render();
+</script>
+</body>
+</html>

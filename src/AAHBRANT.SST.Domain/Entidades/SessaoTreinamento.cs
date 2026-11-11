@@ -12,6 +12,8 @@ namespace AAHBRANT.SST.Domain.Entidades;
 // certificado (evita inventar uma regra de "falta justificada" que não foi pedida).
 public class SessaoTreinamento : AuditableEntity
 {
+    // Turma que é etapa de um atendimento de "Realizar integração": só o atendimento a encerra, apaga ou altera.
+    public Guid? IntegracaoAtendimentoId { get; set; }
     public Guid ObraId { get; set; }
     public Obra? Obra { get; set; }
 
@@ -92,6 +94,8 @@ public class ParticipanteSessaoTreinamento : AuditableEntity
 public class FotoEvidenciaSessaoTreinamento : AuditableEntity
 {
     public string? FotoMetadadosJson { get; set; }
+    // SHA-256 (hex) do arquivo: a mesma foto nunca vale para duas turmas/etapas (rastreabilidade por NR).
+    public string? FotoHash { get; set; }
     public Guid SessaoTreinamentoId { get; set; }
     public SessaoTreinamento? SessaoTreinamento { get; set; }
 

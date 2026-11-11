@@ -36,6 +36,7 @@ import { AssinaturaCertificadoTreinamentoDialog } from '../../components/assinat
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { IntegracaoRealizadaCard } from './IntegracaoRealizadaCard';
 
 function treinamentoVazio(trabalhadorId: string): NovoTreinamento {
   return {
@@ -503,6 +504,8 @@ export function TreinamentosTab({ trabalhadorId, obraId }: { trabalhadorId: stri
           </FormSection>
         </PainelCriacaoInline>
       </div>
+
+      <IntegracaoRealizadaCard trabalhadorId={trabalhadorId} />
 
       <Card
         titulo="Treinamentos do funcionário"

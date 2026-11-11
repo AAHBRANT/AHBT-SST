@@ -9,6 +9,8 @@ import { AssinaturaOrdemServicoDialog } from '../../components/assinatura/Assina
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const tomPorNivel: Record<number, Tom> = { 1: 'ok', 2: 'info', 3: 'atencao', 4: 'alerta', 5: 'alerta' };
+const ehPendenciaAtividadesFuncao = (p: PendenciaOs) =>
+  p.tipo === 'AtividadesFuncaoNaoConfirmadas' || p.tipo === 'AtividadesFuncaoSemDecisao' || p.tipo === 'AtividadesFuncaoNenhumaConfirmada';
 const data = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
 const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 const situacaoOs: Record<OrdemServicoEmitida['situacao'], { tom: Tom; texto: string }> = {
@@ -81,19 +83,22 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
 
   function irPara(p: PendenciaOs) {
     setPopAberto(false);
-    if (p.destino === 'pgr' && p.destinoId) navigate(`/prevencao/pgr/${p.destinoId}`);
+    if (p.destino === 'pgr' && p.destinoId) navigate(`/prevencao/pgr/${p.destinoId}${ehPendenciaAtividadesFuncao(p) ? '?aba=atividades-funcao' : ''}`);
     else if (p.destino === 'pgr') navigate('/gestao-sst?secao=pgr');
     else if (p.destino === 'treinamentos') aoIrParaAba('treinamentos');
     else if (p.destino === 'aso') aoIrParaAba('geral');
   }
 
   const rotuloDestino = (p: PendenciaOs) =>
-    p.destino === 'pgr' ? 'Abrir no PGR' : p.destino === 'treinamentos' ? 'Ver treinamentos' : 'Ver ASO';
+    ehPendenciaAtividadesFuncao(p) ? 'Confirmar atividades da função'
+    : p.destino === 'pgr' ? 'Abrir no PGR' : p.destino === 'treinamentos' ? 'Ver treinamentos' : 'Ver ASO';
 
   const riscos = minuta.atividades.flatMap((a) => a.riscos);
   const medidas = riscos.reduce((t, r) => t + r.antes.length + r.durante.length + r.apos.length, 0);
   const itens = minuta.atividades.reduce((t, a) => t + a.interromperQuando.length + a.restricoes.length + a.autorizacoes.length, 0);
   const procedimentos = new Set(minuta.atividades.flatMap((a) => a.procedimentos)).size;
+  // false = prévia: a função ainda não foi confirmada pelo engenheiro (ou a decisão está parcial).
+  const previaPorConfirmacao = minuta.atividadesDaFuncaoConfirmadas === false;
   const pendSst = minuta.pendencias.filter((p) => p.quemResolve === 'SST');
   const pendRh = minuta.pendencias.filter((p) => p.quemResolve === 'RH');
   const base = [
@@ -138,6 +143,7 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <div>
+            <Text weight="semibold" size={500} style={{ display: 'block', marginBottom: 6 }}>Ordem de Serviço (NR-01)</Text>
             {minuta.podeEmitir
               ? <StatusChip tom="ok">PRONTA PARA EMISSÃO</StatusChip>
               : <StatusChip tom="alerta">MINUTA — EMISSÃO BLOQUEADA</StatusChip>}
@@ -160,6 +166,20 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
             </Button>
           </div>
         </div>
+        {previaPorConfirmacao && (
+          <div style={{ marginTop: 12 }}>
+            <FeedbackInline
+              tom="aviso"
+              acao={(() => {
+                const p = minuta.pendencias.find((x) => ehPendenciaAtividadesFuncao(x) && x.destino === 'pgr');
+                return p ? { rotulo: 'Confirmar atividades da função', aoClicar: () => irPara(p) } : undefined;
+              })()}
+            >
+              <b>Prévia.</b> O engenheiro de segurança ainda não confirmou as atividades desta função. A lista abaixo ainda pode mudar
+              e as pendências de procedimento aparecem depois da confirmação.
+            </FeedbackInline>
+          </div>
+        )}
         {erroEmissao && (
           <FeedbackInline tom="erro" aoFechar={() => setErroEmissao(null)}>{erroEmissao}</FeedbackInline>
         )}
@@ -167,7 +187,9 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, alignItems: 'start' }}>
         <Card titulo="O que vai na OS deste trabalhador">
-          {linhaResumo('Atividades da função (PGR)', <StatusChip tom={minuta.atividades.length ? 'ok' : 'alerta'}>{minuta.atividades.length} atividade(s)</StatusChip>)}
+          {linhaResumo('Atividades da função (PGR)', previaPorConfirmacao
+            ? <StatusChip tom="atencao">Aguardando confirmação</StatusChip>
+            : <StatusChip tom={minuta.atividades.length ? 'ok' : 'alerta'}>{minuta.atividades.length} atividade(s)</StatusChip>)}
           {linhaResumo('Riscos', <StatusChip tom="ok">{riscos.length}</StatusChip>)}
           {linhaResumo('Medidas de prevenção validadas', <StatusChip tom="ok">{medidas}</StatusChip>)}
           {linhaResumo('Parada, restrições e autorizações', <StatusChip tom="ok">{itens}</StatusChip>)}
@@ -236,7 +258,8 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
               <Text style={{ display: 'block', textAlign: 'justify' }}>
                 A Ordem de Serviço só pode ser emitida quando todos os riscos tiverem avaliação, todas as medidas
                 tiverem sido validadas pelo responsável de SST e o trabalhador estiver com treinamentos e ASO em dia.
-                Por isso ela fica como <b>minuta</b> até as <b>{minuta.pendencias.length} pendência(s)</b> abaixo serem resolvidas.
+                Por isso ela fica como <b>minuta</b> até {minuta.pendencias.length === 1 ? 'a ' : 'as '}<b>{minuta.pendencias.length} pendência(s)</b> abaixo serem resolvidas.
+                {previaPorConfirmacao && ' As pendências de procedimento aparecem depois da confirmação das atividades.'}
               </Text>
               {minuta.pendencias.map((p, i) => (
                 <div key={i} style={{ border: '1px solid var(--colorNeutralStroke2)', borderLeft: '4px solid var(--colorPaletteRedBorderActive)', borderRadius: 4, padding: '8px 10px', marginTop: 10 }}>
@@ -247,6 +270,12 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
                 </div>
               ))}
             </DialogContent>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--colorNeutralStroke2)', marginTop: 10 }}>
+              <Text>Atividades da função (PGR)</Text>
+              {previaPorConfirmacao
+                ? <StatusChip tom="atencao">Aguardando confirmação</StatusChip>
+                : <StatusChip tom={minuta.atividades.length ? 'ok' : 'alerta'}>{minuta.atividades.length} atividade(s)</StatusChip>}
+            </div>
             <DialogActions>
               <Button onClick={() => { setPopAberto(false); setPreviaAberta(true); }}>Ver minuta</Button>
               <Button appearance="primary" onClick={() => setPopAberto(false)}>Entendi</Button>
