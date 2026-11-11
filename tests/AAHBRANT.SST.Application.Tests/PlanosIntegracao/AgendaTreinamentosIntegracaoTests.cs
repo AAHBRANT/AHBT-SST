@@ -6,18 +6,22 @@ using AAHBRANT.SST.Application.Tests.TestSupport;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Infrastructure.Persistencia;
+using AAHBRANT.SST.Application.Integracoes;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace AAHBRANT.SST.Application.Tests.PlanosIntegracao;
 
-// Etapa 3: a admissão já põe o funcionário nas turmas da função e manda o convite ao calendário.
+// Etapa 3: a admissão põe o funcionário nas turmas dos cursos da função que NÃO são do pacote de integração
+// (NR-06, NR-18, NR-35, NR-12 e Integração de Segurança saíram da ficha: são do fluxo "Realizar integração").
 public class AgendaTreinamentosIntegracaoTests
 {
-    private sealed record Cenario(SstDbContext Db, Obra Obra, Funcao Funcao, CursoTreinamento Integracao, CursoTreinamento Nr6, CursoTreinamento Nr35)
+    private sealed record Cenario(SstDbContext Db, Obra Obra, Funcao Funcao, CursoTreinamento Integracao, CursoTreinamento Nr6, CursoTreinamento Nr35, CursoTreinamento Nr10, bool PacoteNoFluxo)
     {
         public FilaCalendarioTeamsFalsa Calendario { get; } = new();
         public TecnicosSegurancaPorObraServiceFalso Tecnicos { get; } = new() { UsuarioIdsARetornar = { Guid.NewGuid(), Guid.NewGuid() } };
-        public PlanoIntegracaoService Servico => new(Db, Tecnicos, new FilaNotificacaoTeamsFalsa(), Calendario, new GeradorNumeroSequencialFalso());
+        public PlanoIntegracaoService Servico => new(Db, Tecnicos, new FilaNotificacaoTeamsFalsa(), Calendario, new GeradorNumeroSequencialFalso(),
+            opcoes: Options.Create(new OpcoesIntegracao { PacotePeloFluxoRealizarIntegracao = PacoteNoFluxo }));
 
         public async Task<Trabalhador> AdmitirAsync(string nome = "João da Silva", string funcaoNome = "")
         {
@@ -29,7 +33,8 @@ public class AgendaTreinamentosIntegracaoTests
         }
     }
 
-    private static async Task<Cenario> MontarAsync(string funcaoNome = "Armador")
+    // A função exige NR-35 (pacote) e NR-10 (fora do pacote).
+    private static async Task<Cenario> MontarAsync(string funcaoNome = "Armador", bool pacoteNoFluxo = true)
     {
         var db = DbContextFactory.Criar();
         var obra = new Obra { Codigo = "AUR", Nome = "Edifício Aurora" };
@@ -37,12 +42,15 @@ public class AgendaTreinamentosIntegracaoTests
         var integracao = new CursoTreinamento { Nome = "Integração de Segurança", CargaHorariaMinima = 4, ValidadeEmMeses = 12, EhIntegracaoSeguranca = true };
         var nr6 = new CursoTreinamento { Nome = "NR-06 EPI", NormaReferencia = "NR-06", CargaHorariaMinima = 4, ValidadeEmMeses = 24, AtendeNr6 = true };
         var nr35 = new CursoTreinamento { Nome = "NR-35 Trabalho em Altura", NormaReferencia = "NR-35", CargaHorariaMinima = 8, ValidadeEmMeses = 24 };
+        var nr10 = new CursoTreinamento { Nome = "NR-10 Segurança em Eletricidade", NormaReferencia = "NR-10", CargaHorariaMinima = 40, ValidadeEmMeses = 24 };
         db.Obras.Add(obra);
         db.Funcoes.Add(funcao);
-        db.CursosTreinamento.AddRange(integracao, nr6, nr35);
-        db.MatrizTreinamentoFuncoes.Add(new MatrizTreinamentoFuncao { FuncaoId = funcao.Id, CursoTreinamentoId = nr35.Id });
+        db.CursosTreinamento.AddRange(integracao, nr6, nr35, nr10);
+        db.MatrizTreinamentoFuncoes.AddRange(
+            new MatrizTreinamentoFuncao { FuncaoId = funcao.Id, CursoTreinamentoId = nr35.Id },
+            new MatrizTreinamentoFuncao { FuncaoId = funcao.Id, CursoTreinamentoId = nr10.Id });
         await db.SaveChangesAsync();
-        return new Cenario(db, obra, funcao, integracao, nr6, nr35);
+        return new Cenario(db, obra, funcao, integracao, nr6, nr35, nr10, pacoteNoFluxo);
     }
 
     [Fact]
@@ -52,24 +60,80 @@ public class AgendaTreinamentosIntegracaoTests
         Assert.Equal(new DateTime(2026, 10, 27), AgendaTreinamentosIntegracao.SomarDiasUteis(new DateTime(2026, 10, 23), 2));
     }
 
+    // Padrão (chave PacotePeloFluxoRealizarIntegracao desligada): exatamente o comportamento anterior.
     [Fact]
-    public async Task Admissao_CriaTurmasDaIntegracaoNr06EDemaisCursos_ComOFuncionarioInscrito()
+    public async Task ChaveDesligada_Admissao_AgendaIntegracaoNr06EDemaisCursos_ComOFuncionarioInscrito()
+    {
+        var c = await MontarAsync(pacoteNoFluxo: false);
+        var joao = await c.AdmitirAsync();
+
+        var turmas = await c.Db.SessoesTreinamento.Include(s => s.Participantes).ToListAsync();
+        Assert.Equal(4, turmas.Count);
+        Assert.All(turmas, t => Assert.Contains(t.Participantes, p => p.TrabalhadorId == joao.Id));
+        var primeiras = AgendaTreinamentosIntegracao.SomarDiasUteis(AgendaTreinamentosIntegracao.HojeBrasilia(), AgendaTreinamentosIntegracao.DiasUteisPrimeirasTurmas);
+        Assert.Equal(primeiras, turmas.Single(t => t.CursoTreinamentoId == c.Nr6.Id).DataRealizacao);
+        Assert.Equal(primeiras, turmas.Single(t => t.CursoTreinamentoId == c.Integracao.Id).DataRealizacao);
+        Assert.True(turmas.Single(t => t.CursoTreinamentoId == c.Nr35.Id).DataRealizacao > primeiras);
+    }
+
+    [Fact]
+    public async Task ChaveDesligada_AvisoListaTodasAsTurmas_ENaoPedeRealizarIntegracao()
+    {
+        var c = await MontarAsync(pacoteNoFluxo: false);
+        await c.AdmitirAsync();
+
+        var alerta = await c.Db.Alertas.FirstAsync();
+        Assert.Contains("NR-35 Trabalho em Altura (1)", alerta.Descricao);
+        Assert.Contains("Integração de Segurança (1)", alerta.Descricao);
+        Assert.Contains("\"Funcionário novo\"", alerta.Descricao);
+        Assert.DoesNotContain("Realizar integração", alerta.Descricao);
+    }
+
+    [Fact]
+    public async Task ChaveLigada_AvisoPedeRealizarIntegracao()
+    {
+        var c = await MontarAsync();
+        await c.AdmitirAsync();
+
+        Assert.Contains("\"Realizar integração\"", (await c.Db.Alertas.FirstAsync()).Descricao);
+    }
+
+    [Fact]
+    public async Task ChaveLigada_Admissao_NaoAgendaOPacote_MasAgendaOCursoForaDoPacote_ComOFuncionarioInscrito()
     {
         var c = await MontarAsync();
         var joao = await c.AdmitirAsync();
 
         var turmas = await c.Db.SessoesTreinamento.Include(s => s.Participantes).ToListAsync();
-        Assert.Equal(3, turmas.Count);
-        Assert.All(turmas, t => Assert.Contains(t.Participantes, p => p.TrabalhadorId == joao.Id));
+        // Só NR-10: Integração, NR-06 e NR-35 (pacote) não geram turma na ficha.
+        var turma = Assert.Single(turmas);
+        Assert.Equal(c.Nr10.Id, turma.CursoTreinamentoId);
+        Assert.Contains(turma.Participantes, p => p.TrabalhadorId == joao.Id);
+        Assert.DoesNotContain(turmas, t => t.CursoTreinamentoId == c.Integracao.Id || t.CursoTreinamentoId == c.Nr6.Id || t.CursoTreinamentoId == c.Nr35.Id);
 
-        var hoje = AgendaTreinamentosIntegracao.HojeBrasilia();
-        var primeiras = AgendaTreinamentosIntegracao.SomarDiasUteis(hoje, AgendaTreinamentosIntegracao.DiasUteisPrimeirasTurmas);
-        Assert.Equal(primeiras, turmas.Single(t => t.CursoTreinamentoId == c.Nr6.Id).DataRealizacao);
-        Assert.Equal(primeiras, turmas.Single(t => t.CursoTreinamentoId == c.Integracao.Id).DataRealizacao);
-        Assert.True(turmas.Single(t => t.CursoTreinamentoId == c.Nr35.Id).DataRealizacao > primeiras);
+        var esperada = AgendaTreinamentosIntegracao.SomarDiasUteis(AgendaTreinamentosIntegracao.HojeBrasilia(), AgendaTreinamentosIntegracao.DiasUteisDemaisTurmas);
+        Assert.Equal(esperada, turma.DataRealizacao);
         // Padrão da NR: carga mínima e número de certificado.
-        Assert.Equal(8, turmas.Single(t => t.CursoTreinamentoId == c.Nr35.Id).CargaHorariaRealizada);
-        Assert.All(turmas, t => Assert.StartsWith("CERT-", t.NumeroCertificado));
+        Assert.Equal(40, turma.CargaHorariaRealizada);
+        Assert.StartsWith("CERT-", turma.NumeroCertificado);
+    }
+
+    [Fact]
+    public async Task CursoComNormaDoPacoteEmFormatoLivre_TambemNaoEhAgendado()
+    {
+        var c = await MontarAsync();
+        var nr18 = new CursoTreinamento { Nome = "Condições e Meio Ambiente — NR 18", NormaReferencia = "NR 18", CargaHorariaMinima = 4, ValidadeEmMeses = 12 };
+        var nr12 = new CursoTreinamento { Nome = "Máquinas e Equipamentos", NormaReferencia = "nr-12", CargaHorariaMinima = 8, ValidadeEmMeses = 24 };
+        c.Db.CursosTreinamento.AddRange(nr18, nr12);
+        c.Db.MatrizTreinamentoFuncoes.AddRange(
+            new MatrizTreinamentoFuncao { FuncaoId = c.Funcao.Id, CursoTreinamentoId = nr18.Id },
+            new MatrizTreinamentoFuncao { FuncaoId = c.Funcao.Id, CursoTreinamentoId = nr12.Id });
+        await c.Db.SaveChangesAsync();
+
+        await c.AdmitirAsync();
+
+        var turma = Assert.Single(await c.Db.SessoesTreinamento.ToListAsync());
+        Assert.Equal(c.Nr10.Id, turma.CursoTreinamentoId);
     }
 
     [Fact]
@@ -80,8 +144,8 @@ public class AgendaTreinamentosIntegracaoTests
         await c.AdmitirAsync("Segundo");
 
         var turmas = await c.Db.SessoesTreinamento.Include(s => s.Participantes).ToListAsync();
-        Assert.Equal(3, turmas.Count);
-        Assert.All(turmas, t => Assert.Equal(2, t.Participantes.Count));
+        var turma = Assert.Single(turmas);
+        Assert.Equal(2, turma.Participantes.Count);
     }
 
     [Fact]
@@ -92,14 +156,14 @@ public class AgendaTreinamentosIntegracaoTests
         c.Db.Trabalhadores.Add(joao);
         c.Db.Treinamentos.Add(new Treinamento
         {
-            TrabalhadorId = joao.Id, CursoTreinamentoId = c.Nr35.Id, DataRealizacao = DateTime.UtcNow.Date.AddMonths(-2),
-            DataValidade = DateTime.UtcNow.Date.AddMonths(22), CargaHorariaRealizada = 8,
+            TrabalhadorId = joao.Id, CursoTreinamentoId = c.Nr10.Id, DataRealizacao = DateTime.UtcNow.Date.AddMonths(-2),
+            DataValidade = DateTime.UtcNow.Date.AddMonths(22), CargaHorariaRealizada = 40,
         });
         await c.Db.SaveChangesAsync();
 
         await c.Servico.SincronizarAsync(joao.Id, MotivoPlanoIntegracao.Admissao);
 
-        Assert.DoesNotContain(await c.Db.SessoesTreinamento.ToListAsync(), t => t.CursoTreinamentoId == c.Nr35.Id);
+        Assert.Empty(await c.Db.SessoesTreinamento.ToListAsync());
     }
 
     [Fact]
@@ -111,38 +175,57 @@ public class AgendaTreinamentosIntegracaoTests
         Assert.Empty(await c.Db.SessoesTreinamento.ToListAsync());
     }
 
+    // Sem calendário: o aviso é por obra/dia e as turmas fora do pacote aparecem na descrição.
     [Fact]
-    public async Task Admissao_MandaConviteAoCalendarioDeCadaTecnico_NaDataDaPrimeiraTurma()
+    public async Task Admissao_NaoMandaEventoAoCalendario_E_OAvisoListaOsTreinamentosForaDoPacote()
     {
         var c = await MontarAsync();
         await c.AdmitirAsync();
 
-        var primeiras = AgendaTreinamentosIntegracao.SomarDiasUteis(AgendaTreinamentosIntegracao.HojeBrasilia(), 2);
-        Assert.Equal(2, c.Calendario.Mensagens.Count);
-        Assert.All(c.Calendario.Mensagens, m =>
-        {
-            Assert.Equal("Alerta", m.EntidadeOrigemTipo);
-            Assert.Equal(OperacaoCalendarioTeams.Criar, m.Operacao);
-            Assert.Equal(primeiras, m.Data);
-            Assert.Contains("João da Silva", m.Titulo);
-        });
+        Assert.Empty(c.Calendario.Mensagens);
         var alerta = await c.Db.Alertas.FirstAsync();
-        Assert.Contains("Treinamentos agendados:", alerta.Descricao);
+        Assert.Contains("Treinamentos agendados: NR-10 Segurança em Eletricidade (1)", alerta.Descricao);
+        Assert.DoesNotContain("NR-35", alerta.Descricao);
     }
 
     [Fact]
-    public async Task AlterarData_MudaATurma_E_AtualizaOEventoDoCalendario()
+    public async Task AlterarData_MudaATurma_AlertaAgrupado_NaoTemEventoParaAtualizar()
     {
         var c = await MontarAsync();
         await c.AdmitirAsync();
-        var turmaNr6 = await c.Db.SessoesTreinamento.SingleAsync(t => t.CursoTreinamentoId == c.Nr6.Id);
+        var turma = await c.Db.SessoesTreinamento.SingleAsync(t => t.CursoTreinamentoId == c.Nr10.Id);
         var novaData = AgendaTreinamentosIntegracao.HojeBrasilia().AddDays(1);
         var calendario = new FilaCalendarioTeamsFalsa();
 
         await new AlterarDataSessaoTreinamentoCommandHandler(c.Db, calendario)
-            .Handle(new AlterarDataSessaoTreinamentoCommand(turmaNr6.Id, novaData), default);
+            .Handle(new AlterarDataSessaoTreinamentoCommand(turma.Id, novaData), default);
 
-        Assert.Equal(novaData, (await c.Db.SessoesTreinamento.SingleAsync(t => t.Id == turmaNr6.Id)).DataRealizacao);
+        Assert.Equal(novaData, (await c.Db.SessoesTreinamento.SingleAsync(t => t.Id == turma.Id)).DataRealizacao);
+        // O alerta agrupado da obra não pertence a uma pessoa nem tem evento de calendário.
+        Assert.Empty(calendario.Mensagens);
+    }
+
+    // Alertas antigos (um por pessoa, com evento de calendário) continuam sendo atualizados.
+    [Fact]
+    public async Task AlterarData_AlertaAntigoPorPessoa_AtualizaOEventoDoCalendario()
+    {
+        var c = await MontarAsync();
+        var joao = await c.AdmitirAsync();
+        var turma = await c.Db.SessoesTreinamento.SingleAsync(t => t.CursoTreinamentoId == c.Nr10.Id);
+        foreach (var usuarioId in c.Tecnicos.UsuarioIdsARetornar)
+            c.Db.Alertas.Add(new Alerta
+            {
+                Tipo = TipoAlerta.IntegracaoFuncionarioNovo, Titulo = "Funcionário novo: João da Silva", Descricao = "Aviso antigo",
+                EntidadeOrigemTipo = nameof(PlanoIntegracao), EntidadeOrigemId = Guid.NewGuid(),
+                TrabalhadorId = joao.Id, ObraId = c.Obra.Id, DestinatarioUsuarioId = usuarioId,
+            });
+        await c.Db.SaveChangesAsync();
+        var novaData = AgendaTreinamentosIntegracao.HojeBrasilia().AddDays(1);
+        var calendario = new FilaCalendarioTeamsFalsa();
+
+        await new AlterarDataSessaoTreinamentoCommandHandler(c.Db, calendario)
+            .Handle(new AlterarDataSessaoTreinamentoCommand(turma.Id, novaData), default);
+
         Assert.Equal(2, calendario.Mensagens.Count);
         Assert.All(calendario.Mensagens, m =>
         {
@@ -156,7 +239,7 @@ public class AgendaTreinamentosIntegracaoTests
     {
         var c = await MontarAsync();
         await c.AdmitirAsync();
-        var turma = await c.Db.SessoesTreinamento.SingleAsync(t => t.CursoTreinamentoId == c.Nr6.Id);
+        var turma = await c.Db.SessoesTreinamento.SingleAsync(t => t.CursoTreinamentoId == c.Nr10.Id);
         var participante = await c.Db.ParticipantesSessaoTreinamento.FirstAsync(p => p.SessaoTreinamentoId == turma.Id);
         participante.PresencaConfirmadaEm = DateTime.UtcNow;
         await c.Db.SaveChangesAsync();

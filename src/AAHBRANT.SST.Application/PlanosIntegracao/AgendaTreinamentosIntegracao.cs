@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.CursosObrigatorios;
+using AAHBRANT.SST.Application.Integracoes;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.SessoesTreinamento;
@@ -11,9 +12,10 @@ namespace AAHBRANT.SST.Application.PlanosIntegracao;
 public record TurmaAgendada(Guid SessaoTreinamentoId, string CursoNome, DateTime Data, bool Nova);
 
 // Agendamento automático dos treinamentos do funcionário que entra na obra (especificação de
-// 21/10/2026, etapa 3). Ordem: Integração de Segurança e NR-06 primeiro (sem elas não há EPI), depois
-// os demais cursos da matriz da função. Cada curso entra na próxima turma aberta da obra; sem turma,
-// uma nova é criada com o padrão da NR e data sugerida — o técnico confirma ou ajusta a data depois.
+// 21/10/2026, etapa 3). Ordem: Integração de Segurança e NR-06 primeiro, depois os demais cursos da função.
+// Com excluirPacote (chave Integracao:PacotePeloFluxoRealizarIntegracao, ver PacoteIntegracao), só os cursos
+// FORA do pacote: o pacote é agendado em lote pelo fluxo "Realizar integração". Cada curso entra na próxima turma aberta da obra; sem turma, uma nova é criada com o
+// padrão da NR e data sugerida — o técnico confirma ou ajusta a data depois.
 public static class AgendaTreinamentosIntegracao
 {
     // Dias úteis depois da admissão: Integração e NR-06 no 2º dia útil, os demais no 3º.
@@ -23,6 +25,10 @@ public static class AgendaTreinamentosIntegracao
     private static readonly TimeZoneInfo FusoBrasilia = ObterFusoBrasilia();
 
     public static DateTime HojeBrasilia() => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, FusoBrasilia).Date;
+
+    // Início do dia de Brasília (data sem hora) em UTC — janela do "hoje" para consultas por CreatedAtUtc.
+    public static DateTime InicioDoDiaUtc(DateTime diaBrasilia) =>
+        TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(diaBrasilia.Date, DateTimeKind.Unspecified), FusoBrasilia);
 
     // Sábado e domingo não contam; feriados não são considerados (mesma regra de SuporteIaCalendario).
     public static DateTime SomarDiasUteis(DateTime data, int dias)
@@ -37,7 +43,8 @@ public static class AgendaTreinamentosIntegracao
     }
 
     public static async Task<List<TurmaAgendada>> AgendarAsync(
-        IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero, Trabalhador trabalhador, CancellationToken ct)
+        IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero, Trabalhador trabalhador, CancellationToken ct,
+        bool excluirPacote = false, bool dispensa = false)
     {
         var agendadas = new List<TurmaAgendada>();
         var funcaoNome = await db.Funcoes.Where(f => f.Id == trabalhador.FuncaoId).Select(f => f.Nome).FirstOrDefaultAsync(ct);
@@ -45,17 +52,39 @@ public static class AgendaTreinamentosIntegracao
         if (FuncaoSstClassifier.EhTecnicoSeguranca(funcaoNome)) return agendadas;
 
         var cursos = await db.CursosTreinamento.ToListAsync(ct);
-        var integracao = cursos.FirstOrDefault(c => c.EhIntegracaoSeguranca);
-        var nr6 = cursos.Where(c => c.AtendeNr6)
-            .OrderBy(c => CatalogoNormasRegulamentadoras.NormalizarNumero(c.NormaReferencia) == "NR-06" ? 0 : 1)
-            .FirstOrDefault();
         var idsDaFuncao = await ExigenciasTreinamento.CursosAsync(db, trabalhador.ObraId, trabalhador.FuncaoId, ct);
 
         var ordem = new List<(CursoTreinamento Curso, bool Primeira)>();
-        if (integracao is not null) ordem.Add((integracao, true));
-        if (nr6 is not null && nr6.Id != integracao?.Id) ordem.Add((nr6, true));
-        foreach (var curso in cursos.Where(c => idsDaFuncao.Contains(c.Id) && ordem.All(o => o.Curso.Id != c.Id)).OrderBy(c => c.Nome))
-            ordem.Add((curso, false));
+        if (dispensa)
+        {
+            // Ficha dispensada (pacote em dia): só o que a função/obra nova exige, sem a Integração/NR-06 "fixas".
+            // Cada curso exigido que a pessoa não tem válido (por id) entra; os já válidos saem abaixo. Vale com a
+            // chave do fluxo ligada ou não: quem está sem ficha não passa pelo lote.
+            foreach (var curso in cursos.Where(c => idsDaFuncao.Contains(c.Id)).OrderBy(c => c.Nome))
+                ordem.Add((curso, curso.EhIntegracaoSeguranca || curso.AtendeNr6));
+        }
+        else if (excluirPacote)
+        {
+            // Pacote (NR-06, NR-18, NR-35, NR-12) e Integração de Segurança ficam com o fluxo "Realizar
+            // integração" (lote): aqui só os demais cursos da função.
+            foreach (var curso in cursos
+                .Where(c => idsDaFuncao.Contains(c.Id) && !PacoteIntegracao.EhCursoDoPacote(c) && !c.EhIntegracaoSeguranca)
+                .OrderBy(c => c.Nome))
+                ordem.Add((curso, false));
+        }
+        else
+        {
+            // Comportamento original: Integração de Segurança e NR-06 primeiro (sem elas não há EPI), depois
+            // os demais cursos da função.
+            var integracao = cursos.FirstOrDefault(c => c.EhIntegracaoSeguranca);
+            var nr6 = cursos.Where(c => c.AtendeNr6)
+                .OrderBy(c => CatalogoNormasRegulamentadoras.NormalizarNumero(c.NormaReferencia) == "NR-06" ? 0 : 1)
+                .FirstOrDefault();
+            if (integracao is not null) ordem.Add((integracao, true));
+            if (nr6 is not null && nr6.Id != integracao?.Id) ordem.Add((nr6, true));
+            foreach (var curso in cursos.Where(c => idsDaFuncao.Contains(c.Id) && ordem.All(o => o.Curso.Id != c.Id)).OrderBy(c => c.Nome))
+                ordem.Add((curso, false));
+        }
         if (ordem.Count == 0) return agendadas;
 
         var hoje = HojeBrasilia();
@@ -64,9 +93,14 @@ public static class AgendaTreinamentosIntegracao
             .Where(t => t.TrabalhadorId == trabalhador.Id && idsCursos.Contains(t.CursoTreinamentoId) && t.DataValidade.Date >= hoje)
             .Select(t => t.CursoTreinamentoId)
             .ToListAsync(ct);
-        var jaInscrito = await db.ParticipantesSessaoTreinamento
+        var inscricoes = db.ParticipantesSessaoTreinamento
             .Where(p => p.TrabalhadorId == trabalhador.Id && p.Ativo && p.SessaoTreinamento!.Ativo
-                && p.SessaoTreinamento.Status == StatusSessaoTreinamento.EmAndamento)
+                && p.SessaoTreinamento.Status == StatusSessaoTreinamento.EmAndamento);
+        // Na dispensa (transferência), só vale a turma em andamento da obra ATUAL com data de hoje em diante: a
+        // inscrição numa turma da obra antiga não atende a obra nova.
+        if (dispensa)
+            inscricoes = inscricoes.Where(p => p.SessaoTreinamento!.ObraId == trabalhador.ObraId && p.SessaoTreinamento.DataRealizacao >= hoje);
+        var jaInscrito = await inscricoes
             .Select(p => p.SessaoTreinamento!.CursoTreinamentoId)
             .ToListAsync(ct);
         var obraNome = await db.Obras.Where(o => o.Id == trabalhador.ObraId).Select(o => o.Nome).FirstOrDefaultAsync(ct);

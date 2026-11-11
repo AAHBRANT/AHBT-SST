@@ -43,9 +43,15 @@ public class AlertaEngineService : IAlertaEngineService
             .GroupBy(r => r.Modulo)
             .ToDictionary(g => g.Key, g => g.OrderBy(r => r.DiasAntecedencia).ToList());
 
-        var alertasEmAberto = await _db.Alertas
-            .Where(a => StatusEmAberto.Contains(a.Status))
-            .ToDictionaryAsync(a => (a.EntidadeOrigemTipo, a.EntidadeOrigemId), ct);
+        // Mais de um alerta em aberto pode ter a mesma (origem tipo, origem id): alertas antigos de "funcionário
+        // novo" e de estoque insuficiente gravavam a mesma chave para cada técnico, e uma corrida pode duplicar
+        // o aviso. Um ToDictionary lançaria e derrubaria o motor para todas as obras; com chave repetida, o
+        // motor trabalha com o mais recente (os demais ficam como estão).
+        var alertasEmAberto = (await _db.Alertas
+                .Where(a => StatusEmAberto.Contains(a.Status))
+                .ToListAsync(ct))
+            .GroupBy(a => (a.EntidadeOrigemTipo, a.EntidadeOrigemId))
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(a => a.CreatedAtUtc).First());
 
         // Alertas criados nesta execução com destinatário definido — enfileirados para envio
         // proativo no Teams somente depois do SaveChangesAsync (precisa do Id gerado pelo banco).

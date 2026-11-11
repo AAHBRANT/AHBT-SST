@@ -38,13 +38,16 @@ public class CadastrarPessoaTerceirizadaCommandHandler : IRequestHandler<Cadastr
     private readonly IAppDbContext _db;
     private readonly ITecnicosSegurancaPorObraService _tecnicosSegurancaPorObra;
     private readonly IFilaNotificacaoTeams _filaNotificacaoTeams;
+    private readonly IPlanoIntegracaoService? _planoIntegracao;
 
     public CadastrarPessoaTerceirizadaCommandHandler(
-        IAppDbContext db, ITecnicosSegurancaPorObraService tecnicosSegurancaPorObra, IFilaNotificacaoTeams filaNotificacaoTeams)
+        IAppDbContext db, ITecnicosSegurancaPorObraService tecnicosSegurancaPorObra, IFilaNotificacaoTeams filaNotificacaoTeams,
+        IPlanoIntegracaoService? planoIntegracao = null)
     {
         _db = db;
         _tecnicosSegurancaPorObra = tecnicosSegurancaPorObra;
         _filaNotificacaoTeams = filaNotificacaoTeams;
+        _planoIntegracao = planoIntegracao;
     }
 
     public async Task<Guid> Handle(CadastrarPessoaTerceirizadaCommand request, CancellationToken ct)
@@ -175,6 +178,11 @@ public class CadastrarPessoaTerceirizadaCommandHandler : IRequestHandler<Cadastr
                 new NotificacaoTeamsMensagem(alerta.Id, alerta.DestinatarioUsuarioId!.Value, alerta.Titulo, alerta.Descricao),
                 ct);
         }
+
+        // Terceirizado também entra na obra: abre a ficha de entrada e avisa os técnicos. O kit de EPI já foi
+        // tratado acima (PlanoIntegracaoService não reserva em dobro quando o vínculo é Terceirizado).
+        if (_planoIntegracao is not null)
+            await _planoIntegracao.SincronizarAsync(trabalhador.Id, MotivoPlanoIntegracao.Admissao, ct);
 
         return trabalhador.Id;
     }

@@ -72,6 +72,8 @@ public static class DependencyInjection
         TemplateBiometricoCriptografiaContexto.Configurar(Convert.FromBase64String(chaveCriptografiaBiometria));
 
         services.AddHttpClient();
+        services.Configure<AAHBRANT.SST.Application.Integracoes.OpcoesIntegracao>(
+            configuration.GetSection(AAHBRANT.SST.Application.Integracoes.OpcoesIntegracao.Secao));
         services.Configure<TelegramSuporteOptions>(configuration.GetSection("Telegram"));
         services.AddScoped<ITelegramSuporteService, TelegramSuporteService>();
         services.AddScoped<ITelegramResumoService, TelegramResumoService>();
