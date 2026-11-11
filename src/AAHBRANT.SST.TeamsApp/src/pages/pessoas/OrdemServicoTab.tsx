@@ -10,7 +10,7 @@ import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 const tomPorNivel: Record<number, Tom> = { 1: 'ok', 2: 'info', 3: 'atencao', 4: 'alerta', 5: 'alerta' };
 const ehPendenciaAtividadesFuncao = (p: PendenciaOs) =>
-  p.tipo === 'AtividadesFuncaoNaoConfirmadas' || p.tipo === 'AtividadesFuncaoSemDecisao' || p.tipo === 'SemAtividades';
+  p.tipo === 'AtividadesFuncaoNaoConfirmadas' || p.tipo === 'AtividadesFuncaoSemDecisao' || p.tipo === 'AtividadesFuncaoNenhumaConfirmada';
 const data = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
 const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 const situacaoOs: Record<OrdemServicoEmitida['situacao'], { tom: Tom; texto: string }> = {

@@ -54,6 +54,10 @@ export function PgrDetalhePage() {
   const [revisaoEapAberta, setRevisaoEapAberta] = useState(false);
   const [versaoDocumento, setVersaoDocumento] = useState(0);
   const leituraIa = useLeituraIa('pgr', id ?? '');
+  // O foco vale uma vez só: depois que a aba "Riscos e medidas" abriu a atividade, voltar a ela à mão não reabre.
+  useEffect(() => {
+    if (aba === 'inventario' && atividadeEmFoco) setAtividadeEmFoco(null);
+  }, [aba, atividadeEmFoco]);
   const obraDoPgr = detalhe?.pgr.obraId ?? '';
   const atividadesFuncao = useAtividadesFuncaoGhes(obraDoPgr);
 
@@ -218,7 +222,11 @@ export function PgrDetalhePage() {
             {
               valor: 'atividades-funcao',
               rotulo: 'Atividades por função',
-              ponto: atividadesFuncao.pendente ? { tom: 'atencao', titulo: 'Há funções sem confirmação' } : undefined,
+              ponto: atividadesFuncao.pendente
+                ? { tom: 'atencao', titulo: 'Há funções sem confirmação' }
+                : atividadesFuncao.naoConferiu
+                  ? { tom: 'atencao', titulo: 'Não foi possível conferir as confirmações' }
+                  : undefined,
             },
             { valor: 'inventario', rotulo: 'Riscos e medidas' },
             { valor: 'planoAcao', rotulo: 'Plano de ação' },
@@ -264,7 +272,7 @@ export function PgrDetalhePage() {
             <AtividadesPorFuncaoTab
               obraId={pgr.obraId}
               ghes={atividadesFuncao.ghes}
-              aoAlterar={atividadesFuncao.recarregar}
+              aoAlterar={atividadesFuncao.atualizarGhe}
               aoVincularProcedimento={(atividadeId) => {
                 setAtividadeEmFoco(atividadeId);
                 setAba('inventario');
