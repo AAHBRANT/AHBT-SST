@@ -170,4 +170,34 @@ public class CadastrarPessoaTerceirizadaCommandHandlerTests
         Assert.Contains("CA vencido", alerta.Titulo);
         Assert.Equal(tecnicoId, alerta.DestinatarioUsuarioId);
     }
+
+    // Terceirizado também entra na obra: abre a ficha de entrada (sem reservar o kit em dobro — o kit já vem do
+    // cadastro na vaga do contrato) e entra no aviso agrupado da obra.
+    [Fact]
+    public async Task Handle_ComPlanoIntegracao_AbreFichaDeAdmissao_SemReservarKitEmDobro_E_AvisaOsTecnicos()
+    {
+        var db = CriarDb(nameof(Handle_ComPlanoIntegracao_AbreFichaDeAdmissao_SemReservarKitEmDobro_E_AvisaOsTecnicos));
+        var (obra, _, funcao, contrato, _, epi) = await SemearAsync(db);
+        db.EstoquesEpi.Add(new EstoqueEpi { CatalogoEpiId = epi.Id, ObraId = obra.Id, Saldo = 5 });
+        await db.SaveChangesAsync();
+        var tecnicoId = Guid.NewGuid();
+        var tecnicos = new TecnicosSegurancaPorObraServiceFalso { UsuarioIdsARetornar = new List<Guid> { tecnicoId } };
+        var fila = new FilaNotificacaoTeamsFalsa();
+        var plano = new AAHBRANT.SST.Application.PlanosIntegracao.PlanoIntegracaoService(
+            db, tecnicos, fila, new FilaCalendarioTeamsFalsa(), new AAHBRANT.SST.Application.Tests.PlanosIntegracao.GeradorNumeroSequencialFalso());
+        var handler = new CadastrarPessoaTerceirizadaCommandHandler(db, tecnicos, fila, plano);
+
+        var trabalhadorId = await handler.Handle(
+            new CadastrarPessoaTerceirizadaCommand(contrato.Id, funcao.Id, "João Pedreiro", "MAT-9", "52998224725", DateTime.UtcNow),
+            default);
+
+        var ficha = await db.PlanosIntegracao.SingleAsync(p => p.TrabalhadorId == trabalhadorId);
+        Assert.Equal(MotivoPlanoIntegracao.Admissao, ficha.Motivo);
+        Assert.Equal(StatusPlanoIntegracao.Aberto, ficha.Status);
+        Assert.Empty(await db.ReservasEpi.ToListAsync());
+        Assert.Single(await db.EntregasEpi.Where(e => e.TrabalhadorId == trabalhadorId).ToListAsync());
+        var aviso = await db.Alertas.SingleAsync(a => a.Tipo == TipoAlerta.IntegracaoFuncionarioNovo);
+        Assert.Equal(tecnicoId, aviso.DestinatarioUsuarioId);
+        Assert.StartsWith("1 pessoa entrou na obra Obra 1 hoje", aviso.Titulo);
+    }
 }

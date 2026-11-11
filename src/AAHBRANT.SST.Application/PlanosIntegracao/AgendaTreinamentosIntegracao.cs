@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.CursosObrigatorios;
+using AAHBRANT.SST.Application.Integracoes;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.SessoesTreinamento;
@@ -11,9 +12,10 @@ namespace AAHBRANT.SST.Application.PlanosIntegracao;
 public record TurmaAgendada(Guid SessaoTreinamentoId, string CursoNome, DateTime Data, bool Nova);
 
 // Agendamento automático dos treinamentos do funcionário que entra na obra (especificação de
-// 21/10/2026, etapa 3). Ordem: Integração de Segurança e NR-06 primeiro (sem elas não há EPI), depois
-// os demais cursos da matriz da função. Cada curso entra na próxima turma aberta da obra; sem turma,
-// uma nova é criada com o padrão da NR e data sugerida — o técnico confirma ou ajusta a data depois.
+// 21/10/2026, etapa 3). Só os cursos da função FORA do pacote de integração (NR-06, NR-18, NR-35, NR-12 e
+// Integração de Segurança, ver PacoteIntegracao) — o pacote é agendado em lote pelo fluxo "Realizar
+// integração". Cada curso entra na próxima turma aberta da obra; sem turma, uma nova é criada com o
+// padrão da NR e data sugerida — o técnico confirma ou ajusta a data depois.
 public static class AgendaTreinamentosIntegracao
 {
     // Dias úteis depois da admissão: Integração e NR-06 no 2º dia útil, os demais no 3º.
@@ -23,6 +25,10 @@ public static class AgendaTreinamentosIntegracao
     private static readonly TimeZoneInfo FusoBrasilia = ObterFusoBrasilia();
 
     public static DateTime HojeBrasilia() => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, FusoBrasilia).Date;
+
+    // Início do dia de Brasília (data sem hora) em UTC — janela do "hoje" para consultas por CreatedAtUtc.
+    public static DateTime InicioDoDiaUtc(DateTime diaBrasilia) =>
+        TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(diaBrasilia.Date, DateTimeKind.Unspecified), FusoBrasilia);
 
     // Sábado e domingo não contam; feriados não são considerados (mesma regra de SuporteIaCalendario).
     public static DateTime SomarDiasUteis(DateTime data, int dias)
@@ -45,16 +51,14 @@ public static class AgendaTreinamentosIntegracao
         if (FuncaoSstClassifier.EhTecnicoSeguranca(funcaoNome)) return agendadas;
 
         var cursos = await db.CursosTreinamento.ToListAsync(ct);
-        var integracao = cursos.FirstOrDefault(c => c.EhIntegracaoSeguranca);
-        var nr6 = cursos.Where(c => c.AtendeNr6)
-            .OrderBy(c => CatalogoNormasRegulamentadoras.NormalizarNumero(c.NormaReferencia) == "NR-06" ? 0 : 1)
-            .FirstOrDefault();
         var idsDaFuncao = await ExigenciasTreinamento.CursosAsync(db, trabalhador.ObraId, trabalhador.FuncaoId, ct);
 
+        // NR-06, NR-18, NR-35, NR-12 e a Integração de Segurança saíram daqui: as turmas desses cursos nascem
+        // no fluxo "Realizar integração" (lote), não mais na ficha de entrada.
         var ordem = new List<(CursoTreinamento Curso, bool Primeira)>();
-        if (integracao is not null) ordem.Add((integracao, true));
-        if (nr6 is not null && nr6.Id != integracao?.Id) ordem.Add((nr6, true));
-        foreach (var curso in cursos.Where(c => idsDaFuncao.Contains(c.Id) && ordem.All(o => o.Curso.Id != c.Id)).OrderBy(c => c.Nome))
+        foreach (var curso in cursos
+            .Where(c => idsDaFuncao.Contains(c.Id) && !PacoteIntegracao.EhCursoDoPacote(c) && !c.EhIntegracaoSeguranca)
+            .OrderBy(c => c.Nome))
             ordem.Add((curso, false));
         if (ordem.Count == 0) return agendadas;
 
