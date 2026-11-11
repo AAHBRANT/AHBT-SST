@@ -156,6 +156,34 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
             // de outro curso. Quem já tem o curso exigido válido é pulado, então o pacote em dia não se repete.
             var turmasNovas = await AgendaTreinamentosIntegracao.AgendarAsync(_db, _geradorNumero, trabalhador, ct, dispensa: true);
             avisar = turmasNovas.Count > 0 || novasReservas > 0;
+
+            // Rastro da dispensa: plano já encerrado com status Dispensado (não aparece no pop-up nem impede uma
+            // ficha futura). Dispensa repetida no mesmo dia atualiza o registro em vez de duplicar.
+            var inicioDoDia = AgendaTreinamentosIntegracao.InicioDoDiaUtc(AgendaTreinamentosIntegracao.HojeBrasilia());
+            var dispensaDeHoje = await _db.PlanosIntegracao.IgnoreQueryFilters()
+                .Where(p => p.TrabalhadorId == trabalhadorId && p.Ativo && p.Status == StatusPlanoIntegracao.Dispensado
+                    && p.CreatedAtUtc >= inicioDoDia)
+                .OrderByDescending(p => p.CreatedAtUtc)
+                .FirstOrDefaultAsync(ct);
+            if (dispensaDeHoje is null)
+            {
+                _db.PlanosIntegracao.Add(new PlanoIntegracao
+                {
+                    TrabalhadorId = trabalhadorId,
+                    ObraId = trabalhador.ObraId,
+                    FuncaoId = trabalhador.FuncaoId,
+                    Motivo = motivo!.Value,
+                    Status = StatusPlanoIntegracao.Dispensado,
+                    EncerradoEm = agora,
+                });
+            }
+            else
+            {
+                dispensaDeHoje.ObraId = trabalhador.ObraId;
+                dispensaDeHoje.FuncaoId = trabalhador.FuncaoId;
+                dispensaDeHoje.Motivo = motivo!.Value;
+                dispensaDeHoje.EncerradoEm = agora;
+            }
         }
         else if (motivo is not null)
         {
@@ -216,26 +244,18 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
         var hoje = AgendaTreinamentosIntegracao.HojeBrasilia();
         var inicioDoDia = AgendaTreinamentosIntegracao.InicioDoDiaUtc(hoje);
 
-        // Quem entra no aviso do dia é sempre recalculado do banco: fichas abertas hoje na obra (não canceladas)
-        // + pessoas com reserva de EPI ATIVA criada hoje na obra + pessoas inscritas hoje em turma da obra
-        // (agendamento da integração/dispensa). Assim quem teve a ficha dispensada continua na conta quando outra
-        // ficha atualiza o alerta.
-        var idsComFicha = await _db.PlanosIntegracao.IgnoreQueryFilters()
+        // Quem entra no aviso do dia é recalculado do banco só a partir dos PlanosIntegracao criados hoje na obra
+        // (Aberto, Concluído ou Dispensado; não Cancelado). A dispensa deixa registro (status Dispensado), então
+        // quem foi dispensado continua na conta quando outra ficha atualiza o alerta, sem contar inscrições nem
+        // reservas avulsas do dia.
+        var planosDeHoje = await _db.PlanosIntegracao.IgnoreQueryFilters()
             .Where(p => p.ObraId == obraId && p.Ativo && p.Status != StatusPlanoIntegracao.Cancelado && p.CreatedAtUtc >= inicioDoDia)
-            .Select(p => p.TrabalhadorId)
-            .Distinct()
+            .Select(p => new { p.TrabalhadorId, p.Status })
             .ToListAsync(ct);
-        var comReservaHoje = await _db.ReservasEpi
-            .Where(r => r.ObraId == obraId && r.Status == StatusReservaEpi.Ativa && r.CreatedAtUtc >= inicioDoDia)
-            .Select(r => r.TrabalhadorId)
-            .Distinct()
-            .ToListAsync(ct);
-        var comTurmaHoje = await _db.ParticipantesSessaoTreinamento
-            .Where(p => p.Ativo && p.CreatedAtUtc >= inicioDoDia && p.SessaoTreinamento!.ObraId == obraId)
-            .Select(p => p.TrabalhadorId)
-            .Distinct()
-            .ToListAsync(ct);
-        var idsPessoas = idsComFicha.Union(comReservaHoje).Union(comTurmaHoje).ToList();
+        var idsComFicha = planosDeHoje.Where(p => p.Status != StatusPlanoIntegracao.Dispensado)
+            .Select(p => p.TrabalhadorId).Distinct().ToList();
+        var idsSemFicha = planosDeHoje.Select(p => p.TrabalhadorId).Distinct().Except(idsComFicha).ToList();
+        var idsPessoas = idsComFicha.Concat(idsSemFicha).ToList();
         if (idsPessoas.Count == 0) return;
 
         var pessoasDoDia = await _db.Trabalhadores.IgnoreQueryFilters()

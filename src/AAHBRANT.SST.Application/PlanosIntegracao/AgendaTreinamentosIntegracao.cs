@@ -93,9 +93,14 @@ public static class AgendaTreinamentosIntegracao
             .Where(t => t.TrabalhadorId == trabalhador.Id && idsCursos.Contains(t.CursoTreinamentoId) && t.DataValidade.Date >= hoje)
             .Select(t => t.CursoTreinamentoId)
             .ToListAsync(ct);
-        var jaInscrito = await db.ParticipantesSessaoTreinamento
+        var inscricoes = db.ParticipantesSessaoTreinamento
             .Where(p => p.TrabalhadorId == trabalhador.Id && p.Ativo && p.SessaoTreinamento!.Ativo
-                && p.SessaoTreinamento.Status == StatusSessaoTreinamento.EmAndamento)
+                && p.SessaoTreinamento.Status == StatusSessaoTreinamento.EmAndamento);
+        // Na dispensa (transferência), só vale a turma em andamento da obra ATUAL com data de hoje em diante: a
+        // inscrição numa turma da obra antiga não atende a obra nova.
+        if (dispensa)
+            inscricoes = inscricoes.Where(p => p.SessaoTreinamento!.ObraId == trabalhador.ObraId && p.SessaoTreinamento.DataRealizacao >= hoje);
+        var jaInscrito = await inscricoes
             .Select(p => p.SessaoTreinamento!.CursoTreinamentoId)
             .ToListAsync(ct);
         var obraNome = await db.Obras.Where(o => o.Id == trabalhador.ObraId).Select(o => o.Nome).FirstOrDefaultAsync(ct);
