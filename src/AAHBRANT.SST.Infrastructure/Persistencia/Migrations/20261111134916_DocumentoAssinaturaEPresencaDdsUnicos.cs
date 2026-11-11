@@ -49,7 +49,7 @@ WHERE s.Ativo = 1 AND mantido.FinalizadoEm IS NULL
                     AND o.MetodoAutenticacao = s.MetodoAutenticacao
                     AND (o.Papel = s.Papel OR (o.Papel IS NULL AND s.Papel IS NULL)));
 
-UPDATE d SET d.Ativo = 0, d.UpdatedAtUtc = SYSUTCDATETIME(), d.UpdatedBy = 'migracao-documento-unico'
+UPDATE d SET d.Ativo = 0, d.UpdatedAtUtc = SYSUTCDATETIME()
 FROM DocumentosAssinatura d
 JOIN #DocumentosDuplicados x ON x.DuplicadoId = d.Id;
 
@@ -63,7 +63,7 @@ WITH ranqueadas AS (
     FROM DdsParticipantes
     WHERE Ativo = 1
 )
-UPDATE p SET p.Ativo = 0, p.UpdatedAtUtc = SYSUTCDATETIME(), p.UpdatedBy = 'migracao-presenca-unica'
+UPDATE p SET p.Ativo = 0, p.UpdatedAtUtc = SYSUTCDATETIME()
 FROM DdsParticipantes p
 JOIN ranqueadas r ON r.Id = p.Id
 WHERE r.ordem > 1;
