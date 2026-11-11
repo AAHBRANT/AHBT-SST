@@ -107,6 +107,7 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
             Cancelar(reserva, motivoCancelamento, agora);
         }
 
+        var novasReservas = 0;
         if (!kitPeloContrato)
         {
             // Já está com o EPI (entrega não devolvida, confirmada ou não): não precisa separar.
@@ -122,6 +123,7 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
 
             foreach (var epi in episDaFuncao.Where(e => !emPosse.Contains(e.CatalogoEpiId) && !jaReservados.Contains(e.CatalogoEpiId)))
             {
+                novasReservas++;
                 _db.ReservasEpi.Add(new ReservaEpi
                 {
                     TrabalhadorId = trabalhadorId,
@@ -134,14 +136,27 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
         }
 
         PlanoIntegracao? planoNovo = null;
+        var opcoes = _opcoes?.Value ?? new OpcoesIntegracao();
         // Troca de função/transferência de quem já tem o pacote (NR-06, NR-18, NR-35) válido não precisa de
-        // ficha nova: só o kit de EPI foi reajustado acima. Admissão sempre abre ficha.
+        // ficha nova. Só dispensa quando: (a) não há ficha aberta (senão a ficha antiga ficaria apontando para
+        // a obra/função anterior: segue o caminho antigo, cancela e abre a nova); (b) não é terceirizado (a
+        // liberação dele exige a Integração de Segurança, que o pacote não cobre). Admissão sempre abre ficha.
+        // Dispensar só evita abrir a ficha e repetir o pacote: cursos fora do pacote da função/obra nova e o
+        // kit de EPI continuam sendo tratados e os técnicos avisados.
         var dispensaFicha = motivo is MotivoPlanoIntegracao.TrocaFuncao or MotivoPlanoIntegracao.TransferenciaObra
-            && (_opcoes?.Value.DispensarFichaComPacoteValido ?? new OpcoesIntegracao().DispensarFichaComPacoteValido)
+            && opcoes.DispensarFichaComPacoteValido
+            && planosAbertos.Count == 0
+            && trabalhador.Vinculo != TipoVinculo.Terceirizado
             && await PacoteValidoAsync(trabalhadorId, ct);
-        if (motivo is not null && !dispensaFicha)
+        var pessoasDoAviso = new List<Guid>();
+        if (dispensaFicha)
         {
-            await AgendaTreinamentosIntegracao.AgendarAsync(_db, _geradorNumero, trabalhador, ct);
+            var turmasNovas = await AgendaTreinamentosIntegracao.AgendarAsync(_db, _geradorNumero, trabalhador, ct, excluirPacote: true);
+            if (turmasNovas.Count > 0 || novasReservas > 0) pessoasDoAviso.Add(trabalhadorId);
+        }
+        else if (motivo is not null)
+        {
+            await AgendaTreinamentosIntegracao.AgendarAsync(_db, _geradorNumero, trabalhador, ct, opcoes.PacotePeloFluxoRealizarIntegracao);
             foreach (var plano in planosAbertos) Encerrar(plano, StatusPlanoIntegracao.Cancelado, agora);
             planoNovo = new PlanoIntegracao
             {
@@ -155,18 +170,20 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
 
         await _db.SaveChangesAsync(ct);
 
-        if (planoNovo is not null)
-            await AvisarTecnicosAsync(trabalhador, ct);
+        if (planoNovo is not null || pessoasDoAviso.Count > 0)
+            await AvisarTecnicosAsync(trabalhador, pessoasDoAviso, opcoes.PacotePeloFluxoRealizarIntegracao, ct);
 
         // Separar ou cancelar kit muda o disponível da obra (alerta de estoque mínimo, Módulo 2).
         if (_verificacaoMinimo is not null) await _verificacaoMinimo.VerificarAsync(trabalhador.ObraId, ct);
     }
 
-    // NR-06, NR-18 e NR-35 com treinamento dentro da validade (mesma noção de "válido" da agenda e da
-    // liberação: DataValidade >= hoje, no dia de Brasília). NR-06 também vale pelo curso marcado AtendeNr6.
+    // NR-06, NR-18 e NR-35 com treinamento dentro da validade. A comparação é POR NORMA (não por curso
+    // específico): qualquer curso cuja norma normalizada seja NR-06/NR-18/NR-35 conta, e o curso marcado
+    // AtendeNr6 vale como NR-06. Data de validade igual à da liberação para o trabalho
+    // (ObterLiberacaoParaTrabalhoQuery): DataValidade.Date >= DateTime.UtcNow.Date.
     private async Task<bool> PacoteValidoAsync(Guid trabalhadorId, CancellationToken ct)
     {
-        var hoje = AgendaTreinamentosIntegracao.HojeBrasilia();
+        var hoje = DateTime.UtcNow.Date;
         var idsValidos = await _db.Treinamentos
             .Where(t => t.TrabalhadorId == trabalhadorId && t.DataValidade.Date >= hoje)
             .Select(t => t.CursoTreinamentoId)
@@ -182,12 +199,12 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
     // Aviso por obra (e não por pessoa): UM alerta por técnico, por obra e por dia. O mesmo alerta é
     // ATUALIZADO a cada ficha nova do dia — título com o contador, descrição recalculada a partir das
     // fichas do dia — e só a criação dele manda mensagem ao Teams. Não há evento de calendário: as turmas
-    // do pacote são do fluxo "Realizar integração" e as demais vão listadas na descrição.
+    // agendadas vão listadas na descrição.
     //
-    // Chave de dedup: o Motor de Alertas carrega os alertas em aberto num dicionário por
-    // (EntidadeOrigemTipo, EntidadeOrigemId) e QUEBRA se houver chave repetida — por isso o
-    // EntidadeOrigemId é um Guid determinístico de obra + técnico + dia (a obra fica também em ObraId).
-    private async Task AvisarTecnicosAsync(Trabalhador trabalhador, CancellationToken ct)
+    // Chave de dedup: EntidadeOrigemId é um Guid determinístico de obra + técnico + dia (a obra fica também
+    // em ObraId), único por técnico. O Motor de Alertas tolera chave repetida entre alertas em aberto, mas
+    // manter a chave única evita que ele escolha um só entre vários.
+    private async Task AvisarTecnicosAsync(Trabalhador trabalhador, IReadOnlyCollection<Guid> pessoasExtras, bool pacoteNoFluxo, CancellationToken ct)
     {
         var tecnicos = await _tecnicos.ObterUsuarioIdsAsync(trabalhador.ObraId, ct);
         if (tecnicos.Count == 0) return;
@@ -196,18 +213,32 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
         var hoje = AgendaTreinamentosIntegracao.HojeBrasilia();
         var inicioDoDia = AgendaTreinamentosIntegracao.InicioDoDiaUtc(hoje);
 
+        // Quem entra no aviso do dia: fichas abertas hoje na obra + quem teve a ficha dispensada mas ganhou kit
+        // (reserva criada hoje na obra) ou turma agora (pessoasExtras). Turma sem kit de uma pessoa dispensada
+        // só aparece no aviso do momento em que foi agendada.
         var idsPessoas = await _db.PlanosIntegracao.IgnoreQueryFilters()
             .Where(p => p.ObraId == obraId && p.Ativo && p.Status != StatusPlanoIntegracao.Cancelado && p.CreatedAtUtc >= inicioDoDia)
             .Select(p => p.TrabalhadorId)
             .Distinct()
             .ToListAsync(ct);
+        if (pessoasExtras.Count > 0)
+        {
+            var comReservaHoje = await _db.ReservasEpi
+                .Where(r => r.ObraId == obraId && r.CreatedAtUtc >= inicioDoDia)
+                .Select(r => r.TrabalhadorId)
+                .Distinct()
+                .ToListAsync(ct);
+            idsPessoas = idsPessoas.Union(comReservaHoje).Union(pessoasExtras).ToList();
+        }
         if (idsPessoas.Count == 0) return;
 
-        var nomes = await _db.Trabalhadores.IgnoreQueryFilters()
+        var pessoasDoDia = await _db.Trabalhadores.IgnoreQueryFilters()
             .Where(t => idsPessoas.Contains(t.Id))
             .OrderBy(t => t.Nome)
-            .Select(t => t.Nome)
+            .Select(t => new { t.Nome, t.Vinculo })
             .ToListAsync(ct);
+        var nomes = pessoasDoDia.Select(p => p.Nome).ToList();
+        var temTerceirizado = pessoasDoDia.Any(p => p.Vinculo == TipoVinculo.Terceirizado);
         var obraNome = await _db.Obras.Where(o => o.Id == obraId).Select(o => o.Nome).FirstOrDefaultAsync(ct);
 
         var reservas = await _db.ReservasEpi
@@ -236,27 +267,32 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
         var cursosAgendados = idsCursos.Count == 0
             ? new List<string>()
             : (await _db.CursosTreinamento.Where(c => idsCursos.Contains(c.Id)).ToListAsync(ct))
-                .Where(c => !PacoteIntegracao.EhCursoDoPacote(c) && !c.EhIntegracaoSeguranca)
+                .Where(c => !pacoteNoFluxo || (!PacoteIntegracao.EhCursoDoPacote(c) && !c.EhIntegracaoSeguranca))
                 .OrderBy(c => c.Nome)
                 .Select(c => $"{c.Nome} ({idsCursos.Count(id => id == c.Id)})")
                 .ToList();
 
         var local = string.IsNullOrWhiteSpace(obraNome) ? "na obra" : $"na obra {obraNome}";
         var titulo = idsPessoas.Count == 1
-            ? $"1 pessoa entrou {local} hoje"
-            : $"{idsPessoas.Count} pessoas entraram {local} hoje";
+            ? $"1 pessoa com ficha de entrada {local} hoje"
+            : $"{idsPessoas.Count} pessoas com ficha de entrada {local} hoje";
         var pessoas = nomes.Count <= 5
             ? string.Join(", ", nomes)
             : $"{string.Join(", ", nomes.Take(5))} e mais {nomes.Count - 5}";
+        // Terceirizado não tem ReservaEpi: o kit dele segue pelo contrato da empresa (não é "nenhum EPI").
+        var kitContrato = temTerceirizado ? "O kit de EPI de terceirizados segue pelo contrato da empresa." : "";
         var kit = reservas.Count == 0
-            ? "Nenhum EPI a separar."
-            : emFalta.Count == 0
+            ? (temTerceirizado ? kitContrato : "Nenhum EPI a separar.")
+            : (emFalta.Count == 0
                 ? $"Kit de EPI: {reservas.Count} item(ns) separado(s)."
-                : $"Kit de EPI: {reservas.Count - emFalta.Count} separado(s), {emFalta.Count} em falta ({string.Join(", ", faltas)}).";
+                : $"Kit de EPI: {reservas.Count - emFalta.Count} separado(s), {emFalta.Count} em falta ({string.Join(", ", faltas)}).")
+              + (temTerceirizado ? $" {kitContrato}" : "");
         var treinamentos = cursosAgendados.Count == 0
             ? ""
             : $" Treinamentos agendados: {string.Join(", ", cursosAgendados)}.";
-        var descricao = $"Fichas de entrada: {pessoas}. {kit}{treinamentos} Abra as fichas de entrada para ver os próximos passos.";
+        // Nome atual do pop-up; com o fluxo em lote ligado o caminho passa a ser "Realizar integração".
+        var destino = pacoteNoFluxo ? "Realizar integração" : "Funcionário novo";
+        var descricao = $"Pessoas: {pessoas}. {kit}{treinamentos} Abra \"{destino}\" para ver os próximos passos.";
         var severidade = emFalta.Count > 0 ? SeveridadeAlerta.Critico : SeveridadeAlerta.Atencao;
 
         var chaves = tecnicos.ToDictionary(usuarioId => usuarioId, usuarioId => ChaveAvisoDoDia(obraId, usuarioId, hoje));
@@ -269,7 +305,11 @@ public class PlanoIntegracaoService : IPlanoIntegracaoService
         var criados = new List<Alerta>();
         foreach (var usuarioId in tecnicos)
         {
-            var existente = existentes.FirstOrDefault(a => a.EntidadeOrigemId == chaves[usuarioId] && a.DestinatarioUsuarioId == usuarioId);
+            // Se uma corrida deixou mais de um aberto com a mesma chave, atualiza o mais recente.
+            var existente = existentes
+                .Where(a => a.EntidadeOrigemId == chaves[usuarioId] && a.DestinatarioUsuarioId == usuarioId)
+                .OrderByDescending(a => a.CreatedAtUtc)
+                .FirstOrDefault();
             if (existente is not null)
             {
                 existente.Titulo = titulo;

@@ -6,7 +6,9 @@ using AAHBRANT.SST.Application.Tests.TestSupport;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
 using AAHBRANT.SST.Infrastructure.Persistencia;
+using AAHBRANT.SST.Application.Integracoes;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace AAHBRANT.SST.Application.Tests.PlanosIntegracao;
 
@@ -14,11 +16,12 @@ namespace AAHBRANT.SST.Application.Tests.PlanosIntegracao;
 // (NR-06, NR-18, NR-35, NR-12 e Integração de Segurança saíram da ficha: são do fluxo "Realizar integração").
 public class AgendaTreinamentosIntegracaoTests
 {
-    private sealed record Cenario(SstDbContext Db, Obra Obra, Funcao Funcao, CursoTreinamento Integracao, CursoTreinamento Nr6, CursoTreinamento Nr35, CursoTreinamento Nr10)
+    private sealed record Cenario(SstDbContext Db, Obra Obra, Funcao Funcao, CursoTreinamento Integracao, CursoTreinamento Nr6, CursoTreinamento Nr35, CursoTreinamento Nr10, bool PacoteNoFluxo)
     {
         public FilaCalendarioTeamsFalsa Calendario { get; } = new();
         public TecnicosSegurancaPorObraServiceFalso Tecnicos { get; } = new() { UsuarioIdsARetornar = { Guid.NewGuid(), Guid.NewGuid() } };
-        public PlanoIntegracaoService Servico => new(Db, Tecnicos, new FilaNotificacaoTeamsFalsa(), Calendario, new GeradorNumeroSequencialFalso());
+        public PlanoIntegracaoService Servico => new(Db, Tecnicos, new FilaNotificacaoTeamsFalsa(), Calendario, new GeradorNumeroSequencialFalso(),
+            opcoes: Options.Create(new OpcoesIntegracao { PacotePeloFluxoRealizarIntegracao = PacoteNoFluxo }));
 
         public async Task<Trabalhador> AdmitirAsync(string nome = "João da Silva", string funcaoNome = "")
         {
@@ -31,7 +34,7 @@ public class AgendaTreinamentosIntegracaoTests
     }
 
     // A função exige NR-35 (pacote) e NR-10 (fora do pacote).
-    private static async Task<Cenario> MontarAsync(string funcaoNome = "Armador")
+    private static async Task<Cenario> MontarAsync(string funcaoNome = "Armador", bool pacoteNoFluxo = true)
     {
         var db = DbContextFactory.Criar();
         var obra = new Obra { Codigo = "AUR", Nome = "Edifício Aurora" };
@@ -47,7 +50,7 @@ public class AgendaTreinamentosIntegracaoTests
             new MatrizTreinamentoFuncao { FuncaoId = funcao.Id, CursoTreinamentoId = nr35.Id },
             new MatrizTreinamentoFuncao { FuncaoId = funcao.Id, CursoTreinamentoId = nr10.Id });
         await db.SaveChangesAsync();
-        return new Cenario(db, obra, funcao, integracao, nr6, nr35, nr10);
+        return new Cenario(db, obra, funcao, integracao, nr6, nr35, nr10, pacoteNoFluxo);
     }
 
     [Fact]
@@ -57,8 +60,46 @@ public class AgendaTreinamentosIntegracaoTests
         Assert.Equal(new DateTime(2026, 10, 27), AgendaTreinamentosIntegracao.SomarDiasUteis(new DateTime(2026, 10, 23), 2));
     }
 
+    // Padrão (chave PacotePeloFluxoRealizarIntegracao desligada): exatamente o comportamento anterior.
     [Fact]
-    public async Task Admissao_NaoAgendaOPacote_MasAgendaOCursoForaDoPacote_ComOFuncionarioInscrito()
+    public async Task ChaveDesligada_Admissao_AgendaIntegracaoNr06EDemaisCursos_ComOFuncionarioInscrito()
+    {
+        var c = await MontarAsync(pacoteNoFluxo: false);
+        var joao = await c.AdmitirAsync();
+
+        var turmas = await c.Db.SessoesTreinamento.Include(s => s.Participantes).ToListAsync();
+        Assert.Equal(4, turmas.Count);
+        Assert.All(turmas, t => Assert.Contains(t.Participantes, p => p.TrabalhadorId == joao.Id));
+        var primeiras = AgendaTreinamentosIntegracao.SomarDiasUteis(AgendaTreinamentosIntegracao.HojeBrasilia(), AgendaTreinamentosIntegracao.DiasUteisPrimeirasTurmas);
+        Assert.Equal(primeiras, turmas.Single(t => t.CursoTreinamentoId == c.Nr6.Id).DataRealizacao);
+        Assert.Equal(primeiras, turmas.Single(t => t.CursoTreinamentoId == c.Integracao.Id).DataRealizacao);
+        Assert.True(turmas.Single(t => t.CursoTreinamentoId == c.Nr35.Id).DataRealizacao > primeiras);
+    }
+
+    [Fact]
+    public async Task ChaveDesligada_AvisoListaTodasAsTurmas_ENaoPedeRealizarIntegracao()
+    {
+        var c = await MontarAsync(pacoteNoFluxo: false);
+        await c.AdmitirAsync();
+
+        var alerta = await c.Db.Alertas.FirstAsync();
+        Assert.Contains("NR-35 Trabalho em Altura (1)", alerta.Descricao);
+        Assert.Contains("Integração de Segurança (1)", alerta.Descricao);
+        Assert.Contains("\"Funcionário novo\"", alerta.Descricao);
+        Assert.DoesNotContain("Realizar integração", alerta.Descricao);
+    }
+
+    [Fact]
+    public async Task ChaveLigada_AvisoPedeRealizarIntegracao()
+    {
+        var c = await MontarAsync();
+        await c.AdmitirAsync();
+
+        Assert.Contains("\"Realizar integração\"", (await c.Db.Alertas.FirstAsync()).Descricao);
+    }
+
+    [Fact]
+    public async Task ChaveLigada_Admissao_NaoAgendaOPacote_MasAgendaOCursoForaDoPacote_ComOFuncionarioInscrito()
     {
         var c = await MontarAsync();
         var joao = await c.AdmitirAsync();

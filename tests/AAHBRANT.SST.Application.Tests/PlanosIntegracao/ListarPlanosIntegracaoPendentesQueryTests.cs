@@ -13,7 +13,7 @@ namespace AAHBRANT.SST.Application.Tests.PlanosIntegracao;
 // Pop-up "Funcionário novo": a ordem dos passos e a situação de cada um vêm dos dados reais.
 public class ListarPlanosIntegracaoPendentesQueryTests
 {
-    private static async Task<(SstDbContext db, Trabalhador joao, CursoTreinamento integracao, CursoTreinamento nr6, CursoTreinamento nr35, CatalogoEpi bota)> MontarAsync()
+    private static async Task<(SstDbContext db, Trabalhador joao, CursoTreinamento integracao, CursoTreinamento nr6, CursoTreinamento nr35, CatalogoEpi bota)> MontarAsync(bool pacoteNoFluxo = false)
     {
         var db = DbContextFactory.Criar();
         var obra = new Obra { Codigo = "AUR", Nome = "Edifício Aurora" };
@@ -32,9 +32,24 @@ public class ListarPlanosIntegracaoPendentesQueryTests
         var joao = new Trabalhador { ObraId = obra.Id, FuncaoId = funcao.Id, Nome = "João da Silva", Cpf = "00000000000", DataAdmissao = DateTime.UtcNow.Date, TamanhoCalcadoEpi = "42" };
         db.Trabalhadores.Add(joao);
         await db.SaveChangesAsync();
-        await new PlanoIntegracaoService(db, new TecnicosSegurancaPorObraServiceFalso(), new FilaNotificacaoTeamsFalsa(), new FilaCalendarioTeamsFalsa(), new GeradorNumeroSequencialFalso())
+        await new PlanoIntegracaoService(db, new TecnicosSegurancaPorObraServiceFalso(), new FilaNotificacaoTeamsFalsa(), new FilaCalendarioTeamsFalsa(), new GeradorNumeroSequencialFalso(),
+                opcoes: Microsoft.Extensions.Options.Options.Create(new AAHBRANT.SST.Application.Integracoes.OpcoesIntegracao { PacotePeloFluxoRealizarIntegracao = pacoteNoFluxo }))
             .SincronizarAsync(joao.Id, MotivoPlanoIntegracao.Admissao);
         return (db, joao, integracao, nr6, nr35, bota);
+    }
+
+    // Com o fluxo "Realizar integração" ligado a ficha não agenda o pacote: os passos ficam pendentes.
+    [Fact]
+    public async Task ChaveLigada_PassosDoPacoteFicamPendentes()
+    {
+        var (db, _, _, _, _, _) = await MontarAsync(pacoteNoFluxo: true);
+
+        var plano = Assert.Single(await ListarAsync(db));
+
+        Assert.Equal(SituacaoPasso.Pendente, plano.Passos[2].Situacao);
+        Assert.Equal(SituacaoPasso.Pendente, plano.Passos[3].Situacao);
+        Assert.Null(plano.Passos[3].SessaoTreinamentoId);
+        Assert.Equal(SituacaoPasso.Pendente, plano.Passos[4].Situacao);
     }
 
     private static Task<List<PlanoIntegracaoDto>> ListarAsync(SstDbContext db) =>
@@ -47,7 +62,7 @@ public class ListarPlanosIntegracaoPendentesQueryTests
     };
 
     [Fact]
-    public async Task FuncionarioRecemChegado_PassosNaOrdemCerta_PacoteAindaSemTurma_E_KitSeparado()
+    public async Task FuncionarioRecemChegado_PassosNaOrdemCerta_TurmasAgendadas_E_KitSeparado()
     {
         var (db, _, _, _, _, _) = await MontarAsync();
 
@@ -56,12 +71,11 @@ public class ListarPlanosIntegracaoPendentesQueryTests
         Assert.Equal(new[] { "aso", "biometria", "integracao", "nr06", "cursos", "kit" }, plano.Passos.Select(p => p.Codigo));
         Assert.Equal(SituacaoPasso.Pendente, plano.Passos[0].Situacao);
         Assert.Contains("Facial pendente · digital pendente", plano.Passos[1].Detalhe);
-        // A ficha não agenda mais Integração, NR-06 nem o restante do pacote (NR-18, NR-35, NR-12): as turmas
-        // nascem em "Realizar integração". Os passos ficam pendentes até lá.
-        Assert.Equal(SituacaoPasso.Pendente, plano.Passos[2].Situacao);
-        Assert.Equal(SituacaoPasso.Pendente, plano.Passos[3].Situacao);
-        Assert.Null(plano.Passos[3].SessaoTreinamentoId);
-        Assert.Equal(SituacaoPasso.Pendente, plano.Passos[4].Situacao);
+        // A admissão já agendou as turmas (etapa 3).
+        Assert.Equal(SituacaoPasso.Agendado, plano.Passos[2].Situacao);
+        Assert.Equal(SituacaoPasso.Agendado, plano.Passos[3].Situacao);
+        Assert.NotNull(plano.Passos[3].SessaoTreinamentoId);
+        Assert.Equal(SituacaoPasso.Agendado, plano.Passos[4].Situacao);
         Assert.Contains("NR-35", plano.Passos[4].Detalhe);
         // Kit só é liberado depois da NR-06.
         Assert.Equal(SituacaoPasso.Aguardando, plano.Passos[5].Situacao);

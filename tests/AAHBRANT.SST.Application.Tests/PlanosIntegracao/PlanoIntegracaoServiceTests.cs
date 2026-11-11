@@ -105,7 +105,7 @@ public class PlanoIntegracaoServiceTests
         var alertas = await c.Db.Alertas.Where(a => a.Tipo == TipoAlerta.IntegracaoFuncionarioNovo).ToListAsync();
         Assert.Equal(2, alertas.Count);
         // Aviso agrupado por obra/dia: o título traz o contador; o nome vai na descrição.
-        Assert.Equal("1 pessoa entrou na obra Edifício Aurora hoje", alertas[0].Titulo);
+        Assert.Equal("1 pessoa com ficha de entrada na obra Edifício Aurora hoje", alertas[0].Titulo);
         Assert.Contains("João da Silva", alertas[0].Descricao);
         Assert.Contains("2 item(ns) separado(s)", alertas[0].Descricao);
         Assert.Equal(2, c.Fila.Mensagens.Count);
@@ -307,7 +307,7 @@ public class PlanoIntegracaoServiceTests
         Assert.Equal(c.Tecnicos.UsuarioIdsARetornar.Count, alertas.Select(a => a.DestinatarioUsuarioId).Distinct().Count());
         Assert.All(alertas, a =>
         {
-            Assert.Equal("2 pessoas entraram na obra Edifício Aurora hoje", a.Titulo);
+            Assert.Equal("2 pessoas com ficha de entrada na obra Edifício Aurora hoje", a.Titulo);
             Assert.Contains("Primeiro", a.Descricao);
             Assert.Contains("Segundo", a.Descricao);
             Assert.Equal(PlanoIntegracaoService.OrigemAvisoEntradasObra, a.EntidadeOrigemTipo);
@@ -404,12 +404,14 @@ public class PlanoIntegracaoServiceTests
         await c.Db.SaveChangesAsync();
     }
 
-    private static async Task<Trabalhador> AdmitidoEDepoisTrocadoAsync(Cenario c, Action<Trabalhador>? antesDaTroca = null)
+    // fichaConcluida: a ficha da admissão já foi concluída (a dispensa só vale sem ficha aberta).
+    private static async Task<Trabalhador> AdmitidoEDepoisTrocadoAsync(Cenario c, bool fichaConcluida = true)
     {
         var joao = await c.TrabalhadorAsync(c.Armador);
         await c.Servico.SincronizarAsync(joao.Id, MotivoPlanoIntegracao.Admissao);
+        if (fichaConcluida)
+            foreach (var plano in await c.Db.PlanosIntegracao.ToListAsync()) plano.Status = StatusPlanoIntegracao.Concluido;
         joao.FuncaoId = c.Servente.Id;
-        antesDaTroca?.Invoke(joao);
         await c.Db.SaveChangesAsync();
         return joao;
     }
@@ -428,9 +430,9 @@ public class PlanoIntegracaoServiceTests
         await c.Servico.SincronizarAsync(joao.Id, motivo);
 
         var planos = await c.Db.PlanosIntegracao.ToListAsync();
-        var admissao = Assert.Single(planos); // só a da admissão, ainda aberta
+        var admissao = Assert.Single(planos); // só a da admissão, já concluída
         Assert.Equal(MotivoPlanoIntegracao.Admissao, admissao.Motivo);
-        Assert.Equal(StatusPlanoIntegracao.Aberto, admissao.Status);
+        Assert.Equal(StatusPlanoIntegracao.Concluido, admissao.Status);
         // Kit reajustado para a função nova (bota cancelada, luva separada).
         var reservas = await c.Db.ReservasEpi.ToListAsync();
         Assert.Equal(StatusReservaEpi.Cancelada, reservas.Single(r => r.CatalogoEpiId == c.Bota.Id).Status);
@@ -443,7 +445,7 @@ public class PlanoIntegracaoServiceTests
     public async Task ComPacoteIncompleto_SemNr18_AbreFicha()
     {
         var c = await MontarAsync();
-        var joao = await AdmitidoEDepoisTrocadoAsync(c);
+        var joao = await AdmitidoEDepoisTrocadoAsync(c, fichaConcluida: false);
         await DarTreinamentosAsync(c, joao, nr18: false);
 
         await c.Servico.SincronizarAsync(joao.Id, MotivoPlanoIntegracao.TrocaFuncao);
@@ -500,6 +502,81 @@ public class PlanoIntegracaoServiceTests
 
         await c.ServicoCom(new OpcoesIntegracao { DispensarFichaComPacoteValido = true })
             .SincronizarAsync(joao.Id, MotivoPlanoIntegracao.TrocaFuncao);
+
+        Assert.Single(await c.Db.PlanosIntegracao.ToListAsync());
+    }
+
+    // Dispensar a ficha não silencia o que a função nova exige fora do pacote nem o kit: agenda NR-10, não repete
+    // o pacote/Integração e avisa os técnicos.
+    [Fact]
+    public async Task Dispensa_ContinuaAgendandoCursoForaDoPacote_ESeparandoKit_EAvisaOsTecnicos()
+    {
+        var c = await MontarAsync();
+        var nr10 = new CursoTreinamento { Nome = "NR-10 Eletricidade", NormaReferencia = "NR-10", CargaHorariaMinima = 40, ValidadeEmMeses = 24 };
+        var integracao = new CursoTreinamento { Nome = "Integração de Segurança", CargaHorariaMinima = 4, ValidadeEmMeses = 12, EhIntegracaoSeguranca = true };
+        c.Db.CursosTreinamento.AddRange(nr10, integracao);
+        c.Db.MatrizTreinamentoFuncoes.Add(new MatrizTreinamentoFuncao { FuncaoId = c.Servente.Id, CursoTreinamentoId = nr10.Id });
+        await c.Db.SaveChangesAsync();
+        var maria = await c.TrabalhadorAsync(c.Servente, "Maria Souza"); // sem ficha aberta (ex.: veio da carga do G-RH)
+        await DarTreinamentosAsync(c, maria);
+
+        await c.Servico.SincronizarAsync(maria.Id, MotivoPlanoIntegracao.TrocaFuncao);
+
+        Assert.Empty(await c.Db.PlanosIntegracao.ToListAsync());
+        var turma = Assert.Single(await c.Db.SessoesTreinamento.ToListAsync()); // só NR-10; nem pacote nem Integração
+        Assert.Equal(nr10.Id, turma.CursoTreinamentoId);
+        Assert.Equal(2, await c.Db.ReservasEpi.CountAsync(r => r.Status == StatusReservaEpi.Ativa));
+        var alertas = await c.Db.Alertas.Where(a => a.Tipo == TipoAlerta.IntegracaoFuncionarioNovo).ToListAsync();
+        Assert.Equal(2, alertas.Count);
+        Assert.All(alertas, a => Assert.Contains("Maria Souza", a.Descricao));
+        Assert.All(alertas, a => Assert.Contains("NR-10 Eletricidade (1)", a.Descricao));
+        Assert.Equal(2, c.Fila.Mensagens.Count);
+    }
+
+    // Já existe ficha aberta (ex.: admitido há poucos dias e transferido): caminho antigo, cancela e abre a nova.
+    [Fact]
+    public async Task ComFichaAberta_NaoDispensa_CancelaAAnteriorEAbreANova()
+    {
+        var c = await MontarAsync();
+        var joao = await AdmitidoEDepoisTrocadoAsync(c, fichaConcluida: false);
+        await DarTreinamentosAsync(c, joao);
+
+        await c.Servico.SincronizarAsync(joao.Id, MotivoPlanoIntegracao.TransferenciaObra);
+
+        var planos = await c.Db.PlanosIntegracao.ToListAsync();
+        Assert.Equal(StatusPlanoIntegracao.Cancelado, planos.Single(p => p.Motivo == MotivoPlanoIntegracao.Admissao).Status);
+        var nova = planos.Single(p => p.Motivo == MotivoPlanoIntegracao.TransferenciaObra);
+        Assert.Equal(StatusPlanoIntegracao.Aberto, nova.Status);
+        Assert.Equal(c.Servente.Id, nova.FuncaoId);
+    }
+
+    // Terceirizado: a liberação exige a Integração de Segurança, que o pacote não cobre — nunca dispensa.
+    [Fact]
+    public async Task Terceirizado_ComPacoteValido_NaoDispensa()
+    {
+        var c = await MontarAsync();
+        var terceirizado = await c.TrabalhadorAsync(c.Servente, "Terceirizado");
+        terceirizado.Vinculo = TipoVinculo.Terceirizado;
+        await c.Db.SaveChangesAsync();
+        await DarTreinamentosAsync(c, terceirizado);
+
+        await c.Servico.SincronizarAsync(terceirizado.Id, MotivoPlanoIntegracao.TrocaFuncao);
+
+        var ficha = Assert.Single(await c.Db.PlanosIntegracao.ToListAsync());
+        Assert.Equal(MotivoPlanoIntegracao.TrocaFuncao, ficha.Motivo);
+        var aviso = await c.Db.Alertas.FirstAsync();
+        Assert.Contains("segue pelo contrato da empresa", aviso.Descricao);
+    }
+
+    // A validade é a da liberação para o trabalho: DataValidade.Date >= hoje (UTC).
+    [Fact]
+    public async Task PacoteQueVenceHoje_AindaContaComoValido()
+    {
+        var c = await MontarAsync();
+        var joao = await AdmitidoEDepoisTrocadoAsync(c);
+        await DarTreinamentosAsync(c, joao, validadeEmDias: 0);
+
+        await c.Servico.SincronizarAsync(joao.Id, MotivoPlanoIntegracao.TrocaFuncao);
 
         Assert.Single(await c.Db.PlanosIntegracao.ToListAsync());
     }

@@ -12,9 +12,9 @@ namespace AAHBRANT.SST.Application.PlanosIntegracao;
 public record TurmaAgendada(Guid SessaoTreinamentoId, string CursoNome, DateTime Data, bool Nova);
 
 // Agendamento automático dos treinamentos do funcionário que entra na obra (especificação de
-// 21/10/2026, etapa 3). Só os cursos da função FORA do pacote de integração (NR-06, NR-18, NR-35, NR-12 e
-// Integração de Segurança, ver PacoteIntegracao) — o pacote é agendado em lote pelo fluxo "Realizar
-// integração". Cada curso entra na próxima turma aberta da obra; sem turma, uma nova é criada com o
+// 21/10/2026, etapa 3). Ordem: Integração de Segurança e NR-06 primeiro, depois os demais cursos da função.
+// Com excluirPacote (chave Integracao:PacotePeloFluxoRealizarIntegracao, ver PacoteIntegracao), só os cursos
+// FORA do pacote: o pacote é agendado em lote pelo fluxo "Realizar integração". Cada curso entra na próxima turma aberta da obra; sem turma, uma nova é criada com o
 // padrão da NR e data sugerida — o técnico confirma ou ajusta a data depois.
 public static class AgendaTreinamentosIntegracao
 {
@@ -43,7 +43,8 @@ public static class AgendaTreinamentosIntegracao
     }
 
     public static async Task<List<TurmaAgendada>> AgendarAsync(
-        IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero, Trabalhador trabalhador, CancellationToken ct)
+        IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero, Trabalhador trabalhador, CancellationToken ct,
+        bool excluirPacote = false)
     {
         var agendadas = new List<TurmaAgendada>();
         var funcaoNome = await db.Funcoes.Where(f => f.Id == trabalhador.FuncaoId).Select(f => f.Nome).FirstOrDefaultAsync(ct);
@@ -53,13 +54,29 @@ public static class AgendaTreinamentosIntegracao
         var cursos = await db.CursosTreinamento.ToListAsync(ct);
         var idsDaFuncao = await ExigenciasTreinamento.CursosAsync(db, trabalhador.ObraId, trabalhador.FuncaoId, ct);
 
-        // NR-06, NR-18, NR-35, NR-12 e a Integração de Segurança saíram daqui: as turmas desses cursos nascem
-        // no fluxo "Realizar integração" (lote), não mais na ficha de entrada.
         var ordem = new List<(CursoTreinamento Curso, bool Primeira)>();
-        foreach (var curso in cursos
-            .Where(c => idsDaFuncao.Contains(c.Id) && !PacoteIntegracao.EhCursoDoPacote(c) && !c.EhIntegracaoSeguranca)
-            .OrderBy(c => c.Nome))
-            ordem.Add((curso, false));
+        if (excluirPacote)
+        {
+            // Pacote (NR-06, NR-18, NR-35, NR-12) e Integração de Segurança ficam com o fluxo "Realizar
+            // integração" (lote): aqui só os demais cursos da função.
+            foreach (var curso in cursos
+                .Where(c => idsDaFuncao.Contains(c.Id) && !PacoteIntegracao.EhCursoDoPacote(c) && !c.EhIntegracaoSeguranca)
+                .OrderBy(c => c.Nome))
+                ordem.Add((curso, false));
+        }
+        else
+        {
+            // Comportamento original: Integração de Segurança e NR-06 primeiro (sem elas não há EPI), depois
+            // os demais cursos da função.
+            var integracao = cursos.FirstOrDefault(c => c.EhIntegracaoSeguranca);
+            var nr6 = cursos.Where(c => c.AtendeNr6)
+                .OrderBy(c => CatalogoNormasRegulamentadoras.NormalizarNumero(c.NormaReferencia) == "NR-06" ? 0 : 1)
+                .FirstOrDefault();
+            if (integracao is not null) ordem.Add((integracao, true));
+            if (nr6 is not null && nr6.Id != integracao?.Id) ordem.Add((nr6, true));
+            foreach (var curso in cursos.Where(c => idsDaFuncao.Contains(c.Id) && ordem.All(o => o.Curso.Id != c.Id)).OrderBy(c => c.Nome))
+                ordem.Add((curso, false));
+        }
         if (ordem.Count == 0) return agendadas;
 
         var hoje = HojeBrasilia();
