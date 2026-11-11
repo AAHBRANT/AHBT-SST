@@ -164,7 +164,7 @@ public class AvaliadorPendenciasOsTests
         });
 
         var item = Assert.Single(p);
-        Assert.Equal("SemAtividades", item.Tipo);
+        Assert.Equal("AtividadesFuncaoNenhumaConfirmada", item.Tipo);
         Assert.Equal("Nenhuma atividade confirmada para a função Armador", item.Titulo);
     }
 

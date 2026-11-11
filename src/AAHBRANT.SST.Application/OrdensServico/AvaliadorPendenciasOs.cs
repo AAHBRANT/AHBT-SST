@@ -65,7 +65,7 @@ public static class AvaliadorPendenciasOs
         else if (e.FuncaoTemGhe && e.Atividades.Count == 0 && (e.AtividadesDaFuncaoDefinidas || semDecisao.Count == 0))
         {
             if (e.TodasDescartadas)
-                p.Add(new("SemAtividades", $"Nenhuma atividade confirmada para a função {funcao}",
+                p.Add(new("AtividadesFuncaoNenhumaConfirmada", $"Nenhuma atividade confirmada para a função {funcao}",
                     "Todas as atividades do GHE foram descartadas para esta função; confirme ao menos uma atividade que ela executa.", "SST", "pgr", pgr));
             else
                 p.Add(new("SemAtividades", "O GHE da função não tem atividades com riscos no inventário",

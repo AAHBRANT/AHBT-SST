@@ -389,7 +389,8 @@ public class AtividadesFuncaoTests
 
         Assert.Empty(m.Atividades);
         Assert.True(m.AtividadesDaFuncaoConfirmadas);
-        var p = Assert.Single(m.Pendencias, x => x.Tipo == "SemAtividades");
+        var p = Assert.Single(m.Pendencias, x => x.Tipo == "AtividadesFuncaoNenhumaConfirmada");
+        Assert.DoesNotContain(m.Pendencias, x => x.Tipo == "SemAtividades");
         Assert.Equal("Nenhuma atividade confirmada para a função Armador", p.Titulo);
     }
 
@@ -529,18 +530,97 @@ public class AtividadesFuncaoTests
         return new EmitirOrdemServicoCommandHandler(c.Global, mediator, new NumeroFalso(), new AuditoriaFalsa());
     }
 
-    [Fact]
-    public async Task Emitir_OsAguardandoAssinatura_VoltaMesmoComPendenciaNova()
+    // PGR vigente e ASO apto: sobram só as pendências de atividades por função.
+    private static async Task LiberarPgrEAsoAsync(Cenario c)
     {
-        var c = await CriarAsync();
-        var os = new OrdemServico { TrabalhadorId = c.Trabalhador.Id, ObraId = ObraA, Numero = "OS-1", Revisao = 0, EmitidaEm = DateTime.UtcNow, ConteudoJson = "{}" };
+        c.Global.Pgrs.Add(new Pgr { ObraId = ObraA, Nome = "PGR", DataElaboracao = DateTime.UtcNow.AddMonths(-1), Status = StatusPgr.Vigente });
+        c.Global.Asos.Add(new Aso
+        {
+            TrabalhadorId = c.Trabalhador.Id, DataExame = DateTime.UtcNow.AddMonths(-1), DataValidade = DateTime.UtcNow.AddMonths(11),
+            ResultadoStatus = ResultadoAso.Apto,
+        });
+        await c.Global.SaveChangesAsync();
+    }
+
+    private static async Task<OrdemServico> OsAguardandoAsync(Cenario c, string funcao)
+    {
+        var minutaAntiga = new MinutaOrdemServicoDto { Trabalhador = new TrabalhadorOsDto { Funcao = funcao } };
+        var os = new OrdemServico
+        {
+            TrabalhadorId = c.Trabalhador.Id, ObraId = ObraA, Numero = "OS-1", Revisao = 0, EmitidaEm = DateTime.UtcNow,
+            ConteudoJson = System.Text.Json.JsonSerializer.Serialize(minutaAntiga),
+        };
         c.Global.OrdensServico.Add(os);
         c.Global.DocumentosAssinatura.Add(new DocumentoAssinatura
         {
             EntidadeTipo = OrdemServico.EntidadeTipoAssinatura, EntidadeId = os.Id, ObraId = ObraA, Status = StatusDocumentoAssinatura.EmAndamento,
         });
         await c.Global.SaveChangesAsync();
-        Assert.False((await Minuta(c))!.PodeEmitir);
+        return os;
+    }
+
+    [Fact]
+    public async Task Emitir_OsAguardando_SoPendenciaNovaDeAtividades_MesmaFuncao_Devolve()
+    {
+        var c = await CriarAsync();
+        await LiberarPgrEAsoAsync(c);
+        var os = await OsAguardandoAsync(c, "Armador");
+        var minuta = (await Minuta(c))!;
+        Assert.All(minuta.Pendencias, p => Assert.Equal("AtividadesFuncaoNaoConfirmadas", p.Tipo));
+        Assert.NotEmpty(minuta.Pendencias);
+
+        var r = await Emissor(c).Handle(new EmitirOrdemServicoCommand(c.Trabalhador.Id), default);
+
+        Assert.Equal(os.Id, r.Id);
+        Assert.Equal(1, await c.Global.OrdensServico.CountAsync());
+    }
+
+    [Fact]
+    public async Task Emitir_OsAguardando_ComAsoInvalido_Barra()
+    {
+        var c = await CriarAsync();
+        await LiberarPgrEAsoAsync(c);
+        (await c.Global.Asos.SingleAsync()).ResultadoStatus = ResultadoAso.Inapto;
+        await c.Global.SaveChangesAsync();
+        await OsAguardandoAsync(c, "Armador");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Emissor(c).Handle(new EmitirOrdemServicoCommand(c.Trabalhador.Id), default));
+    }
+
+    [Fact]
+    public async Task Emitir_OsAguardando_DeOutraFuncao_Barra()
+    {
+        var c = await CriarAsync();
+        await LiberarPgrEAsoAsync(c);
+        await OsAguardandoAsync(c, "Pedreiro");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Emissor(c).Handle(new EmitirOrdemServicoCommand(c.Trabalhador.Id), default));
+    }
+
+    [Fact]
+    public async Task Emitir_OsAguardando_ConteudoIlegivel_Barra()
+    {
+        var c = await CriarAsync();
+        await LiberarPgrEAsoAsync(c);
+        var os = await OsAguardandoAsync(c, "Armador");
+        os.ConteudoJson = "isto não é json";
+        await c.Global.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Emissor(c).Handle(new EmitirOrdemServicoCommand(c.Trabalhador.Id), default));
+    }
+
+    [Fact]
+    public async Task Emitir_OsAguardando_SemPendencia_DevolveIdempotente()
+    {
+        var c = await CriarAsync();
+        await LiberarPgrEAsoAsync(c);
+        var doc = new MaterialApoio { Nome = "Procedimento", Tipo = TipoDocumentoSst.Procedimento, Situacao = SituacaoDocumentoSst.Vigente, Codigo = "PRO-1", Revisao = "1" };
+        c.Global.MateriaisApoio.Add(doc);
+        c.Global.AtividadeDocumentos.Add(new AtividadeDocumento { AtividadeId = c.Corte.Id, MaterialApoioId = doc.Id });
+        await c.Global.SaveChangesAsync();
+        await Decidir(c, (c.Corte, true), (c.Desforma, false), (c.Montagem, false));
+        Assert.True((await Minuta(c))!.PodeEmitir);
+        var os = await OsAguardandoAsync(c, "Qualquer");
 
         var r = await Emissor(c).Handle(new EmitirOrdemServicoCommand(c.Trabalhador.Id), default);
 

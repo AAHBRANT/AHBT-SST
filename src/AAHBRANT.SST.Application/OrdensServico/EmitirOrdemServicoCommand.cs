@@ -42,16 +42,25 @@ public class EmitirOrdemServicoCommandHandler : IRequestHandler<EmitirOrdemServi
                 && d.Status == StatusDocumentoAssinatura.EmAndamento)
             .Select(d => (Guid?)d.EntidadeId)
             .FirstOrDefaultAsync(ct);
+
+        // Pendência barra como sempre. Única exceção (Entrega 4): a OS que já aguarda assinatura segue para a
+        // assinatura quando as únicas pendências são as novas de confirmação de atividades da função e a OS é
+        // da função atual do trabalhador. ASO, treinamento, PGR ou troca de função continuam barrando.
+        if (!minuta.PodeEmitir)
+        {
+            var osAguardando = anteriores.FirstOrDefault(o => o.Id == aguardando);
+            if (aguardando is null || osAguardando is null
+                || !minuta.Pendencias.All(p => p.Tipo is "AtividadesFuncaoNaoConfirmadas" or "AtividadesFuncaoSemDecisao" or "AtividadesFuncaoNenhumaConfirmada")
+                || !MesmaFuncao(osAguardando.ConteudoJson, minuta.Trabalhador.Funcao))
+                throw new InvalidOperationException(
+                    $"A Ordem de Serviço ainda tem {minuta.Pendencias.Count} pendência(s). Resolva as pendências antes de emitir.");
+        }
+
         if (aguardando is not null)
         {
             var lista = await _mediator.Send(new ListarOrdensServicoQuery(request.TrabalhadorId), ct);
             return lista.First(o => o.Id == aguardando.Value);
         }
-
-        // Pendências só barram a emissão NOVA: quem já tem OS aguardando assinatura segue para a assinatura.
-        if (!minuta.PodeEmitir)
-            throw new InvalidOperationException(
-                $"A Ordem de Serviço ainda tem {minuta.Pendencias.Count} pendência(s). Resolva as pendências antes de emitir.");
 
         var os = new OrdemServico
         {
@@ -82,6 +91,23 @@ public class EmitirOrdemServicoCommandHandler : IRequestHandler<EmitirOrdemServi
 
         var emitidas = await _mediator.Send(new ListarOrdensServicoQuery(request.TrabalhadorId), ct);
         return emitidas.First(o => o.Id == os.Id);
+    }
+
+    // Função gravada na OS (ConteudoJson congelado) x função atual do trabalhador. Sem como comparar com
+    // segurança (JSON ilegível ou função vazia), diz que não é a mesma.
+    private static bool MesmaFuncao(string conteudoJson, string funcaoAtual)
+    {
+        if (string.IsNullOrWhiteSpace(funcaoAtual)) return false;
+        try
+        {
+            var antiga = JsonSerializer.Deserialize<MinutaOrdemServicoDto>(conteudoJson)?.Trabalhador.Funcao;
+            return !string.IsNullOrWhiteSpace(antiga)
+                && string.Equals(antiga.Trim(), funcaoAtual.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 }
 
