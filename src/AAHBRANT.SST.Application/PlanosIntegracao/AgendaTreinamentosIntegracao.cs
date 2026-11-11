@@ -44,7 +44,7 @@ public static class AgendaTreinamentosIntegracao
 
     public static async Task<List<TurmaAgendada>> AgendarAsync(
         IAppDbContext db, IGeradorNumeroDocumentoService geradorNumero, Trabalhador trabalhador, CancellationToken ct,
-        bool excluirPacote = false)
+        bool excluirPacote = false, bool dispensa = false)
     {
         var agendadas = new List<TurmaAgendada>();
         var funcaoNome = await db.Funcoes.Where(f => f.Id == trabalhador.FuncaoId).Select(f => f.Nome).FirstOrDefaultAsync(ct);
@@ -55,7 +55,15 @@ public static class AgendaTreinamentosIntegracao
         var idsDaFuncao = await ExigenciasTreinamento.CursosAsync(db, trabalhador.ObraId, trabalhador.FuncaoId, ct);
 
         var ordem = new List<(CursoTreinamento Curso, bool Primeira)>();
-        if (excluirPacote)
+        if (dispensa)
+        {
+            // Ficha dispensada (pacote em dia): só o que a função/obra nova exige, sem a Integração/NR-06 "fixas".
+            // Cada curso exigido que a pessoa não tem válido (por id) entra; os já válidos saem abaixo. Vale com a
+            // chave do fluxo ligada ou não: quem está sem ficha não passa pelo lote.
+            foreach (var curso in cursos.Where(c => idsDaFuncao.Contains(c.Id)).OrderBy(c => c.Nome))
+                ordem.Add((curso, curso.EhIntegracaoSeguranca || curso.AtendeNr6));
+        }
+        else if (excluirPacote)
         {
             // Pacote (NR-06, NR-18, NR-35, NR-12) e Integração de Segurança ficam com o fluxo "Realizar
             // integração" (lote): aqui só os demais cursos da função.

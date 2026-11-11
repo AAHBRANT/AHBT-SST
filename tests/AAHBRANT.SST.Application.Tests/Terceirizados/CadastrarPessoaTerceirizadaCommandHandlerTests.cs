@@ -198,7 +198,7 @@ public class CadastrarPessoaTerceirizadaCommandHandlerTests
         Assert.Single(await db.EntregasEpi.Where(e => e.TrabalhadorId == trabalhadorId).ToListAsync());
         var aviso = await db.Alertas.SingleAsync(a => a.Tipo == TipoAlerta.IntegracaoFuncionarioNovo);
         Assert.Equal(tecnicoId, aviso.DestinatarioUsuarioId);
-        Assert.StartsWith("1 pessoa com ficha de entrada na obra Obra 1 hoje", aviso.Titulo);
+        Assert.StartsWith("1 pessoa com entrada ou mudança de função na obra Obra 1 hoje", aviso.Titulo);
         Assert.Contains("segue pelo contrato da empresa", aviso.Descricao);
         Assert.DoesNotContain("Nenhum EPI a separar", aviso.Descricao);
     }

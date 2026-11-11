@@ -105,7 +105,7 @@ public class PlanoIntegracaoServiceTests
         var alertas = await c.Db.Alertas.Where(a => a.Tipo == TipoAlerta.IntegracaoFuncionarioNovo).ToListAsync();
         Assert.Equal(2, alertas.Count);
         // Aviso agrupado por obra/dia: o título traz o contador; o nome vai na descrição.
-        Assert.Equal("1 pessoa com ficha de entrada na obra Edifício Aurora hoje", alertas[0].Titulo);
+        Assert.Equal("1 pessoa com entrada ou mudança de função na obra Edifício Aurora hoje", alertas[0].Titulo);
         Assert.Contains("João da Silva", alertas[0].Descricao);
         Assert.Contains("2 item(ns) separado(s)", alertas[0].Descricao);
         Assert.Equal(2, c.Fila.Mensagens.Count);
@@ -307,7 +307,7 @@ public class PlanoIntegracaoServiceTests
         Assert.Equal(c.Tecnicos.UsuarioIdsARetornar.Count, alertas.Select(a => a.DestinatarioUsuarioId).Distinct().Count());
         Assert.All(alertas, a =>
         {
-            Assert.Equal("2 pessoas com ficha de entrada na obra Edifício Aurora hoje", a.Titulo);
+            Assert.Equal("2 pessoas com entrada ou mudança de função na obra Edifício Aurora hoje", a.Titulo);
             Assert.Contains("Primeiro", a.Descricao);
             Assert.Contains("Segundo", a.Descricao);
             Assert.Equal(PlanoIntegracaoService.OrigemAvisoEntradasObra, a.EntidadeOrigemTipo);
@@ -579,5 +579,110 @@ public class PlanoIntegracaoServiceTests
         await c.Servico.SincronizarAsync(joao.Id, MotivoPlanoIntegracao.TrocaFuncao);
 
         Assert.Single(await c.Db.PlanosIntegracao.ToListAsync());
+    }
+
+    // --- Dispensa: o que a função/obra nova exige e a pessoa não tem continua sendo agendado ---
+
+    private static async Task<CursoTreinamento> ExigirCursoAsync(Cenario c, Funcao funcao, string nome, string norma, bool integracao = false)
+    {
+        var curso = new CursoTreinamento { Nome = nome, NormaReferencia = norma, CargaHorariaMinima = 8, ValidadeEmMeses = 24, EhIntegracaoSeguranca = integracao };
+        c.Db.CursosTreinamento.Add(curso);
+        c.Db.MatrizTreinamentoFuncoes.Add(new MatrizTreinamentoFuncao { FuncaoId = funcao.Id, CursoTreinamentoId = curso.Id });
+        await c.Db.SaveChangesAsync();
+        return curso;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Dispensa_FuncaoQueExigeNr12_AgendaATurma_EAvisaOTecnico(bool pacoteNoFluxo)
+    {
+        var c = await MontarAsync();
+        var nr12 = await ExigirCursoAsync(c, c.Servente, "NR-12 Máquinas", "NR-12");
+        var pedreiro = await c.TrabalhadorAsync(c.Servente, "Pedro Operador");
+        await DarTreinamentosAsync(c, pedreiro);
+
+        await c.ServicoCom(new OpcoesIntegracao { PacotePeloFluxoRealizarIntegracao = pacoteNoFluxo })
+            .SincronizarAsync(pedreiro.Id, MotivoPlanoIntegracao.TrocaFuncao);
+
+        Assert.Empty(await c.Db.PlanosIntegracao.ToListAsync());
+        var turma = Assert.Single(await c.Db.SessoesTreinamento.ToListAsync());
+        Assert.Equal(nr12.Id, turma.CursoTreinamentoId);
+        var alertas = await c.Db.Alertas.Where(a => a.Tipo == TipoAlerta.IntegracaoFuncionarioNovo).ToListAsync();
+        Assert.Equal(2, alertas.Count);
+        Assert.All(alertas, a => Assert.Contains("NR-12 Máquinas (1)", a.Descricao));
+    }
+
+    [Fact]
+    public async Task Dispensa_ObraQueExigeIntegracao_SemAPessoaTer_AgendaATurma()
+    {
+        var c = await MontarAsync();
+        var integracao = await ExigirCursoAsync(c, c.Servente, "Integração de Segurança", "", integracao: true);
+        var joao = await c.TrabalhadorAsync(c.Servente, "João Transferido");
+        await DarTreinamentosAsync(c, joao);
+
+        await c.Servico.SincronizarAsync(joao.Id, MotivoPlanoIntegracao.TransferenciaObra);
+
+        Assert.Empty(await c.Db.PlanosIntegracao.ToListAsync());
+        Assert.Equal(integracao.Id, Assert.Single(await c.Db.SessoesTreinamento.ToListAsync()).CursoTreinamentoId);
+    }
+
+    [Fact]
+    public async Task Dispensa_Nr35DeOutroCurso_AgendaOCursoExigido_ENaoRepeteOQueTemValido()
+    {
+        var c = await MontarAsync();
+        var joao = await c.TrabalhadorAsync(c.Servente, "João Altura");
+        await DarTreinamentosAsync(c, joao); // NR-35 "A" válido
+        var cursoB = await ExigirCursoAsync(c, c.Servente, "NR-35 Altura (modelo B)", "NR-35");
+        var cursoA = await c.Db.CursosTreinamento.SingleAsync(x => x.Nome == "NR-35");
+        c.Db.MatrizTreinamentoFuncoes.Add(new MatrizTreinamentoFuncao { FuncaoId = c.Servente.Id, CursoTreinamentoId = cursoA.Id });
+        await c.Db.SaveChangesAsync();
+
+        await c.Servico.SincronizarAsync(joao.Id, MotivoPlanoIntegracao.TrocaFuncao);
+
+        Assert.Empty(await c.Db.PlanosIntegracao.ToListAsync());
+        Assert.Equal(cursoB.Id, Assert.Single(await c.Db.SessoesTreinamento.ToListAsync()).CursoTreinamentoId);
+    }
+
+    // --- Aviso do dia recalculado do banco ---
+
+    [Fact]
+    public async Task AvisoDoDia_PessoaDispensadaComKit_NaoSomeQuandoOutraFichaAtualiza()
+    {
+        var c = await MontarAsync();
+        var jose = await c.TrabalhadorAsync(c.Servente, "José Dispensado");
+        await DarTreinamentosAsync(c, jose);
+        await c.Servico.SincronizarAsync(jose.Id, MotivoPlanoIntegracao.TrocaFuncao); // 9h: sem ficha, com kit
+        var maria = await c.TrabalhadorAsync(c.Armador, "Maria Admitida");
+
+        await c.Servico.SincronizarAsync(maria.Id, MotivoPlanoIntegracao.Admissao); // 10h
+
+        var alertas = await c.Db.Alertas.Where(a => a.Tipo == TipoAlerta.IntegracaoFuncionarioNovo).ToListAsync();
+        Assert.Equal(2, alertas.Count); // 2 técnicos, 1 alerta cada
+        Assert.All(alertas, a =>
+        {
+            Assert.Equal("2 pessoas com entrada ou mudança de função na obra Edifício Aurora hoje", a.Titulo);
+            Assert.Contains("Fichas de entrada: Maria Admitida", a.Descricao);
+            Assert.Contains("Sem ficha nova (pacote em dia): José Dispensado", a.Descricao);
+        });
+        Assert.Equal(2, c.Fila.Mensagens.Count); // atualização não reenvia ao Teams
+    }
+
+    [Fact]
+    public async Task AvisoDoDia_ReservaCanceladaNaoContaComoPessoa()
+    {
+        var c = await MontarAsync();
+        var jose = await c.TrabalhadorAsync(c.Servente, "José Dispensado");
+        await DarTreinamentosAsync(c, jose);
+        await c.Servico.SincronizarAsync(jose.Id, MotivoPlanoIntegracao.TrocaFuncao);
+        foreach (var r in await c.Db.ReservasEpi.ToListAsync()) r.Status = StatusReservaEpi.Cancelada;
+        await c.Db.SaveChangesAsync();
+        var maria = await c.TrabalhadorAsync(c.Armador, "Maria Admitida");
+
+        await c.Servico.SincronizarAsync(maria.Id, MotivoPlanoIntegracao.Admissao);
+
+        var alerta = (await c.Db.Alertas.Where(a => a.Tipo == TipoAlerta.IntegracaoFuncionarioNovo).ToListAsync())[0];
+        Assert.StartsWith("1 pessoa com entrada ou mudança de função", alerta.Titulo);
+        Assert.DoesNotContain("José", alerta.Descricao);
     }
 }
