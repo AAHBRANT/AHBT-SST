@@ -83,6 +83,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<AtividadeEpc> AtividadeEpcs => Set<AtividadeEpc>();
     public DbSet<AtividadeDocumento> AtividadeDocumentos => Set<AtividadeDocumento>();
     public DbSet<AtividadeItemOs> AtividadeItensOs => Set<AtividadeItemOs>();
+    public DbSet<AtividadeFuncao> AtividadesFuncoes => Set<AtividadeFuncao>();
     public DbSet<Ghe> Ghes => Set<Ghe>();
     public DbSet<GheFuncao> GheFuncoes => Set<GheFuncao>();
     public DbSet<Perigo> Perigos => Set<Perigo>();
@@ -270,6 +271,8 @@ public class SstDbContext : DbContext, IAppDbContext
         modelBuilder.Entity<PcmsoDetalhe>().HasQueryFilter(p =>
             p.Ativo && (_usuarioAtual.TemAcessoGlobal || (p.ObraId.HasValue && _usuarioAtual.ObrasPermitidas.Contains(p.ObraId.Value))));
         modelBuilder.Entity<Atividade>().HasQueryFilter(a =>
+            a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
+        modelBuilder.Entity<AtividadeFuncao>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
         modelBuilder.Entity<Ghe>().HasQueryFilter(g =>
             g.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(g.ObraId)));

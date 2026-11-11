@@ -70,6 +70,7 @@ public interface IAppDbContext
     DbSet<AtividadeEpc> AtividadeEpcs { get; }
     DbSet<AtividadeDocumento> AtividadeDocumentos { get; }
     DbSet<AtividadeItemOs> AtividadeItensOs { get; }
+    DbSet<AtividadeFuncao> AtividadesFuncoes { get; }
     DbSet<Ghe> Ghes { get; }
     DbSet<GheFuncao> GheFuncoes { get; }
     DbSet<Perigo> Perigos { get; }

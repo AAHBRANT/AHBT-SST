@@ -15,7 +15,19 @@ public static class AvaliadorPendenciasOs
         bool TemDescricaoAtividades,
         List<AtividadeAvaliada> Atividades,
         List<TreinamentoOsDto> Treinamentos,
-        AsoOsDto? Aso);
+        AsoOsDto? Aso,
+        // Atividades por função (Entrega 4, 10/11/2026). Padrão = função "definida", que mantém o
+        // comportamento anterior para quem não informa estes campos.
+        // Definidas: toda atividade em uso dos GHEs da função tem decisão (Validada ou Descartada).
+        bool AtividadesDaFuncaoDefinidas = true,
+        // Nomes das atividades em uso ainda sem decisão do engenheiro (Pendente também conta como sem decisão).
+        List<string>? AtividadesSemDecisao = null,
+        // Transição: há atividades em uso e NENHUMA decisão ainda; a minuta traz todas as atividades (prévia).
+        bool SemNenhumaDecisao = false,
+        // Todas as atividades em uso foram decididas e nenhuma ficou confirmada para a função.
+        bool TodasDescartadas = false,
+        string? FuncaoNome = null,
+        List<int>? GhesNumeros = null);
 
     public static List<PendenciaOsDto> Avaliar(Entrada e)
     {
@@ -34,11 +46,38 @@ public static class AvaliadorPendenciasOs
             p.Add(new("SemDescricaoAtividades", "O PGR não descreve as atividades desta função",
                 "A OS precisa trazer, na íntegra, as atividades da função conforme o PGR.", "SST", "pgr", pgr));
 
-        if (e.FuncaoTemGhe && e.Atividades.Count == 0)
-            p.Add(new("SemAtividades", "O GHE da função não tem atividades com riscos no inventário",
-                "Sem o inventário não há riscos nem medidas para informar na OS.", "SST", "pgr", pgr));
+        var funcao = string.IsNullOrWhiteSpace(e.FuncaoNome) ? "do trabalhador" : e.FuncaoNome!.Trim();
+        var semDecisao = e.AtividadesSemDecisao ?? new List<string>();
 
-        foreach (var a in e.Atividades)
+        if (e.FuncaoTemGhe && e.SemNenhumaDecisao)
+        {
+            // Transição: uma única pendência no lugar das pendências por atividade (que seriam de etapas da obra inteira).
+            var ghes = e.GhesNumeros is { Count: > 0 } n
+                ? (n.Count == 1 ? $"no GHE {n[0]:00}" : $"nos GHEs {string.Join(", ", n.Select(x => x.ToString("00")))}")
+                : "no GHE";
+            p.Add(new("AtividadesFuncaoNaoConfirmadas",
+                $"As atividades da função {funcao} {ghes} ainda não foram confirmadas pelo engenheiro",
+                "A OS só lista as atividades que a função executa, confirmadas pelo Engenheiro de Segurança. Sem essa confirmação a OS traria etapas da obra inteira.",
+                "SST", "pgr", pgr));
+        }
+        else if (e.FuncaoTemGhe && e.Atividades.Count == 0)
+        {
+            if (e.TodasDescartadas)
+                p.Add(new("SemAtividades", $"Nenhuma atividade confirmada para a função {funcao}",
+                    "Todas as atividades do GHE foram descartadas para esta função; confirme ao menos uma atividade que ela executa.", "SST", "pgr", pgr));
+            else
+                p.Add(new("SemAtividades", "O GHE da função não tem atividades com riscos no inventário",
+                    "Sem o inventário não há riscos nem medidas para informar na OS.", "SST", "pgr", pgr));
+        }
+
+        if (e.FuncaoTemGhe && !e.SemNenhumaDecisao && !e.AtividadesDaFuncaoDefinidas && semDecisao.Count > 0)
+            p.Add(new("AtividadesFuncaoSemDecisao",
+                $"{semDecisao.Count} atividade(s) sem decisão do engenheiro para a função {funcao}: {string.Join(", ", semDecisao)}",
+                "Cada atividade do GHE precisa ser confirmada ou descartada para a função, para a OS listar só o que ela executa.",
+                "SST", "pgr", pgr));
+
+        // Na transição não há pendência por atividade: a atividade da obra inteira ainda não é da função.
+        foreach (var a in e.SemNenhumaDecisao ? new List<AtividadeAvaliada>() : e.Atividades)
         {
             // Agrupado por atividade: um PGR tem dezenas de riscos, e uma linha por risco afogava o pop-up.
             var semAvaliacao = a.Riscos.Where(r => !r.Avaliado).Select(r => r.Perigo).ToList();

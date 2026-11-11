@@ -1530,6 +1530,77 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("AtividadeEpcs", (string)null);
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.AtividadeFuncao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AtividadeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FuncaoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("JustificativaIa")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid>("ObraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrigemVinculo")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ValidadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ValidadoPorNome")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("ValidadoPorUsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FuncaoId");
+
+                    b.HasIndex("AtividadeId", "FuncaoId")
+                        .IsUnique()
+                        .HasFilter("[Ativo] = 1");
+
+                    b.HasIndex("ObraId", "FuncaoId");
+
+                    b.ToTable("AtividadesFuncoes", (string)null);
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.AtividadeItemOs", b =>
                 {
                     b.Property<Guid>("Id")
@@ -11196,6 +11267,27 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("Atividade");
 
                     b.Navigation("CatalogoEpc");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.AtividadeFuncao", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Atividade", null)
+                        .WithMany()
+                        .HasForeignKey("AtividadeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Funcao", null)
+                        .WithMany()
+                        .HasForeignKey("FuncaoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Obra", null)
+                        .WithMany()
+                        .HasForeignKey("ObraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.AtividadeItemOs", b =>

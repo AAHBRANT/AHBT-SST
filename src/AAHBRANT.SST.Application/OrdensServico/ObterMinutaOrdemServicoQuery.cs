@@ -74,7 +74,7 @@ public class ObterMinutaOrdemServicoQueryHandler : IRequestHandler<ObterMinutaOr
             .OrderBy(g => g.Numero).ToList();
 
         // Atividades dos GHEs da função, com riscos, medidas e detalhes.
-        var atividades = await _db.Atividades.EmUso(_db)
+        var atividadesEmUso = await _db.Atividades.EmUso(_db)
             .Where(a => a.GheId != null && ghesDaFuncao.Contains(a.GheId.Value))
             .Include(a => a.Ghe)
             .Include(a => a.Riscos).ThenInclude(r => r.Perigo)
@@ -84,6 +84,24 @@ public class ObterMinutaOrdemServicoQueryHandler : IRequestHandler<ObterMinutaOr
             .Include(a => a.ItensOs)
             .OrderBy(a => a.Nome)
             .ToListAsync(ct);
+
+        // Atividades por função (Entrega 4): a OS lista só as que o engenheiro confirmou para a função.
+        // Sem nenhuma decisão ainda (transição), a minuta continua com todas, como prévia, e o avaliador
+        // troca as pendências por atividade por uma só.
+        var idsEmUso = atividadesEmUso.Select(a => a.Id).ToList();
+        var decisoes = await _db.AtividadesFuncoes
+            .Where(x => x.FuncaoId == t.FuncaoId && idsEmUso.Contains(x.AtividadeId)
+                && (x.Status == StatusMedidaPrevencao.Validada || x.Status == StatusMedidaPrevencao.Descartada))
+            .Select(x => new { x.AtividadeId, x.Status }).ToListAsync(ct);
+        var validadasIds = decisoes.Where(d => d.Status == StatusMedidaPrevencao.Validada).Select(d => d.AtividadeId).ToHashSet();
+        var decididasIds = decisoes.Select(d => d.AtividadeId).ToHashSet();
+        var semNenhumaDecisao = atividadesEmUso.Count > 0 && decididasIds.Count == 0;
+        var semDecisao = semNenhumaDecisao
+            ? new List<string>()
+            : atividadesEmUso.Where(a => !decididasIds.Contains(a.Id)).Select(a => a.Nome).ToList();
+        var definidas = !semNenhumaDecisao && semDecisao.Count == 0;
+        var atividades = semNenhumaDecisao ? atividadesEmUso : atividadesEmUso.Where(a => validadasIds.Contains(a.Id)).ToList();
+        minuta.AtividadesDaFuncaoConfirmadas = definidas;
 
         var avaliacao = new List<AvaliadorPendenciasOs.AtividadeAvaliada>();
         foreach (var a in atividades)
@@ -177,7 +195,13 @@ public class ObterMinutaOrdemServicoQueryHandler : IRequestHandler<ObterMinutaOr
             gheFuncoes.Any(gf => !string.IsNullOrWhiteSpace(gf.DescricaoAtividades)),
             avaliacao,
             minuta.Treinamentos,
-            minuta.Aso));
+            minuta.Aso,
+            AtividadesDaFuncaoDefinidas: definidas,
+            AtividadesSemDecisao: semDecisao,
+            SemNenhumaDecisao: semNenhumaDecisao,
+            TodasDescartadas: definidas && atividadesEmUso.Count > 0 && atividades.Count == 0,
+            FuncaoNome: funcao?.Nome,
+            GhesNumeros: minuta.Ghes.Select(g => g.Numero).ToList()));
 
         return minuta;
     }

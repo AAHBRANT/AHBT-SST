@@ -101,6 +101,8 @@ public static class DependencyInjection
         services.AddScoped<AAHBRANT.SST.Application.Acidentes.RelatoIa.IAnalistaPlanoOcorrencia, AzureOpenAiAnalistaPlanoOcorrencia>();
         services.AddScoped<AAHBRANT.SST.Application.Riscos.Medidas.IAnalistaMedidasPrevencao, AzureOpenAiAnalistaMedidasPrevencao>();
         services.AddScoped<AAHBRANT.SST.Application.GeracaoPgr.IGeradorPgrIa, ClaudeGeradorPgr>();
+        // Atividades por função na OS: a IA sugere, o Engenheiro de Segurança confirma (10/11/2026). Só Claude.
+        services.AddScoped<AAHBRANT.SST.Application.Ghes.AtividadesFuncao.IAnalistaAtividadesFuncao, ClaudeAnalistaAtividadesFuncao>();
         // Mapas do plano de emergência: serviços públicos do OpenStreetMap, que exigem identificar o aplicativo.
         services.Configure<AAHBRANT.SST.Infrastructure.Integracao.Mapas.MapasOptions>(configuration.GetSection("Mapas"));
         services.AddHttpClient<AAHBRANT.SST.Application.GeracaoPgr.IProvedorMapaEmergencia, AAHBRANT.SST.Infrastructure.Integracao.Mapas.OpenStreetMapEmergenciaProvedor>(http =>
