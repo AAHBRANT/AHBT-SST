@@ -404,6 +404,17 @@ public class SstDbContext : DbContext, IAppDbContext
         }
     }
 
+    // UpdatedBy sempre reflete quem fez ESTA alteração; só não é tocado quando o próprio código
+    // já o definiu nesta gravação (valor diferente do original) ou quando não há usuário.
+    private void AplicarUpdatedBy(AuditableEntity entidade)
+    {
+        var usuarioId = _usuarioAtual.UsuarioId;
+        if (usuarioId is null) return;
+        var prop = Entry(entidade).Property(e => e.UpdatedBy);
+        if (prop.IsModified && prop.CurrentValue != prop.OriginalValue) return;
+        entidade.UpdatedBy = usuarioId;
+    }
+
     private void AplicarAuditoria()
     {
         var agora = DateTime.UtcNow;
@@ -413,15 +424,19 @@ public class SstDbContext : DbContext, IAppDbContext
             {
                 case EntityState.Added:
                     entry.Entity.CreatedAtUtc = agora;
+                    // Não sobrescreve valor definido pelo código; sem usuário (Worker/sistema) fica nulo.
+                    entry.Entity.CreatedBy ??= _usuarioAtual.UsuarioId;
                     break;
                 case EntityState.Modified:
                     entry.Entity.UpdatedAtUtc = agora;
+                    AplicarUpdatedBy(entry.Entity);
                     break;
                 case EntityState.Deleted:
                     // Nenhum registro crítico é excluído fisicamente — converter em soft-delete.
                     entry.State = EntityState.Modified;
                     entry.Entity.Ativo = false;
                     entry.Entity.UpdatedAtUtc = agora;
+                    AplicarUpdatedBy(entry.Entity);
                     break;
             }
         }

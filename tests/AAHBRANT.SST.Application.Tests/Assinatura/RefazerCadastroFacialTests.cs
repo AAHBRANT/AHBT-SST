@@ -45,6 +45,8 @@ public class RefazerCadastroFacialTests
 
     private sealed class UsuarioFalso : ICurrentUserService
     {
+        public Guid? UsuarioId { get; private set; }
+        public void DefinirUsuarioId(Guid? usuarioId) => UsuarioId = usuarioId;
         public bool TemAcessoGlobal { get; private set; } = true;
         public IReadOnlyList<Guid> ObrasPermitidas { get; private set; } = Array.Empty<Guid>();
         public void DefinirEscopo(bool temAcessoGlobal, IReadOnlyList<Guid> obrasPermitidas)
