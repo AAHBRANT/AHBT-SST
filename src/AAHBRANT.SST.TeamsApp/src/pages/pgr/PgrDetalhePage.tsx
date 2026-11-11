@@ -1,7 +1,7 @@
 import { dataBr } from '../../components/documentos-obra/CartoesVigentesPorObra';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Abas, Button, Card, Carregando, FeedbackInline, PageHeader, StatusChip, Text, type Tom } from '@ui';
+import { Abas, useAbaNaUrl, Button, Card, Carregando, FeedbackInline, PageHeader, StatusChip, Text, type Tom } from '@ui';
 import { DocumentArrowUp24Regular, DocumentPdf24Regular } from '@fluentui/react-icons';
 import { DialogoNovaRevisao } from '../../components/revisoes/DialogoNovaRevisao';
 import { BotaoLerComIa, PainelLeituraIa, useLeituraIa } from '../../components/leitura-ia/PainelLeituraIa';
@@ -17,11 +17,13 @@ import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { GhesTab } from '../../components/estrutura-sst/GhesTab';
 import { InventarioTab } from './InventarioTab';
+import { AtividadesPorFuncaoTab, useAtividadesFuncaoGhes } from './AtividadesPorFuncaoTab';
 import { PlanoAcaoTab } from './PlanoAcaoTab';
 import { PgrRevisoesTab } from './PgrRevisoesTab';
 import { DialogoNovaRevisaoPgr } from './DialogoNovaRevisaoPgr';
 
-type AbaPgr = 'resumo' | 'ghe' | 'inventario' | 'planoAcao' | 'revisoes';
+const abasPgr = ['resumo', 'ghe', 'atividades-funcao', 'inventario', 'planoAcao', 'revisoes'] as const;
+type AbaPgr = (typeof abasPgr)[number];
 
 // Mapeamento por julgamento (guia item 5): Vigente é o único estado claramente positivo (ok); Em
 // revisão pede atenção; Encerrado é neutro-informativo (info).
@@ -41,7 +43,9 @@ export function PgrDetalhePage() {
   const navigate = useNavigate();
   const souAdmin = useSouAdministrador();
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
-  const [aba, setAba] = useState<AbaPgr>('resumo');
+  // ?aba=atividades-funcao abre a aba direto (atalho das pendências da Ordem de Serviço).
+  const [aba, setAba] = useAbaNaUrl<AbaPgr>('aba', abasPgr, 'resumo');
+  const [atividadeEmFoco, setAtividadeEmFoco] = useState<string | null>(null);
   const [detalhe, setDetalhe] = useState<PgrDetalhe | null>(null);
   const [obras, setObras] = useState<Obra[]>([]);
   const [geracao, setGeracao] = useState<ResumoGeracaoPgrEap | undefined>();
@@ -50,6 +54,8 @@ export function PgrDetalhePage() {
   const [revisaoEapAberta, setRevisaoEapAberta] = useState(false);
   const [versaoDocumento, setVersaoDocumento] = useState(0);
   const leituraIa = useLeituraIa('pgr', id ?? '');
+  const obraDoPgr = detalhe?.pgr.obraId ?? '';
+  const atividadesFuncao = useAtividadesFuncaoGhes(obraDoPgr);
 
   async function carregar() {
     if (!id) return;
@@ -209,6 +215,11 @@ export function PgrDetalhePage() {
           abas={[
             { valor: 'resumo', rotulo: 'Resumo' },
             { valor: 'ghe', rotulo: 'GHE' },
+            {
+              valor: 'atividades-funcao',
+              rotulo: 'Atividades por função',
+              ponto: atividadesFuncao.pendente ? { tom: 'atencao', titulo: 'Há funções sem confirmação' } : undefined,
+            },
             { valor: 'inventario', rotulo: 'Riscos e medidas' },
             { valor: 'planoAcao', rotulo: 'Plano de ação' },
             { valor: 'revisoes', rotulo: 'Revisões' },
@@ -244,7 +255,27 @@ export function PgrDetalhePage() {
         </>
       )}
       {aba === 'ghe' && <GhesTab obraId={pgr.obraId} />}
-      {aba === 'inventario' && <InventarioTab atividades={detalhe.atividades} aoAlterar={carregar} />}
+      {aba === 'atividades-funcao' && (
+        atividadesFuncao.ghes === null ? (
+          <Carregando variante="detalhe" linhas={4} />
+        ) : (
+          <>
+            {atividadesFuncao.falhou && <FeedbackInline tom="erro">{atividadesFuncao.falhou}</FeedbackInline>}
+            <AtividadesPorFuncaoTab
+              obraId={pgr.obraId}
+              ghes={atividadesFuncao.ghes}
+              aoAlterar={atividadesFuncao.recarregar}
+              aoVincularProcedimento={(atividadeId) => {
+                setAtividadeEmFoco(atividadeId);
+                setAba('inventario');
+              }}
+            />
+          </>
+        )
+      )}
+      {aba === 'inventario' && (
+        <InventarioTab atividades={detalhe.atividades} aoAlterar={carregar} atividadeEmFoco={atividadeEmFoco} />
+      )}
       {aba === 'planoAcao' && <PlanoAcaoTab pgrId={pgrId} riscosDisponiveis={riscosDisponiveis} />}
       {aba === 'revisoes' && <PgrRevisoesTab key={versaoDocumento} pgrId={pgrId} />}
       {dialogoVisualizador}

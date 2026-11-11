@@ -591,6 +591,9 @@ export interface UsuarioLogado {
   // Administrador é o único que pode excluir registro operacional (regra fixa no servidor, não
   // configurável pela matriz de permissões — ver PoliticasAutorizacao no backend).
   ehAdministrador: boolean;
+  // Só o Engenheiro de Segurança confirma atividades por função. O servidor ainda não informa isto
+  // aqui (ausente = desconhecido): a tela libera a edição e trata a recusa (403) do servidor.
+  ehEngenheiroSeguranca?: boolean;
   permissoes: string[];
   // Onde cada permissão vale (Responsável x Supervisão, 06/11/2026). global = todas as obras;
   // obras = obras atribuídas. Ausente = servidor antigo ou acesso total.
@@ -1486,6 +1489,26 @@ export interface Ghe {
   medidasProtecaoExistentes: string | null;
   funcoes: GheFuncao[];
   riscos: GheRisco[];
+}
+
+// Atividades por função na OS (Entrega 4, 10/11/2026): a IA sugere, o Engenheiro de Segurança confirma.
+export type EstadoAtividadeFuncao = 'SemDecisao' | 'Pendente' | 'Validada' | 'Descartada';
+export interface FuncaoMatrizAtividades {
+  funcaoId: string; nome: string; descricaoNoPgr?: string | null;
+  validadas: number; pendentes: number; descartadas: number; semDecisao: number;
+}
+export interface AtividadeMatriz { atividadeId: string; nome: string; procedimentos: number }
+export interface CelulaMatriz {
+  atividadeId: string; funcaoId: string; estado: EstadoAtividadeFuncao;
+  origem: 'Pgr' | 'SugestaoIa' | 'Manual' | null;
+  justificativaIa?: string | null; validadoPorNome?: string | null; validadoEmUtc?: string | null;
+}
+export interface MatrizAtividadesFuncao {
+  obraId: string; gheId: string; gheNumero: number;
+  funcoes: FuncaoMatrizAtividades[]; atividades: AtividadeMatriz[]; celulas: CelulaMatriz[];
+}
+export interface ResultadoSugestaoAtividadesFuncao {
+  sugeridos: number; preexistentesIgnorados: number; chamadasIa: number; tokensEntrada: number; tokensSaida: number;
 }
 
 export interface ExameFuncaoObra {
@@ -3159,6 +3182,8 @@ export interface MinutaOrdemServico {
   aso?: { resultado: number; validade?: string | null; valido: boolean } | null;
   politicas: { titulo: string; codigo?: string | null; revisao?: string | null; formaConsulta?: string | null }[];
   pendencias: PendenciaOs[];
+  // false = prévia (função sem confirmação do engenheiro ou decisão parcial). Ausente em servidor antigo.
+  atividadesDaFuncaoConfirmadas?: boolean;
 }
 
 // Gerador de PGR pela EAP (21/10/2026). Status: 1 Rascunho, 2 Aguardando aprovação, 3 Aprovado, 4 Devolvido.
@@ -5626,6 +5651,12 @@ export const api = {
   },
   estruturaSst: {
     listarGhes: (obraId: string) => request<Ghe[]>(`/api/obras/${obraId}/ghes`),
+    obterMatrizAtividadesFuncao: (obraId: string, gheId: string) =>
+      request<MatrizAtividadesFuncao>(`/api/obras/${obraId}/ghes/${gheId}/atividades-funcao`),
+    sugerirAtividadesFuncaoComIa: (obraId: string, gheId: string) =>
+      request<ResultadoSugestaoAtividadesFuncao>(`/api/obras/${obraId}/ghes/${gheId}/atividades-funcao/sugerir-com-ia`, { method: 'POST' }),
+    decidirAtividadesFuncao: (obraId: string, itens: { atividadeId: string; funcaoId: string; executa: boolean }[]) =>
+      request<{ decididos: number }>(`/api/obras/${obraId}/atividades-funcao/decidir`, { method: 'POST', body: JSON.stringify({ itens }) }),
     listarExamesFuncao: (obraId: string, funcaoId?: string) =>
       request<ExameFuncaoObra[]>(`/api/obras/${obraId}/exames-funcao${funcaoId ? `?funcaoId=${funcaoId}` : ''}`),
   },
