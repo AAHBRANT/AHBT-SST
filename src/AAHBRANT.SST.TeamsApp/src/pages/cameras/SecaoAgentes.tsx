@@ -23,6 +23,7 @@ import { MarcaEstado } from './PecasCameraIp';
 import { descreverHa, formatarDiaHora, situacaoDoAgente } from './rotulos';
 
 interface SegredoGerado {
+  id: string;
   nome: string;
   segredo: string;
 }
@@ -53,6 +54,8 @@ export function SecaoAgentes({ agentes, equipamentos, obras, souAdministrador }:
   const [copiado, setCopiado] = useState(false);
   const [copiaFalhou, setCopiaFalhou] = useState(false);
   const [guardei, setGuardei] = useState(false);
+  // Identificador do agente: não é segredo, mas o instalador do PC da obra pede junto com o segredo.
+  const [idCopiado, setIdCopiado] = useState<string | null>(null);
 
   const vazio = agentes.length === 0 && !criando && !segredo;
 
@@ -72,7 +75,7 @@ export function SecaoAgentes({ agentes, equipamentos, obras, souAdministrador }:
       setSalvando(true);
       setErro(null);
       const registro = await api.cameras.criarAgente(obraId, nomeLimpo);
-      setSegredo({ nome: nomeLimpo, segredo: registro.segredo });
+      setSegredo({ id: registro.id, nome: nomeLimpo, segredo: registro.segredo });
       setCopiado(false);
       setCopiaFalhou(false);
       setGuardei(false);
@@ -94,6 +97,16 @@ export function SecaoAgentes({ agentes, equipamentos, obras, souAdministrador }:
     } catch {
       // Sem permissão de área de transferência: o texto segue selecionável para copiar à mão.
       setCopiaFalhou(true);
+    }
+  }
+
+  async function copiarId(id: string) {
+    try {
+      await navigator.clipboard.writeText(id);
+      setIdCopiado(id);
+    } catch {
+      // Sem permissão de área de transferência: o identificador segue selecionável para copiar à mão.
+      setIdCopiado(null);
     }
   }
 
@@ -203,7 +216,19 @@ export function SecaoAgentes({ agentes, equipamentos, obras, souAdministrador }:
             <strong>Guarde este segredo agora.</strong> Ele aparece só desta vez e não dá para ver depois. Se perder, revogue o
             agente e crie outro.
           </FeedbackInline>
-          <div className={mergeClasses(tipo.micro, e.apoio)}>Segredo do agente</div>
+          <div className={mergeClasses(tipo.micro, e.apoio)}>Identificador do agente</div>
+          <div className={e.segredoLinha}>
+            <code className={e.mono} style={{ userSelect: 'all', overflowWrap: 'anywhere' }} aria-label="Identificador do agente">
+              {segredo.id}
+            </code>
+            <Button className={e.botao} icon={<Copy20Regular />} onClick={() => void copiarId(segredo.id)}>
+              {idCopiado === segredo.id ? 'Copiado' : 'Copiar identificador'}
+            </Button>
+          </div>
+          <div className={mergeClasses(tipo.legenda, e.apoio)}>
+            O instalador do agente pede o identificador e o segredo. O identificador continua visível na lista de agentes.
+          </div>
+          <div className={mergeClasses(tipo.micro, e.apoio)} style={{ marginTop: 10 }}>Segredo do agente</div>
           <div className={e.segredoLinha}>
             <code className={e.segredo} aria-label="Segredo do agente">
               {segredo.segredo}
@@ -257,6 +282,21 @@ export function SecaoAgentes({ agentes, equipamentos, obras, souAdministrador }:
                       {a.nome}
                     </div>
                     <div className={mergeClasses(tipo.legenda, e.apoio)}>{a.obraNome}</div>
+                    <div className={mergeClasses(tipo.micro, e.rotuloMicro)} style={{ marginTop: 8 }}>Identificador</div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <code className={mergeClasses(tipo.legenda, e.mono)} style={{ userSelect: 'all', overflowWrap: 'anywhere' }}>
+                        {a.id}
+                      </code>
+                      <Button
+                        size="small"
+                        appearance="subtle"
+                        icon={<Copy20Regular />}
+                        aria-label={`Copiar o identificador do agente ${a.nome}`}
+                        onClick={() => void copiarId(a.id)}
+                      >
+                        {idCopiado === a.id ? 'Copiado' : 'Copiar'}
+                      </Button>
+                    </div>
                   </div>
                   <div>
                     <div className={mergeClasses(tipo.micro, e.rotuloMicro)}>Situação</div>
