@@ -101,6 +101,10 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
             .GroupBy(t => (t.TrabalhadorId, t.CursoTreinamentoId))
             .ToDictionary(g => g.Key, g => g.Max(t => t.DataValidade));
 
+        // NR-01 = a própria OS: o curso NR-01 exigido conta como cumprido com a OS vigente da obra assinada pela pessoa.
+        var comOsAssinada = await CursoNr01OrdemServico.TrabalhadoresComOsAssinadaAsync(
+            _db, trabalhadores.Select(t => (t.Id, t.ObraId)), ct);
+
         var liberados = 0;
         var semAso = 0;
         var treinamentoPendente = 0;
@@ -125,8 +129,15 @@ public class ObterLiberacaoParaTrabalhoQueryHandler : IRequestHandler<ObterLiber
                     exigidos.Add(integracao);
                 foreach (var cursoId in exigidos.Where(curso => !treinamentosValidos.Contains((trabalhador.Id, curso))))
                 {
-                    treinamentosOk = false;
                     var curso = cursosExistentes[cursoId];
+                    if (CursoNr01OrdemServico.Eh(curso.Nome, curso.NormaReferencia))
+                    {
+                        if (comOsAssinada.Contains(trabalhador.Id)) continue;
+                        treinamentosOk = false;
+                        motivos.Add(new MotivoBloqueioDto("Treinamento", CursoNr01OrdemServico.TextoNaoAssinada));
+                        continue;
+                    }
+                    treinamentosOk = false;
                     var rotulo = string.IsNullOrWhiteSpace(curso.NormaReferencia) ? curso.Nome : curso.NormaReferencia;
                     motivos.Add(new MotivoBloqueioDto("Treinamento", ultimaValidadeTreinamento.TryGetValue((trabalhador.Id, cursoId), out var validade)
                         ? $"{rotulo} vencido em {validade:dd/MM/yyyy}"

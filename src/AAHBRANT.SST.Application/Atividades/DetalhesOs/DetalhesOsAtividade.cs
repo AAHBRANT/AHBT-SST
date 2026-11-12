@@ -71,7 +71,7 @@ public class ObterDetalhesOsAtividadeQueryHandler : IRequestHandler<ObterDetalhe
             var cursosCat = await _db.CursosTreinamento.Select(c => new { c.Id, c.Nome, c.NormaReferencia }).ToDictionaryAsync(c => c.Id, ct);
             foreach (var f in funcoesDoGhe)
                 foreach (var id in exigencias(a.ObraId, f.FuncaoId) ?? new List<Guid>())
-                    if (cursosCat.TryGetValue(id, out var c))
+                    if (cursosCat.TryGetValue(id, out var c) && !CursoNr01OrdemServico.Eh(c.Nome, c.NormaReferencia))
                         treinamentos.Add(new TreinamentoExigidoDto(c.Nome, c.NormaReferencia, f.Nome));
         }
 

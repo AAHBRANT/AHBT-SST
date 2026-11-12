@@ -50,10 +50,18 @@ public static class CalculadoraLiberacaoTerceirizado
             var idsExigidos = await ExigenciasTreinamento.CursosAsync(db, obraDoTerceirizado, funcaoId, ct);
             var treinamentosObrigatorios = await db.CursosTreinamento
                 .Where(c => idsExigidos.Contains(c.Id))
-                .Select(c => new { CursoTreinamentoId = c.Id, c.Nome })
+                .Select(c => new { CursoTreinamentoId = c.Id, c.Nome, c.NormaReferencia })
                 .ToListAsync(ct);
             foreach (var curso in treinamentosObrigatorios)
             {
+                // NR-01 = a própria OS: vale a OS vigente da obra assinada pelo terceirizado.
+                if (CursoNr01OrdemServico.Eh(curso.Nome, curso.NormaReferencia))
+                {
+                    var osAssinada = obraDoTerceirizado is { } obraOs
+                        && (await CursoNr01OrdemServico.TrabalhadoresComOsAssinadaAsync(db, [(trabalhadorId, obraOs)], ct)).Contains(trabalhadorId);
+                    if (!osAssinada) pendencias.Add(CursoNr01OrdemServico.TextoNaoAssinada);
+                    continue;
+                }
                 var valido = await db.Treinamentos.AnyAsync(t => t.TrabalhadorId == trabalhadorId
                     && t.CursoTreinamentoId == curso.CursoTreinamentoId && t.DataValidade.Date >= hoje, ct);
                 if (!valido) pendencias.Add($"Treinamento obrigatório pendente: {curso.Nome}");

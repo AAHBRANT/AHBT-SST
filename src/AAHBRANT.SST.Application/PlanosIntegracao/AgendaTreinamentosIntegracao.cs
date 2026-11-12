@@ -60,7 +60,8 @@ public static class AgendaTreinamentosIntegracao
         // Mesma isenção de CalculadoraLiberacaoTerceirizado: o Técnico de Segurança é quem conduz as turmas.
         if (FuncaoSstClassifier.EhTecnicoSeguranca(funcaoNome)) return agendadas;
 
-        var cursos = await db.CursosTreinamento.ToListAsync(ct);
+        // O curso NR-01 / Ordem de Serviço nunca ganha turma: a etapa da OS já é a NR-01.
+        var cursos = (await db.CursosTreinamento.ToListAsync(ct)).Where(c => !CursoNr01OrdemServico.Eh(c)).ToList();
         var idsDaFuncao = await ExigenciasTreinamento.CursosAsync(db, trabalhador.ObraId, trabalhador.FuncaoId, ct);
 
         var ordem = new List<(CursoTreinamento Curso, bool Primeira)>();

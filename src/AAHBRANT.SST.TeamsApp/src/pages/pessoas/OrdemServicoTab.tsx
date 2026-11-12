@@ -318,7 +318,7 @@ function PreviaOs({ minuta }: { minuta: MinutaOrdemServico }) {
 
       {secao(2, 'Identificação do trabalhador')}
       <Text style={{ display: 'block' }}>
-        {minuta.trabalhador.nome} · CPF {minuta.trabalhador.cpfMascarado}{minuta.trabalhador.matricula ? ` · Matrícula ${minuta.trabalhador.matricula}` : ''}
+        {minuta.trabalhador.nome} · CPF {minuta.trabalhador.cpf || minuta.trabalhador.cpfMascarado}{minuta.trabalhador.matricula ? ` · Matrícula ${minuta.trabalhador.matricula}` : ''}
       </Text>
       <Text style={{ display: 'block' }}>
         {minuta.trabalhador.funcao}{minuta.trabalhador.cbo ? ` · CBO ${minuta.trabalhador.cbo}` : ''} · Admissão {data(minuta.trabalhador.dataAdmissao)}

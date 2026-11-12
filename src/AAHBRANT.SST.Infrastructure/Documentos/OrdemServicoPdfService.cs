@@ -62,7 +62,7 @@ public class OrdemServicoPdfService : IOrdemServicoPdfService
 
                     Secao(col, 2, "Identificação do trabalhador");
                     Linha(col, "Nome", c.Trabalhador.Nome);
-                    Linha(col, "Matrícula / CPF", $"{c.Trabalhador.Matricula ?? "—"}  •  CPF {c.Trabalhador.CpfMascarado}");
+                    Linha(col, "Matrícula / CPF", $"{c.Trabalhador.Matricula ?? "—"}  •  CPF {(string.IsNullOrWhiteSpace(c.Trabalhador.Cpf) ? c.Trabalhador.CpfMascarado : c.Trabalhador.Cpf)}");
                     Linha(col, "Função / CBO", $"{c.Trabalhador.Funcao}{(c.Trabalhador.Cbo is null ? "" : $"  •  CBO {c.Trabalhador.Cbo}")}");
                     Linha(col, "Admissão", c.Trabalhador.DataAdmissao.ToString("dd/MM/yyyy"));
 

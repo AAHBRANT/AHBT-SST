@@ -37,7 +37,9 @@ public static class ExigenciasEtapasIntegracao
         var hoje = HojeBrasilia();
         var ids = trabalhadores.Select(t => t.Id).ToList();
         var cursos = await db.CursosTreinamento.ToListAsync(ct);
+        // O curso NR-01 / Ordem de Serviço não é etapa de curso: a etapa da OS já é a NR-01.
         var normaPorCurso = cursos
+            .Where(c => !CursoNr01OrdemServico.Eh(c))
             .Select(c => (c.Id, Norma: PacoteIntegracao.NormaDoCurso(c)))
             .Where(x => x.Norma is not null)
             .ToDictionary(x => x.Id, x => x.Norma!);

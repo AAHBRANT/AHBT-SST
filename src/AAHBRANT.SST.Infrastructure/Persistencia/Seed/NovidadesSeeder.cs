@@ -2799,6 +2799,21 @@ public static class NovidadesSeeder
                     "O pop-up \"Funcionário novo\" agendava as turmas da integração e pedia a data de cada uma.",
                     "O pop-up passa a mostrar se a integração está pendente, em andamento (com a etapa) ou feita, e leva direto para \"Iniciar integração\" ou \"Continuar integração\". Não há mais data de turma para a integração."),
             }),
+        new(
+            Versao: "5.160.0",
+            Titulo: "Ordem de Serviço sem bloqueio pela NR-01",
+            DataPublicacao: new DateTime(2026, 11, 11, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "A Ordem de Serviço deixa de ser bloqueada pelo curso NR-01",
+                    "Quando o PGR exigia o curso \"NR-01 - Ordem de Serviço\" para a função, a OS ficava travada pela pendência \"Treinamento não realizado\", como se fosse preciso ter a OS para emitir a OS.",
+                    "A própria Ordem de Serviço assinada cumpre a NR-01. O curso não trava mais a emissão e não ganha turma. Na liberação para o trabalho, a NR-01 fica cumprida quando a pessoa assina a OS vigente da obra."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "A Ordem de Serviço mostra o CPF completo do trabalhador",
+                    "A tela e o PDF da Ordem de Serviço traziam o CPF com asteriscos, só com os dois últimos dígitos.",
+                    "A Ordem de Serviço passa a mostrar o CPF completo do trabalhador, na tela e no PDF, inclusive nas OS já emitidas. As demais telas e documentos continuam com o CPF protegido."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

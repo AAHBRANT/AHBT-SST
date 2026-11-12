@@ -50,6 +50,12 @@ public class ExportarOrdemServicoPdfQueryHandler : IRequestHandler<ExportarOrdem
         if (os is null) return null;
 
         var conteudo = JsonSerializer.Deserialize<MinutaOrdemServicoDto>(os.ConteudoJson)!;
+        // CPF completo da OS (também das já emitidas, que congelaram o CPF mascarado): lido do cadastro na hora de gerar,
+        // sem alterar o conteúdo congelado. O endpoint exige trabalhador:ver; o valor não vai para log.
+        var cpfAtual = await _db.Trabalhadores.IgnoreQueryFilters()
+            .Where(t => t.Id == os.TrabalhadorId).Select(t => t.Cpf).FirstOrDefaultAsync(ct);
+        if (!string.IsNullOrWhiteSpace(cpfAtual))
+            conteudo.Trabalhador.Cpf = AAHBRANT.SST.Application.Common.CpfMascarador.Formatar(cpfAtual);
         var logo = await _db.Obras.IgnoreQueryFilters()
             .Where(o => o.Id == os.ObraId)
             .Select(o => o.LogoConteudo)
