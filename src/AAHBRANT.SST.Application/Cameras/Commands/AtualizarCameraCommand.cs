@@ -13,7 +13,14 @@ public record AtualizarCameraCommand(
     Guid? AreaSstId,
     TipoCamera Tipo,
     bool Habilitada,
-    int IntervaloMinimoAlertasMinutos) : IRequest;
+    int IntervaloMinimoAlertasMinutos,
+    // Fonte nula = não mexe na origem da imagem (nem em equipamento, canal, stream e intervalo): quem edita só o nome ou a
+    // área não precisa reenviar nada. Fonte informada = os campos da câmera IP passam a valer como enviados.
+    FonteCamera? Fonte = null,
+    Guid? EquipamentoCameraId = null,
+    int? Canal = null,
+    int? Stream = null,
+    int? IntervaloEnvioSegundos = null) : IRequest;
 
 public class AtualizarCameraCommandValidator : AbstractValidator<AtualizarCameraCommand>
 {
@@ -23,6 +30,14 @@ public class AtualizarCameraCommandValidator : AbstractValidator<AtualizarCamera
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Tipo).IsInEnum();
         RuleFor(x => x.IntervaloMinimoAlertasMinutos).InclusiveBetween(0, 1440);
+        RuleFor(x => x.Fonte).IsInEnum();
+        When(x => x.IntervaloEnvioSegundos is not null, () => RuleFor(x => x.IntervaloEnvioSegundos!.Value).IntervaloDeEnvio());
+        When(x => x.Fonte == FonteCamera.Rtsp, () =>
+        {
+            RuleFor(x => x.EquipamentoCameraId).Must(id => id is { } g && g != Guid.Empty).WithMessage("Escolha o equipamento da câmera IP.");
+            RuleFor(x => x.Canal).Must(c => c is 1 or 2).WithMessage("O canal (lente) precisa ser 1 ou 2.");
+            RuleFor(x => x.Stream).Must(s => s is 0 or 1).WithMessage("A qualidade precisa ser principal (0) ou secundária (1).");
+        });
     }
 }
 
@@ -42,6 +57,34 @@ public class AtualizarCameraCommandHandler : IRequestHandler<AtualizarCameraComm
         var nome = request.Nome.Trim();
         if (await _db.Cameras.AnyAsync(c => c.Id != camera.Id && c.ObraId == camera.ObraId && c.Nome == nome, ct))
             throw new InvalidOperationException($"Já existe uma câmera chamada \"{nome}\" nesta obra.");
+
+        if (request.Fonte is { } fonte)
+        {
+            var ip = fonte == FonteCamera.Rtsp;
+            var mudouDeOrigem = camera.Fonte != fonte || camera.EquipamentoCameraId != (ip ? request.EquipamentoCameraId : null)
+                || camera.Canal != (ip ? request.Canal : null);
+            if (ip) await CameraIpRegras.ExigirLenteLivreAsync(_db, request.EquipamentoCameraId!.Value, request.Canal!.Value, camera.Id, ct);
+
+            camera.Fonte = fonte;
+            camera.EquipamentoCameraId = ip ? request.EquipamentoCameraId : null;
+            camera.Canal = ip ? request.Canal : null;
+            camera.Stream = ip ? request.Stream : null;
+            if (mudouDeOrigem)
+            {
+                camera.SituacaoConexao = SituacaoConexaoCamera.Desconhecida;
+                camera.MensagemConexao = null;
+                camera.UltimoQuadroRecebidoEmUtc = null;
+            }
+        }
+        if (request.IntervaloEnvioSegundos is { } intervaloEnvio) camera.IntervaloEnvioSegundos = intervaloEnvio;
+
+        // Vale também para quem só ligou a câmera (Habilitada) sem mexer na origem: câmera IP ligada exige equipamento com senha.
+        if (camera.Fonte == FonteCamera.Rtsp)
+        {
+            if (camera.EquipamentoCameraId is not { } equipamentoId)
+                throw new InvalidOperationException("Escolha o equipamento da câmera IP.");
+            await CameraIpRegras.ExigirEquipamentoUsavelAsync(_db, equipamentoId, camera.ObraId, request.Habilitada, ct);
+        }
 
         camera.Nome = nome;
         camera.AreaSstId = request.AreaSstId;
