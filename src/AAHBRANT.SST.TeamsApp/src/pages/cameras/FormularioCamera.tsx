@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Campo, FeedbackInline, Field, FormGrid, FormRodape, FormSection, Input, Select, Switch } from '@ui';
-import { api, TipoCamera, tipoCameraLabel, type CameraResumo, type DadosCamera, type Obra } from '../../lib/api';
+import { Button, Campo, FeedbackInline, Field, FormGrid, FormRodape, FormSection, Input, Select, Switch, tokensUi } from '@ui';
+import { api, FonteCamera, StreamCamera, TipoCamera, tipoCameraLabel, type CameraResumo, type DadosCamera, type Obra } from '../../lib/api';
+import { useAgentesCamera, useCameras, useEquipamentosCamera } from '../../lib/consultas';
+import { OrigemImagemCamera, type OrigemImagem } from './OrigemImagemCamera';
+import { ehCameraIp } from './rotulos';
 
 const INTERVALOS_PADRAO = [0, 5, 10, 30, 60];
 // Câmera nova nasce com 30 minutos entre alertas de quem não foi identificado (igual ao padrão do servidor).
@@ -15,11 +18,13 @@ export interface FormularioCameraProps {
   camera?: CameraResumo;
   obras: Obra[];
   obraInicial?: string;
+  // Cadastro aberto a partir de uma lente livre da aba "Equipamentos e agentes": já nasce como câmera IP daquele equipamento.
+  ipInicial?: { equipamentoId: string; canal: number };
   aoSalvar: (obraId: string) => void;
   aoCancelar: () => void;
 }
 
-export function FormularioCamera({ camera, obras, obraInicial, aoSalvar, aoCancelar }: FormularioCameraProps) {
+export function FormularioCamera({ camera, obras, obraInicial, ipInicial, aoSalvar, aoCancelar }: FormularioCameraProps) {
   const edicao = !!camera;
   const [obraId, setObraId] = useState(camera?.obraId ?? obraInicial ?? '');
   const [nome, setNome] = useState(camera?.nome ?? '');
@@ -29,6 +34,20 @@ export function FormularioCamera({ camera, obras, obraInicial, aoSalvar, aoCance
   const [intervalo, setIntervalo] = useState(camera?.intervaloMinimoAlertasMinutos ?? INTERVALO_INICIAL);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+
+  // Etapa 2 - origem da imagem. Câmera existente de tablet/navegador segue como está, a menos que o usuário troque a origem.
+  const origemSalva: OrigemImagem = camera && ehCameraIp(camera) ? 'ip' : 'tablet';
+  const [origem, setOrigem] = useState<OrigemImagem>(ipInicial ? 'ip' : origemSalva);
+  const [equipamentoId, setEquipamentoId] = useState(camera?.equipamentoCameraId ?? ipInicial?.equipamentoId ?? '');
+  const [canal, setCanal] = useState<number | null>(camera?.canal ?? ipInicial?.canal ?? null);
+  const [stream, setStream] = useState<number>(camera?.stream ?? StreamCamera.Secundaria);
+  const equipamentos = useEquipamentosCamera(obraId || undefined, !!obraId && origem === 'ip');
+  const agentes = useAgentesCamera(obraId || undefined, !!obraId && origem === 'ip');
+  const todasCameras = useCameras();
+  const equipamentoEscolhido = (equipamentos.data ?? []).find((q) => q.id === equipamentoId);
+  // Câmera IP sem a senha do equipamento pode ser salva, mas só desligada.
+  const semSenhaNoEquipamento = origem === 'ip' && !!equipamentoEscolhido && !equipamentoEscolhido.senhaDefinida;
+  const ligada = habilitada && !semSenhaNoEquipamento;
 
   const areas = useQuery({
     queryKey: ['areasSst', 'lista', obraId],
@@ -49,15 +68,31 @@ export function FormularioCamera({ camera, obras, obraInicial, aoSalvar, aoCance
     if (!obraId) return setErro('Selecione a obra da câmera.');
     if (!nomeLimpo) return setErro('Informe o nome da câmera.');
     if (nomeLimpo.length > 100) return setErro('O nome da câmera pode ter no máximo 100 caracteres.');
+    if (origem === 'ip') {
+      if (!equipamentoId) return setErro('Escolha o equipamento da câmera IP.');
+      if (canal === null) return setErro('Escolha a lente da câmera.');
+    }
 
     const dados: DadosCamera = {
       obraId,
       nome: nomeLimpo,
       areaSstId: areaSstId || null,
       tipo,
-      habilitada,
+      habilitada: ligada,
       intervaloMinimoAlertasMinutos: intervalo,
     };
+    if (origem === 'ip') {
+      dados.fonte = FonteCamera.Rtsp;
+      dados.equipamentoCameraId = equipamentoId;
+      dados.canal = canal;
+      dados.stream = stream;
+    } else if (origemSalva === 'ip') {
+      // Voltou para tablet/navegador: limpa equipamento, lente e qualidade. Câmera de tablet que continua de tablet não envia nada de origem.
+      dados.fonte = FonteCamera.Navegador;
+      dados.equipamentoCameraId = null;
+      dados.canal = null;
+      dados.stream = null;
+    }
     try {
       setSalvando(true);
       setErro(null);
@@ -92,6 +127,9 @@ export function FormularioCamera({ camera, obras, obraInicial, aoSalvar, aoCance
               onChange={(_, d) => {
                 setObraId(d.value);
                 setAreaSstId('');
+                // Equipamento e lente são da obra anterior.
+                setEquipamentoId('');
+                setCanal(null);
               }}
             >
               <option value="">Selecione</option>
@@ -150,12 +188,35 @@ export function FormularioCamera({ camera, obras, obraInicial, aoSalvar, aoCance
         </Campo>
         <Campo span={6}>
           <Switch
-            checked={habilitada}
+            checked={ligada}
+            disabled={semSenhaNoEquipamento}
             label="Monitoramento ligado"
             onChange={(_, d) => setHabilitada(d.checked)}
           />
+          {semSenhaNoEquipamento && (
+            <div style={{ color: tokensUi.status.atencao.tinta, fontSize: 12, lineHeight: '16px', fontWeight: 500, marginTop: 6 }}>
+              Para ligar, defina antes a senha do equipamento (Etapa 2).
+            </div>
+          )}
         </Campo>
       </FormGrid>
+      <FormSection titulo="Origem da imagem" numero={2}>
+        <OrigemImagemCamera
+          obraId={obraId}
+          camera={camera}
+          origem={origem}
+          aoMudarOrigem={setOrigem}
+          equipamentoId={equipamentoId}
+          aoMudarEquipamento={setEquipamentoId}
+          canal={canal}
+          aoMudarCanal={setCanal}
+          stream={stream}
+          aoMudarStream={setStream}
+          equipamentos={equipamentos.data ?? []}
+          agentes={agentes.data ?? []}
+          todasCameras={todasCameras.data ?? []}
+        />
+      </FormSection>
       <FormRodape>
         <Button onClick={aoCancelar} disabled={salvando}>
           Cancelar

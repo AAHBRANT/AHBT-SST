@@ -2807,7 +2807,23 @@ export interface CameraResumo {
   diaDoConsumo: string | null;
   analisesNoDia: number;
   custoNoDiaUsd: number;
+  // Câmera IP (fonte Rtsp), lida pelo agente da obra. situacaoConexao vem calculada no servidor e é nula para
+  // câmera de navegador ou desligada. Campos opcionais: respostas antigas (cache do service worker) não os trazem.
+  fonte?: number;
+  equipamentoCameraId?: string | null;
+  equipamentoNome?: string | null;
+  canal?: number | null;
+  stream?: number | null;
+  intervaloEnvioSegundos?: number;
+  situacaoConexao?: string | null;
+  ultimoQuadroRecebidoEmUtc?: string | null;
+  mensagemConexao?: string | null;
 }
+
+// De onde vem a imagem da câmera. A API serializa enums como número.
+export const FonteCamera = { Navegador: 0, Rtsp: 1 } as const;
+// Qualidade da imagem da câmera IP: stream 0 = principal, 1 = secundária (mais leve, recomendada).
+export const StreamCamera = { Principal: 0, Secundaria: 1 } as const;
 
 export interface DadosCamera {
   obraId: string;
@@ -2816,6 +2832,76 @@ export interface DadosCamera {
   tipo: number;
   habilitada: boolean;
   intervaloMinimoAlertasMinutos: number;
+  // Origem da imagem. Fonte omitida na edição = o servidor não mexe na origem (câmera de tablet segue como está).
+  fonte?: number;
+  equipamentoCameraId?: string | null;
+  canal?: number | null;
+  stream?: number | null;
+}
+
+// Agente de câmeras: programa instalado no PC da obra que lê as câmeras pela rede local. Nunca traz o segredo.
+export interface AgenteCamera {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  nome: string;
+  ativo: boolean;
+  versao: string | null;
+  ultimoContatoEmUtc: string | null;
+}
+
+// O segredo só existe nesta resposta (no banco fica o hash): a tela mostra uma única vez.
+export interface RegistroAgenteCamera {
+  id: string;
+  segredo: string;
+}
+
+// Equipamento = a câmera física (pode ter duas lentes, cada uma é uma câmera). Nunca traz a senha, só se ela existe.
+export interface EquipamentoCamera {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  agenteCameraId: string;
+  agenteNome: string;
+  nome: string;
+  host: string;
+  portaRtsp: number;
+  portaOnvif: number;
+  enderecoMac: string | null;
+  usuario: string | null;
+  senhaDefinida: boolean;
+  fabricante: string | null;
+  modelo: string | null;
+  ultimoIpDescobertoEmUtc: string | null;
+  quantidadeCameras: number;
+}
+
+export interface DadosEquipamentoCamera {
+  agenteCameraId: string;
+  nome: string;
+  host: string;
+  portaRtsp: number;
+  portaOnvif: number;
+  enderecoMac: string | null;
+  usuario: string | null;
+  fabricante: string | null;
+  modelo: string | null;
+}
+
+export type SituacaoTesteConexaoCamera = 'Pendente' | 'Concluido' | 'Expirado';
+
+export interface TesteConexaoCamera {
+  id: string;
+  situacao: SituacaoTesteConexaoCamera;
+  sucesso: boolean | null;
+  motivo: string | null;
+  // Motivo estável da falha (senha_recusada, camera_nao_encontrada, sem_resposta...); nulo no sucesso, no pendente e no expirado.
+  codigo: string | null;
+  detalhe: string | null;
+  // JPEG em base64, entregue uma única vez (na primeira consulta depois da resposta do agente).
+  miniaturaBase64: string | null;
+  solicitadoEmUtc: string;
+  concluidoEmUtc: string | null;
 }
 
 export type SituacaoQuadro = 'ignorado' | 'limpo' | 'ocorrencia' | 'falha';
@@ -7027,6 +7113,35 @@ export const api = {
     atualizar: (id: string, dados: Omit<DadosCamera, 'obraId'>) =>
       request<void>(`/api/cameras/${id}`, { method: 'PUT', body: JSON.stringify({ id, ...dados }) }),
     excluir: (id: string) => request<void>(`/api/cameras/${id}`, { method: 'DELETE' }),
+
+    // Agentes do PC da obra. O segredo sai uma vez, na resposta de criarAgente.
+    listarAgentes: (obraId?: string) =>
+      request<AgenteCamera[]>(`/api/cameras/agentes${obraId ? `?obraId=${obraId}` : ''}`),
+    criarAgente: (obraId: string, nome: string) =>
+      request<RegistroAgenteCamera>('/api/cameras/agentes', { method: 'POST', body: JSON.stringify({ obraId, nome }) }),
+    revogarAgente: (id: string) => request<void>(`/api/cameras/agentes/${id}`, { method: 'DELETE' }),
+
+    // Equipamentos (câmera física). A senha só entra por criar ou definirSenhaEquipamento e nunca volta.
+    listarEquipamentos: (obraId?: string) =>
+      request<EquipamentoCamera[]>(`/api/cameras/equipamentos${obraId ? `?obraId=${obraId}` : ''}`),
+    criarEquipamento: (dados: DadosEquipamentoCamera & { obraId: string; senha?: string | null }) =>
+      request<{ id: string }>('/api/cameras/equipamentos', { method: 'POST', body: JSON.stringify(dados) }),
+    // Trocando o endereço (host) a senha precisa ir junto; sem trocar o endereço ela é opcional e só grava, nunca volta.
+    atualizarEquipamento: (id: string, dados: DadosEquipamentoCamera & { senha?: string | null }) =>
+      request<void>(`/api/cameras/equipamentos/${id}`, { method: 'PUT', body: JSON.stringify({ id, ...dados }) }),
+    definirSenhaEquipamento: (id: string, senha: string) =>
+      request<void>(`/api/cameras/equipamentos/${id}/senha`, { method: 'PUT', body: JSON.stringify({ senha }) }),
+
+    // "Testar conexão": só cria o pedido (202 com o id); o agente executa e a tela consulta o resultado.
+    testarConexaoDaCamera: (cameraId: string) =>
+      request<{ id: string }>(`/api/cameras/${cameraId}/teste-conexao`, { method: 'POST' }),
+    testarConexaoDoEquipamento: (equipamentoId: string, canal: number, stream: number) =>
+      request<{ id: string }>(`/api/cameras/equipamentos/${equipamentoId}/teste-conexao`, {
+        method: 'POST',
+        body: JSON.stringify({ canal, stream }),
+      }),
+    // A miniatura vem só na primeira consulta depois da resposta do agente: quem chama guarda na memória.
+    obterTesteConexao: (id: string) => request<TesteConexaoCamera>(`/api/cameras/testes-conexao/${id}`),
 
     // multipart: campos "Foto" (JPEG) e "CapturadaEm" (ISO 8601). Sem Content-Type manual:
     // o navegador define o boundary.
