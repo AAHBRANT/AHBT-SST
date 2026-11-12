@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, FeedbackInline, FormRodape, Input, designTokens, tokensUi, useTipografia } from '@ui';
-import { Save24Regular } from '@fluentui/react-icons';
-import { api, type CatalogoUniforme, type ItemTamanhoUniforme } from '../../lib/api';
-import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { Card, FeedbackInline, designTokens, tokensUi, useTipografia } from '@ui';
+import { api, type CatalogoUniforme } from '../../lib/api';
 
 // Tamanho de uniforme por trabalhador — seção do perfil (docs/superpowers/specs/2026-09-07-modulo-
 // uniforme-design.md: "nova seção na tela de perfil dele, ao lado das demais seções de dados
@@ -11,12 +9,10 @@ import { useSucessoToast } from '../../hooks/useSucessoToast';
 // própria página de perfil. Camada ui/: como é seção de página (não página inteira), o título vai
 // no Card, não num PageHeader.
 export function TamanhosUniformeSecao({ trabalhadorId }: { trabalhadorId: string }) {
-  const sucessoToast = useSucessoToast();
   const tipo = useTipografia();
   const [itensCatalogo, setItensCatalogo] = useState<CatalogoUniforme[]>([]);
   const [tamanhos, setTamanhos] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string | null>(null);
-  const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
 
   async function carregar() {
@@ -42,26 +38,10 @@ export function TamanhosUniformeSecao({ trabalhadorId }: { trabalhadorId: string
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trabalhadorId]);
 
-  async function salvar() {
-    try {
-      setCarregando(true);
-      setErro(null);
-      const itens: ItemTamanhoUniforme[] = Object.entries(tamanhos)
-        .filter(([, tamanho]) => tamanho.trim() !== '')
-        .map(([catalogoUniformeId, tamanho]) => ({ catalogoUniformeId, tamanho: tamanho.trim() }));
-      await api.trabalhadores.definirTamanhosUniforme(trabalhadorId, itens);
-      sucessoToast('Tamanhos de uniforme salvos com sucesso.');
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao salvar tamanhos de uniforme.');
-    } finally {
-      setCarregando(false);
-    }
-  }
-
   if (carregandoLista || itensCatalogo.length === 0) return null;
 
   return (
-    <Card titulo="Tamanhos de uniforme" subtitulo="Usados na separação de kits">
+    <Card titulo="Tamanhos de uniforme" subtitulo="Vêm do cadastro no G-RH e são usados na separação de kits">
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
           {erro}
@@ -75,7 +55,7 @@ export function TamanhosUniformeSecao({ trabalhadorId }: { trabalhadorId: string
         style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: tokensUi.espaco.sm }}
       >
         {itensCatalogo.map((item) => (
-          <label
+          <div
             key={item.id}
             style={{
               display: 'flex',
@@ -90,21 +70,11 @@ export function TamanhosUniformeSecao({ trabalhadorId }: { trabalhadorId: string
             <span className={tipo.micro} style={{ color: designTokens.colorNeutralMedium }}>
               {item.nome}
             </span>
-            <Input
-              value={tamanhos[item.id] ?? ''}
-              onChange={(_, d) => setTamanhos({ ...tamanhos, [item.id]: d.value })}
-              placeholder="ex.: M, 42"
-              aria-label={`Tamanho de ${item.nome}`}
-            />
-          </label>
+            <strong>{tamanhos[item.id] || 'Não informado'}</strong>
+          </div>
         ))}
       </div>
 
-      <FormRodape>
-        <Button appearance="primary" icon={<Save24Regular />} onClick={salvar} disabled={carregando}>
-          Salvar tamanhos
-        </Button>
-      </FormRodape>
     </Card>
   );
 }

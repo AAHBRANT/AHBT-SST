@@ -4,7 +4,7 @@ import {
   Button,
   Campo,
   Card,
-  DataTable,
+  Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle,
   Field,
   FeedbackInline,
   FormGrid,
@@ -15,10 +15,10 @@ import {
   Legenda,
   PageHeader,
   PainelCriacaoInline,
+  designTokens,
   useConfirmar,
-  type Coluna,
 } from '@ui';
-import { Add24Regular, Delete24Regular, Save24Regular } from '@fluentui/react-icons';
+import { Add24Regular, Delete24Regular, Save24Regular, ZoomIn24Regular } from '@fluentui/react-icons';
 import { api, type CatalogoUniforme, type NovoCatalogoUniforme } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
@@ -50,6 +50,7 @@ export function CatalogoUniformeTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const [fotoAmpliada, setFotoAmpliada] = useState<{ item: CatalogoUniforme; url: string; revogar: boolean } | null>(null);
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -144,50 +145,22 @@ export function CatalogoUniformeTab() {
       {referenciasUniforme.map(r => <option key={r.chave} value={r.chave}>{r.nome} · {r.cor}</option>)}
     </Select>;
   }
-  const colunas: Coluna<CatalogoUniforme>[] = [
-    { chave: 'modelo', rotulo: 'Modelo / cor', render: item => edicaoId === item.id && edicao
-      ? modeloSelect(edicao.referenciaVisual, chave => setEdicao({ ...edicao, referenciaVisual: chave || null }))
-      : <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><FotoCatalogoUniforme catalogoUniformeId={item.id} temFoto={item.temFoto} referenciaVisual={item.referenciaVisual} />{referenciaUniforme(item.referenciaVisual)?.cor ?? 'Foto própria'}</div> },
-    {
-      chave: 'foto',
-      rotulo: 'Foto',
-      render: (item) => (
-        <div onClick={(ev) => ev.stopPropagation()}>
-          <SlotFotoRemota
-            key={`${item.id}-${item.referenciaVisual ?? "propria"}`}
-            rotulo="Foto da peça"
-            id={item.id}
-            temFoto={item.temFoto}
-            baixarFoto={api.catalogosUniforme.baixarFoto}
-            tamanho="compacta"
-            somenteLeitura={!(edicaoId === item.id && edicao) || !!edicao?.referenciaVisual}
-            aoSelecionarArquivo={(arquivo) => trocarFoto(item.id, arquivo)}
-            aoErroValidacao={setErro}
-          />
-        </div>
-      ),
-    },
-    {
-      chave: 'nome',
-      rotulo: 'Nome',
-      render: (item) =>
-        edicaoId === item.id && edicao ? (
-          <Input value={edicao.nome} onChange={(_, d) => setEdicao({ ...edicao, nome: d.value.toUpperCase() })} />
-        ) : (
-          item.nome
-        ),
-    },
-    {
-      chave: 'categoria',
-      rotulo: 'Categoria',
-      render: (item) =>
-        edicaoId === item.id && edicao ? (
-          <Input value={edicao.categoria ?? ''} onChange={(_, d) => setEdicao({ ...edicao, categoria: d.value })} />
-        ) : (
-          item.categoria
-        ),
-    },
-  ];
+
+  // Peça com modelo visual AAHBRANT amplia a foto de referência; peça com foto própria baixa o original.
+  async function ampliar(item: CatalogoUniforme) {
+    const referencia = referenciaUniforme(item.referenciaVisual);
+    if (referencia) { setFotoAmpliada({ item, url: referencia.frente, revogar: false }); return; }
+    if (!item.temFoto) return;
+    try {
+      const blob = await api.catalogosUniforme.baixarFoto(item.id);
+      setFotoAmpliada({ item, url: URL.createObjectURL(blob), revogar: true });
+    } catch (e) { setErro(e instanceof Error ? e.message : 'Falha ao carregar a foto original.'); }
+  }
+
+  function fecharFotoAmpliada() {
+    if (fotoAmpliada?.revogar) URL.revokeObjectURL(fotoAmpliada.url);
+    setFotoAmpliada(null);
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -263,46 +236,86 @@ export function CatalogoUniformeTab() {
         </PainelCriacaoInline>
       </div>
 
-      <Card densidade="compacta">
-        <DataTable
-          aria-label="Catálogo de Uniforme"
-          colunas={colunas}
-          linhas={itens}
-          chaveLinha={(i) => i.id}
-          carregando={carregandoLista}
-          vazio={{
-            titulo: 'Nenhuma peça cadastrada no catálogo de uniforme ainda.',
-            acao: { rotulo: 'Cadastrar peça', aoClicar: () => setPainelAberto(true) },
-          }}
-          aoClicarLinha={(item) => {
-            if (edicaoId !== item.id) iniciarEdicao(item);
-          }}
-          acoesLinha={(item) =>
-            edicaoId === item.id ? (
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<Save24Regular />}
-                onClick={salvarEdicao}
-                disabled={carregando}
-                aria-label="Salvar"
-              />
-            ) : (
-              <BotaoAcao
-                tom="excluir"
-                icon={<Delete24Regular />}
-                onClick={() => excluir(item.id)}
-                aria-label="Excluir"
-              />
-            )
-          }
-        />
-        <Legenda>
-          Clique em uma linha para editar. O estoque (por obra e tamanho) é controlado na aba Estoque.
-        </Legenda>
-      </Card>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
+        {itens.map((item) => {
+          const editando = edicaoId === item.id && edicao ? edicao : null;
+          const referenciaVisual = editando ? editando.referenciaVisual : item.referenciaVisual;
+          const referencia = referenciaUniforme(referenciaVisual);
+          return (
+            <Card key={item.id} densidade="compacta">
+              <div style={{ fontWeight: 800, fontSize: 16, minHeight: 42 }}>
+                {editando ? (
+                  <Input value={editando.nome} onChange={(_, d) => setEdicao({ ...editando, nome: d.value.toUpperCase() })} aria-label="Nome da peça" />
+                ) : (
+                  item.nome
+                )}
+              </div>
+              <div style={{ color: designTokens.colorNeutralMedium, fontSize: 12, marginBottom: 10 }}>
+                {editando ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <Input value={editando.categoria ?? ''} onChange={(_, d) => setEdicao({ ...editando, categoria: d.value })} aria-label="Categoria" placeholder="Categoria" />
+                    {modeloSelect(editando.referenciaVisual, (chave) => setEdicao({ ...editando, referenciaVisual: chave || null }))}
+                  </div>
+                ) : (
+                  <>{item.categoria || 'Sem categoria'} · {referencia?.cor ?? 'Foto própria'}</>
+                )}
+              </div>
+              <div style={{ minHeight: 220, background: designTokens.colorNeutralLight, borderRadius: 8, display: 'grid', placeItems: 'center', position: 'relative', overflow: 'hidden' }}>
+                {editando && !editando.referenciaVisual ? (
+                  <SlotFotoRemota
+                    key={`${item.id}-propria`}
+                    rotulo="Foto da peça"
+                    id={item.id}
+                    temFoto={item.temFoto}
+                    baixarFoto={api.catalogosUniforme.baixarFoto}
+                    tamanho="compacta"
+                    aoSelecionarArquivo={(arquivo) => trocarFoto(item.id, arquivo)}
+                    aoErroValidacao={setErro}
+                  />
+                ) : (
+                  <FotoCatalogoUniforme catalogoUniformeId={item.id} temFoto={item.temFoto} referenciaVisual={referenciaVisual} destaque />
+                )}
+                {!editando && (item.temFoto || referencia) && (
+                  <Button icon={<ZoomIn24Regular />} appearance="primary" onClick={() => ampliar(item)} style={{ position: 'absolute', right: 10, bottom: 10 }}>
+                    Ampliar
+                  </Button>
+                )}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+                {editando ? (
+                  <Button icon={<Save24Regular />} appearance="primary" onClick={salvarEdicao} disabled={carregando}>Salvar</Button>
+                ) : (
+                  <Button onClick={() => iniciarEdicao(item)}>Editar</Button>
+                )}
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(item.id)} aria-label="Excluir" />
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+      {!carregandoLista && itens.length === 0 && (
+        <Card>
+          <Legenda>Nenhuma peça cadastrada no catálogo de uniforme ainda.</Legenda>
+        </Card>
+      )}
+      <Legenda>O estoque (por obra e tamanho) é controlado na aba Estoque.</Legenda>
 
       {dialogElement}
+      <Dialog open={Boolean(fotoAmpliada)} onOpenChange={(_, d) => { if (!d.open) fecharFotoAmpliada(); }}>
+        <DialogSurface style={{ maxWidth: 900, width: '96vw' }}>
+          <DialogBody>
+            <DialogTitle>{fotoAmpliada?.item.nome}</DialogTitle>
+            <DialogContent>
+              {fotoAmpliada && (
+                <img src={fotoAmpliada.url} alt={`${fotoAmpliada.item.nome} — imagem ampliada`} style={{ width: '100%', maxHeight: '75vh', objectFit: 'contain' }} />
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={fecharFotoAmpliada}>Fechar</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 }
