@@ -204,14 +204,28 @@ public class ListarPlanosIntegracaoPendentesQueryHandler : IRequestHandler<Lista
             var idsExigidos = await ExigenciasTreinamento.CursosAsync(_db, t.ObraId, t.FuncaoId, ct);
             var outrosCursos = await _db.CursosTreinamento
                 .Where(c => idsExigidos.Contains(c.Id))
-                .Select(c => new { CursoTreinamentoId = c.Id, c.Nome })
+                .Select(c => new { CursoTreinamentoId = c.Id, c.Nome, c.NormaReferencia })
                 .ToListAsync(ct);
             outrosCursos = outrosCursos.Where(c => !idsIntegracao.Contains(c.CursoTreinamentoId) && !idsNr6.Contains(c.CursoTreinamentoId)).ToList();
+            // NR-01 = a própria OS: nunca ganha turma; conta como cumprido com a OS vigente da obra assinada pela pessoa.
+            var exigeNr01 = outrosCursos.Any(c => CursoNr01OrdemServico.Eh(c.Nome, c.NormaReferencia));
+            outrosCursos = outrosCursos.Where(c => !CursoNr01OrdemServico.Eh(c.Nome, c.NormaReferencia)).ToList();
+            var osPendente = exigeNr01
+                && !(await CursoNr01OrdemServico.TrabalhadoresComOsAssinadaAsync(_db, [(t.Id, t.ObraId)], ct)).Contains(t.Id);
             // Com o atendimento ligado, NR-12, NR-18 e NR-35 também são etapas da integração (não "demais cursos").
             if (habilitado)
                 outrosCursos = outrosCursos.Where(c => !idsCombo.Contains(c.CursoTreinamentoId)).ToList();
             var pendentesCurso = outrosCursos.Where(c => !validos.Contains(c.CursoTreinamentoId)).ToList();
-            if (outrosCursos.Count == 0 || pendentesCurso.Count == 0)
+            if (osPendente)
+            {
+                var agendadosOs = pendentesCurso.Where(c => turmasAbertas.Any(x => x.CursoTreinamentoId == c.CursoTreinamentoId)).ToList();
+                var semTurmaOs = pendentesCurso.Except(agendadosOs).ToList();
+                var partes = new List<string> { CursoNr01OrdemServico.TextoNaoAssinada + "." };
+                if (agendadosOs.Count > 0) partes.Add($"Agendados: {string.Join(", ", agendadosOs.Select(c => c.Nome))}.");
+                if (semTurmaOs.Count > 0) partes.Add($"Sem turma: {string.Join(", ", semTurmaOs.Select(c => c.Nome))}.");
+                passos.Add(new("cursos", "Demais cursos da função", SituacaoPasso.Pendente, string.Join(" ", partes), "/gestao-sst?secao=treinamentos"));
+            }
+            else if (outrosCursos.Count == 0 || pendentesCurso.Count == 0)
             {
                 passos.Add(new("cursos", "Demais cursos da função", SituacaoPasso.Feito,
                     outrosCursos.Count == 0 ? "A função não exige outros cursos." : null, rotaPerfil));

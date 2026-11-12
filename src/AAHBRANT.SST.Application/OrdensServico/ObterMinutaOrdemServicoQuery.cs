@@ -54,6 +54,8 @@ public class ObterMinutaOrdemServicoQueryHandler : IRequestHandler<ObterMinutaOr
             {
                 Nome = t.Nome,
                 Matricula = t.Matricula,
+                // A OS mostra o CPF completo (só aqui; as demais telas e documentos continuam mascarados).
+                Cpf = CpfMascarador.Formatar(t.Cpf ?? string.Empty),
                 CpfMascarado = MascararCpf(t.Cpf),
                 Funcao = funcao?.Nome ?? string.Empty,
                 Cbo = funcao?.CboCodigo,
@@ -178,6 +180,8 @@ public class ObterMinutaOrdemServicoQueryHandler : IRequestHandler<ObterMinutaOr
         var semIntegracao = _opcoes?.Value.AtendimentoHabilitado == true;
         var cursos = await _db.CursosTreinamento.Where(c => cursoIds.Contains(c.Id) && (!semIntegracao || !c.EhIntegracaoSeguranca))
             .Select(c => new { c.Id, c.Nome, c.NormaReferencia }).ToListAsync(ct);
+        // O curso NR-01 / Ordem de Serviço é a própria OS: não entra na minuta nem gera pendência (seria circular).
+        cursos = cursos.Where(c => !CursoNr01OrdemServico.Eh(c.Nome, c.NormaReferencia)).ToList();
         var feitos = await _db.Treinamentos.Where(x => x.TrabalhadorId == t.Id && cursoIds.Contains(x.CursoTreinamentoId))
             .Select(x => new { x.CursoTreinamentoId, x.DataValidade }).ToListAsync(ct);
         foreach (var c in cursos.OrderBy(c => c.Nome))

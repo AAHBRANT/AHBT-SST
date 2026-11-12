@@ -62,6 +62,11 @@ public class EmitirOrdemServicoCommandHandler : IRequestHandler<EmitirOrdemServi
             return lista.First(o => o.Id == aguardando.Value);
         }
 
+        // O CPF completo não vai para o conteúdo congelado (LGPD: CPF em claro no banco); o PDF lê o CPF atual do trabalhador.
+        var cpfDaMinuta = minuta.Trabalhador.Cpf;
+        minuta.Trabalhador.Cpf = null;
+        var conteudoCongelado = JsonSerializer.Serialize(minuta);
+        minuta.Trabalhador.Cpf = cpfDaMinuta;
         var os = new OrdemServico
         {
             TrabalhadorId = request.TrabalhadorId,
@@ -69,7 +74,7 @@ public class EmitirOrdemServicoCommandHandler : IRequestHandler<EmitirOrdemServi
             Numero = await _numero.GerarAsync("OS", ct),
             Revisao = anteriores.Count == 0 ? 0 : anteriores.Max(o => o.Revisao) + 1,
             EmitidaEm = DateTime.UtcNow,
-            ConteudoJson = JsonSerializer.Serialize(minuta),
+            ConteudoJson = conteudoCongelado,
         };
         _db.OrdensServico.Add(os);
         _db.DocumentosAssinatura.Add(new DocumentoAssinatura

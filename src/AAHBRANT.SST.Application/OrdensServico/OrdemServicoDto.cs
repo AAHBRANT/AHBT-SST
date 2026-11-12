@@ -40,6 +40,10 @@ public class TrabalhadorOsDto
 {
     public string Nome { get; set; } = string.Empty;
     public string? Matricula { get; set; }
+    // CPF completo formatado (000.000.000-00): a OS mostra o CPF inteiro (decisão de 11/11/2026). Não é gravado no
+    // ConteudoJson congelado (CPF em claro no banco); o PDF lê o CPF atual do trabalhador na hora de gerar.
+    public string? Cpf { get; set; }
+    // Só das OS emitidas antes de 11/11/2026, que têm o CPF mascarado congelado.
     public string CpfMascarado { get; set; } = string.Empty;
     public string Funcao { get; set; } = string.Empty;
     public string? Cbo { get; set; }

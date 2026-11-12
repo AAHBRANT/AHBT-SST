@@ -3199,7 +3199,7 @@ export interface MinutaOrdemServico {
   trabalhadorId: string;
   podeEmitir: boolean;
   obra: { id: string; nome: string; cliente?: string | null; cnpj?: string | null; endereco?: string | null };
-  trabalhador: { nome: string; matricula?: string | null; cpfMascarado: string; funcao: string; cbo?: string | null; dataAdmissao: string };
+  trabalhador: { nome: string; matricula?: string | null; cpf?: string | null; cpfMascarado: string; funcao: string; cbo?: string | null; dataAdmissao: string };
   pgr?: { id: string; nome: string; dataElaboracao: string; revisao?: number | null } | null;
   ghes: { numero: number; descricaoAtividades?: string | null }[];
   atividades: AtividadeOs[];
