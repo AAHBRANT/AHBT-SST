@@ -26,6 +26,7 @@ import { SlotFotoRemota } from '../../components/camera/SlotFotoRemota';
 
 import { referenciasUniforme, referenciaUniforme } from './referenciasUniforme';
 import { FotoCatalogoUniforme } from './FotoCatalogoUniforme';
+import { useCatalogoStyles } from './estilosUniforme';
 
 const itemVazio: NovoCatalogoUniforme = { nome: '', categoria: '' };
 
@@ -37,6 +38,7 @@ const itemVazio: NovoCatalogoUniforme = { nome: '', categoria: '' };
 // 2026-09-11, mesmo padrão de AtividadesTab.tsx/InspecoesTab.tsx). Erro do painel isolado do erro da
 // lista. Edição inline por linha preservada (clicar na linha edita nela mesma).
 export function CatalogoUniformeTab() {
+  const e = useCatalogoStyles();
   const [itens, setItens] = useState<CatalogoUniforme[]>([]);
   const [novoItem, setNovoItem] = useState<NovoCatalogoUniforme>(itemVazio);
   const [fotoNovoItem, setFotoNovoItem] = useState<File | null>(null);
@@ -106,9 +108,37 @@ export function CatalogoUniformeTab() {
     }
   }
 
-  function iniciarEdicao(item: CatalogoUniforme) {
+  // Houve alteração em relação ao que está salvo? (foto própria é gravada na hora, fora desta conta.)
+  function edicaoAlterada() {
+    const original = itens.find((x) => x.id === edicaoId);
+    if (!original || !edicao) return false;
+    return (
+      edicao.nome !== original.nome ||
+      (edicao.categoria ?? '') !== (original.categoria ?? '') ||
+      (edicao.referenciaVisual ?? null) !== (original.referenciaVisual ?? null)
+    );
+  }
+
+  async function confirmarDescarte() {
+    return confirmar({
+      titulo: 'Descartar as alterações?',
+      mensagem: 'As mudanças feitas nesta peça ainda não foram salvas.',
+      rotuloConfirmar: 'Descartar',
+      tom: 'destrutivo',
+    });
+  }
+
+  async function iniciarEdicao(item: CatalogoUniforme) {
+    if (edicaoId && edicaoId !== item.id && edicaoAlterada() && !(await confirmarDescarte())) return;
     setEdicaoId(item.id);
     setEdicao({ ...item });
+  }
+
+  // Cancelar restaura os valores originais; com alteração, pergunta antes de sair.
+  async function cancelarEdicao() {
+    if (edicaoAlterada() && !(await confirmarDescarte())) return;
+    setEdicaoId(null);
+    setEdicao(null);
   }
 
   async function salvarEdicao() {
@@ -242,10 +272,11 @@ export function CatalogoUniformeTab() {
           const referenciaVisual = editando ? editando.referenciaVisual : item.referenciaVisual;
           const referencia = referenciaUniforme(referenciaVisual);
           return (
-            <Card key={item.id} densidade="compacta">
-              <div style={{ fontWeight: 800, fontSize: 16, minHeight: 42 }}>
+            <Card key={item.id} densidade="compacta" className={editando ? e.cardEdicao : undefined}>
+              {editando && <span className={e.selo}>Editando</span>}
+              <div style={{ fontWeight: 800, fontSize: 16, minHeight: 44, display: 'flex', alignItems: 'center' }}>
                 {editando ? (
-                  <Input value={editando.nome} onChange={(_, d) => setEdicao({ ...editando, nome: d.value.toUpperCase() })} aria-label="Nome da peça" />
+                  <Input style={{ width: "100%" }} value={editando.nome} onChange={(_, d) => setEdicao({ ...editando, nome: d.value.toUpperCase() })} aria-label="Nome da peça" />
                 ) : (
                   item.nome
                 )}
@@ -281,13 +312,18 @@ export function CatalogoUniformeTab() {
                   </Button>
                 )}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <div className={e.rodape}>
                 {editando ? (
-                  <Button icon={<Save24Regular />} appearance="primary" onClick={salvarEdicao} disabled={carregando}>Salvar</Button>
+                  <>
+                    <Button className={e.botaoRodape} onClick={cancelarEdicao} disabled={carregando}>Cancelar</Button>
+                    <Button className={e.botaoRodape} icon={<Save24Regular />} appearance="primary" onClick={salvarEdicao} disabled={carregando}>Salvar</Button>
+                  </>
                 ) : (
-                  <Button onClick={() => iniciarEdicao(item)}>Editar</Button>
+                  <>
+                    <Button className={e.botaoRodape} onClick={() => iniciarEdicao(item)}>Editar</Button>
+                    <BotaoAcao tom="excluir" className={e.lixeira} icon={<Delete24Regular />} onClick={() => excluir(item.id)} aria-label="Excluir" />
+                  </>
                 )}
-                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(item.id)} aria-label="Excluir" />
               </div>
             </Card>
           );
