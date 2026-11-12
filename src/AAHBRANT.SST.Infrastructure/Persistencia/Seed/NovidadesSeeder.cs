@@ -2837,6 +2837,29 @@ public static class NovidadesSeeder
                     "Os tamanhos do uniforme eram mantidos no perfil, sem ligação com o cadastro do G-RH.",
                     "Os tamanhos passam a vir do cadastro do G-RH e aparecem só para leitura no perfil. Na entrega, os tamanhos são sincronizados uma vez antes de gravar o lote."),
             }),
+        new(
+            Versao: "5.162.0",
+            Titulo: "Câmera IP no cadastro de Câmeras",
+            DataPublicacao: new DateTime(2026, 11, 12, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Câmera da obra como origem da imagem",
+                    "A imagem das câmeras vinha só do tablet ou do navegador que estava monitorando.",
+                    "No cadastro da câmera, em \"Origem da imagem\", escolha \"Câmera IP\", o equipamento, a lente (1 ou 2) e a qualidade (Principal ou Secundária). Uma câmera de duas lentes vira duas câmeras no mesmo equipamento. Escolhendo \"Tablet ou navegador\", nada muda."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Nova aba \"Equipamentos e agentes\"",
+                    "Não havia onde cadastrar o PC da obra que lê as câmeras nem os dados de acesso de cada câmera.",
+                    "Em Câmeras, a aba \"Equipamentos e agentes\" cadastra o agente (o PC da obra) e cada equipamento, com endereço, porta, usuário e senha. A senha é só gravada e nunca aparece em nenhuma tela. Ao trocar o endereço de um equipamento, o sistema pede a senha de novo."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Botão \"Testar conexão\"",
+                    "Só dava para saber se a câmera estava funcionando depois de ligar o monitoramento.",
+                    "Antes de salvar, \"Testar conexão\" pede ao agente da obra uma imagem de teste e mostra o resultado em poucos instantes. Se algo falhar, a mensagem explica o que conferir: usuário e senha, endereço, lente ou qualidade, ou o PC da obra. A imagem do teste é só para conferir o enquadramento e não fica guardada."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Situação da conexão na lista e no Mosaico",
+                    "Não dava para ver se uma câmera da obra estava mandando imagem.",
+                    "A lista de câmeras e o Mosaico mostram a situação de cada câmera IP: \"Recebendo imagem\", \"Aguardando sinal\" ou \"Agente sem contato\", para o técnico saber logo se precisa olhar a câmera ou o PC da obra."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

@@ -71,6 +71,12 @@ public static class DependencyInjection
             throw new InvalidOperationException("Configuração 'Lgpd:ChaveCriptografiaBiometriaBase64' não configurada.");
         TemplateBiometricoCriptografiaContexto.Configurar(Convert.FromBase64String(chaveCriptografiaBiometria));
 
+        // Chave das senhas dos equipamentos de câmera IP: dedicada, e opcional na inicialização (ver CredencialCameraCriptografiaContexto).
+        var chaveCredenciaisCamera = configuration["Lgpd:ChaveCriptografiaCredenciaisCameraBase64"];
+        if (!string.IsNullOrWhiteSpace(chaveCredenciaisCamera))
+            CredencialCameraCriptografiaContexto.Configurar(Convert.FromBase64String(chaveCredenciaisCamera));
+        services.AddScoped<AAHBRANT.SST.Application.Cameras.ICredencialCameraCriptografia, CredencialCameraCriptografiaService>();
+
         services.AddHttpClient();
         services.Configure<AAHBRANT.SST.Application.Integracoes.OpcoesIntegracao>(
             configuration.GetSection(AAHBRANT.SST.Application.Integracoes.OpcoesIntegracao.Secao));
@@ -149,6 +155,7 @@ public static class DependencyInjection
         services.AddScoped<ITemplateBiometricoCriptografia, TemplateBiometricoCriptografiaService>();
         services.AddScoped<IImagemBiometricaCriptografia, ImagemBiometricaCriptografiaService>();
         services.AddScoped<IDispositivoAgenteAutenticador, DispositivoAgenteAutenticador>();
+        services.AddScoped<AAHBRANT.SST.Application.Cameras.IAgenteCameraAutenticador, AAHBRANT.SST.Application.Cameras.AgenteCameraAutenticador>();
         services.AddScoped<IAutenticacaoBiometriaLocalService, FutronicAutenticacaoStrategy>();
         services.AddScoped<IAutenticacaoFacialService, AzureFaceAutenticacaoStrategy>();
         services.AddScoped<IAuditoriaService, AuditoriaService>();

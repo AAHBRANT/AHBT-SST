@@ -54,6 +54,13 @@ public static class LegendaAlertaEpi
         _ => "sem colete",
     };
 
+    // Linha final da legenda de quadro que chegou atrasado (guardado sem internet no PC da obra): o horário do
+    // cabeçalho já é o da captura; aqui o aviso de que o registro só aconteceu depois. Vazio quando o quadro é ao vivo.
+    public static string AvisoDeAtraso(DateTime? capturadaUtc)
+        => capturadaUtc is { } c
+            ? $"\nRegistrado com atraso — imagem das {TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(c, DateTimeKind.Utc), FusoBrasilia()):HH:mm}"
+            : string.Empty;
+
     private static TimeZoneInfo FusoBrasilia()
     {
         try { return TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo"); }

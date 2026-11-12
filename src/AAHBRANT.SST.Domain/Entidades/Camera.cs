@@ -24,6 +24,23 @@ public class Camera : AuditableEntity
     // pessoa por hora). 0 = sem limite: alerta a cada nova ocorrência. Câmera nova nasce com 30 minutos.
     public int IntervaloMinimoAlertasMinutos { get; set; } = 30;
 
+    // Origem da imagem. Navegador = tela Monitorar (tablet); Rtsp = câmera IP lida pelo agente instalado na obra, que usa
+    // o equipamento (endereço e credencial), o canal (lente 1 ou 2) e o stream (0 = principal, 1 = secundário).
+    // Câmera nova e as já existentes nascem Navegador, sem mudar nada do que funciona hoje.
+    public FonteCamera Fonte { get; set; } = FonteCamera.Navegador;
+    public Guid? EquipamentoCameraId { get; set; }
+    public EquipamentoCamera? EquipamentoCamera { get; set; }
+    public int? Canal { get; set; }
+    public int? Stream { get; set; }
+
+    // Intervalo mínimo entre quadros enviados pelo agente (segundos).
+    public int IntervaloEnvioSegundos { get; set; } = 3;
+
+    // Atualizados quando o agente envia um quadro. A situação mostrada na tela é calculada na consulta.
+    public SituacaoConexaoCamera SituacaoConexao { get; set; } = SituacaoConexaoCamera.Desconhecida;
+    public DateTime? UltimoQuadroRecebidoEmUtc { get; set; }
+    public string? MensagemConexao { get; set; }
+
     // Controle do teto de análises no servidor e do intervalo entre alertas.
     public DateTime? UltimaAnaliseEmUtc { get; set; }
     public DateTime? UltimoAlertaEmUtc { get; set; }

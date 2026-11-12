@@ -13,7 +13,14 @@ public record CriarCameraCommand(
     Guid? AreaSstId,
     TipoCamera Tipo,
     bool Habilitada,
-    int IntervaloMinimoAlertasMinutos) : IRequest<Guid>;
+    int IntervaloMinimoAlertasMinutos,
+    // Câmera IP lida pelo agente da obra (Fonte = Rtsp): equipamento, lente (canal 1 ou 2) e qualidade (stream 0 = principal,
+    // 1 = secundário). Omitidos = câmera do navegador, como sempre foi.
+    FonteCamera Fonte = FonteCamera.Navegador,
+    Guid? EquipamentoCameraId = null,
+    int? Canal = null,
+    int? Stream = null,
+    int IntervaloEnvioSegundos = CameraIpRegras.IntervaloEnvioPadraoSegundos) : IRequest<Guid>;
 
 public class CriarCameraCommandValidator : AbstractValidator<CriarCameraCommand>
 {
@@ -23,6 +30,14 @@ public class CriarCameraCommandValidator : AbstractValidator<CriarCameraCommand>
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Tipo).IsInEnum();
         RuleFor(x => x.IntervaloMinimoAlertasMinutos).InclusiveBetween(0, 1440);
+        RuleFor(x => x.Fonte).IsInEnum();
+        RuleFor(x => x.IntervaloEnvioSegundos).IntervaloDeEnvio();
+        When(x => x.Fonte == FonteCamera.Rtsp, () =>
+        {
+            RuleFor(x => x.EquipamentoCameraId).Must(id => id is { } g && g != Guid.Empty).WithMessage("Escolha o equipamento da câmera IP.");
+            RuleFor(x => x.Canal).Must(c => c is 1 or 2).WithMessage("O canal (lente) precisa ser 1 ou 2.");
+            RuleFor(x => x.Stream).Must(s => s is 0 or 1).WithMessage("A qualidade precisa ser principal (0) ou secundária (1).");
+        });
     }
 }
 
@@ -43,6 +58,13 @@ public class CriarCameraCommandHandler : IRequestHandler<CriarCameraCommand, Gui
         if (await _db.Cameras.AnyAsync(c => c.ObraId == request.ObraId && c.Nome == nome, ct))
             throw new InvalidOperationException($"Já existe uma câmera chamada \"{nome}\" nesta obra.");
 
+        var ip = request.Fonte == FonteCamera.Rtsp;
+        if (ip)
+        {
+            await CameraIpRegras.ExigirEquipamentoUsavelAsync(_db, request.EquipamentoCameraId!.Value, request.ObraId, request.Habilitada, ct);
+            await CameraIpRegras.ExigirLenteLivreAsync(_db, request.EquipamentoCameraId!.Value, request.Canal!.Value, null, ct);
+        }
+
         var camera = new Camera
         {
             ObraId = request.ObraId,
@@ -51,6 +73,11 @@ public class CriarCameraCommandHandler : IRequestHandler<CriarCameraCommand, Gui
             Tipo = request.Tipo,
             Habilitada = request.Habilitada,
             IntervaloMinimoAlertasMinutos = request.IntervaloMinimoAlertasMinutos,
+            Fonte = request.Fonte,
+            EquipamentoCameraId = ip ? request.EquipamentoCameraId : null,
+            Canal = ip ? request.Canal : null,
+            Stream = ip ? request.Stream : null,
+            IntervaloEnvioSegundos = request.IntervaloEnvioSegundos,
         };
         _db.Cameras.Add(camera);
         await _db.SaveChangesAsync(ct);

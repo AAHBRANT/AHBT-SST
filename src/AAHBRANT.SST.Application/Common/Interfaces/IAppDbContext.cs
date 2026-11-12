@@ -124,6 +124,9 @@ public interface IAppDbContext
     DbSet<Veiculo> Veiculos { get; }
     DbSet<Camera> Cameras { get; }
     DbSet<OcorrenciaEpiCamera> OcorrenciasEpiCamera { get; }
+    DbSet<AgenteCamera> AgentesCamera { get; }
+    DbSet<EquipamentoCamera> EquipamentosCamera { get; }
+    DbSet<TesteConexaoCamera> TestesConexaoCamera { get; }
     DbSet<OrdemServico> OrdensServico { get; }
     DbSet<TemaInspecao> TemasInspecao { get; }
     DbSet<ItemInspecionavel> ItensInspecionaveis { get; }

@@ -1125,6 +1125,22 @@ public enum TipoCamera
     Portaria = 2,
 }
 
+// De onde vem a imagem da câmera: do navegador do tablet (tela Monitorar) ou lida direto da câmera IP pelo
+// agente instalado na obra (RTSP). As câmeras já cadastradas são Navegador.
+public enum FonteCamera
+{
+    Navegador = 0,
+    Rtsp = 1,
+}
+
+// Último estado gravado para a câmera. A situação mostrada na tela é calculada na consulta (ver ListarCamerasQuery),
+// porque depende também do último contato do agente.
+public enum SituacaoConexaoCamera
+{
+    Desconhecida = 0,
+    RecebendoImagem = 1,
+}
+
 public enum SituacaoOcorrenciaEpi
 {
     Nova = 1,

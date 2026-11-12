@@ -8,7 +8,11 @@ using Microsoft.Extensions.Logging;
 
 namespace AAHBRANT.SST.Application.Cameras.Commands;
 
-public record AnalisarQuadroCameraCommand(Guid CameraId, byte[] Imagem, DateTime CapturadaEmUtc) : IRequest<ResultadoQuadroDto>;
+// PermitirQuadroAtrasado: só o agente de câmeras da obra liga (o quadro dele pode ter ficado guardado sem internet).
+// Ligado, um quadro com CapturadaEmUtc bem anterior ao recebimento sai marcado com o horário REAL da captura e não
+// disputa agrupamento nem cota de alerta com eventos ao vivo. Desligado (navegador), nada muda.
+public record AnalisarQuadroCameraCommand(Guid CameraId, byte[] Imagem, DateTime CapturadaEmUtc, bool PermitirQuadroAtrasado = false)
+    : IRequest<ResultadoQuadroDto>;
 
 // TrabalhadorId/TrabalhadorNome: quem o reconhecimento facial identificou na ocorrência (nulo = ninguém).
 // Repetida: nenhuma ocorrência nova foi aberta; a irregularidade foi somada a ocorrências já existentes.
@@ -54,6 +58,9 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
     // pessoa: soma enquanto a cena continuar irregular (visto de novo em até 5 minutos), por no máximo uma hora.
     public static readonly TimeSpan DuracaoMaximaDaOcorrencia = TimeSpan.FromHours(1);
     public static readonly TimeSpan PausaQueEncerraSemIdentificacao = TimeSpan.FromMinutes(5);
+
+    // Quadro do agente recebido com mais atraso que isto (captura x recebimento) é "atrasado": usa o horário da captura.
+    public static readonly TimeSpan ToleranciaQuadroAtrasado = TimeSpan.FromMinutes(2);
 
     private readonly IAppDbContext _db;
     private readonly IAnalisadorEpiImagem _analisador;
@@ -138,26 +145,27 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
         // Cada ocorrência alerta no máximo uma vez. Trabalhador identificado: um alerta por pessoa a cada
         // hora, em qualquer câmera (regra do usuário em 09/11/2026), no lugar do intervalo da câmera, para o
         // alerta de um não segurar o de outro. Sem identificação: vale o intervalo da câmera.
+        var atrasadoEm = AtrasoDoQuadro(request, agora);
         var podeAlertar = !ocorrencia.AlertaEnviado
             && (identificado is not null
-                ? !(await NotificadosNaUltimaHoraAsync(new[] { identificado.Id }, agora)).Contains(identificado.Id)
-                : IntervaloDaCameraPermite(camera, agora));
+                ? !(await NotificadosNaUltimaHoraAsync(new[] { identificado.Id }, agora, atrasadoEm)).Contains(identificado.Id)
+                : await IntervaloDaCameraPermiteAsync(camera, agora, atrasadoEm));
 
         DateTime? enviadoEm = null;
         if (podeAlertar)
         {
-            var legenda = LegendaAlertaEpi.Montar(camera.Obra?.Nome ?? "-", camera.Nome, agora,
-                ocorrencia.PessoasNaCena, ocorrencia.SemCapacete, ocorrencia.SemColete, identificado?.Nome);
+            var legenda = LegendaAlertaEpi.Montar(camera.Obra?.Nome ?? "-", camera.Nome, atrasadoEm ?? agora,
+                ocorrencia.PessoasNaCena, ocorrencia.SemCapacete, ocorrencia.SemColete, identificado?.Nome)
+                + LegendaAlertaEpi.AvisoDeAtraso(atrasadoEm);
             if (await EnviarLegendaAsync(camera, request.Imagem, legenda))
             {
                 enviadoEm = DateTime.UtcNow;
-                ocorrencia.AlertaEnviado = true;
-                ocorrencia.AlertaEnviadoEmUtc = enviadoEm;
-                await _db.SaveChangesAsync(CancellationToken.None);
+                await MarcarAlertaEnviadoAsync(new[] { ocorrencia }, enviadoEm.Value);
             }
         }
 
-        await FinalizarCameraAsync(camera, analise.Uso, agora, enviadoEm);
+        // Alerta de quadro atrasado não ocupa o intervalo entre alertas da câmera: esse intervalo é dos eventos ao vivo.
+        await FinalizarCameraAsync(camera, analise.Uso, agora, atrasadoEm is null ? enviadoEm : null);
 
         return new ResultadoQuadroDto(SituacaoQuadro.Ocorrencia, ocorrencia.Id, enviadoEm is not null,
             analise.Pessoas, analise.SemCapacete, analise.SemColete, identificado?.Id, identificado?.Nome, Repetida: !nova);
@@ -218,40 +226,34 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
         await _db.SaveChangesAsync(CancellationToken.None);
 
         // Quem já foi notificado na última hora (em qualquer câmera) fica fora do alerta desta foto.
-        var notificadosNaHora = await NotificadosNaUltimaHoraAsync(ids, agora);
+        var atrasadoEm = AtrasoDoQuadro(request, agora);
+        var notificadosNaHora = await NotificadosNaUltimaHoraAsync(ids, agora, atrasadoEm);
         var aAlertar = identificadas
             .Where(i => !i.Ocorrencia.AlertaEnviado && !notificadosNaHora.Contains(i.Ocorrencia.TrabalhadorId!.Value))
             .ToList();
 
         // Sem identificação vale o intervalo da câmera, como na cena de uma pessoa só.
-        var alertaSemIdentificacao = semIdentificacao is { AlertaEnviado: false } && IntervaloDaCameraPermite(camera, agora);
+        var alertaSemIdentificacao = semIdentificacao is { AlertaEnviado: false } && await IntervaloDaCameraPermiteAsync(camera, agora, atrasadoEm);
 
         var totalSemCapacete = detalhe.Count(p => p.SemCapacete);
         var totalSemColete = detalhe.Count(p => p.SemColete);
         DateTime? enviadoEm = null;
         if (aAlertar.Count > 0 || alertaSemIdentificacao)
         {
-            var legenda = LegendaAlertaEpi.MontarCena(camera.Obra?.Nome ?? "-", camera.Nome, agora, analise.Pessoas,
+            var legenda = LegendaAlertaEpi.MontarCena(camera.Obra?.Nome ?? "-", camera.Nome, atrasadoEm ?? agora, analise.Pessoas,
                 totalSemCapacete, totalSemColete, aAlertar.Select(i => i.Pessoa).ToList(),
-                alertaSemIdentificacao ? naoIdentificados.Count : 0);
+                alertaSemIdentificacao ? naoIdentificados.Count : 0)
+                + LegendaAlertaEpi.AvisoDeAtraso(atrasadoEm);
             if (await EnviarLegendaAsync(camera, request.Imagem, legenda))
             {
                 enviadoEm = DateTime.UtcNow;
-                foreach (var (ocorrencia, _) in aAlertar)
-                {
-                    ocorrencia.AlertaEnviado = true;
-                    ocorrencia.AlertaEnviadoEmUtc = enviadoEm;
-                }
-                if (alertaSemIdentificacao)
-                {
-                    semIdentificacao!.AlertaEnviado = true;
-                    semIdentificacao.AlertaEnviadoEmUtc = enviadoEm;
-                }
-                await _db.SaveChangesAsync(CancellationToken.None);
+                var alertadas = aAlertar.Select(i => i.Ocorrencia).ToList();
+                if (alertaSemIdentificacao) alertadas.Add(semIdentificacao!);
+                await MarcarAlertaEnviadoAsync(alertadas, enviadoEm.Value);
             }
         }
 
-        await FinalizarCameraAsync(camera, analise.Uso, agora, enviadoEm);
+        await FinalizarCameraAsync(camera, analise.Uso, agora, atrasadoEm is null ? enviadoEm : null);
 
         var primeira = identificadas.Select(i => i.Ocorrencia).FirstOrDefault() ?? semIdentificacao!;
         return new ResultadoQuadroDto(SituacaoQuadro.Ocorrencia, primeira.Id, enviadoEm is not null,
@@ -268,9 +270,18 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
         Camera camera, AnalisarQuadroCameraCommand request, ResultadoAnaliseEpi analise, int semCapacete, int semColete,
         Guid? trabalhadorId, double? confiancaIdentificacao, DateTime agora)
     {
-        var abertaDesde = agora - DuracaoMaximaDaOcorrencia;
-        var vistaDesde = agora - PausaQueEncerraSemIdentificacao;
+        // Agente: as janelas contam do instante REAL do quadro (captura, se atrasado) e olham o horário de captura das
+        // ocorrências, para um quadro atrasado só agrupar com eventos da mesma época e um evento ao vivo não cair numa
+        // ocorrência antiga gravada agora. No navegador (flag desligada) segue tudo como antes.
+        var referencia = AtrasoDoQuadro(request, agora) ?? agora;
+        var abertaDesde = referencia - DuracaoMaximaDaOcorrencia;
+        var vistaDesde = referencia - PausaQueEncerraSemIdentificacao;
         var candidatas = _db.OcorrenciasEpiCamera.Where(o => o.CameraId == camera.Id && o.RecebidaEmUtc >= abertaDesde);
+        if (request.PermitirQuadroAtrasado)
+        {
+            var limiteSuperior = referencia + (trabalhadorId is null ? PausaQueEncerraSemIdentificacao : DuracaoMaximaDaOcorrencia);
+            candidatas = candidatas.Where(o => o.CapturadaEmUtc >= abertaDesde && o.CapturadaEmUtc <= limiteSuperior);
+        }
         candidatas = trabalhadorId is { } id
             ? candidatas.Where(o => o.TrabalhadorId == id)
             : candidatas.Where(o => o.TrabalhadorId == null && (o.UltimaVezEmUtc ?? o.RecebidaEmUtc) >= vistaDesde);
@@ -279,7 +290,7 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
         if (existente is not null)
         {
             existente.VezesVista++;
-            existente.UltimaVezEmUtc = agora;
+            if (existente.UltimaVezEmUtc is not { } ultimaVez || referencia > ultimaVez) existente.UltimaVezEmUtc = referencia;
             existente.PessoasNaCena = Math.Max(existente.PessoasNaCena, analise.Pessoas);
             existente.SemCapacete = Math.Max(existente.SemCapacete, semCapacete);
             existente.SemColete = Math.Max(existente.SemColete, semColete);
@@ -295,7 +306,7 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
             ObraId = camera.ObraId,
             CapturadaEmUtc = request.CapturadaEmUtc,
             RecebidaEmUtc = agora,
-            UltimaVezEmUtc = agora,
+            UltimaVezEmUtc = referencia,
             Foto = request.Imagem,
             PessoasNaCena = analise.Pessoas,
             SemCapacete = semCapacete,
@@ -314,13 +325,74 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
     }
 
     // Trabalhadores (entre os informados) que já receberam alerta na última hora, em qualquer câmera.
-    private async Task<List<Guid>> NotificadosNaUltimaHoraAsync(IReadOnlyCollection<Guid> trabalhadorIds, DateTime agora)
+    // A hora conta do evento, não do envio: um alerta de quadro atrasado, enviado agora sobre algo de horas atrás, não
+    // consome a cota de quem aparece ao vivo (o horário de captura mais velho que a janela o tira da conta). Para o
+    // quadro atrasado a pergunta é outra: já houve alerta de um evento dentro de 1 h do horário dele (atrasadoEm).
+    private async Task<List<Guid>> NotificadosNaUltimaHoraAsync(IReadOnlyCollection<Guid> trabalhadorIds, DateTime agora, DateTime? atrasadoEm = null)
     {
         if (trabalhadorIds.Count == 0) return new List<Guid>();
-        var limite = agora - IntervaloAlertasPorTrabalhador;
-        return await _db.OcorrenciasEpiCamera
-            .Where(o => o.TrabalhadorId != null && trabalhadorIds.Contains(o.TrabalhadorId.Value) && o.AlertaEnviado && o.AlertaEnviadoEmUtc >= limite)
-            .Select(o => o.TrabalhadorId!.Value).Distinct().ToListAsync(CancellationToken.None);
+        var consulta = _db.OcorrenciasEpiCamera
+            .Where(o => o.TrabalhadorId != null && trabalhadorIds.Contains(o.TrabalhadorId.Value) && o.AlertaEnviado);
+        if (atrasadoEm is { } quando)
+        {
+            var de = quando - IntervaloAlertasPorTrabalhador;
+            var ate = quando + IntervaloAlertasPorTrabalhador;
+            consulta = consulta.Where(o => o.CapturadaEmUtc >= de && o.CapturadaEmUtc <= ate);
+        }
+        else
+        {
+            var limite = agora - IntervaloAlertasPorTrabalhador;
+            var capturaMinima = limite - ToleranciaQuadroAtrasado;
+            consulta = consulta.Where(o => o.AlertaEnviadoEmUtc >= limite && o.CapturadaEmUtc >= capturaMinima);
+        }
+        return await consulta.Select(o => o.TrabalhadorId!.Value).Distinct().ToListAsync(CancellationToken.None);
+    }
+
+    // Horário real da captura quando o quadro (do agente) chegou atrasado; nulo para quadro ao vivo ou do navegador.
+    private static DateTime? AtrasoDoQuadro(AnalisarQuadroCameraCommand request, DateTime agora)
+        => request.PermitirQuadroAtrasado && request.CapturadaEmUtc < agora - ToleranciaQuadroAtrasado ? request.CapturadaEmUtc : null;
+
+    // Quadro atrasado: o intervalo da câmera conta pelos alertas de eventos próximos do horário DELE (sem identificação),
+    // não pelo último alerta enviado (que pode ser de agora e pertencer a outra época).
+    private async Task<bool> IntervaloDaCameraPermiteAsync(Camera camera, DateTime agora, DateTime? atrasadoEm)
+    {
+        if (atrasadoEm is not { } quando) return IntervaloDaCameraPermite(camera, agora);
+        if (camera.IntervaloMinimoAlertasMinutos == 0) return true;
+        var janela = TimeSpan.FromMinutes(camera.IntervaloMinimoAlertasMinutos);
+        var de = quando - janela;
+        var ate = quando + janela;
+        return !await _db.OcorrenciasEpiCamera.AnyAsync(
+            o => o.CameraId == camera.Id && o.TrabalhadorId == null && o.AlertaEnviado && o.CapturadaEmUtc >= de && o.CapturadaEmUtc <= ate,
+            CancellationToken.None);
+    }
+
+    // O alerta já saiu no Telegram: perder a marca por conflito de versão (o técnico mexeu na ocorrência neste instante)
+    // faria o agente reenviar o quadro e o alerta sair duas vezes. Recarrega a linha, remarca e tenta de novo; se
+    // ainda assim não der, só registra (nunca derruba a resposta nem devolve dados da ocorrência).
+    private async Task MarcarAlertaEnviadoAsync(IReadOnlyCollection<OcorrenciaEpiCamera> ocorrencias, DateTime enviadoEm)
+    {
+        for (var tentativa = 1; ; tentativa++)
+        {
+            foreach (var o in ocorrencias)
+            {
+                o.AlertaEnviado = true;
+                o.AlertaEnviadoEmUtc = enviadoEm;
+            }
+            try
+            {
+                await _db.SaveChangesAsync(CancellationToken.None);
+                return;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                if (tentativa >= 3)
+                {
+                    _logger.LogWarning(ex, "Marca de alerta enviado não gravada após {Tentativas} tentativas (ocorrência alterada em paralelo).", tentativa);
+                    return;
+                }
+                foreach (var entrada in ex.Entries) await entrada.ReloadAsync(CancellationToken.None);
+            }
+        }
     }
 
     private static bool IntervaloDaCameraPermite(Camera camera, DateTime agora)

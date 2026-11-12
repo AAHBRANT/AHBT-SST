@@ -77,9 +77,17 @@ builder.Services.AddRateLimiter(opcoes =>
     static string ChaveIp(HttpContext c) => c.Connection.RemoteIpAddress?.ToString() ?? "sem-ip";
     opcoes.AddPolicy("agente-anonimo", c => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(ChaveIp(c),
         _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) }));
+    // Agente de câmeras da obra, camada 1: por IP, para TODA chamada da rota (inclusive sem segredo ou com GUID aleatório, que
+    // a partição por agenteId deixava escapar). ChaveIp usa o IP já resolvido por UseForwardedHeaders (o último valor de
+    // X-Forwarded-For, o do ingress do Container Apps), o mesmo critério das outras policies. A obra inteira sai por um IP
+    // só: ~6 câmeras a 1 quadro a cada 2 s (180/min) mais a drenagem da fila guardada sem internet; 900/min dá folga.
+    // A camada 2, por agente e só para agente autenticado, é o LimitadorAgenteCamera (chamado dentro do controller).
+    opcoes.AddPolicy("agente-camera-ip", c => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(ChaveIp(c),
+        _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = 900, Window = TimeSpan.FromMinutes(1) }));
     opcoes.AddPolicy("publico", c => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(ChaveIp(c),
         _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
 });
+builder.Services.AddSingleton<AAHBRANT.SST.Api.Autorizacao.LimitadorAgenteCamera>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

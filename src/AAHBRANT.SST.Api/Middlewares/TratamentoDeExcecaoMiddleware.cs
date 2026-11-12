@@ -3,6 +3,7 @@ using System.Net;
 using System.Text.Json;
 using FluentValidation;
 using AAHBRANT.SST.Application.Common.Seguranca;
+using AAHBRANT.SST.Domain.Entidades;
 using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Api.Middlewares;
@@ -80,6 +81,22 @@ public class TratamentoDeExcecaoMiddleware
         await contexto.Response.WriteAsync(JsonSerializer.Serialize(new { erro = mensagem }));
     }
 
+    // Colunas que o 409 nunca devolve (o dadosAtuais traz a linha inteira): credencial cifrada da câmera, hash do segredo do
+    // agente e a miniatura (foto de pessoa possível) do teste de conexão. Só as das câmeras IP; o resto do sistema não muda.
+    public static readonly IReadOnlyDictionary<Type, string[]> ColunasSensiveisDoConflito = new Dictionary<Type, string[]>
+    {
+        [typeof(EquipamentoCamera)] = new[] { nameof(EquipamentoCamera.SenhaCifrada) },
+        [typeof(TesteConexaoCamera)] = new[] { nameof(TesteConexaoCamera.Miniatura) },
+        [typeof(AgenteCamera)] = new[] { nameof(AgenteCamera.SegredoHash) },
+    };
+
+    // Colunas da linha que vão no 409, sem as sensíveis do tipo (se houver). Público para ser testado sem banco relacional.
+    public static IEnumerable<KeyValuePair<string, object?>> ColunasDoConflito(Type tipoDaEntidade, IEnumerable<KeyValuePair<string, object?>> colunas)
+    {
+        ColunasSensiveisDoConflito.TryGetValue(tipoDaEntidade, out var omitir);
+        return omitir is null ? colunas : colunas.Where(c => !omitir.Contains(c.Key));
+    }
+
     private static async Task EscreverConflitoAsync(HttpContext contexto, DbUpdateConcurrencyException ex)
     {
         if (contexto.Response.HasStarted)
@@ -97,9 +114,10 @@ public class TratamentoDeExcecaoMiddleware
                 continue;
             }
 
-            foreach (var propriedade in valoresAtuais.Properties)
+            var colunas = valoresAtuais.Properties.Select(p => new KeyValuePair<string, object?>(p.Name, valoresAtuais[p]));
+            foreach (var (nome, valor) in ColunasDoConflito(entry.Metadata.ClrType, colunas))
             {
-                dadosAtuais[propriedade.Name] = valoresAtuais[propriedade];
+                dadosAtuais[nome] = valor;
             }
         }
 

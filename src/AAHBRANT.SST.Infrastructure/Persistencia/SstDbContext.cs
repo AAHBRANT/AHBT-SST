@@ -137,6 +137,9 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Veiculo> Veiculos => Set<Veiculo>();
     public DbSet<Camera> Cameras => Set<Camera>();
     public DbSet<OcorrenciaEpiCamera> OcorrenciasEpiCamera => Set<OcorrenciaEpiCamera>();
+    public DbSet<AgenteCamera> AgentesCamera => Set<AgenteCamera>();
+    public DbSet<EquipamentoCamera> EquipamentosCamera => Set<EquipamentoCamera>();
+    public DbSet<TesteConexaoCamera> TestesConexaoCamera => Set<TesteConexaoCamera>();
     public DbSet<OrdemServico> OrdensServico => Set<OrdemServico>();
     public DbSet<TemaInspecao> TemasInspecao => Set<TemaInspecao>();
     public DbSet<ItemInspecionavel> ItensInspecionaveis => Set<ItemInspecionavel>();
@@ -334,6 +337,14 @@ public class SstDbContext : DbContext, IAppDbContext
             v.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(v.ObraId)));
         modelBuilder.Entity<Camera>().HasQueryFilter(c =>
             c.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(c.ObraId)));
+        // Só o escopo por obra, SEM filtrar Ativo: o agente revogado precisa continuar na listagem de gestão
+        // (com ativo=false). Quem autentica o agente (rota anônima) usa IgnoreQueryFilters e confere Ativo.
+        modelBuilder.Entity<AgenteCamera>().HasQueryFilter(a =>
+            _usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId));
+        modelBuilder.Entity<EquipamentoCamera>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
+        modelBuilder.Entity<TesteConexaoCamera>().HasQueryFilter(t =>
+            t.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(t.ObraId)));
         modelBuilder.Entity<OcorrenciaEpiCamera>().HasQueryFilter(o =>
             o.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(o.ObraId)));
         modelBuilder.Entity<OrdemServico>().HasQueryFilter(o =>
