@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Trabalhadores.Commands;
 using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
@@ -32,7 +33,7 @@ public class CriarLoteEntregaUniformeCommandValidator : AbstractValidator<CriarL
     }
 }
 
-public class CriarLoteEntregaUniformeCommandHandler(IAppDbContext db)
+public class CriarLoteEntregaUniformeCommandHandler(IAppDbContext db, ICurrentUserService usuarioAtual)
     : IRequestHandler<CriarLoteEntregaUniformeCommand, List<Guid>>
 {
     public async Task<List<Guid>> Handle(CriarLoteEntregaUniformeCommand request, CancellationToken ct)
@@ -58,11 +59,18 @@ public class CriarLoteEntregaUniformeCommandHandler(IAppDbContext db)
                 return estaveis;
             }
         }
-        var criador = new CriarEntregaUniformeCommandHandler(db);
+        // Sincroniza os tamanhos do perfil com o G-RH uma única vez, ANTES de montar o kit: a
+        // sincronização tem SaveChanges próprio e, se rodasse por item, gravaria o kit pela metade.
+        var trabalhador = await db.Trabalhadores.FirstOrDefaultAsync(t => t.Id == request.TrabalhadorId, ct)
+            ?? throw new KeyNotFoundException("Trabalhador não encontrado.");
+        await new DefinirTamanhosUniformeTrabalhadorCommandHandler(db, usuarioAtual)
+            .SincronizarTamanhosGrhAsync(trabalhador, ct);
+
+        var criador = new CriarEntregaUniformeCommandHandler(db, usuarioAtual);
         var ids = new List<Guid>();
         foreach (var (item, i) in request.Itens.Select((item, i) => (item, i)))
             ids.Add(await criador.PrepararAsync(new(request.TrabalhadorId, item.CatalogoUniformeId,
-                item.Quantidade, request.DataEntrega, request.MotivoTipo, request.Observacoes, item.Tamanho), ct, salvar: false, entregaId: estaveis?[i]));
+                item.Quantidade, request.DataEntrega, request.MotivoTipo, request.Observacoes, item.Tamanho), ct, salvar: false, entregaId: estaveis?[i], sincronizarTamanhos: false));
         // Uma única SaveChanges é transacional no SQL Server. Qualquer falta de saldo ou conflito
         // de RowVersion impede todas as baixas; não há kit parcialmente persistido.
         await db.SaveChangesAsync(ct);

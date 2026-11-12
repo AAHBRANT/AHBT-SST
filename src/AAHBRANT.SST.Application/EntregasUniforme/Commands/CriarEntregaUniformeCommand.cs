@@ -1,6 +1,7 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using AAHBRANT.SST.Domain.Enums;
+using AAHBRANT.SST.Application.Trabalhadores.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -33,14 +34,27 @@ public class CriarEntregaUniformeCommandValidator : AbstractValidator<CriarEntre
 public class CriarEntregaUniformeCommandHandler : IRequestHandler<CriarEntregaUniformeCommand, Guid>
 {
     private readonly IAppDbContext _db;
-    public CriarEntregaUniformeCommandHandler(IAppDbContext db) => _db = db;
+    private readonly ICurrentUserService _usuarioAtual;
+    public CriarEntregaUniformeCommandHandler(IAppDbContext db, ICurrentUserService usuarioAtual)
+    {
+        _db = db;
+        _usuarioAtual = usuarioAtual;
+    }
 
     public Task<Guid> Handle(CriarEntregaUniformeCommand request, CancellationToken ct) => PrepararAsync(request, ct, salvar: true);
 
-    internal async Task<Guid> PrepararAsync(CriarEntregaUniformeCommand request, CancellationToken ct, bool salvar, Guid? entregaId = null)
+    internal async Task<Guid> PrepararAsync(CriarEntregaUniformeCommand request, CancellationToken ct, bool salvar, Guid? entregaId = null,
+        bool sincronizarTamanhos = true)
     {
         var trabalhador = await _db.Trabalhadores.FirstOrDefaultAsync(x => x.Id == request.TrabalhadorId, ct)
             ?? throw new KeyNotFoundException("Trabalhador não encontrado.");
+
+        // O tamanho do perfil vem só do G-RH: sincroniza antes de usar, para a entrega nunca cair
+        // num vínculo manual legado. A sincronização grava no banco, então o lote (salvar: false)
+        // faz isso uma única vez antes de montar o kit — ver CriarLoteEntregaUniformeCommand.
+        if (sincronizarTamanhos)
+            await new DefinirTamanhosUniformeTrabalhadorCommandHandler(_db, _usuarioAtual)
+                .SincronizarTamanhosGrhAsync(trabalhador, ct);
 
         // Trava 1: a peça precisa estar na matriz de uniforme da função do trabalhador — sem
         // válvula de escape (mesmo princípio de CriarEntregaEpiCommand para CA vencido/estoque).

@@ -22,6 +22,8 @@ public class DefinirTamanhosUniformeTrabalhadorCommandHandlerTests
             Obra = obra,
             Funcao = funcao,
             DataAdmissao = DateTime.UtcNow,
+            TamanhoBlusaEpi = "M",
+            TamanhoCalcaEpi = "42",
         };
 
         db.Obras.Add(obra);
@@ -38,7 +40,7 @@ public class DefinirTamanhosUniformeTrabalhadorCommandHandlerTests
     {
         var db = DbContextFactory.Criar();
         var (trabalhador, camisa, calca) = await SemearAsync(db);
-        var handler = new DefinirTamanhosUniformeTrabalhadorCommandHandler(db);
+        var handler = new DefinirTamanhosUniformeTrabalhadorCommandHandler(db, new AAHBRANT.SST.Infrastructure.Seguranca.CurrentUserService());
 
         await handler.Handle(new DefinirTamanhosUniformeTrabalhadorCommand(trabalhador.Id, new List<ItemTamanhoUniforme>
         {
@@ -53,32 +55,34 @@ public class DefinirTamanhosUniformeTrabalhadorCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ReenviaMesmaPecaComTamanhoDiferente_AtualizaOTamanhoDoVinculoExistente()
+    public async Task Handle_IgnoraTamanhoEnviadoPeloCliente_EUsaCampoSincronizadoDoGrh()
     {
         var db = DbContextFactory.Criar();
         var (trabalhador, camisa, _) = await SemearAsync(db);
-        var handler = new DefinirTamanhosUniformeTrabalhadorCommandHandler(db);
-        await handler.Handle(new DefinirTamanhosUniformeTrabalhadorCommand(trabalhador.Id, new List<ItemTamanhoUniforme> { new(camisa.Id, "M") }), default);
-
+        var handler = new DefinirTamanhosUniformeTrabalhadorCommandHandler(db, new AAHBRANT.SST.Infrastructure.Seguranca.CurrentUserService());
         await handler.Handle(new DefinirTamanhosUniformeTrabalhadorCommand(trabalhador.Id, new List<ItemTamanhoUniforme> { new(camisa.Id, "G") }), default);
 
-        var vinculos = await db.TrabalhadorTamanhosUniforme.Where(t => t.TrabalhadorId == trabalhador.Id).ToListAsync();
+        trabalhador.TamanhoBlusaEpi = "G";
+        await handler.Handle(new DefinirTamanhosUniformeTrabalhadorCommand(trabalhador.Id, new List<ItemTamanhoUniforme> { new(camisa.Id, "P") }), default);
+
+        // A calça também é sincronizada do G-RH (semeada com "42"); aqui interessa só o vínculo da camisa.
+        var vinculos = await db.TrabalhadorTamanhosUniforme
+            .Where(t => t.TrabalhadorId == trabalhador.Id && t.CatalogoUniformeId == camisa.Id).ToListAsync();
         Assert.Single(vinculos);
         Assert.Equal("G", vinculos[0].Tamanho);
     }
 
     [Fact]
-    public async Task Handle_RemovePecaDaLista_DesativaVinculoExistente()
+    public async Task Handle_TamanhoGrhAusente_DesativaVinculoLegadoSemExcluirLinha()
     {
         var db = DbContextFactory.Criar();
         var (trabalhador, camisa, calca) = await SemearAsync(db);
-        var handler = new DefinirTamanhosUniformeTrabalhadorCommandHandler(db);
-        await handler.Handle(new DefinirTamanhosUniformeTrabalhadorCommand(trabalhador.Id, new List<ItemTamanhoUniforme>
-        {
-            new(camisa.Id, "M"),
-            new(calca.Id, "42"),
-        }), default);
+        var handler = new DefinirTamanhosUniformeTrabalhadorCommandHandler(db, new AAHBRANT.SST.Infrastructure.Seguranca.CurrentUserService());
+        // Primeira sincronização cria os dois vínculos (camisa "M", calça "42"); depois o G-RH deixa
+        // de informar a calça e a segunda sincronização precisa desativar o vínculo, sem excluir a linha.
+        await handler.Handle(new DefinirTamanhosUniformeTrabalhadorCommand(trabalhador.Id, new List<ItemTamanhoUniforme> { new(camisa.Id, "M") }), default);
 
+        trabalhador.TamanhoCalcaEpi = null;
         await handler.Handle(new DefinirTamanhosUniformeTrabalhadorCommand(trabalhador.Id, new List<ItemTamanhoUniforme> { new(camisa.Id, "M") }), default);
 
         var vinculos = await db.TrabalhadorTamanhosUniforme.IgnoreQueryFilters().Where(t => t.TrabalhadorId == trabalhador.Id).ToListAsync();
@@ -91,9 +95,26 @@ public class DefinirTamanhosUniformeTrabalhadorCommandHandlerTests
     public async Task Handle_TrabalhadorInexistente_LancaKeyNotFoundException()
     {
         var db = DbContextFactory.Criar();
-        var handler = new DefinirTamanhosUniformeTrabalhadorCommandHandler(db);
+        var handler = new DefinirTamanhosUniformeTrabalhadorCommandHandler(db, new AAHBRANT.SST.Infrastructure.Seguranca.CurrentUserService());
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
             handler.Handle(new DefinirTamanhosUniformeTrabalhadorCommand(Guid.NewGuid(), new List<ItemTamanhoUniforme>()), default));
+    }
+
+    [Fact]
+    public async Task Handle_TrabalhadorDeObraNaoAutorizada_NaoSincroniza()
+    {
+        var db = DbContextFactory.Criar();
+        var (trabalhador, camisa, _) = await SemearAsync(db);
+        var usuario = new AAHBRANT.SST.Infrastructure.Seguranca.CurrentUserService();
+        usuario.DefinirEscopo(false, new[] { Guid.NewGuid() });
+        var handler = new DefinirTamanhosUniformeTrabalhadorCommandHandler(db, usuario);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            handler.Handle(new DefinirTamanhosUniformeTrabalhadorCommand(trabalhador.Id,
+                new List<ItemTamanhoUniforme> { new(camisa.Id, "G") }), default));
+
+        Assert.Empty(await db.TrabalhadorTamanhosUniforme.IgnoreQueryFilters()
+            .Where(t => t.TrabalhadorId == trabalhador.Id).ToListAsync());
     }
 }

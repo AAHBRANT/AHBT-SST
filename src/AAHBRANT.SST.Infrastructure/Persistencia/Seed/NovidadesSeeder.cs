@@ -2816,6 +2816,29 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.161.0",
+            Titulo: "Estoque de uniforme pelo card de cada peça",
+            DataPublicacao: new DateTime(2026, 11, 12, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Entrada e ajuste de estoque ficam no card de cada peça",
+                    "Para dar entrada ou ajustar o saldo de uniforme era preciso usar formulários separados, longe da peça.",
+                    "Cada peça tem o botão \"Registrar entrada\". Ao tocar num tamanho, aparecem Entrada, Ajustar saldo e Histórico, sem sair da tela. O lançamento abre numa janela (na base da tela, no celular) e mostra a obra antes de gravar."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Histórico de movimentações abaixo do estoque",
+                    "O histórico de cada tamanho ocupava espaço dentro da própria tabela de saldos.",
+                    "O histórico abre em painel de largura total, logo abaixo dos cards, com as entradas, saídas e ajustes do tamanho escolhido."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Catálogo mostra quando uma peça está em edição",
+                    "Ao editar uma peça do catálogo, não havia um sinal claro de que a alteração estava em andamento.",
+                    "O card em edição ganha o selo \"Editando\", com os botões Cancelar e Salvar. Se houver alterações não salvas, o sistema pergunta antes de descartá-las."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Tamanhos do uniforme vindos do G-RH",
+                    "Os tamanhos do uniforme eram mantidos no perfil, sem ligação com o cadastro do G-RH.",
+                    "Os tamanhos passam a vir do cadastro do G-RH e aparecem só para leitura no perfil. Na entrega, os tamanhos são sincronizados uma vez antes de gravar o lote."),
+            }),
+        new(
+            Versao: "5.162.0",
             Titulo: "Câmera IP no cadastro de Câmeras",
             DataPublicacao: new DateTime(2026, 11, 12, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
