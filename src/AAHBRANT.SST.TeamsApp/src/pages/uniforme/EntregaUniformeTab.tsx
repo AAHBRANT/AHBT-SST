@@ -184,7 +184,7 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
     setSaldos([]); setEstoqueErro(null);
     if (!obraEntregaId) return;
     setEstoqueCarregando(true);
-    api.estoquesUniforme.listarPorObra(obraEntregaId).then(lista => { if (!cancelado) setSaldos(lista); })
+    api.estoquesUniforme.listarPorObra(obraEntregaId).then(lista => { if (!cancelado) setSaldos(lista.filter(s => s.tamanho)); })
       .catch(e => { if (!cancelado) setEstoqueErro(e instanceof Error ? e.message : 'Falha ao carregar estoque.'); })
       .finally(() => { if (!cancelado) setEstoqueCarregando(false); });
     return () => { cancelado = true; };
@@ -196,7 +196,7 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
   );
 
   function nomeItem(id: string) {
-    return itensCatalogo.find((i) => i.id === id)?.nome ?? id;
+    return itensCatalogo.find((i) => i.id === id)?.nome ?? 'Peça removida do catálogo';
   }
 
   function itemTemFoto(id: string) {

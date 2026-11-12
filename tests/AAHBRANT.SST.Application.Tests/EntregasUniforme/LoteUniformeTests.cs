@@ -46,7 +46,9 @@ public class LoteUniformeTests
     private static async Task<(Trabalhador, CatalogoUniforme, CatalogoUniforme)> Preparar(Infrastructure.Persistencia.SstDbContext db, int saldoCalca)
     {
         var obra = new Obra { Nome = "Obra" }; var funcao = new Funcao { Nome = "Carpinteiro" };
-        var trabalhador = new Trabalhador { Nome = "Pessoa de teste", Cpf = "12345678900", Matricula = "1", Obra = obra, Funcao = funcao, DataAdmissao = DateTime.UtcNow };
+        var trabalhador = new Trabalhador { Nome = "Pessoa de teste", Cpf = "12345678900", Matricula = "1", Obra = obra, Funcao = funcao, DataAdmissao = DateTime.UtcNow,
+            // O tamanho do perfil agora vem do G-RH: sem ele, a sincronização desativaria a preferência "M" abaixo.
+            TamanhoBlusaEpi = "M" };
         var camisa = new CatalogoUniforme { Nome = "CAMISA BRIM MANGA LONGA" }; var calca = new CatalogoUniforme { Nome = "CALÇA BRIM" };
         db.Trabalhadores.Add(trabalhador); db.CatalogoUniformes.AddRange(camisa, calca);
         db.MatrizUniformeFuncoes.AddRange(new MatrizUniformeFuncao { FuncaoId = funcao.Id, CatalogoUniformeId = camisa.Id }, new MatrizUniformeFuncao { FuncaoId = funcao.Id, CatalogoUniformeId = calca.Id });
@@ -59,7 +61,7 @@ public class LoteUniformeTests
     public async Task Lote_UsaTamanhoSelecionadoEBaixaApenasGradesDoKit()
     {
         using var db = DbContextFactory.Criar(); var (t, camisa, calca) = await Preparar(db, 5);
-        var ids = await new CriarLoteEntregaUniformeCommandHandler(db).Handle(new(t.Id, DateTime.UtcNow, MotivoEntregaUniforme.Inicial, null, [new(camisa.Id, "gg", 2), new(calca.Id, "46", 1)]), default);
+        var ids = await new CriarLoteEntregaUniformeCommandHandler(db, new AAHBRANT.SST.Infrastructure.Seguranca.CurrentUserService()).Handle(new(t.Id, DateTime.UtcNow, MotivoEntregaUniforme.Inicial, null, [new(camisa.Id, "gg", 2), new(calca.Id, "46", 1)]), default);
         Assert.Equal(2, ids.Count); Assert.Equal(2, await db.EntregasUniforme.CountAsync());
         Assert.Equal(8, (await db.EstoquesUniforme.SingleAsync(s => s.CatalogoUniformeId == camisa.Id)).Saldo);
         Assert.Equal(4, (await db.EstoquesUniforme.SingleAsync(s => s.CatalogoUniformeId == calca.Id)).Saldo);
@@ -72,7 +74,7 @@ public class LoteUniformeTests
     public async Task Lote_SegundaPecaSemSaldo_NaoPersistePrimeiraEntregaNemBaixa()
     {
         using var db = DbContextFactory.Criar(); var (t, camisa, calca) = await Preparar(db, 0);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => new CriarLoteEntregaUniformeCommandHandler(db).Handle(new(t.Id, DateTime.UtcNow, MotivoEntregaUniforme.Inicial, null, [new(camisa.Id, "GG", 2), new(calca.Id, "46", 1)]), default));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new CriarLoteEntregaUniformeCommandHandler(db, new AAHBRANT.SST.Infrastructure.Seguranca.CurrentUserService()).Handle(new(t.Id, DateTime.UtcNow, MotivoEntregaUniforme.Inicial, null, [new(camisa.Id, "GG", 2), new(calca.Id, "46", 1)]), default));
         db.ChangeTracker.Clear();
         Assert.Empty(await db.EntregasUniforme.ToListAsync()); Assert.Empty(await db.MovimentacoesEstoqueUniforme.ToListAsync());
         Assert.Equal(10, (await db.EstoquesUniforme.SingleAsync(s => s.CatalogoUniformeId == camisa.Id)).Saldo);
@@ -84,7 +86,7 @@ public class LoteUniformeTests
         using var db = DbContextFactory.Criar(); var (t, camisa, calca) = await Preparar(db, 5);
         var command = new CriarLoteEntregaUniformeCommand(t.Id, DateTime.UtcNow, MotivoEntregaUniforme.Inicial, null,
             [new(camisa.Id, "GG", 2), new(calca.Id, "46", 1)], Guid.NewGuid());
-        var handler = new CriarLoteEntregaUniformeCommandHandler(db);
+        var handler = new CriarLoteEntregaUniformeCommandHandler(db, new AAHBRANT.SST.Infrastructure.Seguranca.CurrentUserService());
         var primeira = await handler.Handle(command, default);
         db.ChangeTracker.Clear();
         var segunda = await handler.Handle(command, default);
@@ -107,7 +109,7 @@ public class LoteUniformeTests
     public async Task Lote_PecaDuplicada_RecusaAntesDeGravar()
     {
         using var db = DbContextFactory.Criar(); var (t, camisa, _) = await Preparar(db, 5);
-        await Assert.ThrowsAsync<FluentValidation.ValidationException>(() => new CriarLoteEntregaUniformeCommandHandler(db).Handle(new(t.Id, DateTime.UtcNow, MotivoEntregaUniforme.Inicial, null, [new(camisa.Id, "GG", 1), new(camisa.Id, "GG", 1)]), default));
+        await Assert.ThrowsAsync<FluentValidation.ValidationException>(() => new CriarLoteEntregaUniformeCommandHandler(db, new AAHBRANT.SST.Infrastructure.Seguranca.CurrentUserService()).Handle(new(t.Id, DateTime.UtcNow, MotivoEntregaUniforme.Inicial, null, [new(camisa.Id, "GG", 1), new(camisa.Id, "GG", 1)]), default));
         Assert.Empty(await db.EntregasUniforme.ToListAsync());
     }
 }

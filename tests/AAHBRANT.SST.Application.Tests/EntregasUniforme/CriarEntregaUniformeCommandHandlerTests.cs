@@ -39,7 +39,7 @@ public class CriarEntregaUniformeCommandHandlerTests
     {
         var db = DbContextFactory.Criar();
         var (trabalhador, camisa, _, _) = await SemearBaseAsync(db);
-        var handler = new CriarEntregaUniformeCommandHandler(db);
+        var handler = new CriarEntregaUniformeCommandHandler(db, new AAHBRANT.SST.Infrastructure.Seguranca.CurrentUserService());
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             handler.Handle(new CriarEntregaUniformeCommand(trabalhador.Id, camisa.Id, 1, DateTime.UtcNow, MotivoEntregaUniforme.Inicial, null), default));
@@ -55,7 +55,7 @@ public class CriarEntregaUniformeCommandHandlerTests
         db.CatalogoUniformes.Add(calca);
         db.MatrizUniformeFuncoes.Add(new MatrizUniformeFuncao { FuncaoId = funcao.Id, CatalogoUniformeId = calca.Id });
         await db.SaveChangesAsync();
-        var handler = new CriarEntregaUniformeCommandHandler(db);
+        var handler = new CriarEntregaUniformeCommandHandler(db, new AAHBRANT.SST.Infrastructure.Seguranca.CurrentUserService());
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             handler.Handle(new CriarEntregaUniformeCommand(trabalhador.Id, camisa.Id, 1, DateTime.UtcNow, MotivoEntregaUniforme.Inicial, null), default));
@@ -69,7 +69,7 @@ public class CriarEntregaUniformeCommandHandlerTests
         var (trabalhador, camisa, _, funcao) = await SemearBaseAsync(db);
         db.MatrizUniformeFuncoes.Add(new MatrizUniformeFuncao { FuncaoId = funcao.Id, CatalogoUniformeId = camisa.Id });
         await db.SaveChangesAsync();
-        var handler = new CriarEntregaUniformeCommandHandler(db);
+        var handler = new CriarEntregaUniformeCommandHandler(db, new AAHBRANT.SST.Infrastructure.Seguranca.CurrentUserService());
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             handler.Handle(new CriarEntregaUniformeCommand(trabalhador.Id, camisa.Id, 1, DateTime.UtcNow, MotivoEntregaUniforme.Inicial, null), default));
@@ -81,13 +81,14 @@ public class CriarEntregaUniformeCommandHandlerTests
     {
         var db = DbContextFactory.Criar();
         var (trabalhador, camisa, obra, funcao) = await SemearBaseAsync(db);
+        trabalhador.TamanhoBlusaEpi = "M";
         db.MatrizUniformeFuncoes.Add(new MatrizUniformeFuncao { FuncaoId = funcao.Id, CatalogoUniformeId = camisa.Id });
         db.TrabalhadorTamanhosUniforme.Add(new TrabalhadorTamanhoUniforme { TrabalhadorId = trabalhador.Id, CatalogoUniformeId = camisa.Id, Tamanho = "M" });
         // Estoque só existe no tamanho "G", não no "M" resolvido pelo cadastro do trabalhador —
         // confirma que a trava verifica o bucket (peça+tamanho) certo, não a peça em qualquer tamanho.
         await new RegistrarEntradaEstoqueUniformeCommandHandler(db)
             .Handle(new RegistrarEntradaEstoqueUniformeCommand(camisa.Id, obra.Id, "G", 10, null), default);
-        var handler = new CriarEntregaUniformeCommandHandler(db);
+        var handler = new CriarEntregaUniformeCommandHandler(db, new AAHBRANT.SST.Infrastructure.Seguranca.CurrentUserService());
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             handler.Handle(new CriarEntregaUniformeCommand(trabalhador.Id, camisa.Id, 1, DateTime.UtcNow, MotivoEntregaUniforme.Inicial, null), default));
@@ -99,12 +100,13 @@ public class CriarEntregaUniformeCommandHandlerTests
     {
         var db = DbContextFactory.Criar();
         var (trabalhador, camisa, obra, funcao) = await SemearBaseAsync(db);
+        trabalhador.TamanhoBlusaEpi = "M";
         db.MatrizUniformeFuncoes.Add(new MatrizUniformeFuncao { FuncaoId = funcao.Id, CatalogoUniformeId = camisa.Id });
         db.TrabalhadorTamanhosUniforme.Add(new TrabalhadorTamanhoUniforme { TrabalhadorId = trabalhador.Id, CatalogoUniformeId = camisa.Id, Tamanho = "M" });
         await db.SaveChangesAsync();
         await new RegistrarEntradaEstoqueUniformeCommandHandler(db)
             .Handle(new RegistrarEntradaEstoqueUniformeCommand(camisa.Id, obra.Id, "M", 10, null), default);
-        var handler = new CriarEntregaUniformeCommandHandler(db);
+        var handler = new CriarEntregaUniformeCommandHandler(db, new AAHBRANT.SST.Infrastructure.Seguranca.CurrentUserService());
 
         var id = await handler.Handle(new CriarEntregaUniformeCommand(trabalhador.Id, camisa.Id, 2, DateTime.UtcNow, MotivoEntregaUniforme.Inicial, "Kit inicial"), default);
 

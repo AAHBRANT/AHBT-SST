@@ -75,6 +75,7 @@ export function UniformeDashboardTab() {
         const saldos = new Map<string, ItemEstoque>();
         for (const lista of estoquesPorObra) {
           for (const e of lista) {
+            if (!e.tamanho) continue; // peça do catálogo ainda sem entrada de estoque
             const chave = `${e.catalogoUniformeNome}|${e.tamanho}`;
             const atual = saldos.get(chave);
             if (atual) atual.saldo += e.saldo;
