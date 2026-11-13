@@ -162,3 +162,33 @@ export function mensagemEtapaConcluida(etapa: { tipo: EtapaIntegracao['tipo']; p
 export function dataBrasil(iso?: string | null): string {
   return iso ? iso.slice(0, 10).split('-').reverse().join('/') : '—';
 }
+
+// ---- seleção de quem entra na integração (início) ----
+// Só entra quem ainda não participa de um atendimento; o técnico desmarca quem faltou e essa pessoa
+// continua pendente para a próxima integração.
+export function elegiveisDaObra<T extends { trabalhadorId: string; jaParticipa: boolean }>(candidatos: T[]): T[] {
+  return candidatos.filter((c) => !c.jaParticipa);
+}
+
+export type EstadoTodos = boolean | 'mixed';
+
+export function estadoSelecionarTodos(marcados: number, total: number): EstadoTodos {
+  if (total > 0 && marcados >= total) return true;
+  return marcados === 0 ? false : 'mixed';
+}
+
+export function tituloSelecao(marcados: number, total: number): string {
+  if (marcados >= total) return `${total} ${total === 1 ? 'selecionado' : 'selecionados'}`;
+  return `${marcados} de ${total} ${marcados === 1 ? 'selecionado' : 'selecionados'}`;
+}
+
+/** "3" quando todos entram; "2 de 3" quando só parte. */
+export function resumoPessoas(marcados: number, total: number): string {
+  return marcados >= total ? String(total) : `${marcados} de ${total}`;
+}
+
+export function fraseFicaParaDepois(fora: number): string {
+  return `${fora} ${fora === 1 ? 'pessoa fica' : 'pessoas ficam'} para a próxima integração.`;
+}
+
+export const MOTIVO_NENHUMA_PESSOA = 'Marque ao menos uma pessoa para começar.';

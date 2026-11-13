@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BotaoVoltar, Button, Card, Carregando, FeedbackInline } from '@ui';
-import { Info20Regular, LockClosed20Regular } from '@fluentui/react-icons';
+import { Info20Regular, LockClosed20Regular, Warning16Regular } from '@fluentui/react-icons';
 import {
   api,
   type EntradaIntegracao,
@@ -20,13 +20,17 @@ import { IntegracaoConcluida } from './componentes/IntegracaoConcluida';
 import { mergeClasses, useEstilosIntegracao } from './componentes/estilos';
 import {
   ehEtapaOs,
+  elegiveisDaObra,
   etapaAtual,
   faltasDaEtapa,
+  fraseFicaParaDepois,
   formatarCarga,
+  MOTIVO_NENHUMA_PESSOA,
   mensagemEtapaConcluida,
   nomesCurtos,
   participantesAtivos,
   proximaEtapa,
+  resumoPessoas,
   rotuloAvancar,
   rotuloEtapa,
   TOTAL_ETAPAS,
@@ -38,6 +42,8 @@ interface Acao {
   resumo: string;
   executar: () => void;
   desabilitada: boolean;
+  /** Motivo escrito quando o botão está desabilitado por falta de escolha (ex.: nenhuma pessoa marcada). */
+  motivo?: string;
 }
 
 function dataHoraCurta(iso?: string | null): string {
@@ -63,6 +69,8 @@ export function RealizarIntegracaoPage() {
   const [obraId, setObraId] = useState(busca.get('obraId') ?? '');
   const [entrada, setEntrada] = useState<EntradaIntegracao | null>(null);
   const [instrutorId, setInstrutorId] = useState('');
+  // Quem entra nesta integração: começa com todos os elegíveis da obra marcados; trocar de obra reinicia.
+  const [marcados, setMarcados] = useState<Set<string>>(new Set());
   const [integracao, setIntegracao] = useState<IntegracaoAtendimentoDetalhe | null>(null);
   const [sessao, setSessao] = useState<SessaoTreinamentoDetalhe | null>(null);
   const [os, setOs] = useState<OsIntegracao | null>(null);
@@ -140,6 +148,21 @@ export function RealizarIntegracaoPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, obraId]);
 
+  useEffect(() => {
+    setMarcados(new Set(elegiveisDaObra(entrada?.candidatos ?? []).map((c) => c.trabalhadorId)));
+  }, [entrada]);
+
+  const elegiveis = elegiveisDaObra(entrada?.candidatos ?? []);
+  const nMarcados = elegiveis.filter((c) => marcados.has(c.trabalhadorId)).length;
+  const alternarPessoa = (trabalhadorId: string) =>
+    setMarcados((atualSet) => {
+      const novo = new Set(atualSet);
+      if (!novo.delete(trabalhadorId)) novo.add(trabalhadorId);
+      return novo;
+    });
+  const alternarTodos = () =>
+    setMarcados(nMarcados === elegiveis.length ? new Set() : new Set(elegiveis.map((c) => c.trabalhadorId)));
+
   const atual = integracao ? etapaAtual(integracao) : null;
   const concluida = integracao?.status === 'concluido';
   const sessaoAlvoId = atual && !ehEtapaOs(atual) && atual.status === 'emAndamento' ? atual.sessaoTreinamentoId ?? null : null;
@@ -181,7 +204,11 @@ export function RealizarIntegracaoPage() {
   async function comecar() {
     if (!entrada || emAcao.current) return;
     emAcao.current = true;
-    const pessoas = entrada.candidatos.filter((c) => !c.jaParticipa).map((c) => c.trabalhadorId);
+    const pessoas = elegiveis.filter((c) => marcados.has(c.trabalhadorId)).map((c) => c.trabalhadorId);
+    if (pessoas.length === 0) {
+      emAcao.current = false;
+      return;
+    }
     try {
       setProcessando(true);
       setErro(null);
@@ -245,14 +272,25 @@ export function RealizarIntegracaoPage() {
   // ---- ação principal (botão grande da lateral, do rodapé e da barra fixa) ----
   let acao: Acao;
   if (!integracao) {
-    const n = entrada?.candidatos.filter((c) => !c.jaParticipa).length ?? 0;
+    const n = nMarcados;
+    const total = elegiveis.length;
     const bloqueio = entrada?.bloqueios[0]?.mensagem;
+    const semMarcar = total > 0 && n === 0;
     acao = {
       rotulo: 'Começar pela NR-06',
       faltas: [],
-      resumo: bloqueio ?? (n === 0 ? 'Nenhum admitido para integrar' : `${n} pessoa${n > 1 ? 's' : ''} selecionada${n > 1 ? 's' : ''}`),
+      resumo:
+        bloqueio ??
+        (total === 0
+          ? 'Nenhum admitido para integrar'
+          : semMarcar
+            ? MOTIVO_NENHUMA_PESSOA
+            : n === total
+              ? `${n} pessoa${n > 1 ? 's' : ''} selecionada${n > 1 ? 's' : ''}`
+              : `${n} de ${total} pessoas selecionadas`),
       executar: () => void comecar(),
-      desabilitada: !entrada?.podeIniciar || !instrutorId || processando,
+      desabilitada: !entrada?.podeIniciar || !instrutorId || processando || n === 0,
+      motivo: semMarcar ? MOTIVO_NENHUMA_PESSOA : undefined,
     };
   } else if (concluida) {
     acao = { rotulo: 'Voltar ao perfil', faltas: [], resumo: 'Integração concluída', executar: voltar, desabilitada: false };
@@ -299,6 +337,12 @@ export function RealizarIntegracaoPage() {
       >
         {acao.rotulo}
       </Button>
+      {acao.motivo && (
+        <div className={e.motivo}>
+          <Warning16Regular aria-hidden="true" />
+          <span>{acao.motivo}</span>
+        </div>
+      )}
       {acao.faltas.length > 0 && (
         <>
           <div className={e.mudo} style={{ marginTop: 10 }}>Falta:</div>
@@ -315,8 +359,7 @@ export function RealizarIntegracaoPage() {
   // ---- resumo lateral ----
   function linhasResumo(): Array<[string, string]> {
     if (!integracao) {
-      const c = entrada?.candidatos.filter((x) => !x.jaParticipa).length ?? 0;
-      return [['Pessoas', String(c)], ['Etapas', '5 (NR-12 e NR-35 só para quem exige)'], ['Primeira etapa', 'NR-06']];
+      return [['Pessoas', resumoPessoas(nMarcados, elegiveis.length)], ['Etapas', '5 (NR-12 e NR-35 só para quem exige)'], ['Primeira etapa', 'NR-06']];
     }
     if (concluida) {
       const certificados = integracao.etapas.filter((x) => !ehEtapaOs(x)).reduce((t, x) => t + participantesAtivos(x).length, 0);
@@ -360,7 +403,7 @@ export function RealizarIntegracaoPage() {
     );
   }
 
-  const nParticipantes = integracao ? integracao.participantes.length : entrada?.candidatos.filter((c) => !c.jaParticipa).length ?? 0;
+  const nParticipantes = integracao ? integracao.participantes.length : elegiveis.length;
   const obraNome = integracao?.obraNome ?? entrada?.obraNome ?? obras.find((o) => o.id === obraId)?.nome ?? '—';
   const periodo = !integracao
     ? 'A iniciar'
@@ -432,6 +475,9 @@ export function RealizarIntegracaoPage() {
                 setEntrada(null);
               }}
               entrada={entrada}
+              marcados={marcados}
+              aoAlternarPessoa={alternarPessoa}
+              aoAlternarTodos={alternarTodos}
               instrutorId={instrutorId}
               aoMudarInstrutor={setInstrutorId}
             />
@@ -483,6 +529,9 @@ export function RealizarIntegracaoPage() {
               </div>
             ))}
             <div style={{ marginTop: 12 }}>{botaoAcao}</div>
+            {!integracao && entrada && elegiveis.length > nMarcados && nMarcados > 0 && (
+              <div className={e.mudo} style={{ marginTop: 10 }}>{fraseFicaParaDepois(elegiveis.length - nMarcados)}</div>
+            )}
           </Card>
         </aside>
       </div>
