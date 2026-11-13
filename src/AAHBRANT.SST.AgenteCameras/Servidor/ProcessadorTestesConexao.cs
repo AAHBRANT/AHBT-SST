@@ -134,7 +134,7 @@ public sealed class ProcessadorTestesConexao
         var id = (teste.CameraId ?? teste.EquipamentoId).ToString("D");
         var camera = new CameraConfig(id, "teste de conexão", teste.Host.Trim(), teste.PortaRtsp is >= 1 and <= 65535 ? teste.PortaRtsp : 554,
             (teste.Usuario ?? "").Trim(), senha, teste.Canal is 1 or 2 ? teste.Canal : 1, teste.Stream is 0 or 1 ? teste.Stream : 0,
-            null, TimeSpan.FromSeconds(1));
+            null, TimeSpan.FromSeconds(1), ParteImagemCamera.Normalizar(teste.ParteImagem));
 
         byte[]? quadro = null;
         using var limite = CancellationTokenSource.CreateLinkedTokenSource(_parada);

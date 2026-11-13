@@ -87,6 +87,15 @@ function ehCodigoConhecido(codigo: string | null | undefined): codigo is CodigoT
   return !!codigo && (CODIGOS_TESTE_CONEXAO as readonly string[]).includes(codigo);
 }
 
+const CONFERIR_NO_CADASTRO = 'Confira a câmera no cadastro.';
+
+// Falha ao abrir o "Ver ao vivo" (código vindo do motivo `falha:<codigo>`). A página Ao vivo não tem escolha de lente nem
+// de qualidade: onde a mensagem do teste de conexão manda conferir uma delas, a página manda conferir a câmera no cadastro.
+export function mensagemDaFalhaAoVivo(codigo: string | null | undefined): MensagemFalhaTeste {
+  const base = mensagemDaFalha({ situacao: 'Concluido', codigo, motivo: null, detalhe: null });
+  return /lente|qualidade/i.test(base.texto) ? { ...base, texto: CONFERIR_NO_CADASTRO } : base;
+}
+
 export function mensagemDaFalha(teste: TesteConexaoResumo): MensagemFalhaTeste {
   if (teste.situacao === 'Expirado') return CONFERIR_AGENTE;
   // Código ausente ou fora da lista (servidor mais novo que a tela) = mensagem neutra, sem inventar causa.

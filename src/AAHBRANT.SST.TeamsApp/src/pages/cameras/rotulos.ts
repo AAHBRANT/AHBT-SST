@@ -77,6 +77,16 @@ export function formatarHora(data: Date | string): string {
   return paraData(data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: FUSO_BRASILIA });
 }
 
+// "14:32:07" (horário de Brasília).
+export function formatarHoraComSegundos(data: Date | string): string {
+  return paraData(data).toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: FUSO_BRASILIA,
+  });
+}
+
 export function formatarDataHora(data: Date | string): string {
   return paraData(data).toLocaleString('pt-BR', {
     day: '2-digit',

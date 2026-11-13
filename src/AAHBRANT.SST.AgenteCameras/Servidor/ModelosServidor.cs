@@ -4,6 +4,7 @@ using AAHBRANT.SST.AgenteCameras.Seguranca;
 namespace AAHBRANT.SST.AgenteCameras.Servidor;
 
 // Contrato de GET /api/agentes-camera/{agenteId}/configuracao (campos que o agente usa; o resto é ignorado).
+// ParteImagem: 0 inteira, 1 metade de cima, 2 metade de baixo; ausente (API antiga) ou fora de 0..2 = 0.
 public sealed record CameraServidor(
     Guid CameraId,
     string? Nome,
@@ -14,7 +15,8 @@ public sealed record CameraServidor(
     string? Senha,
     int Canal,
     int Stream,
-    int IntervaloEnvioSegundos)
+    int IntervaloEnvioSegundos,
+    int ParteImagem = 0)
 {
     // O ToString gerado para records imprimiria a senha: este a omite.
     public override string ToString() => $"{nameof(CameraServidor)} {{ CameraId = {CameraId}, Host = {Host} }}";
@@ -29,15 +31,30 @@ public sealed record TesteServidor(
     string? Usuario,
     string? Senha,
     int Canal,
-    int Stream)
+    int Stream,
+    int ParteImagem = 0)
 {
     public override string ToString() => $"{nameof(TesteServidor)} {{ TesteId = {TesteId}, Host = {Host} }}";
 }
 
+// Sessão "câmera quase ao vivo" pedida pela tela. SegundosRestantes é tempo RELATIVO ao momento da resposta (o relógio
+// do PC pode estar errado); o agente o conta no relógio monotônico. Não carrega credencial: a câmera é achada em "cameras".
+public sealed record SessaoAoVivoServidor(
+    Guid SessaoId,
+    Guid CameraId,
+    int Fps,
+    int LarguraMaxima,
+    int SegundosRestantes)
+{
+    public override string ToString() => $"{nameof(SessaoAoVivoServidor)} {{ SessaoId = {SessaoId}, CameraId = {CameraId}, Fps = {Fps} }}";
+}
+
+// "AoVivo" ausente (API antiga) = lista vazia; agente antigo ignora o campo.
 public sealed record ConfiguracaoServidor(
     int IntervaloConsultaSegundos,
     List<CameraServidor>? Cameras,
-    List<TesteServidor>? TestesConexao);
+    List<TesteServidor>? TestesConexao,
+    List<SessaoAoVivoServidor>? AoVivo = null);
 
 // Corpo de POST .../testes-conexao/{testeId}/resultado. Codigo (só na falha) é o motivo estável que a tela usa para escolher
 // a mensagem (ver ClassificadorFalhaConexao.Cod*); Motivo e Detalhe são texto para o técnico de suporte.
@@ -76,6 +93,7 @@ public static class ConversorServidor
             id,
             string.IsNullOrWhiteSpace(c.Nome) ? id : c.Nome.Trim(),
             c.Host!.Trim(), c.PortaRtsp, (c.Usuario ?? "").Trim(), c.Senha!, c.Canal, c.Stream, null,
-            TimeSpan.FromSeconds(Math.Clamp(c.IntervaloEnvioSegundos, 1, 600)));
+            TimeSpan.FromSeconds(Math.Clamp(c.IntervaloEnvioSegundos, 1, 600)),
+            ParteImagemCamera.Normalizar(c.ParteImagem));
     }
 }

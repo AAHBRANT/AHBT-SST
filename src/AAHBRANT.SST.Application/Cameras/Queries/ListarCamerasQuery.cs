@@ -38,7 +38,9 @@ public record CameraDto(
     int IntervaloEnvioSegundos = CameraIpRegras.IntervaloEnvioPadraoSegundos,
     string? SituacaoConexao = null,
     DateTime? UltimoQuadroRecebidoEmUtc = null,
-    string? MensagemConexao = null);
+    string? MensagemConexao = null,
+    ParteImagemCamera ParteImagem = ParteImagemCamera.Inteira,
+    bool AvisarTelegram = true);
 
 public class ListarCamerasQueryHandler : IRequestHandler<ListarCamerasQuery, List<CameraDto>>
 {
@@ -82,6 +84,8 @@ public class ListarCamerasQueryHandler : IRequestHandler<ListarCamerasQuery, Lis
                 c.IntervaloEnvioSegundos,
                 c.UltimoQuadroRecebidoEmUtc,
                 c.MensagemConexao,
+                c.ParteImagem,
+                c.AvisarTelegram,
             })
             .ToListAsync(ct);
 
@@ -139,6 +143,8 @@ public class ListarCamerasQueryHandler : IRequestHandler<ListarCamerasQuery, Lis
             Situacao(c.Fonte, c.Habilitada, c.EquipamentoCameraId, c.UltimoQuadroRecebidoEmUtc),
             // datetime2 volta sem fuso (Kind Unspecified) e o JSON sairia sem "Z": marca como UTC, que é o que é.
             c.UltimoQuadroRecebidoEmUtc is { } uq ? DateTime.SpecifyKind(uq, DateTimeKind.Utc) : null,
-            c.MensagemConexao)).ToList();
+            c.MensagemConexao,
+            c.ParteImagem,
+            c.AvisarTelegram)).ToList();
     }
 }

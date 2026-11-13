@@ -6,10 +6,10 @@ using Microsoft.Extensions.Logging;
 
 namespace AAHBRANT.SST.AgenteCameras.Quadros;
 
-// Lê o RTSP rodando ffmpeg.exe como processo filho: 1 quadro por segundo, no máximo 1280 px de largura, JPEG pela
-// saída padrão. A URL (com a senha) vai na linha de comando do ffmpeg; nunca é logada, e a saída de erro do
+// Lê o RTSP rodando ffmpeg.exe como processo filho: por padrão 1 quadro por segundo, no máximo 1280 px de largura,
+// JPEG q4 pela saída padrão (perfil da análise de EPI; o "ao vivo" usa outro perfil e outro processo). A URL (com a senha) vai na linha de comando do ffmpeg; nunca é logada, e a saída de erro do
 // ffmpeg passa pelo mascarador antes de qualquer log.
-public sealed class FfmpegFonteQuadros : IFonteQuadros
+public sealed class FfmpegFonteQuadros : IFonteQuadros, IFonteAoVivo
 {
     private const int LinhasDeErroGuardadas = 8;
 
@@ -26,7 +26,18 @@ public sealed class FfmpegFonteQuadros : IFonteQuadros
         _tempoLimiteRwSegundos = tempoLimiteRwSegundos;
     }
 
-    internal static IReadOnlyList<string> MontarArgumentos(string url, int tempoLimiteRwSegundos) => new[]
+    internal static IReadOnlyList<string> MontarArgumentos(string url, int tempoLimiteRwSegundos) =>
+        MontarArgumentos(url, tempoLimiteRwSegundos, PerfilCaptura.Analise);
+
+    // parteImagem 1 ou 2: o recorte (metade de cima ou de baixo) vem ANTES de fps e scale. Parte 0: a linha de sempre.
+    internal static IReadOnlyList<string> MontarArgumentos(string url, int tempoLimiteRwSegundos, PerfilCaptura perfil, int parteImagem = ParteImagemCamera.Inteira)
+    {
+        var filtro = $"fps={perfil.Fps},scale='min({perfil.LarguraMaxima},iw)':-2";
+        if (ParteImagemCamera.FiltroCrop(parteImagem) is { } crop) filtro = crop + "," + filtro;
+        return Montar(url, tempoLimiteRwSegundos, perfil, filtro);
+    }
+
+    private static IReadOnlyList<string> Montar(string url, int tempoLimiteRwSegundos, PerfilCaptura perfil, string filtro) => new[]
     {
         "-hide_banner", "-nostdin", "-loglevel", "warning",
         "-rtsp_transport", "tcp",
@@ -36,12 +47,15 @@ public sealed class FfmpegFonteQuadros : IFonteQuadros
         "-timeout", (tempoLimiteRwSegundos * 1_000_000L).ToString(),
         "-i", url,
         "-an",
-        "-vf", "fps=1,scale='min(1280,iw)':-2",
-        "-f", "image2pipe", "-c:v", "mjpeg", "-q:v", "4",
+        "-vf", filtro,
+        "-f", "image2pipe", "-c:v", "mjpeg", "-q:v", perfil.QualidadeJpeg.ToString(),
         "pipe:1",
     };
 
-    public async IAsyncEnumerable<byte[]> LerQuadrosAsync(CameraConfig camera, [EnumeratorCancellation] CancellationToken ct)
+    public IAsyncEnumerable<byte[]> LerQuadrosAsync(CameraConfig camera, CancellationToken ct) =>
+        LerQuadrosAsync(camera, PerfilCaptura.Analise, ct);
+
+    public async IAsyncEnumerable<byte[]> LerQuadrosAsync(CameraConfig camera, PerfilCaptura perfil, [EnumeratorCancellation] CancellationToken ct)
     {
         if (!File.Exists(_caminhoFfmpeg))
             throw new FfmpegIndisponivelException(
@@ -55,7 +69,7 @@ public sealed class FfmpegFonteQuadros : IFonteQuadros
             UseShellExecute = false,
             CreateNoWindow = true,
         };
-        foreach (var arg in MontarArgumentos(UrlRtsp.Montar(camera), _tempoLimiteRwSegundos))
+        foreach (var arg in MontarArgumentos(UrlRtsp.Montar(camera), _tempoLimiteRwSegundos, perfil, camera.ParteImagem))
             inicio.ArgumentList.Add(arg);
 
         using var processo = new Process { StartInfo = inicio };

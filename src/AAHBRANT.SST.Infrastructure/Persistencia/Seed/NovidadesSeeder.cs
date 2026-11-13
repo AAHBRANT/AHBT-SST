@@ -2860,6 +2860,21 @@ public static class NovidadesSeeder
                     "Não dava para ver se uma câmera da obra estava mandando imagem.",
                     "A lista de câmeras e o Mosaico mostram a situação de cada câmera IP: \"Recebendo imagem\", \"Aguardando sinal\" ou \"Agente sem contato\", para o técnico saber logo se precisa olhar a câmera ou o PC da obra."),
             }),
+        new(
+            Versao: "5.163.0",
+            Titulo: "Câmera IP quase ao vivo",
+            DataPublicacao: new DateTime(2026, 11, 13, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Câmeras: veja a câmera IP da obra quase ao vivo dentro do sistema",
+                    "Para ver o que a câmera da obra estava filmando, era preciso usar o aplicativo do fabricante.",
+                    "Na câmera IP, abra a imagem quase ao vivo direto no sistema: o quadro se renova algumas vezes por segundo e fecha sozinho depois de alguns minutos ou quando ninguém está olhando. O sistema não grava vídeo, e a última imagem recebida é apagada quando a transmissão termina."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Câmeras: escolha a parte da imagem e desligue o aviso no Telegram por câmera",
+                    "Câmeras de duas lentes mostram as duas imagens empilhadas, e a mesma pessoa podia ser contada duas vezes. Também não dava para silenciar o Telegram de uma câmera sem desligar a análise dela.",
+                    "No cadastro da câmera IP, escolha \"Parte da imagem\": inteira, metade de cima ou metade de baixo. Assim dá para cadastrar a mesma câmera duas vezes, uma para cada lente. O interruptor \"Avisar no Telegram\" desliga só o aviso daquela câmera: a análise continua e as ocorrências seguem registradas."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

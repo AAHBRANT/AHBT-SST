@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Campo, FeedbackInline, Field, FormGrid, FormRodape, FormSection, Input, Select, Switch, tokensUi } from '@ui';
-import { api, FonteCamera, StreamCamera, TipoCamera, tipoCameraLabel, type CameraResumo, type DadosCamera, type Obra } from '../../lib/api';
+import { api, FonteCamera, ParteImagemCamera, StreamCamera, TipoCamera, tipoCameraLabel, type CameraResumo, type DadosCamera, type Obra } from '../../lib/api';
 import { useAgentesCamera, useCameras, useEquipamentosCamera } from '../../lib/consultas';
 import { OrigemImagemCamera, type OrigemImagem } from './OrigemImagemCamera';
 import { ehCameraIp } from './rotulos';
+import { useEstilosCameraIp } from './estilosCameraIp';
 
 const INTERVALOS_PADRAO = [0, 5, 10, 30, 60];
 // Câmera nova nasce com 30 minutos entre alertas de quem não foi identificado (igual ao padrão do servidor).
@@ -30,7 +31,11 @@ export function FormularioCamera({ camera, obras, obraInicial, ipInicial, aoSalv
   const [nome, setNome] = useState(camera?.nome ?? '');
   const [areaSstId, setAreaSstId] = useState(camera?.areaSstId ?? '');
   const [tipo, setTipo] = useState<number>(camera?.tipo ?? TipoCamera.Canteiro);
+  const ip = useEstilosCameraIp();
   const [habilitada, setHabilitada] = useState(camera?.habilitada ?? true);
+  // Câmera sem os campos (resposta antiga) vale imagem inteira e com aviso no Telegram.
+  const [avisarTelegram, setAvisarTelegram] = useState(camera?.avisarTelegram ?? true);
+  const [parteImagem, setParteImagem] = useState<number>(camera?.parteImagem ?? ParteImagemCamera.Inteira);
   const [intervalo, setIntervalo] = useState(camera?.intervaloMinimoAlertasMinutos ?? INTERVALO_INICIAL);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -80,18 +85,21 @@ export function FormularioCamera({ camera, obras, obraInicial, ipInicial, aoSalv
       tipo,
       habilitada: ligada,
       intervaloMinimoAlertasMinutos: intervalo,
+      avisarTelegram,
     };
     if (origem === 'ip') {
       dados.fonte = FonteCamera.Rtsp;
       dados.equipamentoCameraId = equipamentoId;
       dados.canal = canal;
       dados.stream = stream;
+      dados.parteImagem = parteImagem;
     } else if (origemSalva === 'ip') {
       // Voltou para tablet/navegador: limpa equipamento, lente e qualidade. Câmera de tablet que continua de tablet não envia nada de origem.
       dados.fonte = FonteCamera.Navegador;
       dados.equipamentoCameraId = null;
       dados.canal = null;
       dados.stream = null;
+      dados.parteImagem = ParteImagemCamera.Inteira;
     }
     try {
       setSalvando(true);
@@ -199,6 +207,16 @@ export function FormularioCamera({ camera, obras, obraInicial, ipInicial, aoSalv
             </div>
           )}
         </Campo>
+        <Campo span={6}>
+          <Switch
+            checked={avisarTelegram}
+            label="Avisar no Telegram"
+            onChange={(_, d) => setAvisarTelegram(d.checked)}
+          />
+          <div className={ip.dica} style={{ fontSize: 12, lineHeight: '16px' }}>
+            Desligado, a câmera continua analisando e registrando as ocorrências no sistema, só não envia mensagem no Telegram.
+          </div>
+        </Campo>
       </FormGrid>
       <FormSection titulo="Origem da imagem" numero={2}>
         <OrigemImagemCamera
@@ -212,6 +230,8 @@ export function FormularioCamera({ camera, obras, obraInicial, ipInicial, aoSalv
           aoMudarCanal={setCanal}
           stream={stream}
           aoMudarStream={setStream}
+          parteImagem={parteImagem}
+          aoMudarParteImagem={setParteImagem}
           equipamentos={equipamentos.data ?? []}
           agentes={agentes.data ?? []}
           todasCameras={todasCameras.data ?? []}

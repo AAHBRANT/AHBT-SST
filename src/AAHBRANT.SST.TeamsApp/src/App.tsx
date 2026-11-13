@@ -42,6 +42,7 @@ const AlertasPage = lazy(() => import('./pages/alertas/AlertasPage').then((m) =>
 const RelatoriosPage = lazy(() => import('./pages/relatorios/RelatoriosPage').then((m) => ({ default: m.RelatoriosPage })));
 const CalendarioPage = lazy(() => import('./pages/calendario/CalendarioPage').then((m) => ({ default: m.CalendarioPage })));
 const CamerasPage = lazy(() => import('./pages/cameras/CamerasPage').then((m) => ({ default: m.CamerasPage })));
+const CameraAoVivoPage = lazy(() => import('./pages/cameras/CameraAoVivoPage').then((m) => ({ default: m.CameraAoVivoPage })));
 const MonitorarCameraPage = lazy(() => import('./pages/cameras/MonitorarCameraPage').then((m) => ({ default: m.MonitorarCameraPage })));
 const AcidenteDetalhePage = lazy(() => import('./pages/acidentes/AcidenteDetalhePage').then((m) => ({ default: m.AcidenteDetalhePage })));
 const AssinarAcidentePage = lazy(() => import('./pages/acidentes/AssinarAcidentePage').then((m) => ({ default: m.AssinarAcidentePage })));
@@ -244,6 +245,7 @@ function AppRoteado() {
               <Route path="/cameras" element={<RotasDoPilotoCameras />}>
                 <Route index element={<CamerasPage />} />
                 <Route path=":id/monitorar" element={<MonitorarCameraPage />} />
+                <Route path=":id/ao-vivo" element={<CameraAoVivoPage />} />
               </Route>
               <Route path="/suporte-ia" element={<SuporteIaPage />} />
               <Route path="/suporte-ia/:id" element={<SuporteIaDetalhePage />} />

@@ -1915,6 +1915,10 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("AvisarTelegram")
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
                     b.Property<int?>("Canal")
                         .HasColumnType("int");
 
@@ -1960,6 +1964,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<int>("Origem")
                         .HasColumnType("int");
+
+                    b.Property<int>("ParteImagem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -10055,6 +10064,105 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("RiscoTrabalhadorExpostos");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.SessaoAoVivoCamera", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AgenteCameraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("BytesRecebidos")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("CameraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CodigoFalha")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("EncerradaEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Fps")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("IniciadaEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LimiteEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MotivoEncerramento")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("ObraId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<long>("QuadrosRecebidos")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime>("SolicitadaEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("SolicitadaPorUsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UltimaVisualizacaoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("UltimoQuadro")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<DateTime?>("UltimoQuadroCapturadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UltimoQuadroRecebidoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("UltimoQuadroSequencia")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CameraId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SessoesAoVivoCamera_CameraId_Aberta")
+                        .HasFilter("[EncerradaEmUtc] IS NULL");
+
+                    b.HasIndex("AgenteCameraId", "EncerradaEmUtc");
+
+                    b.HasIndex("CameraId", "EncerradaEmUtc");
+
+                    b.ToTable("SessoesAoVivoCamera", (string)null);
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.SessaoTreinamento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -10798,6 +10906,11 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<int>("Origem")
                         .HasColumnType("int");
+
+                    b.Property<int>("ParteImagem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()

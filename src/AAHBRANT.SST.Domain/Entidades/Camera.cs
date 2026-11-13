@@ -36,6 +36,12 @@ public class Camera : AuditableEntity
     // Intervalo mínimo entre quadros enviados pelo agente (segundos).
     public int IntervaloEnvioSegundos { get; set; } = 3;
 
+    // Câmera IP de duas lentes empilhadas: qual metade da imagem esta câmera analisa. Só vale para Fonte = Rtsp; as demais ficam Inteira.
+    public ParteImagemCamera ParteImagem { get; set; } = ParteImagemCamera.Inteira;
+
+    // false = a análise e a ocorrência seguem iguais; só o aviso no Telegram é pulado.
+    public bool AvisarTelegram { get; set; } = true;
+
     // Atualizados quando o agente envia um quadro. A situação mostrada na tela é calculada na consulta.
     public SituacaoConexaoCamera SituacaoConexao { get; set; } = SituacaoConexaoCamera.Desconhecida;
     public DateTime? UltimoQuadroRecebidoEmUtc { get; set; }

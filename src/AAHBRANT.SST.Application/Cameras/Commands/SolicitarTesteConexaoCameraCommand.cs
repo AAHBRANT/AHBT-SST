@@ -1,5 +1,6 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,9 @@ public record SolicitarTesteConexaoCameraCommand(
     Guid? CameraId = null,
     Guid? EquipamentoCameraId = null,
     int? Canal = null,
-    int? Stream = null) : IRequest<Guid>;
+    int? Stream = null,
+    // Metade da imagem a recortar na miniatura (só ao testar pelo equipamento, antes de salvar a câmera; pela câmera vale a dela).
+    ParteImagemCamera? ParteImagem = null) : IRequest<Guid>;
 
 public class SolicitarTesteConexaoCameraCommandValidator : AbstractValidator<SolicitarTesteConexaoCameraCommand>
 {
@@ -23,6 +26,7 @@ public class SolicitarTesteConexaoCameraCommandValidator : AbstractValidator<Sol
             .WithMessage("Informe a câmera ou o equipamento a testar (um dos dois).");
         When(x => x.Canal is not null, () => RuleFor(x => x.Canal).Must(c => c is 1 or 2).WithMessage("O canal (lente) precisa ser 1 ou 2."));
         When(x => x.Stream is not null, () => RuleFor(x => x.Stream).Must(s => s is 0 or 1).WithMessage("A qualidade precisa ser principal (0) ou secundária (1)."));
+        RuleFor(x => x.ParteImagem).ParteDaImagem();
     }
 }
 
@@ -43,10 +47,11 @@ public class SolicitarTesteConexaoCameraCommandHandler : IRequestHandler<Solicit
         Guid? cameraId = null;
         int canal;
         int stream;
+        ParteImagemCamera parte;
         if (request.CameraId is { } idDaCamera)
         {
             var camera = await _db.Cameras.AsNoTracking().Where(c => c.Id == idDaCamera)
-                .Select(c => new { c.Id, c.Fonte, c.EquipamentoCameraId, c.Canal, c.Stream }).FirstOrDefaultAsync(ct)
+                .Select(c => new { c.Id, c.Fonte, c.EquipamentoCameraId, c.Canal, c.Stream, c.ParteImagem }).FirstOrDefaultAsync(ct)
                 ?? throw new KeyNotFoundException($"Câmera {idDaCamera} não encontrada.");
             if (camera.EquipamentoCameraId is not { } eq || camera.Canal is not { } cn)
                 throw new InvalidOperationException("Esta câmera não é uma câmera IP: não há conexão a testar.");
@@ -54,12 +59,14 @@ public class SolicitarTesteConexaoCameraCommandHandler : IRequestHandler<Solicit
             cameraId = camera.Id;
             canal = cn;
             stream = camera.Stream ?? 0;
+            parte = camera.ParteImagem;
         }
         else
         {
             equipamentoId = request.EquipamentoCameraId!.Value;
             canal = request.Canal ?? 1;
             stream = request.Stream ?? 0;
+            parte = request.ParteImagem ?? ParteImagemCamera.Inteira;
         }
 
         var equipamento = await _db.EquipamentosCamera.AsNoTracking().Where(e => e.Id == equipamentoId)
@@ -80,7 +87,7 @@ public class SolicitarTesteConexaoCameraCommandHandler : IRequestHandler<Solicit
         var limite = agora - ValidadeDoPedido;
         var emAberto = await _db.TestesConexaoCamera.AsNoTracking()
             .Where(t => t.AgenteCameraId == equipamento.AgenteCameraId && t.EquipamentoCameraId == equipamento.Id
-                && t.Canal == canal && t.Stream == stream && t.ConcluidoEmUtc == null && t.SolicitadoEmUtc >= limite)
+                && t.Canal == canal && t.Stream == stream && t.ParteImagem == parte && t.ConcluidoEmUtc == null && t.SolicitadoEmUtc >= limite)
             .Select(t => (Guid?)t.Id).FirstOrDefaultAsync(ct);
         if (emAberto is { } existente) return existente;
 
@@ -92,6 +99,7 @@ public class SolicitarTesteConexaoCameraCommandHandler : IRequestHandler<Solicit
             CameraId = cameraId,
             Canal = canal,
             Stream = stream,
+            ParteImagem = parte,
             SolicitadoEmUtc = agora,
         };
         _db.TestesConexaoCamera.Add(teste);
