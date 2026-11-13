@@ -19,6 +19,11 @@
   Inicia o serviço ao final. Sem este parâmetro o serviço fica instalado e parado: preencha antes o arquivo
   C:\ProgramData\AAHBRANT\AgenteCameras\appsettings.local.json e coloque o ffmpeg.
 
+.PARAMETER PastaPublicada
+  Pasta com o agente já publicado (dotnet publish -c Release -r win-x64 --self-contained true). Use quando a conta
+  de administrador não consegue compilar (sem acesso aos pacotes NuGet): publique com a conta comum e instale com
+  este parâmetro. A pasta informada não é apagada.
+
 .EXAMPLE
   .\instalar.ps1
   .\instalar.ps1 -Iniciar
@@ -26,7 +31,8 @@
 [CmdletBinding()]
 param(
     [string]$Destino = 'C:\Program Files\AAHBRANT\AgenteCameras',
-    [switch]$Iniciar
+    [switch]$Iniciar,
+    [string]$PastaPublicada
 )
 
 $ErrorActionPreference = 'Stop'
@@ -39,14 +45,21 @@ $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIde
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     throw 'Execute este script em um PowerShell como Administrador.'
 }
-if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
-    throw 'SDK do .NET 8 não encontrado (comando "dotnet"). Instale-o para publicar o agente.'
+if ($PastaPublicada) {
+    if (-not (Test-Path (Join-Path $PastaPublicada 'AAHBRANT.SST.AgenteCameras.exe'))) {
+        throw "A pasta publicada '$PastaPublicada' não contém AAHBRANT.SST.AgenteCameras.exe."
+    }
+    Write-Host "1/6 Usando a publicação pronta em $PastaPublicada ..."
+    $publicacao = $PastaPublicada
+} else {
+    if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+        throw 'SDK do .NET 8 não encontrado (comando "dotnet"). Instale-o para publicar o agente.'
+    }
+    Write-Host '1/6 Publicando (self-contained, win-x64)...'
+    $publicacao = Join-Path ([IO.Path]::GetTempPath()) ("agente-cameras-" + [Guid]::NewGuid().ToString('N'))
+    dotnet publish $Projeto -c Release -r win-x64 --self-contained true -o $publicacao
+    if ($LASTEXITCODE -ne 0) { throw 'Falha ao publicar o projeto.' }
 }
-
-Write-Host '1/6 Publicando (self-contained, win-x64)...'
-$publicacao = Join-Path ([IO.Path]::GetTempPath()) ("agente-cameras-" + [Guid]::NewGuid().ToString('N'))
-dotnet publish $Projeto -c Release -r win-x64 --self-contained true -o $publicacao
-if ($LASTEXITCODE -ne 0) { throw 'Falha ao publicar o projeto.' }
 
 Write-Host '2/6 Parando o serviço atual (se existir)...'
 $existente = Get-Service -Name $NomeServico -ErrorAction SilentlyContinue
@@ -61,7 +74,7 @@ New-Item -ItemType Directory -Force -Path $Destino | Out-Null
 robocopy $publicacao $Destino /E /NFL /NDL /NJH /NJS /NP /XF 'appsettings.local.json' | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "Falha ao copiar os arquivos (robocopy $LASTEXITCODE)." }
 New-Item -ItemType Directory -Force -Path (Join-Path $Destino 'ffmpeg') | Out-Null
-Remove-Item -Recurse -Force $publicacao
+if (-not $PastaPublicada) { Remove-Item -Recurse -Force $publicacao }
 
 Write-Host "4/6 Preparando a pasta de dados e a configuração em $PastaDados ..."
 New-Item -ItemType Directory -Force -Path $PastaDados | Out-Null
