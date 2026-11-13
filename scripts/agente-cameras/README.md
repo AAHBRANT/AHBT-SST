@@ -9,7 +9,7 @@ quadros JPEG para a API do SST-APP. Não usa navegador nem usuário logado. Subs
    `C:\Program Files\AAHBRANT\AgenteCameras\ffmpeg\ffmpeg.exe` (ou informe outro caminho em `CaminhoFfmpeg`).
    A licença de redistribuição ainda está **pendente de validação jurídica**: não distribua o binário junto do
    agente até essa validação. Sem o arquivo, o serviço sobe, registra o erro e tenta de novo a cada minuto.
-2. **Cadastro no SST-APP:** cadastre o agente (a tela mostra o AgenteId e o Segredo uma única vez), o equipamento
+2. **Cadastro no SST-APP:** cadastre o agente (a tela mostra o identificador e, uma única vez, o Segredo), o equipamento
    (host, porta, usuário e senha da câmera) e as câmeras. **As câmeras não precisam mais ser escritas neste PC:** o
    agente as lê do cadastro (veja "Câmeras vêm do cadastro" abaixo).
 3. SDK do .NET 8 na máquina que roda `instalar.ps1` (o script publica o projeto).
@@ -25,6 +25,18 @@ PowerShell **como Administrador**, a partir da raiz do repositório:
 O script publica (self-contained, win-x64), copia para `C:\Program Files\AAHBRANT\AgenteCameras`, cria o serviço
 `AAHBRANT.SST.AgenteCameras` (início automático atrasado, reinício automático em falha, conta LocalService) e cria
 `C:\ProgramData\AAHBRANT\AgenteCameras\appsettings.local.json` a partir do exemplo. O serviço fica **parado**.
+
+**Se a conta de Administrador for outra** (não a do dia a dia), a publicação pode falhar por falta de acesso aos
+pacotes NuGet (erro `NU1100`). Nesse caso publique com a conta comum e instale apontando para a pasta pronta:
+
+```powershell
+# conta comum
+dotnet publish src\AAHBRANT.SST.AgenteCameras -c Release -r win-x64 --self-contained true -o C:\Temp\agente-cameras
+# PowerShell como Administrador
+.\scripts\agente-cameras\instalar.ps1 -PastaPublicada C:\Temp\agente-cameras
+```
+
+Com `-PastaPublicada` o script não precisa do SDK do .NET e não apaga a pasta informada.
 
 Preencha o `appsettings.local.json` (seção `AgenteCameras`) com **só três valores**: `ApiBaseUrl`, `AgenteId` e
 `Segredo`. Depois:
