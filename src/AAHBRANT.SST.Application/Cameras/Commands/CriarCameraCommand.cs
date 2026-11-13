@@ -20,7 +20,11 @@ public record CriarCameraCommand(
     Guid? EquipamentoCameraId = null,
     int? Canal = null,
     int? Stream = null,
-    int IntervaloEnvioSegundos = CameraIpRegras.IntervaloEnvioPadraoSegundos) : IRequest<Guid>;
+    int IntervaloEnvioSegundos = CameraIpRegras.IntervaloEnvioPadraoSegundos,
+    // Câmera IP de duas lentes empilhadas: metade da imagem analisada (só vale para Fonte = Rtsp). AvisarTelegram = false
+    // mantém a análise e a ocorrência, mas não envia o alerta ao Telegram. Omitidos = imagem inteira e com aviso, como sempre foi.
+    ParteImagemCamera ParteImagem = ParteImagemCamera.Inteira,
+    bool AvisarTelegram = true) : IRequest<Guid>;
 
 public class CriarCameraCommandValidator : AbstractValidator<CriarCameraCommand>
 {
@@ -32,6 +36,9 @@ public class CriarCameraCommandValidator : AbstractValidator<CriarCameraCommand>
         RuleFor(x => x.IntervaloMinimoAlertasMinutos).InclusiveBetween(0, 1440);
         RuleFor(x => x.Fonte).IsInEnum();
         RuleFor(x => x.IntervaloEnvioSegundos).IntervaloDeEnvio();
+        RuleFor(x => x.ParteImagem).ParteDaImagem();
+        When(x => x.Fonte != FonteCamera.Rtsp && Enum.IsDefined(x.ParteImagem), () =>
+            RuleFor(x => x.ParteImagem).Equal(ParteImagemCamera.Inteira).WithMessage(CameraIpRegras.MensagemParteSoEmCameraIp));
         When(x => x.Fonte == FonteCamera.Rtsp, () =>
         {
             RuleFor(x => x.EquipamentoCameraId).Must(id => id is { } g && g != Guid.Empty).WithMessage("Escolha o equipamento da câmera IP.");
@@ -62,7 +69,7 @@ public class CriarCameraCommandHandler : IRequestHandler<CriarCameraCommand, Gui
         if (ip)
         {
             await CameraIpRegras.ExigirEquipamentoUsavelAsync(_db, request.EquipamentoCameraId!.Value, request.ObraId, request.Habilitada, ct);
-            await CameraIpRegras.ExigirLenteLivreAsync(_db, request.EquipamentoCameraId!.Value, request.Canal!.Value, null, ct);
+            await CameraIpRegras.ExigirLenteLivreAsync(_db, request.EquipamentoCameraId!.Value, request.Canal!.Value, request.ParteImagem, null, ct);
         }
 
         var camera = new Camera
@@ -78,6 +85,8 @@ public class CriarCameraCommandHandler : IRequestHandler<CriarCameraCommand, Gui
             Canal = ip ? request.Canal : null,
             Stream = ip ? request.Stream : null,
             IntervaloEnvioSegundos = request.IntervaloEnvioSegundos,
+            ParteImagem = ip ? request.ParteImagem : ParteImagemCamera.Inteira,
+            AvisarTelegram = request.AvisarTelegram,
         };
         _db.Cameras.Add(camera);
         await _db.SaveChangesAsync(ct);

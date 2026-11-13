@@ -2818,12 +2818,18 @@ export interface CameraResumo {
   situacaoConexao?: string | null;
   ultimoQuadroRecebidoEmUtc?: string | null;
   mensagemConexao?: string | null;
+  // Respostas antigas (cache do service worker) não trazem estes dois: sem o campo vale 0 (imagem inteira) e true.
+  parteImagem?: number;
+  avisarTelegram?: boolean;
 }
 
 // De onde vem a imagem da câmera. A API serializa enums como número.
 export const FonteCamera = { Navegador: 0, Rtsp: 1 } as const;
 // Qualidade da imagem da câmera IP: stream 0 = principal, 1 = secundária (mais leve, recomendada).
 export const StreamCamera = { Principal: 0, Secundaria: 1 } as const;
+// Parte da imagem usada pela câmera IP: a câmera de duas lentes entrega as duas vistas empilhadas numa imagem só.
+export const ParteImagemCamera = { Inteira: 0, MetadeSuperior: 1, MetadeInferior: 2 } as const;
+export type ParteImagemCameraValor = (typeof ParteImagemCamera)[keyof typeof ParteImagemCamera];
 
 export interface DadosCamera {
   obraId: string;
@@ -2837,6 +2843,9 @@ export interface DadosCamera {
   equipamentoCameraId?: string | null;
   canal?: number | null;
   stream?: number | null;
+  // Ausentes = o servidor assume 0 (imagem inteira) e true. parteImagem só vale para câmera IP.
+  parteImagem?: number;
+  avisarTelegram?: boolean;
 }
 
 // Agente de câmeras: programa instalado no PC da obra que lê as câmeras pela rede local. Nunca traz o segredo.
@@ -2902,6 +2911,39 @@ export interface TesteConexaoCamera {
   miniaturaBase64: string | null;
   solicitadoEmUtc: string;
   concluidoEmUtc: string | null;
+}
+
+// "Ver ao vivo" (câmera IP, imagem JPEG em sequência, nada gravado). As recusas e os encerramentos são tratados
+// SEMPRE pelo código estável que o servidor envia, nunca pelo texto.
+export interface SessaoAoVivoCamera {
+  sessaoId: string;
+  situacao: 'Aguardando' | 'AoVivo';
+  fps: number;
+  encerraEmSegundos: number;
+}
+
+export type ResultadoIniciarAoVivo =
+  | { ok: true; sessao: SessaoAoVivoCamera }
+  // status 404 = câmera fora do escopo; 409/429 trazem o código (nao_e_camera_ip, camera_desabilitada, agente_revogado,
+  // agente_sem_contato, agente_desatualizado, limite_sessoes).
+  | { ok: false; status: number; codigo: string | null };
+
+export type ResultadoQuadroAoVivo =
+  | { tipo: 'quadro'; imagem: Blob; sequencia: number | null; capturadoEm: string | null }
+  | { tipo: 'semNovo' }
+  | { tipo: 'aguardando' }
+  // motivo: inatividade, tempo_maximo, encerrada, agente_sem_resposta ou falha:<codigo>.
+  | { tipo: 'encerrada'; motivo: string | null }
+  | { tipo: 'erro'; status: number };
+
+async function lerCampoJson(response: Response, campo: 'codigo' | 'motivo'): Promise<string | null> {
+  try {
+    const json = (await response.json()) as Record<string, unknown>;
+    const valor = json[campo];
+    return typeof valor === 'string' ? valor : null;
+  } catch {
+    return null;
+  }
 }
 
 export type SituacaoQuadro = 'ignorado' | 'limpo' | 'ocorrencia' | 'falha';
@@ -7135,11 +7177,87 @@ export const api = {
     // "Testar conexão": só cria o pedido (202 com o id); o agente executa e a tela consulta o resultado.
     testarConexaoDaCamera: (cameraId: string) =>
       request<{ id: string }>(`/api/cameras/${cameraId}/teste-conexao`, { method: 'POST' }),
-    testarConexaoDoEquipamento: (equipamentoId: string, canal: number, stream: number) =>
+    // parteImagem vai junto para a miniatura do teste sair recortada mesmo antes de salvar.
+    testarConexaoDoEquipamento: (equipamentoId: string, canal: number, stream: number, parteImagem = 0) =>
       request<{ id: string }>(`/api/cameras/equipamentos/${equipamentoId}/teste-conexao`, {
         method: 'POST',
-        body: JSON.stringify({ canal, stream }),
+        body: JSON.stringify({ canal, stream, parteImagem }),
       }),
+
+    // "Ver ao vivo": fetch direto (e não request) porque o quadro é imagem e os códigos de recusa precisam chegar à tela.
+    // Nenhuma URL carrega token; a autenticação vai só no cabeçalho.
+    aoVivo: {
+      iniciar: async (
+        cameraId: string,
+        signal?: AbortSignal,
+        aoAutenticar?: (headers: Record<string, string>) => void,
+      ): Promise<ResultadoIniciarAoVivo> => {
+        const headers = await montarHeadersAuth();
+        aoAutenticar?.(headers);
+        const response = await fetch(`${API_BASE_URL}/api/cameras/${cameraId}/ao-vivo`, {
+          method: 'POST',
+          headers,
+          signal,
+        });
+        if (response.ok) return { ok: true, sessao: (await response.json()) as SessaoAoVivoCamera };
+        if (response.status === 404 || response.status === 409 || response.status === 429) {
+          return { ok: false, status: response.status, codigo: await lerCampoJson(response, 'codigo') };
+        }
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      },
+      quadro: async (
+        sessaoId: string,
+        apos: number | null,
+        signal?: AbortSignal,
+        aoAutenticar?: (headers: Record<string, string>) => void,
+      ): Promise<ResultadoQuadroAoVivo> => {
+        const qs = apos === null ? '' : `?apos=${apos}`;
+        let response: Response;
+        try {
+          const headers = await montarHeadersAuth();
+          aoAutenticar?.(headers);
+          response = await fetch(`${API_BASE_URL}/api/cameras/ao-vivo/${sessaoId}/quadro${qs}`, {
+            headers,
+            cache: 'no-store',
+            signal,
+          });
+        } catch (e) {
+          if (e instanceof DOMException && e.name === 'AbortError') throw e;
+          return { tipo: 'erro', status: 0 };
+        }
+        if (response.status === 200) {
+          const cabecalho = response.headers.get('X-Quadro-Sequencia');
+          const sequencia = cabecalho === null ? NaN : Number(cabecalho);
+          return {
+            tipo: 'quadro',
+            imagem: await response.blob(),
+            sequencia: Number.isFinite(sequencia) ? sequencia : null,
+            capturadoEm: response.headers.get('X-Capturado-Em'),
+          };
+        }
+        if (response.status === 204) return { tipo: 'semNovo' };
+        if (response.status === 202) return { tipo: 'aguardando' };
+        if (response.status === 410) return { tipo: 'encerrada', motivo: await lerCampoJson(response, 'motivo') };
+        // 404 (a sessão não existe mais) conta como encerrada; o resto é falha passageira (rede, 5xx, 429).
+        if (response.status === 404) return { tipo: 'encerrada', motivo: 'encerrada' };
+        return { tipo: 'erro', status: response.status };
+      },
+      // keepalive: a requisição termina mesmo se a página estiver fechando. Falha aqui é ignorada (o servidor encerra sozinho).
+      // Com cabecalhos (os do último pedido, guardados em memória) o fetch sai na hora, sem await antes: é o que funciona
+      // no pagehide. Sem eles, busca o token (pode não dar tempo se a página já estiver fechando).
+      encerrar: async (sessaoId: string, cabecalhos?: Record<string, string>): Promise<void> => {
+        try {
+          await fetch(`${API_BASE_URL}/api/cameras/ao-vivo/${sessaoId}/encerrar`, {
+            method: 'POST',
+            headers: cabecalhos ?? (await montarHeadersAuth()),
+            keepalive: true,
+          });
+        } catch {
+          // Sem rede ou página fechando: o servidor encerra por inatividade em 60 s.
+        }
+      },
+    },
     // A miniatura vem só na primeira consulta depois da resposta do agente: quem chama guarda na memória.
     obterTesteConexao: (id: string) => request<TesteConexaoCamera>(`/api/cameras/testes-conexao/${id}`),
 

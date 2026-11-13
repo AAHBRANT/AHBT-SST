@@ -277,6 +277,41 @@ public class ConfiguracaoAgenteCameraTests
     }
 
     [Fact]
+    public async Task ParteDaImagem_VaiEmCadaCameraEEmCadaTesteDeConexao_DaConfiguracaoDoAgente()
+    {
+        var c = await Preparar(nameof(ParteDaImagem_VaiEmCadaCameraEEmCadaTesteDeConexao_DaConfiguracaoDoAgente));
+        var lente2Baixo = new Camera
+        {
+            ObraId = c.ObraA.Id, Nome = "Lente 2 baixo", Fonte = FonteCamera.Rtsp, EquipamentoCameraId = c.EquipA.Id, Canal = 2, Stream = 0,
+            ParteImagem = ParteImagemCamera.MetadeInferior, AvisarTelegram = false,
+        };
+        c.Lente2.ParteImagem = ParteImagemCamera.MetadeSuperior;
+        c.Global.Add(lente2Baixo);
+        await c.Global.SaveChangesAsync();
+        c.NovaRequisicao();
+
+        await Solicitar(c, new SolicitarTesteConexaoCameraCommand(CameraId: lente2Baixo.Id));
+        await Solicitar(c, new SolicitarTesteConexaoCameraCommand(EquipamentoCameraId: c.EquipA.Id, Canal: 1, Stream: 0,
+            ParteImagem: ParteImagemCamera.MetadeSuperior));
+
+        var config = await c.Config().Handle(Pedir(c), default);
+
+        Assert.NotNull(config);
+        Assert.Equal(ParteImagemCamera.Inteira, config.Cameras.Single(x => x.CameraId == c.Lente1.Id).ParteImagem);
+        Assert.Equal(ParteImagemCamera.MetadeSuperior, config.Cameras.Single(x => x.CameraId == c.Lente2.Id).ParteImagem);
+        Assert.Equal(ParteImagemCamera.MetadeInferior, config.Cameras.Single(x => x.CameraId == lente2Baixo.Id).ParteImagem);
+        Assert.Equal(2, config.TestesConexao.Count);
+        Assert.Equal(ParteImagemCamera.MetadeInferior, config.TestesConexao.Single(t => t.CameraId == lente2Baixo.Id).ParteImagem);
+        Assert.Equal(ParteImagemCamera.MetadeSuperior, config.TestesConexao.Single(t => t.CameraId is null).ParteImagem);
+
+        // No JSON que o agente lê, o campo sai como número (0|1|2), como o contrato manda.
+        var json = JsonSerializer.Serialize(config, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.Contains("\"parteImagem\":2", json);
+        Assert.Contains("\"parteImagem\":1", json);
+        Assert.Contains("\"parteImagem\":0", json);
+    }
+
+    [Fact]
     public async Task TesteDeConexao_Falha_GuardaMotivo_ESemMiniatura()
     {
         var c = await Preparar(nameof(TesteDeConexao_Falha_GuardaMotivo_ESemMiniatura));

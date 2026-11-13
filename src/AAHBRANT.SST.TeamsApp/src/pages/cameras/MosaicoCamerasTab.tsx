@@ -28,15 +28,25 @@ import {
   VideoOff24Regular,
 } from '@fluentui/react-icons';
 import { api, tipoCameraLabel, type CameraResumo } from '../../lib/api';
-import { useCameras, useObras } from '../../lib/consultas';
+import { useAgentesCamera, useCameras, useEquipamentosCamera, useObras } from '../../lib/consultas';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { escolherObraInicial } from '../../hooks/useObraLembrada';
-import { ehCameraIp, estadoDaCamera, estadoExibido, formatarDataHora, formatarHora, situacaoDaCameraIp } from './rotulos';
+import {
+  ehCameraIp,
+  estadoDaCamera,
+  estadoExibido,
+  formatarDataHora,
+  formatarHora,
+  situacaoDaCameraIp,
+  situacaoDoAgente,
+} from './rotulos';
+import { bloqueioAoVivo, type BloqueioAoVivo } from './aoVivoRegras';
+import { BotaoVerAoVivo, NotaBloqueioAoVivo } from './BotaoVerAoVivo';
 import { mergeClasses, useEstilosMosaico } from './estilosMosaico';
 import { FormularioCamera } from './FormularioCamera';
 import { useEstilosCameraIp } from './estilosCameraIp';
-import { MarcaEstado } from './PecasCameraIp';
+import { MarcaEstado, SeloSemTelegram } from './PecasCameraIp';
 
 type Visao = 'mosaico' | 'lista';
 const CHAVE_VISAO = 'sst:camerasVisao';
@@ -96,6 +106,23 @@ export function MosaicoCamerasTab() {
 
   const lista = cameras.data;
   const todas = useMemo(() => lista ?? [], [lista]);
+
+  // "Ver ao vivo" fica apagado (com o motivo escrito) quando o agente está sem contato, falta a senha do equipamento ou o
+  // serviço da obra precisa ser atualizado. Só consulta agentes e equipamentos se houver câmera IP.
+  const temCameraIp = todas.some(ehCameraIp);
+  const agentes = useAgentesCamera(undefined, temCameraIp);
+  const equipamentos = useEquipamentosCamera(undefined, temCameraIp);
+  const bloqueioDaCamera = (c: CameraResumo): BloqueioAoVivo | null => {
+    const equipamento = equipamentos.data?.find((q) => q.id === c.equipamentoCameraId);
+    const agente = equipamento ? agentes.data?.find((a) => a.id === equipamento.agenteCameraId) : undefined;
+    return bloqueioAoVivo({
+      equipamentoSemSenha: !!equipamento && !equipamento.senhaDefinida,
+      agenteSemContato:
+        (c.habilitada && situacaoDaCameraIp(c).chave === 'semAgente') ||
+        (!!agente && agente.ativo && !!agente.ultimoContatoEmUtc && situacaoDoAgente(agente).rotulo === 'Sem contato'),
+      versaoDoAgente: agente?.versao,
+    });
+  };
 
   useEffect(() => {
     const aoMudar = () => {
@@ -261,7 +288,10 @@ export function MosaicoCamerasTab() {
       rotulo: 'Câmera',
       render: (c) => (
         <div className={estilos.celulaDupla}>
-          <strong>{c.nome}</strong>
+          <div className={ip.nomeComSelo}>
+            <strong>{c.nome}</strong>
+            {c.avisarTelegram === false && <SeloSemTelegram />}
+          </div>
           <span className={mergeClasses(tipo.legenda, estilos.apoio)}>{c.obraNome}</span>
           {ehCameraIp(c) && (
             <span className={mergeClasses(tipo.legenda, estilos.apoio)}>
@@ -301,7 +331,15 @@ export function MosaicoCamerasTab() {
 
   const botoesAcao = (c: CameraResumo, aoMonitorar: boolean) => (
     <div className={estilos.botoesAcao}>
-      {aoMonitorar && ehCameraIp(c) && <span aria-hidden="true" className={ip.reservaBotao} />}
+      {aoMonitorar && ehCameraIp(c) && (
+        <BotaoVerAoVivo
+          variante="icone"
+          nomeCamera={c.nome}
+          bloqueio={bloqueioDaCamera(c)}
+          className={estilos.botaoToque}
+          aoAbrir={() => navigate(`/cameras/${c.id}/ao-vivo`)}
+        />
+      )}
       {aoMonitorar && !ehCameraIp(c) && (
         <BotaoAcao
           tom="ver"
@@ -336,6 +374,7 @@ export function MosaicoCamerasTab() {
     const camIp = ehCameraIp(c);
     const situacaoIp = camIp ? situacaoDaCameraIp(c) : null;
     const ultimaFoto = c.ultimoQuadroRecebidoEmUtc ? formatarHora(c.ultimoQuadroRecebidoEmUtc) : null;
+    const bloqueio = camIp ? bloqueioDaCamera(c) : null;
     const selo = c.ocorrenciasHoje > 0 && (
       <span className={mergeClasses(estilos.selo, tipo.legenda)}>
         {plural(c.ocorrenciasHoje, 'ocorrência', 'ocorrências')} em 24 h
@@ -366,8 +405,11 @@ export function MosaicoCamerasTab() {
         )}
         <div className={estilos.rodape}>
           <div className={estilos.textos}>
-            <div className={mergeClasses(tipo.subtitulo, estilos.nome)} title={c.nome}>
-              {c.nome}
+            <div className={ip.nomeComSelo}>
+              <div className={mergeClasses(tipo.subtitulo, estilos.nome)} title={c.nome}>
+                {c.nome}
+              </div>
+              {c.avisarTelegram === false && <SeloSemTelegram />}
             </div>
             <div className={mergeClasses(tipo.legenda, estilos.apoio)}>
               {camIp
@@ -377,7 +419,18 @@ export function MosaicoCamerasTab() {
           </div>
           <EstadoMarca camera={c} />
         </div>
-        <div className={estilos.acoes}>{botoesAcao(c, false)}</div>
+        <div className={estilos.acoes}>
+          {botoesAcao(c, false)}
+          {camIp && (
+            <BotaoVerAoVivo
+              variante="texto"
+              nomeCamera={c.nome}
+              bloqueio={bloqueio}
+              aoAbrir={() => navigate(`/cameras/${c.id}/ao-vivo`)}
+            />
+          )}
+        </div>
+        {bloqueio && <NotaBloqueioAoVivo bloqueio={bloqueio} />}
       </div>
     );
   }
@@ -528,7 +581,7 @@ export function MosaicoCamerasTab() {
         várias imagens ao vivo depende das câmeras fixas da obra.
         <br />
         <strong>Câmeras IP:</strong> o bloco mostra a situação da conexão e a hora da última foto recebida. As fotos seguem
-        quando há movimento na cena; não é vídeo ao vivo.
+        quando há movimento na cena; não é vídeo ao vivo. Para ver a imagem quase ao vivo, use Ver ao vivo.
       </FeedbackInline>
     </div>
   );

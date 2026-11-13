@@ -42,6 +42,7 @@ export const useEstilosAlertas = makeStyles({
   apoio: { color: designTokens.colorNeutralMedium },
   telegram: { display: 'inline-flex', alignItems: 'center', gap: tokensUi.espaco.sm },
   telegramOk: { color: tokensUi.status.ok.tinta },
+  telegramNeutro: { color: designTokens.colorNeutralMedium },
   telegramAviso: { color: tokensUi.status.atencao.tinta },
   faixaTrabalhador: {
     display: 'flex',

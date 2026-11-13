@@ -21,6 +21,11 @@ public class CameraConfiguracao : IEntityTypeConfiguration<Camera>
             .HasForeignKey(c => c.EquipamentoCameraId).OnDelete(DeleteBehavior.Restrict);
         builder.Property(c => c.Fonte).HasDefaultValue(FonteCamera.Navegador);
         builder.Property(c => c.IntervaloEnvioSegundos).HasDefaultValue(3);
+        builder.Property(c => c.ParteImagem).HasDefaultValue(ParteImagemCamera.Inteira);
+        // O default (true) existe só para as linhas já gravadas e para quem inserir por fora do EF. ValueGeneratedNever evita o
+        // comportamento padrão do EF de omitir do INSERT o valor igual ao padrão do CLR (false) e deixar o banco gravar true:
+        // sem isto, criar a câmera com "Avisar no Telegram" desligado gravaria ligado.
+        builder.Property(c => c.AvisarTelegram).HasDefaultValue(true).ValueGeneratedNever();
         builder.Property(c => c.SituacaoConexao).HasDefaultValue(SituacaoConexaoCamera.Desconhecida);
         builder.Property(c => c.MensagemConexao).HasMaxLength(300);
         builder.HasIndex(c => c.EquipamentoCameraId);
@@ -87,9 +92,27 @@ public class TesteConexaoCameraConfiguracao : IEntityTypeConfiguration<TesteCone
         builder.Property(t => t.Motivo).HasMaxLength(300);
         builder.Property(t => t.Detalhe).HasMaxLength(100);
         builder.Property(t => t.Codigo).HasMaxLength(40);
+        builder.Property(t => t.ParteImagem).HasDefaultValue(ParteImagemCamera.Inteira);
         // Miniatura de pessoa possível: cifrada como as demais fotos (LGPD, ver FotoBiometricaCriptografiaConversor).
         builder.Property(t => t.Miniatura).HasConversion(new FotoBiometricaCriptografiaConversor(), FotoBiometricaCriptografiaConversor.Comparador);
         // Sem FK para Obra/Camera/Equipamento: registro transitório, consultado também pela rota anônima do agente sem JOIN.
         builder.HasIndex(t => new { t.AgenteCameraId, t.SolicitadoEmUtc });
+    }
+}
+
+public class SessaoAoVivoCameraConfiguracao : IEntityTypeConfiguration<SessaoAoVivoCamera>
+{
+    public void Configure(EntityTypeBuilder<SessaoAoVivoCamera> builder)
+    {
+        builder.ToTable("SessoesAoVivoCamera");
+        builder.Property(s => s.MotivoEncerramento).HasMaxLength(40);
+        builder.Property(s => s.CodigoFalha).HasMaxLength(40);
+        // Sem FK para Obra/Camera/Agente: registro transitório, consultado também pela rota anônima do agente sem JOIN.
+        builder.HasIndex(s => new { s.AgenteCameraId, s.EncerradaEmUtc });
+        builder.HasIndex(s => new { s.CameraId, s.EncerradaEmUtc });
+        // No máximo UMA sessão aberta por câmera (vários espectadores dividem uma transmissão): segura a corrida de duas
+        // telas abrindo a mesma câmera no mesmo instante, em qualquer réplica da API.
+        builder.HasIndex(s => s.CameraId).IsUnique().HasFilter("[EncerradaEmUtc] IS NULL")
+            .HasDatabaseName("IX_SessoesAoVivoCamera_CameraId_Aberta");
     }
 }

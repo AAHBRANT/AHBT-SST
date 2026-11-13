@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, FeedbackInline, Spinner, useTipografia } from '@ui';
 import { Checkmark16Regular, CheckmarkCircle24Filled, PlugConnected20Regular } from '@fluentui/react-icons';
-import { StreamCamera } from '../../lib/api';
+import { ParteImagemCamera, StreamCamera } from '../../lib/api';
 import { mergeClasses, useEstilosCameraIp } from './estilosCameraIp';
 import { useTesteConexaoCamera } from './useTesteConexaoCamera';
 
@@ -11,13 +11,15 @@ export interface TesteConexaoCameraProps {
   dicaFalta?: string;
   lente: number | null;
   stream: number;
+  // Parte da imagem escolhida no formulário (mesmo antes de salvar): a miniatura já vem recortada.
+  parteImagem: number;
   // Muda quando o equipamento, a lente ou a qualidade mudam: o resultado anterior deixa de valer.
   chaveResultado: string;
   solicitar: () => Promise<{ id: string }>;
 }
 
 // "Testar conexão" da câmera IP. A miniatura vem do servidor uma única vez e fica só na memória deste componente.
-export function TesteConexaoCamera({ podeTestar, dicaFalta, lente, stream, chaveResultado, solicitar }: TesteConexaoCameraProps) {
+export function TesteConexaoCamera({ podeTestar, dicaFalta, lente, stream, parteImagem, chaveResultado, solicitar }: TesteConexaoCameraProps) {
   const e = useEstilosCameraIp();
   const tipo = useTipografia();
   const { fase, miniaturaBase64, falha, iniciar, reiniciar } = useTesteConexaoCamera();
@@ -28,6 +30,12 @@ export function TesteConexaoCamera({ podeTestar, dicaFalta, lente, stream, chave
   }, [chaveResultado, reiniciar]);
 
   const testando = fase === 'enviando' || fase === 'aguardando';
+  const nomeParte =
+    parteImagem === ParteImagemCamera.MetadeSuperior
+      ? 'metade de cima'
+      : parteImagem === ParteImagemCamera.MetadeInferior
+        ? 'metade de baixo'
+        : 'imagem inteira';
   const qualidade = stream === StreamCamera.Principal ? 'principal' : 'secundária';
 
   return (
@@ -76,14 +84,14 @@ export function TesteConexaoCamera({ podeTestar, dicaFalta, lente, stream, chave
           {fase === 'ok' && (
             <div className={e.conectou}>
               {miniaturaBase64 && (
-                <div className={e.miniatura}>
+                <div className={mergeClasses(e.miniatura, !!dimensoes && dimensoes.altura > dimensoes.largura && e.miniaturaAlta)}>
                   <img
                     className={e.miniaturaImg}
                     alt="Imagem de teste recebida da câmera"
                     src={`data:image/jpeg;base64,${miniaturaBase64}`}
                     onLoad={(ev) => setDimensoes({ largura: ev.currentTarget.naturalWidth, altura: ev.currentTarget.naturalHeight })}
                   />
-                  <span className={e.carimboMiniatura}>{lente ? `Lente ${lente} · agora` : 'Agora'}</span>
+                  <span className={e.carimboMiniatura}>{lente ? `Lente ${lente} · ${nomeParte} · agora` : 'Agora'}</span>
                 </div>
               )}
               <div style={{ flex: 1, minWidth: 200 }}>
@@ -93,6 +101,9 @@ export function TesteConexaoCamera({ podeTestar, dicaFalta, lente, stream, chave
                 <div style={{ marginTop: 4 }}>
                   {lente ? `Recebemos uma imagem da lente ${lente}.` : 'Recebemos uma imagem da câmera.'}
                 </div>
+                {parteImagem !== ParteImagemCamera.Inteira && (
+                  <div style={{ marginTop: 2, fontWeight: 600 }}>Mostrando só a {nomeParte} da imagem.</div>
+                )}
                 <div className={mergeClasses(tipo.legenda, e.dica)}>
                   {dimensoes ? `${dimensoes.largura} × ${dimensoes.altura} · ` : ''}qualidade {qualidade}
                 </div>

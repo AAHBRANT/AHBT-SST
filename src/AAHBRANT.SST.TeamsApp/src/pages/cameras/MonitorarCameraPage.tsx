@@ -18,6 +18,7 @@ import { tipoCameraLabel, type CameraResumo } from '../../lib/api';
 import { useCameras } from '../../lib/consultas';
 import { CORES_DETECTOR, QuadradoRosto } from '../../components/camera/QuadradoRosto';
 import { useDetectorRosto } from '../../components/camera/useDetectorRosto';
+import { rotuloAlertaTelegram } from './aoVivoRegras';
 import { useMonitoramentoCamera, type EstadoMonitoramento } from './useMonitoramentoCamera';
 import { mergeClasses, useStyles } from './estilos';
 import { descreverIrregularidade, formatarHora, resumoCena } from './rotulos';
@@ -169,7 +170,7 @@ function Monitoramento({ camera }: { camera: CameraResumo }) {
                   </div>
                   {ocorrencia && (
                     <div className={tipo.corpo}>
-                      {analise.alertaEnviado ? 'Alerta enviado ao Telegram' : 'Alerta não enviado'}
+                      {rotuloAlertaTelegram(analise.alertaEnviado, camera.avisarTelegram).texto}
                     </div>
                   )}
                   {ocorrencia &&

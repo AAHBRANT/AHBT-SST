@@ -801,4 +801,58 @@ public class AnalisarQuadroCameraTests
         Assert.Empty(await db.OcorrenciasEpiCamera.ToListAsync());
         Assert.Empty(telegram.Legendas);
     }
+
+    [Fact]
+    public async Task AvisarTelegramDesligado_GravaOcorrenciaMasNaoEnviaNemMarcaAlertaEnviado()
+    {
+        var (db, camera) = await Preparar(nameof(AvisarTelegramDesligado_GravaOcorrenciaMasNaoEnviaNemMarcaAlertaEnviado),
+            c => c.AvisarTelegram = false);
+        var telegram = new TelegramFalso();
+        var analisador = new AnalisadorFalso(UmaPessoaSemCapacete);
+
+        var r = await Criar(db, analisador, telegram)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(1, analisador.Chamadas);
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.NotNull(r.OcorrenciaId);
+        Assert.False(r.AlertaEnviado);
+        Assert.Empty(telegram.Legendas);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(Jpeg, ocorrencia.Foto);
+        Assert.False(ocorrencia.AlertaEnviado);
+        Assert.Null(ocorrencia.AlertaEnviadoEmUtc);
+        Assert.Null((await db.Cameras.SingleAsync()).UltimoAlertaEmUtc);
+    }
+
+    [Fact]
+    public async Task AvisarTelegramDesligado_CenaComVariasPessoas_TambemNaoEnvia()
+    {
+        var (db, camera) = await Preparar(nameof(AvisarTelegramDesligado_CenaComVariasPessoas_TambemNaoEnvia), c => c.AvisarTelegram = false);
+        var telegram = new TelegramFalso();
+        var analisador = new AnalisadorFalso(() => new ResultadoAnaliseEpi(2, 1, 0, ConfiancaAnaliseEpi.Alta,
+            Detalhe: new[] { new PessoaNaCena(0.2, 0.2, SemCapacete: true, SemColete: false), new PessoaNaCena(0.6, 0.2, false, false) }));
+
+        var r = await Criar(db, analisador, telegram).Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.False(r.AlertaEnviado);
+        Assert.Empty(telegram.Legendas);
+        Assert.False((await db.OcorrenciasEpiCamera.SingleAsync()).AlertaEnviado);
+    }
+
+    [Fact]
+    public async Task AvisarTelegramLigado_EnviaEMarcaAlertaEnviadoComoSempre()
+    {
+        var (db, camera) = await Preparar(nameof(AvisarTelegramLigado_EnviaEMarcaAlertaEnviadoComoSempre));
+        Assert.True(camera.AvisarTelegram);
+        var telegram = new TelegramFalso();
+
+        var r = await Criar(db, new AnalisadorFalso(UmaPessoaSemCapacete), telegram)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.True(r.AlertaEnviado);
+        Assert.Single(telegram.Legendas);
+        Assert.True((await db.OcorrenciasEpiCamera.SingleAsync()).AlertaEnviado);
+    }
 }

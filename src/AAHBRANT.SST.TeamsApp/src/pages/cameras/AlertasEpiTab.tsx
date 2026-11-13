@@ -32,6 +32,7 @@ import {
 import { useCameras, useObras, useOcorrenciasEpi, useTrabalhadores } from '../../lib/consultas';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { lerLembrada } from '../../hooks/useObraLembrada';
+import { rotuloAlertaTelegram } from './aoVivoRegras';
 import { descreverIrregularidade, formatarDataHora, resumoCena } from './rotulos';
 import { FotoOcorrenciaEpi } from './FotoOcorrenciaEpi';
 import { mergeClasses, useEstilosAlertas } from './estilosAlertas';
@@ -230,8 +231,12 @@ export function AlertasEpiTab() {
     await executar(ocorrencia, () => api.cameras.definirSituacao(ocorrencia.id, nova), 'Falso alerta desfeito.');
   }
 
+  // Câmeras sem aviso no Telegram (do cadastro já carregado): a ocorrência delas não é "alerta não enviado".
+  const semAviso = new Set((listaCameras ?? []).filter((c) => c.avisarTelegram === false).map((c) => c.id));
+
   function cartao(o: OcorrenciaEpi) {
     const irregularidade = descreverIrregularidade(o.semCapacete, o.semColete);
+    const rotuloTelegram = rotuloAlertaTelegram(o.alertaEnviado, semAviso.has(o.cameraId) ? false : undefined);
     const titulo = `${o.cameraNome} · ${formatarDataHora(o.capturadaEmUtc)}`;
     const falso = o.situacao === SituacaoOcorrenciaEpi.FalsoAlerta;
     const bloqueada = ocupada !== null;
@@ -264,11 +269,14 @@ export function AlertasEpiTab() {
             className={mergeClasses(
               tipo.legenda,
               estilos.telegram,
-              o.alertaEnviado ? estilos.telegramOk : estilos.telegramAviso,
+              rotuloTelegram.tom === 'ok' && estilos.telegramOk,
+              rotuloTelegram.tom === 'aviso' && estilos.telegramAviso,
+              rotuloTelegram.tom === 'neutro' && estilos.telegramNeutro,
             )}
           >
-            {o.alertaEnviado ? <Checkmark16Regular aria-hidden="true" /> : <Warning16Regular aria-hidden="true" />}
-            {o.alertaEnviado ? 'Alerta enviado ao Telegram' : 'Alerta não enviado'}
+            {rotuloTelegram.tom === 'ok' && <Checkmark16Regular aria-hidden="true" />}
+            {rotuloTelegram.tom === 'aviso' && <Warning16Regular aria-hidden="true" />}
+            {rotuloTelegram.texto}
           </div>
           {porRosto && (
             <>

@@ -483,6 +483,9 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
     // Falha no Telegram não pode impedir o registro: a ocorrência fica gravada com "alerta não enviado".
     private async Task<bool> EnviarLegendaAsync(Camera camera, byte[] foto, string legenda)
     {
+        // Câmera sem aviso no Telegram: a análise e a ocorrência seguem iguais; só o envio é pulado (sem marcar "alerta enviado").
+        if (!camera.AvisarTelegram) return false;
+
         try
         {
             return await _telegram.EnviarFotoAsync(foto, legenda, CancellationToken.None);

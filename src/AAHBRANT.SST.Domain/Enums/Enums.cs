@@ -1133,6 +1133,15 @@ public enum FonteCamera
     Rtsp = 1,
 }
 
+// Parte da imagem da câmera IP que a análise usa. Câmera de duas lentes (ex.: A31) entrega as lentes empilhadas numa imagem só;
+// cadastrar uma câmera por metade evita contar a mesma pessoa duas vezes. O recorte é feito pelo agente (ffmpeg).
+public enum ParteImagemCamera
+{
+    Inteira = 0,
+    MetadeSuperior = 1,
+    MetadeInferior = 2,
+}
+
 // Último estado gravado para a câmera. A situação mostrada na tela é calculada na consulta (ver ListarCamerasQuery),
 // porque depende também do último contato do agente.
 public enum SituacaoConexaoCamera

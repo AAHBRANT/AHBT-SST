@@ -88,6 +88,7 @@ public class TratamentoDeExcecaoMiddleware
         [typeof(EquipamentoCamera)] = new[] { nameof(EquipamentoCamera.SenhaCifrada) },
         [typeof(TesteConexaoCamera)] = new[] { nameof(TesteConexaoCamera.Miniatura) },
         [typeof(AgenteCamera)] = new[] { nameof(AgenteCamera.SegredoHash) },
+        [typeof(SessaoAoVivoCamera)] = new[] { nameof(SessaoAoVivoCamera.UltimoQuadro) },
     };
 
     // Colunas da linha que vão no 409, sem as sensíveis do tipo (se houver). Público para ser testado sem banco relacional.

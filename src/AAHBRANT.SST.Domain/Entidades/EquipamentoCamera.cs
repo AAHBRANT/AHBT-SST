@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Domain.Common;
+using AAHBRANT.SST.Domain.Enums;
 
 namespace AAHBRANT.SST.Domain.Entidades;
 
@@ -53,6 +54,9 @@ public class TesteConexaoCamera : AuditableEntity
 
     public int Canal { get; set; } = 1;
     public int Stream { get; set; }
+
+    // Metade da imagem que o agente recorta na miniatura do teste (a mesma da câmera, ou a escolhida antes de salvar).
+    public ParteImagemCamera ParteImagem { get; set; } = ParteImagemCamera.Inteira;
 
     public DateTime SolicitadoEmUtc { get; set; }
     public DateTime? EntregueAoAgenteEmUtc { get; set; }
