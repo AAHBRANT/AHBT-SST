@@ -19,10 +19,14 @@ export function descreverIrregularidade(semCapacete: number, semColete: number):
   return 'Cena regular';
 }
 
-export function resumoCena(pessoas: number, semCapacete: number, semColete: number): string {
+export function resumoCena(pessoas: number, semCapacete: number, semColete: number, capaceteNaoAvaliavel = 0, coleteNaoAvaliavel = 0): string {
   const partes = [`${pessoas} ${pessoas === 1 ? 'pessoa' : 'pessoas'} na cena`];
   if (semCapacete > 0) partes.push(`${semCapacete} sem capacete`);
   if (semColete > 0) partes.push(`${semColete} sem colete`);
+  if (capaceteNaoAvaliavel > 0)
+    partes.push(`${capaceteNaoAvaliavel} ${capaceteNaoAvaliavel === 1 ? 'capacete não conferido' : 'capacetes não conferidos'}`);
+  if (coleteNaoAvaliavel > 0)
+    partes.push(`${coleteNaoAvaliavel} ${coleteNaoAvaliavel === 1 ? 'colete não conferido' : 'coletes não conferidos'}`);
   return partes.join(', ');
 }
 

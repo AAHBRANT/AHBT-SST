@@ -16,8 +16,11 @@ public record AnalisarQuadroCameraCommand(Guid CameraId, byte[] Imagem, DateTime
 
 // TrabalhadorId/TrabalhadorNome: quem o reconhecimento facial identificou na ocorrência (nulo = ninguém).
 // Repetida: nenhuma ocorrência nova foi aberta; a irregularidade foi somada a ocorrências já existentes.
+// SemCapacete/SemColete: só itens avaliados e não conformes. CapaceteNaoAvaliavel/ColeteNaoAvaliavel (campos novos,
+// opcionais): pessoas cujo item não foi julgado porque a parte do corpo não aparece; nunca geram ocorrência sozinhos.
 public record ResultadoQuadroDto(string Situacao, Guid? OcorrenciaId, bool AlertaEnviado, int Pessoas, int SemCapacete, int SemColete,
-    Guid? TrabalhadorId = null, string? TrabalhadorNome = null, bool Repetida = false);
+    Guid? TrabalhadorId = null, string? TrabalhadorNome = null, bool Repetida = false,
+    int CapaceteNaoAvaliavel = 0, int ColeteNaoAvaliavel = 0);
 
 public static class SituacaoQuadro
 {
@@ -124,7 +127,9 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
         if (analise.SemCapacete == 0 && analise.SemColete == 0)
         {
             await FinalizarCameraAsync(camera, analise.Uso, agora, alertaEnviadoEm: null);
-            return new ResultadoQuadroDto(SituacaoQuadro.Limpo, null, false, analise.Pessoas, 0, 0);
+            // Item não avaliável (parte do corpo fora da imagem) não gera ocorrência nem alerta: cena limpa.
+            return new ResultadoQuadroDto(SituacaoQuadro.Limpo, null, false, analise.Pessoas, 0, 0,
+                CapaceteNaoAvaliavel: analise.CapaceteNaoAvaliavel, ColeteNaoAvaliavel: analise.ColeteNaoAvaliavel);
         }
 
         // Várias pessoas na cena, com a posição de cada uma: identifica cada irregular pelo rosto.
@@ -155,7 +160,8 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
         if (podeAlertar)
         {
             var legenda = LegendaAlertaEpi.Montar(camera.Obra?.Nome ?? "-", camera.Nome, atrasadoEm ?? agora,
-                ocorrencia.PessoasNaCena, ocorrencia.SemCapacete, ocorrencia.SemColete, identificado?.Nome)
+                ocorrencia.PessoasNaCena, ocorrencia.SemCapacete, ocorrencia.SemColete, identificado?.Nome,
+                analise.CapaceteNaoAvaliavel, analise.ColeteNaoAvaliavel)
                 + LegendaAlertaEpi.AvisoDeAtraso(atrasadoEm);
             if (await EnviarLegendaAsync(camera, request.Imagem, legenda))
             {
@@ -168,7 +174,8 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
         await FinalizarCameraAsync(camera, analise.Uso, agora, atrasadoEm is null ? enviadoEm : null);
 
         return new ResultadoQuadroDto(SituacaoQuadro.Ocorrencia, ocorrencia.Id, enviadoEm is not null,
-            analise.Pessoas, analise.SemCapacete, analise.SemColete, identificado?.Id, identificado?.Nome, Repetida: !nova);
+            analise.Pessoas, analise.SemCapacete, analise.SemColete, identificado?.Id, identificado?.Nome, Repetida: !nova,
+            CapaceteNaoAvaliavel: analise.CapaceteNaoAvaliavel, ColeteNaoAvaliavel: analise.ColeteNaoAvaliavel);
     }
 
     // Cena com várias pessoas. Cada irregular identificado pelo rosto tem a própria ocorrência (com o que
@@ -242,7 +249,7 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
         {
             var legenda = LegendaAlertaEpi.MontarCena(camera.Obra?.Nome ?? "-", camera.Nome, atrasadoEm ?? agora, analise.Pessoas,
                 totalSemCapacete, totalSemColete, aAlertar.Select(i => i.Pessoa).ToList(),
-                alertaSemIdentificacao ? naoIdentificados.Count : 0)
+                alertaSemIdentificacao ? naoIdentificados.Count : 0, analise.CapaceteNaoAvaliavel, analise.ColeteNaoAvaliavel)
                 + LegendaAlertaEpi.AvisoDeAtraso(atrasadoEm);
             if (await EnviarLegendaAsync(camera, request.Imagem, legenda))
             {
@@ -260,7 +267,8 @@ public class AnalisarQuadroCameraCommandHandler : IRequestHandler<AnalisarQuadro
             analise.Pessoas, totalSemCapacete, totalSemColete,
             identificadas.Count == 1 ? identificadas[0].Ocorrencia.TrabalhadorId : null,
             identificadas.Count == 0 ? null : string.Join(", ", identificadas.Select(i => i.Pessoa.Nome)),
-            Repetida: !algumaNova);
+            Repetida: !algumaNova,
+            CapaceteNaoAvaliavel: analise.CapaceteNaoAvaliavel, ColeteNaoAvaliavel: analise.ColeteNaoAvaliavel);
     }
 
     // Soma a irregularidade numa ocorrência já aberta (mesma câmera e mesmo trabalhador, ou a mesma cena sem

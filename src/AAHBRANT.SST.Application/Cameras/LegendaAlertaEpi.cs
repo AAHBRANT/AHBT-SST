@@ -9,16 +9,17 @@ public static class LegendaAlertaEpi
     // trabalhadorNome: quem o reconhecimento facial identificou. Nulo = ninguém identificado (rosto não
     // reconhecido ou facial indisponível). Usado quando a IA viu uma única pessoa na cena.
     public static string Montar(string obraNome, string cameraNome, DateTime momentoUtc, int pessoas, int semCapacete, int semColete,
-        string? trabalhadorNome = null)
+        string? trabalhadorNome = null, int capaceteNaoAvaliavel = 0, int coleteNaoAvaliavel = 0)
         => Cabecalho(obraNome, cameraNome, momentoUtc, pessoas, semCapacete, semColete) + "\n" +
            (string.IsNullOrWhiteSpace(trabalhadorNome)
                ? "Trabalhador não identificado"
-               : $"Trabalhador: {trabalhadorNome.Trim()} (identificado pelo rosto)");
+               : $"Trabalhador: {trabalhadorNome.Trim()} (identificado pelo rosto)") +
+           NaoConferidos(capaceteNaoAvaliavel, coleteNaoAvaliavel);
 
     // Cena com várias pessoas: lista quem foi identificado pelo rosto, com o que faltava em cada um, e
     // quantos irregulares ficaram sem identificação (naoIdentificados).
     public static string MontarCena(string obraNome, string cameraNome, DateTime momentoUtc, int pessoas, int semCapacete, int semColete,
-        IReadOnlyList<IdentificadoNaCena> identificados, int naoIdentificados)
+        IReadOnlyList<IdentificadoNaCena> identificados, int naoIdentificados, int capaceteNaoAvaliavel = 0, int coleteNaoAvaliavel = 0)
     {
         var linhas = new List<string> { Cabecalho(obraNome, cameraNome, momentoUtc, pessoas, semCapacete, semColete) };
 
@@ -31,7 +32,17 @@ public static class LegendaAlertaEpi
                 ? "Trabalhador não identificado"
                 : $"Não identificados: {naoIdentificados}");
 
-        return string.Join("\n", linhas);
+        return string.Join("\n", linhas) + NaoConferidos(capaceteNaoAvaliavel, coleteNaoAvaliavel);
+    }
+
+    // Itens que a IA não pôde julgar na mesma foto (parte do corpo fora da imagem ou pessoa pequena demais).
+    // Só entram na legenda de um alerta já motivado por outro item; sozinhos nunca geram alerta.
+    private static string NaoConferidos(int capaceteNaoAvaliavel, int coleteNaoAvaliavel)
+    {
+        var texto = string.Empty;
+        if (capaceteNaoAvaliavel > 0) texto += $"\nCapacete não conferido em {capaceteNaoAvaliavel} {(capaceteNaoAvaliavel == 1 ? "pessoa" : "pessoas")}";
+        if (coleteNaoAvaliavel > 0) texto += $"\nColete não conferido em {coleteNaoAvaliavel} {(coleteNaoAvaliavel == 1 ? "pessoa" : "pessoas")}";
+        return texto;
     }
 
     private static string Cabecalho(string obraNome, string cameraNome, DateTime momentoUtc, int pessoas, int semCapacete, int semColete)
@@ -42,8 +53,14 @@ public static class LegendaAlertaEpi
         if (semCapacete > 0) partes.Add($"{semCapacete} sem capacete");
         if (semColete > 0) partes.Add($"{semColete} sem colete");
 
+        // Nome que já começa com "Obra" (ex.: "Obra Beira Rio") não leva o prefixo de novo.
+        var nomeObra = obraNome.Trim();
+        var obra = nomeObra.Equals("Obra", StringComparison.OrdinalIgnoreCase) || nomeObra.StartsWith("Obra ", StringComparison.OrdinalIgnoreCase)
+            ? nomeObra
+            : $"Obra {nomeObra}";
+
         return $"⚠️ EPI — pessoa {Irregularidade(semCapacete > 0, semColete > 0)}\n" +
-               $"Obra {obraNome} · Câmera {cameraNome} · {local:dd/MM HH:mm}\n" +
+               $"{obra} · Câmera {cameraNome} · {local:dd/MM HH:mm}\n" +
                string.Join(", ", partes);
     }
 

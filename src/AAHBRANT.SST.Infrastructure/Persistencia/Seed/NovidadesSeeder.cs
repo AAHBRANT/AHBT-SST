@@ -2875,6 +2875,17 @@ public static class NovidadesSeeder
                     "Câmeras de duas lentes mostram as duas imagens empilhadas, e a mesma pessoa podia ser contada duas vezes. Também não dava para silenciar o Telegram de uma câmera sem desligar a análise dela.",
                     "No cadastro da câmera IP, escolha \"Parte da imagem\": inteira, metade de cima ou metade de baixo. Assim dá para cadastrar a mesma câmera duas vezes, uma para cada lente. O interruptor \"Avisar no Telegram\" desliga só o aviso daquela câmera: a análise continua e as ocorrências seguem registradas."),
             }),
+        new(
+            Versao: "5.164.0",
+            Titulo: "Câmeras: só julga o que aparece",
+            DataPublicacao: new DateTime(2026, 11, 13, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Câmeras: a análise de EPI só julga o que aparece na imagem",
+                    "Quando só parte da pessoa aparecia (por exemplo, só as pernas), a análise podia dar capacete como correto sem ter visto a cabeça.",
+                    "Câmeras: a análise de EPI só julga capacete quando a cabeça aparece e colete quando o tronco aparece; o que não dá para ver fica como não conferido e não gera alerta."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
