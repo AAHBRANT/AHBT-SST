@@ -14,6 +14,7 @@ public static class CruzamentoRostosPessoas
     // Segunda pessoa mais próxima do rosto precisa estar pelo menos este tanto mais longe que a primeira.
     public const double FolgaSobreSegundaPessoa = 1.5;
 
+    // Pessoa com a cabeça fora da imagem (CabecaVisivel = false) é ignorada: a posição dela é só um palpite.
     // Devolve, para cada índice de pessoa em `pessoas`, o rosto reconhecido ligado a ela (ou nada).
     public static IReadOnlyDictionary<int, RostoNaCena> Cruzar(IReadOnlyList<PessoaNaCena> pessoas, IReadOnlyList<RostoNaCena> rostos)
     {
@@ -26,7 +27,7 @@ public static class CruzamentoRostosPessoas
 
             var proximas = pessoas
                 .Select((p, indice) => (Indice: indice, Dx: Math.Abs(p.CabecaX - rosto.CentroX), Dy: Math.Abs(p.CabecaY - rosto.CentroY)))
-                .Where(p => p.Dx <= toleranciaX && p.Dy <= toleranciaY)
+                .Where(p => pessoas[p.Indice].CabecaVisivel && p.Dx <= toleranciaX && p.Dy <= toleranciaY)
                 .Select(p => (p.Indice, Distancia: Math.Sqrt(p.Dx * p.Dx + p.Dy * p.Dy)))
                 .OrderBy(p => p.Distancia)
                 .ToList();

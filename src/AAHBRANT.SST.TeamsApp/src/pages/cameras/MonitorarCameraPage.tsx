@@ -164,7 +164,13 @@ function Monitoramento({ camera }: { camera: CameraResumo }) {
                     <StatusChip tom={situacaoTom}>{situacaoRotulo}</StatusChip>
                     {analise.situacao !== 'falha' && (
                       <span className={tipo.corpo}>
-                        {resumoCena(analise.pessoas, analise.semCapacete, analise.semColete)}
+                        {resumoCena(
+                          analise.pessoas,
+                          analise.semCapacete,
+                          analise.semColete,
+                          analise.capaceteNaoAvaliavel ?? 0,
+                          analise.coleteNaoAvaliavel ?? 0,
+                        )}
                       </span>
                     )}
                   </div>

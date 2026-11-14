@@ -2960,6 +2960,10 @@ export interface ResultadoQuadro {
   trabalhadorNome?: string | null;
   // true = nenhuma ocorrência nova: a irregularidade foi somada a uma ocorrência já aberta.
   repetida?: boolean;
+  // Pessoas cujo capacete/colete não foi avaliado porque a parte do corpo não aparece na imagem.
+  // Não entram em semCapacete/semColete e nunca geram ocorrência sozinhos. Ausentes em respostas antigas.
+  capaceteNaoAvaliavel?: number;
+  coleteNaoAvaliavel?: number;
 }
 
 export interface OcorrenciaEpi {
