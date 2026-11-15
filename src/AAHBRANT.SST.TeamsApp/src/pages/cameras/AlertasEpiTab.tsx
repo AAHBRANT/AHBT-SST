@@ -21,7 +21,7 @@ import {
   type OpcaoSeletor,
   type Tom,
 } from '@ui';
-import { Checkmark16Regular, Person16Regular, Warning16Regular, Warning24Regular } from '@fluentui/react-icons';
+import { Checkmark16Regular, Info16Regular, Person16Regular, Warning16Regular, Warning24Regular } from '@fluentui/react-icons';
 import {
   api,
   SituacaoOcorrenciaEpi,
@@ -32,8 +32,10 @@ import {
 import { useCameras, useObras, useOcorrenciasEpi, useTrabalhadores } from '../../lib/consultas';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { lerLembrada } from '../../hooks/useObraLembrada';
+import { IconeCapacete } from '../../components/CorCapacete';
+import { TIPOS_OCORRENCIA_EPI, descreverAvisoCorCapacete, normalizarCorCapacete } from '../../lib/corCapacete';
 import { rotuloAlertaTelegram } from './aoVivoRegras';
-import { descreverIrregularidade, formatarDataHora, resumoCena } from './rotulos';
+import { descreverIrregularidade, formatarDataHora, linhasNaoConferido, resumoCena } from './rotulos';
 import { FotoOcorrenciaEpi } from './FotoOcorrenciaEpi';
 import { mergeClasses, useEstilosAlertas } from './estilosAlertas';
 
@@ -141,8 +143,8 @@ function DialogoVincular({ ocorrencia, erro, aoFechar, aoConfirmar }: DialogoVin
   );
 }
 
-// Aba "Alertas de EPI": ocorrências de capacete/colete registradas pelas câmeras, com conferência
-// (vínculo do trabalhador e marcação de falso alerta).
+// Aba "Alertas de EPI": ocorrências de capacete, colete, óculos e cor do capacete registradas pelas câmeras,
+// com conferência (vínculo do trabalhador e marcação de falso alerta).
 export function AlertasEpiTab() {
   const estilos = useEstilosAlertas();
   const tipo = useTipografia();
@@ -155,6 +157,7 @@ export function AlertasEpiTab() {
   const [cameraEscolhida, setCameraEscolhida] = useState('');
   const [periodo, setPeriodo] = useState<Periodo>('7dias');
   const [situacao, setSituacao] = useState(0);
+  const [tipoOcorrencia, setTipoOcorrencia] = useState<NonNullable<FiltroOcorrenciasEpi['tipo']> | ''>('');
   const [erro, setErro] = useState<string | null>(null);
   const [vinculando, setVinculando] = useState<OcorrenciaEpi | null>(null);
   const [ocupada, setOcupada] = useState<string | null>(null);
@@ -175,8 +178,9 @@ export function AlertasEpiTab() {
       cameraId: cameraId || undefined,
       de,
       situacao: situacao || undefined,
+      tipo: tipoOcorrencia || undefined,
     }),
-    [obraId, cameraId, de, situacao],
+    [obraId, cameraId, de, situacao, tipoOcorrencia],
   );
   const ocorrencias = useOcorrenciasEpi(filtro);
   const itens = ocorrencias.data;
@@ -235,7 +239,17 @@ export function AlertasEpiTab() {
   const semAviso = new Set((listaCameras ?? []).filter((c) => c.avisarTelegram === false).map((c) => c.id));
 
   function cartao(o: OcorrenciaEpi) {
-    const irregularidade = descreverIrregularidade(o.semCapacete, o.semColete);
+    const semOculos = o.semOculos ?? 0;
+    const temFaltaDeEpi = o.semCapacete + o.semColete + semOculos > 0;
+    // Aviso de padrão: só a cor do capacete foge da função. Gravidade menor (âmbar) e nunca vai ao Telegram.
+    const avisoCor = o.avisoCorCapacete === true && !temFaltaDeEpi;
+    const corVista = normalizarCorCapacete(o.corCapaceteVista);
+    const corEsperada = normalizarCorCapacete(o.corCapaceteEsperada);
+    const mostrarCor = corVista > 0 && corEsperada > 0 && corVista !== corEsperada;
+    const irregularidade = avisoCor
+      ? 'Cor do capacete fora do padrão'
+      : descreverIrregularidade(o.semCapacete, o.semColete, semOculos);
+    const naoConferido = linhasNaoConferido(o.capaceteNaoAvaliavel, o.coleteNaoAvaliavel, o.oculosNaoAvaliavel);
     const rotuloTelegram = rotuloAlertaTelegram(o.alertaEnviado, semAviso.has(o.cameraId) ? false : undefined);
     const titulo = `${o.cameraNome} · ${formatarDataHora(o.capturadaEmUtc)}`;
     const falso = o.situacao === SituacaoOcorrenciaEpi.FalsoAlerta;
@@ -250,7 +264,7 @@ export function AlertasEpiTab() {
         <div className={estilos.areaFoto}>
           <FotoOcorrenciaEpi id={o.id} alt={`Foto da ocorrência: ${irregularidade}, ${titulo}`} />
           <div className={estilos.chipsFoto}>
-            <StatusChip tom="alerta" icone={<Warning16Regular />}>
+            <StatusChip tom={avisoCor ? 'atencao' : 'alerta'} icone={<Warning16Regular />}>
               {irregularidade}
             </StatusChip>
             <StatusChip tom={TOM_SITUACAO[o.situacao] ?? 'neutro'}>
@@ -262,22 +276,45 @@ export function AlertasEpiTab() {
           <div className={estilos.textos}>
             <div className={tipo.subtitulo}>{titulo}</div>
             <div className={mergeClasses(tipo.corpo, estilos.apoio)}>
-              {resumoCena(o.pessoasNaCena, o.semCapacete, o.semColete)}
+              {resumoCena(o.pessoasNaCena, o.semCapacete, o.semColete, 0, 0, semOculos)}
             </div>
+            {naoConferido.map((linha) => (
+              <div key={linha} className={mergeClasses(tipo.corpo, estilos.apoio, estilos.linhaNaoConferido)}>
+                {linha}
+              </div>
+            ))}
           </div>
-          <div
-            className={mergeClasses(
-              tipo.legenda,
-              estilos.telegram,
-              rotuloTelegram.tom === 'ok' && estilos.telegramOk,
-              rotuloTelegram.tom === 'aviso' && estilos.telegramAviso,
-              rotuloTelegram.tom === 'neutro' && estilos.telegramNeutro,
-            )}
-          >
-            {rotuloTelegram.tom === 'ok' && <Checkmark16Regular aria-hidden="true" />}
-            {rotuloTelegram.tom === 'aviso' && <Warning16Regular aria-hidden="true" />}
-            {rotuloTelegram.texto}
-          </div>
+          {mostrarCor && (
+            <div className={mergeClasses(tipo.corpo, estilos.avisoPadrao)}>
+              <IconeCapacete cor={corVista} largura={30} />
+              <div>
+                {descreverAvisoCorCapacete(corVista, corEsperada, o.funcaoNome)}
+                <small className={mergeClasses(tipo.legenda, estilos.avisoPadraoApoio)}>
+                  A cor da função vem do cadastro em Pessoas · Funções.
+                </small>
+              </div>
+            </div>
+          )}
+          {avisoCor ? (
+            <div className={mergeClasses(tipo.legenda, estilos.telegram, estilos.telegramNeutro)}>
+              <Info16Regular aria-hidden="true" />
+              Aviso de padrão · sem Telegram
+            </div>
+          ) : (
+            <div
+              className={mergeClasses(
+                tipo.legenda,
+                estilos.telegram,
+                rotuloTelegram.tom === 'ok' && estilos.telegramOk,
+                rotuloTelegram.tom === 'aviso' && estilos.telegramAviso,
+                rotuloTelegram.tom === 'neutro' && estilos.telegramNeutro,
+              )}
+            >
+              {rotuloTelegram.tom === 'ok' && <Checkmark16Regular aria-hidden="true" />}
+              {rotuloTelegram.tom === 'aviso' && <Warning16Regular aria-hidden="true" />}
+              {rotuloTelegram.texto}
+            </div>
+          )}
           {porRosto && (
             <>
               <div className={mergeClasses(estilos.faixaTrabalhador, estilos.faixaComAvatar, estilos.faixaRosto)}>
@@ -429,6 +466,21 @@ export function AlertasEpiTab() {
           </Field>
         </div>
         <div className={estilos.campoFiltro}>
+          <Field label="Tipo">
+            <Select
+              value={tipoOcorrencia}
+              onChange={(_, d) => setTipoOcorrencia(d.value as NonNullable<FiltroOcorrenciasEpi['tipo']> | '')}
+            >
+              <option value="">Todos</option>
+              {TIPOS_OCORRENCIA_EPI.map((t) => (
+                <option key={t.valor} value={t.valor}>
+                  {t.rotulo}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className={estilos.campoFiltro}>
           <Field label="Situação">
             <Select value={String(situacao)} onChange={(_, d) => setSituacao(Number(d.value))}>
               <option value="0">Todas</option>
@@ -467,7 +519,7 @@ export function AlertasEpiTab() {
         <EstadoVazio
           icone={<Warning24Regular />}
           titulo="Nenhuma ocorrência no período"
-          descricao="Quando uma câmera registrar alguém sem capacete ou colete, o alerta aparece aqui."
+          descricao="Quando uma câmera registrar alguém sem capacete, colete ou óculos, ou com capacete de cor diferente da função, o alerta aparece aqui."
         />
       )}
 

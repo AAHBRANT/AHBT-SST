@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type ResultadoQuadro } from '../../lib/api';
+import { ehSoAvisoDeCor } from './rotulosOcorrencia';
 import { ALTURA_AMOSTRA, LARGURA_AMOSTRA, houveMovimento, paraCinza } from './detectorMovimento';
 
 // Sem intervalo entre análises (decisão do usuário em 09/11/2026): havendo movimento, o próximo quadro sai
@@ -146,16 +147,18 @@ export function useMonitoramentoCamera(cameraId: string) {
       setErro(null);
       if (resultado.situacao === 'ignorado') return;
       const analise: AnaliseSessao = { ...resultado, em: new Date() };
+      // Aviso de cor do capacete não é irregularidade: não entra na contagem nem na lista de ocorrências.
+      const soAvisoCor = ehSoAvisoDeCor(resultado);
       setUltimaAnalise(analise);
       setContadores((c) => ({
         analises: c.analises + 1,
         // Repetição somada a uma ocorrência já aberta não conta como ocorrência nova.
-        ocorrencias: c.ocorrencias + (resultado.situacao === 'ocorrencia' && !resultado.repetida ? 1 : 0),
+        ocorrencias: c.ocorrencias + (resultado.situacao === 'ocorrencia' && !resultado.repetida && !soAvisoCor ? 1 : 0),
         alertas: c.alertas + (resultado.alertaEnviado ? 1 : 0),
         falhas: c.falhas + (resultado.situacao === 'falha' ? 1 : 0),
       }));
       // A mesma ocorrência vista de novo sobe para o topo da lista em vez de aparecer duas vezes.
-      if (resultado.situacao === 'ocorrencia')
+      if (resultado.situacao === 'ocorrencia' && !soAvisoCor)
         setOcorrenciasSessao((lista) =>
           [analise, ...lista.filter((o) => !analise.ocorrenciaId || o.ocorrenciaId !== analise.ocorrenciaId)].slice(0, 20),
         );

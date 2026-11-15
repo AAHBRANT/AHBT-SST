@@ -26,9 +26,15 @@ public record PessoaNaCena(double CabecaX, double CabecaY, bool SemCapacete, boo
     bool CapaceteNaoAvaliavel = false, bool ColeteNaoAvaliavel = false,
     CaixaPessoa? Caixa = null,
     // Retângulo da cabeça, quando ela aparece (usado no tamanho mínimo; serve também para os quadros da Fase 4).
-    CaixaPessoa? CaixaCabeca = null)
+    CaixaPessoa? CaixaCabeca = null,
+    // Óculos de proteção: SemOculos só vale com o rosto visível e perto o bastante (item avaliado e não conforme);
+    // OculosNaoAvaliavel = rosto de costas, longe ou encoberto. Nunca gera ocorrência sozinho.
+    bool SemOculos = false, bool OculosNaoAvaliavel = false,
+    // Cor do capacete vista, só com capacete conforme e cor distinguível entre as seis do padrão; nulo = nao_avaliavel ou "outra".
+    CorCapacete? CorCapaceteVista = null)
 {
-    public bool Irregular => SemCapacete || SemColete;
+    // Irregularidade real: capacete, colete ou óculos faltando. Cor diferente da função NÃO entra aqui (é só aviso).
+    public bool Irregular => SemCapacete || SemColete || SemOculos;
 }
 
 // Tokens que a IA cobrou por uma análise (entrada = foto + instruções; saída = resposta e raciocínio).
@@ -54,4 +60,7 @@ public record ResultadoAnaliseEpi(int Pessoas, int SemCapacete, int SemColete, C
     UsoIa? Uso = null,
     // Pessoas cujo item não foi avaliado porque a parte do corpo não aparece. Não entram em SemCapacete/SemColete.
     int CapaceteNaoAvaliavel = 0,
-    int ColeteNaoAvaliavel = 0);
+    int ColeteNaoAvaliavel = 0,
+    // Óculos de proteção: pessoas com o rosto visível e sem óculos (irregularidade) e pessoas sem como avaliar.
+    int SemOculos = 0,
+    int OculosNaoAvaliavel = 0);

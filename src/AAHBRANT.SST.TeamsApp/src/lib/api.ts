@@ -307,9 +307,21 @@ export interface Funcao {
   nome: string;
   cboCodigo?: string | null;
   descricao?: string | null;
+  // Cor do capacete esperada para a função (0 = sem padrão ... 6 = laranja; ver lib/corCapacete).
+  // Ausente em respostas antigas = 0.
+  corCapacete?: number;
 }
 
 export type NovaFuncao = Omit<Funcao, 'id'>;
+
+// Sugestão do padrão AAHBRANT por função (corSugerida 0 = o padrão não cobre a função).
+export interface SugestaoCorCapaceteApi {
+  funcaoId: string;
+  nome: string;
+  corAtual?: number;
+  corSugerida?: number;
+  grupo?: string | null;
+}
 
 export interface FuncaoDuplicada {
   id: string;
@@ -2964,6 +2976,11 @@ export interface ResultadoQuadro {
   // Não entram em semCapacete/semColete e nunca geram ocorrência sozinhos. Ausentes em respostas antigas.
   capaceteNaoAvaliavel?: number;
   coleteNaoAvaliavel?: number;
+  // Óculos de proteção: não conforme e não avaliável (longe, de costas). Ausentes = 0.
+  semOculos?: number;
+  oculosNaoAvaliavel?: number;
+  // true = só a cor do capacete foge da função (aviso de padrão, sem Telegram). Ausente = false.
+  avisoCorCapacete?: boolean;
 }
 
 export interface OcorrenciaEpi {
@@ -2989,6 +3006,18 @@ export interface OcorrenciaEpi {
   // Repetições da mesma irregularidade somadas nesta ocorrência (1 = vista uma única vez) e a última vez.
   vezesVista: number;
   ultimaVezEmUtc: string | null;
+  // Campos de óculos e de cor do capacete. Ausentes em respostas antigas = 0 / false / null.
+  semOculos?: number;
+  // true = ocorrência só de cor (aviso de padrão, gravidade menor, sem Telegram).
+  avisoCorCapacete?: boolean;
+  corCapaceteVista?: number | null;
+  corCapaceteEsperada?: number | null;
+  // Função do trabalhador identificado (base do "esperado amarelo (Pedreiro)").
+  funcaoNome?: string | null;
+  // Pessoas não conferidas (cabeça ou tronco fora da imagem, longe, de costas). Ausentes = 0.
+  capaceteNaoAvaliavel?: number;
+  coleteNaoAvaliavel?: number;
+  oculosNaoAvaliavel?: number;
 }
 
 export interface FiltroOcorrenciasEpi {
@@ -2997,6 +3026,8 @@ export interface FiltroOcorrenciasEpi {
   de?: string;
   ate?: string;
   situacao?: number;
+  // Só ocorrências que tenham este item: capacete, colete, oculos ou cor (cor do capacete).
+  tipo?: 'capacete' | 'colete' | 'oculos' | 'cor';
 }
 
 export const StatusItemChecklist = {
@@ -5913,6 +5944,23 @@ export const api = {
       request<FuncaoInativaComTrabalhador[]>('/api/funcoes/inativas-com-trabalhador'),
     reativar: (id: string) => request<void>(`/api/funcoes/${id}/reativar`, { method: 'POST' }),
     listarSemTrabalhador: () => request<FuncaoSemTrabalhador[]>('/api/funcoes/sem-trabalhador'),
+    // Sugestão do padrão AAHBRANT de cor do capacete por função; nada é salvo aqui.
+    // Altera os dados da função; corCapacete é opcional no servidor (ausente = não muda).
+    atualizarCorCapacete: (funcao: Funcao, cor: number) =>
+      request<void>(`/api/funcoes/${funcao.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          id: funcao.id,
+          nome: funcao.nome,
+          cboCodigo: funcao.cboCodigo ?? null,
+          descricao: funcao.descricao ?? null,
+          corCapacete: cor,
+        }),
+      }),
+    listarSugestoesCorCapacete: () => request<SugestaoCorCapaceteApi[]>('/api/funcoes/cor-capacete/sugestoes'),
+    // Grava a cor escolhida nas funções informadas (204).
+    aplicarCorCapacete: (itens: { funcaoId: string; cor: number }[]) =>
+      request<void>('/api/funcoes/cor-capacete/aplicar', { method: 'POST', body: JSON.stringify(itens) }),
     // Com obraId: a matriz que vale para a obra (a dela, ou a antiga enquanto ela não tiver a própria).
     listarEpis: (funcaoId: string, obraId?: string) =>
       request<CatalogoEpi[]>(`/api/funcoes/${funcaoId}/epis${obraId ? `?obraId=${encodeURIComponent(obraId)}` : ''}`),
@@ -7281,6 +7329,7 @@ export const api = {
       if (filtro.de) qs.set('de', filtro.de);
       if (filtro.ate) qs.set('ate', filtro.ate);
       if (filtro.situacao) qs.set('situacao', String(filtro.situacao));
+      if (filtro.tipo) qs.set('tipo', filtro.tipo);
       const s = qs.toString();
       return request<OcorrenciaEpi[]>(`/api/cameras/ocorrencias${s ? `?${s}` : ''}`);
     },

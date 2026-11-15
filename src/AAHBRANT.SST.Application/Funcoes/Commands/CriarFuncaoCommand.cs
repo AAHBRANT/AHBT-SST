@@ -1,11 +1,12 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using MediatR;
 
 namespace AAHBRANT.SST.Application.Funcoes.Commands;
 
-public record CriarFuncaoCommand(string Nome, string? CboCodigo, string? Descricao) : IRequest<Guid>;
+public record CriarFuncaoCommand(string Nome, string? CboCodigo, string? Descricao, CorCapacete? CorCapacete = null) : IRequest<Guid>;
 
 public class CriarFuncaoCommandValidator : AbstractValidator<CriarFuncaoCommand>
 {
@@ -13,6 +14,7 @@ public class CriarFuncaoCommandValidator : AbstractValidator<CriarFuncaoCommand>
     {
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(150);
         RuleFor(x => x.CboCodigo).MaximumLength(20);
+        RuleFor(x => x.CorCapacete).IsInEnum().When(x => x.CorCapacete.HasValue);
     }
 }
 
@@ -28,7 +30,8 @@ public class CriarFuncaoCommandHandler : IRequestHandler<CriarFuncaoCommand, Gui
         {
             Nome = request.Nome,
             CboCodigo = request.CboCodigo,
-            Descricao = request.Descricao
+            Descricao = request.Descricao,
+            CorCapacete = request.CorCapacete ?? CorCapacete.SemPadrao
         };
 
         _db.Funcoes.Add(funcao);

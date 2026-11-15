@@ -7,6 +7,10 @@ namespace AAHBRANT.SST.Domain.Entidades;
 // tablet (tela Monitorar); a câmera fixa da obra entra depois como outra fonte, sem mudar o cadastro.
 public class Camera : AuditableEntity
 {
+    // Última vez que a cena SEM irregularidade gastou uma identificação facial só para conferir a cor do capacete.
+    // Fica no banco (a API tem várias réplicas) para limitar essas identificações por câmera.
+    public DateTime? UltimaIdentificacaoSoCorEmUtc { get; set; }
+
     public string Nome { get; set; } = string.Empty;
 
     public Guid ObraId { get; set; }
@@ -84,7 +88,20 @@ public class OcorrenciaEpiCamera : AuditableEntity
     public int PessoasNaCena { get; set; }
     public int SemCapacete { get; set; }
     public int SemColete { get; set; }
+    // Pessoas em que se viu o rosto e não havia óculos de proteção (itens não avaliáveis não entram).
+    public int SemOculos { get; set; }
+    // Pessoas cujo item não foi julgado (parte do corpo fora da imagem, de costas, longe). Informativo: nunca motivam ocorrência.
+    public int CapaceteNaoAvaliavel { get; set; }
+    public int ColeteNaoAvaliavel { get; set; }
+    public int OculosNaoAvaliavel { get; set; }
     public ConfiancaAnaliseEpi Confianca { get; set; }
+
+    // Cor do capacete vista pela câmera (nulo = não distinguível ou "outra") e a esperada para a função do
+    // trabalhador identificado (nulo = ninguém identificado ou função sem cor).
+    public CorCapacete? CorCapaceteVista { get; set; }
+    public CorCapacete? CorCapaceteEsperada { get; set; }
+    // true = ocorrência só de cor do capacete diferente da função (gravidade menor, sem Telegram).
+    public bool AvisoCorCapacete { get; set; }
 
     public bool AlertaEnviado { get; set; }
     public DateTime? AlertaEnviadoEmUtc { get; set; }

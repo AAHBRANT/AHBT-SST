@@ -18,6 +18,10 @@ public class ClaudeAnalisadorEpiImagem : IAnalisadorEpiImagem
     // cintura para cima, mais alta que isso, continua sendo julgada.
     public const double AlturaMinimaPessoaParaColete = 0.08;
 
+    // Óculos: distinguir os olhos pede cabeça bem maior que para ver um capacete. 0,07 da altura da imagem (o dobro do mínimo
+    // do capacete) é um valor APROXIMADO, a calibrar com fotos reais; cabeça menor que isso: óculos não avaliável.
+    public const double AlturaMinimaCabecaParaOculos = 0.07;
+
     // Tolerância nas comparações de limite (ponto flutuante).
     private const double Tolerancia = 1e-9;
 
@@ -25,19 +29,32 @@ public class ClaudeAnalisadorEpiImagem : IAnalisadorEpiImagem
     private const string NaoConforme = "nao_conforme";
     private const string NaoAvaliavel = "nao_avaliavel";
 
+    // Cores de capacete que a IA pode devolver (o padrão AAHBRANT); "outra" e "nao_avaliavel" não viram cor.
+    private static readonly string[] CoresCapacete = { "branco", "amarelo", "azul", "verde", "vermelho", "laranja", "outra", NaoAvaliavel };
+
     public const string Instrucoes =
         "Você analisa fotos de canteiro de obras para segurança do trabalho. " +
         "Conte apenas pessoas claramente visíveis na imagem. " +
         "A imagem pode estar girada ou de cabeça para baixo (câmera instalada invertida): isso não impede avaliar; " +
         "interprete a pessoa na orientação em que ela aparece e avalie normalmente. " +
-        "Para cada pessoa, avalie dois itens, e cada item só pode ser avaliado quando a parte do corpo dele aparece na imagem, " +
+        "Para cada pessoa, avalie três itens, e cada item só pode ser avaliado quando a parte do corpo dele aparece na imagem, " +
         "de frente, de costas ou de lado: " +
         "(1) capacete de segurança: avalie se a cabeça aparece o suficiente para ver o que está sobre ela; " +
         "o capacete fica no topo da cabeça: se o topo da cabeça está cortado pela borda da imagem ou encoberto, " +
         "responda nao_avaliavel para o capacete, mesmo que o rosto apareça, porque o capacete pode estar justamente na parte que não aparece; " +
         "de costas ou de lado a cabeça e o capacete também são avaliáveis; boné, touca, capuz ou chapéu não contam como capacete; " +
         "(2) colete refletivo ou de alta visibilidade: avalie se os ombros e o tronco aparecem, de frente, de costas ou de lado; " +
-        "o colete tem faixas refletivas também nas costas, então de costas ele é avaliável. " +
+        "o colete tem faixas refletivas também nas costas, então de costas ele é avaliável; " +
+        "o colete só é avaliável quando os DOIS ombros e o peito (ou as costas) aparecem: se os ombros estão cortados pela borda da imagem, " +
+        "o colete é nao_avaliavel, mesmo que a barriga ou a cintura apareçam; " +
+        "(3) óculos de proteção: avalie somente se o rosto aparece, de frente ou de lado, com os olhos visíveis, e está perto o bastante para distinguir os olhos; " +
+        "de costas o rosto não aparece (rostoVisivel é false); " +
+        "lente escura ou fumê também conta como óculos de proteção; você não distingue certificação nem tipo, então qualquer óculos sobre os olhos " +
+        "(de proteção, de grau ou de sol) conta como conforme; responda nao_conforme somente quando você vê os olhos descobertos, sem nada sobre eles; " +
+        "de costas, com o rosto longe, pequeno, borrado, encoberto ou cortado pela borda da imagem, responda nao_avaliavel para os óculos. " +
+        "Além dos três itens, informe a cor do capacete de cada pessoa, somente quando o capacete está sendo usado (conforme) e você distingue a cor: " +
+        "branco, amarelo, azul, verde, vermelho ou laranja; qualquer outra cor (preto, cinza, marrom, etc.) é outra; " +
+        "se não há capacete, se ele não aparece ou se a cor não é distinguível (contraluz, pessoa pequena, imagem estourada), responda nao_avaliavel. " +
         "Estar de costas ou de lado só justifica nao_avaliavel quando, por causa disso, você realmente não consegue ver o item. " +
         "Se a parte do corpo não aparece (cortada pela borda da imagem, encoberta por objeto ou por outra pessoa, " +
         "ou longe demais para distinguir), responda nao_avaliavel para aquele item. " +
@@ -52,8 +69,11 @@ public class ClaudeAnalisadorEpiImagem : IAnalisadorEpiImagem
         "Em pessoasDetalhe, inclua uma entrada para cada pessoa contada, com: " +
         "cabecaX e cabecaY (posição aproximada do centro da cabeça; cabecaX de 0 na borda esquerda a 1 na borda direita; cabecaY de 0 no topo a 1 na base da imagem, sempre na imagem como recebida); " +
         "cabecaVisivel (true se a cabeça aparece o suficiente para ver o que está sobre ela, incluindo o topo da cabeça, mesmo de costas ou de lado; false se o topo da cabeça está cortado ou encoberto); " +
-        "troncoVisivel (true se ombros e tronco aparecem, de frente, de costas ou de lado); " +
+        "troncoVisivel (true somente se os dois ombros e o peito ou as costas aparecem, de frente, de costas ou de lado; false se os ombros estão cortados pela borda da imagem ou encobertos, mesmo que a barriga ou a cintura apareçam); " +
+        "rostoVisivel (true somente se o rosto aparece de frente ou de lado, com os olhos visíveis; false de costas, com o rosto encoberto ou cortado); " +
         "capacete e colete (conforme, nao_conforme ou nao_avaliavel, segundo as regras das instruções); " +
+        "oculos (conforme, nao_conforme ou nao_avaliavel, segundo as regras das instruções); " +
+        "corCapacete (branco, amarelo, azul, verde, vermelho, laranja, outra ou nao_avaliavel, segundo as regras das instruções); " +
         "caixa (x0, y0, x1, y1 de 0 a 1: retângulo da pessoa inteira, incluindo só a parte que aparece se ela estiver cortada); " +
         "caixaCabeca (x0, y0, x1, y1 de 0 a 1: retângulo da cabeça, incluindo o que está sobre ela; se a cabeça não aparece, use 0, 0, 0, 0). " +
         "A quantidade de entradas deve ser igual a pessoas.";
@@ -79,8 +99,11 @@ public class ClaudeAnalisadorEpiImagem : IAnalisadorEpiImagem
                         cabecaY = new { type = "number" },
                         cabecaVisivel = new { type = "boolean" },
                         troncoVisivel = new { type = "boolean" },
+                        rostoVisivel = new { type = "boolean" },
                         capacete = new { type = "string", @enum = new[] { Conforme, NaoConforme, NaoAvaliavel } },
                         colete = new { type = "string", @enum = new[] { Conforme, NaoConforme, NaoAvaliavel } },
+                        oculos = new { type = "string", @enum = new[] { Conforme, NaoConforme, NaoAvaliavel } },
+                        corCapacete = new { type = "string", @enum = CoresCapacete },
                         caixa = new
                         {
                             type = "object",
@@ -108,7 +131,7 @@ public class ClaudeAnalisadorEpiImagem : IAnalisadorEpiImagem
                             additionalProperties = false,
                         },
                     },
-                    required = new[] { "cabecaX", "cabecaY", "cabecaVisivel", "troncoVisivel", "capacete", "colete", "caixa", "caixaCabeca" },
+                    required = new[] { "cabecaX", "cabecaY", "cabecaVisivel", "troncoVisivel", "rostoVisivel", "capacete", "colete", "oculos", "corCapacete", "caixa", "caixaCabeca" },
                     additionalProperties = false,
                 },
             },
@@ -119,7 +142,8 @@ public class ClaudeAnalisadorEpiImagem : IAnalisadorEpiImagem
 
     private sealed record CaixaResposta(double X0, double Y0, double X1, double Y1);
     private sealed record PessoaResposta(double CabecaX, double CabecaY, bool? CabecaVisivel, bool? TroncoVisivel,
-        string? Capacete, string? Colete, CaixaResposta? Caixa, CaixaResposta? CaixaCabeca = null);
+        string? Capacete, string? Colete, CaixaResposta? Caixa, CaixaResposta? CaixaCabeca = null,
+        string? Oculos = null, string? CorCapacete = null, bool? RostoVisivel = null);
     private sealed record Resposta(int Pessoas, int SemCapacete, int SemColete, string? Confianca, List<PessoaResposta>? PessoasDetalhe = null);
 
     private readonly ClaudeChatJsonCliente _cliente;
@@ -148,10 +172,12 @@ public class ClaudeAnalisadorEpiImagem : IAnalisadorEpiImagem
             var pessoas = Math.Max(r.Pessoas, detalhe.Count);
             return new ResultadoAnaliseEpi(pessoas, detalhe.Count(p => p.SemCapacete), detalhe.Count(p => p.SemColete), confianca,
                 detalhe.Count == r.Pessoas ? detalhe : null, uso,
-                detalhe.Count(p => p.CapaceteNaoAvaliavel), detalhe.Count(p => p.ColeteNaoAvaliavel));
+                detalhe.Count(p => p.CapaceteNaoAvaliavel), detalhe.Count(p => p.ColeteNaoAvaliavel),
+                detalhe.Count(p => p.SemOculos), detalhe.Count(p => p.OculosNaoAvaliavel));
         }
 
         // Sem detalhe válido: valem os totais da IA, que o pedido define como só itens vistos e não conformes.
+        // Óculos e cor só existem por pessoa: sem detalhe não há ocorrência de óculos nem aviso de cor.
         if (r.Pessoas < 0 || r.SemCapacete < 0 || r.SemColete < 0 || r.SemCapacete > r.Pessoas || r.SemColete > r.Pessoas)
             throw new InvalidOperationException("A IA devolveu contagens incoerentes.");
         return new ResultadoAnaliseEpi(r.Pessoas, r.SemCapacete, r.SemColete, confianca, null, uso);
@@ -180,13 +206,32 @@ public class ClaudeAnalisadorEpiImagem : IAnalisadorEpiImagem
 
         var capacete = p.CabecaVisivel != true || cabecaPequena ? NaoAvaliavel : Normalizar(p.Capacete);
         var colete = p.TroncoVisivel != true || pessoaPequenaParaColete ? NaoAvaliavel : Normalizar(p.Colete);
+        // Óculos só são julgados com o rosto visível (de frente ou de lado, olhos à vista) e a cabeça grande o bastante para
+        // distinguir os olhos; caixaCabeca ausente/inválida ou rostoVisivel ausente = não avaliável.
+        var cabecaPequenaParaOculos = caixaCabeca is null || caixaCabeca.Altura + Tolerancia < AlturaMinimaCabecaParaOculos;
+        var oculos = p.RostoVisivel != true || cabecaPequenaParaOculos ? NaoAvaliavel : Normalizar(p.Oculos);
+        // Cor só com capacete conforme e cabeça com tamanho para distinguir; "outra" e nao_avaliavel não viram cor.
+        var cor = capacete == Conforme && !cabecaPequena ? ConverterCor(p.CorCapacete) : null;
 
         return new PessoaNaCena(Math.Clamp(p.CabecaX, 0, 1), Math.Clamp(p.CabecaY, 0, 1),
             SemCapacete: capacete == NaoConforme, SemColete: colete == NaoConforme,
             CabecaVisivel: p.CabecaVisivel == true, TroncoVisivel: p.TroncoVisivel == true,
             CapaceteNaoAvaliavel: capacete == NaoAvaliavel, ColeteNaoAvaliavel: colete == NaoAvaliavel,
-            Caixa: caixa, CaixaCabeca: caixaCabeca);
+            Caixa: caixa, CaixaCabeca: caixaCabeca,
+            SemOculos: oculos == NaoConforme, OculosNaoAvaliavel: oculos == NaoAvaliavel, CorCapaceteVista: cor);
     }
+
+    // As seis cores do padrão; qualquer outra coisa (outra, nao_avaliavel, valor desconhecido ou ausente) fica nula.
+    private static CorCapacete? ConverterCor(string? valor) => valor?.Trim().ToLowerInvariant() switch
+    {
+        "branco" => CorCapacete.Branco,
+        "amarelo" => CorCapacete.Amarelo,
+        "azul" => CorCapacete.Azul,
+        "verde" => CorCapacete.Verde,
+        "vermelho" => CorCapacete.Vermelho,
+        "laranja" => CorCapacete.Laranja,
+        _ => null,
+    };
 
     // Qualquer valor fora de conforme/nao_conforme conta como não avaliável.
     private static string Normalizar(string? valor) => valor?.Trim().ToLowerInvariant() switch

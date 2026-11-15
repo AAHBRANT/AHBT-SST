@@ -229,8 +229,9 @@ public class CamerasController : ControllerBase
         [FromQuery] DateTimeOffset? de,
         [FromQuery] DateTimeOffset? ate,
         [FromQuery] SituacaoOcorrenciaEpi? situacao,
+        [FromQuery] TipoOcorrenciaEpi? tipo,
         CancellationToken ct)
-        => Ok(await _mediator.Send(new ListarOcorrenciasEpiQuery(obraId, cameraId, de?.UtcDateTime, ate?.UtcDateTime, situacao), ct));
+        => Ok(await _mediator.Send(new ListarOcorrenciasEpiQuery(obraId, cameraId, de?.UtcDateTime, ate?.UtcDateTime, situacao, tipo), ct));
 
     [Authorize(Policy = PoliticasAutorizacao.CamerasPiloto)]
     [HttpGet("ocorrencias/{id:guid}/foto")]
