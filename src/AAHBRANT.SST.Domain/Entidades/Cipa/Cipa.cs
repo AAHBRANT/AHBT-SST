@@ -29,6 +29,8 @@ public class DimensionamentoCipa : AuditableEntity
     // NumeroSuplentes são sempre preenchidos manualmente por quem faz o dimensionamento (técnico/
     // engenheiro de segurança), com Cnae/GrauRisco/NumeroFuncionarios guardados como referência do
     // enquadramento usado. Ver disclosure na tela (CipaDimensionamentoTab.tsx).
+    // Desde 16/11/2026 o nº de empregados é sugerido pela contagem automática do cadastro (CLT ativos)
+    // e a aba "Situação por obra" aplica o piso de 20 da NR-5 — ver ObterSituacaoCipaPorObraQuery.
     public string Cnae { get; set; } = string.Empty;
     public int GrauRisco { get; set; }
     public int NumeroFuncionarios { get; set; }
