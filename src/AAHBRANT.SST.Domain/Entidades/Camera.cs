@@ -46,6 +46,20 @@ public class Camera : AuditableEntity
     // false = a análise e a ocorrência seguem iguais; só o aviso no Telegram é pulado.
     public bool AvisarTelegram { get; set; } = true;
 
+    // Regras de alerta (Fase 2). A falta de EPI só vira ocorrência confirmada, e só então pode ir ao Telegram, quando a
+    // MESMA irregularidade é vista de novo depois deste tempo (por item; 1 a 30 s na tela). Padrão 3 s.
+    public int PersistenciaCapaceteSegundos { get; set; } = 3;
+    public int PersistenciaColeteSegundos { get; set; } = 3;
+    public int PersistenciaOculosSegundos { get; set; } = 3;
+
+    // A mesma pessoa (ou a mesma posição, sem identificação) não gera novo alerta por este tempo (0 a 3600 s; 0 = só valem
+    // as regras de agrupamento antigas). Padrão 300 s.
+    public int NaoRepetirSegundos { get; set; } = 300;
+
+    // true = analisa e grava as ocorrências (Sombra = true), mas NUNCA envia Telegram. AvisarTelegram é preservado e volta a
+    // valer ao desligar. Câmera nova nasce true (CriarCameraCommand); as já existentes ficam false (padrão da migration).
+    public bool ModoSombra { get; set; }
+
     // Atualizados quando o agente envia um quadro. A situação mostrada na tela é calculada na consulta.
     public SituacaoConexaoCamera SituacaoConexao { get; set; } = SituacaoConexaoCamera.Desconhecida;
     public DateTime? UltimoQuadroRecebidoEmUtc { get; set; }
@@ -68,6 +82,10 @@ public class Camera : AuditableEntity
     public int AnalisesNoDia { get; set; }
     public long TokensEntradaNoDia { get; set; }
     public long TokensSaidaNoDia { get; set; }
+
+    // Análises do dia (mesma data em Brasília de DiaDoConsumo) em que só havia itens não conferidos (parte do corpo fora da
+    // imagem) e nenhuma irregularidade: indica câmera mal posicionada. Zera junto com os demais contadores do dia.
+    public int NaoAvaliaveisNoDia { get; set; }
 }
 
 // Pessoa sem capacete e/ou sem colete detectada numa foto. Só existe quando há irregularidade:
@@ -125,4 +143,21 @@ public class OcorrenciaEpiCamera : AuditableEntity
     // repetições são somadas na ocorrência já aberta (a foto e o horário continuam os da primeira vez).
     public int VezesVista { get; set; } = 1;
     public DateTime? UltimaVezEmUtc { get; set; }
+
+    // Confirmação (Fase 2): a primeira vista de uma irregularidade nasce Confirmada = false e sem Telegram; ela confirma quando a
+    // mesma irregularidade é vista de novo depois do tempo mínimo do item (ver AnalisarQuadroCameraCommandHandler). O padrão
+    // do CLR é true de propósito: as ocorrências anteriores à Fase 2 (migration) e as criadas fora do analisador valem como
+    // confirmadas; o analisador grava false explicitamente.
+    public bool Confirmada { get; set; } = true;
+    public DateTime? ConfirmadaEmUtc { get; set; }
+    // Segundos entre a primeira e a última vez em que a irregularidade foi vista (nulo = ocorrência anterior à Fase 2).
+    public int? SegundosObservados { get; set; }
+
+    // true = gravada com a câmera em modo sombra: registro para conferência, nunca foi (nem será) enviada ao Telegram.
+    public bool Sombra { get; set; }
+
+    // Posição aproximada da cabeça na última vista (fração da imagem, 0 a 1). Guardada no banco, e não em memória, porque a API
+    // tem várias réplicas: é com ela que a mesma pessoa sem identificação é reconhecida de um quadro para o outro.
+    public double? PosicaoX { get; set; }
+    public double? PosicaoY { get; set; }
 }

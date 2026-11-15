@@ -26,6 +26,13 @@ public class CameraConfiguracao : IEntityTypeConfiguration<Camera>
         // comportamento padrão do EF de omitir do INSERT o valor igual ao padrão do CLR (false) e deixar o banco gravar true:
         // sem isto, criar a câmera com "Avisar no Telegram" desligado gravaria ligado.
         builder.Property(c => c.AvisarTelegram).HasDefaultValue(true).ValueGeneratedNever();
+        // Câmeras já cadastradas ficam com os tempos padrão e SEM modo sombra (continuam avisando como antes); só a câmera criada
+        // pelo CriarCameraCommand nasce em modo sombra. ModoSombra não tem default de modelo justamente para o INSERT nunca omitir
+        // o valor; o false das linhas antigas vem da própria migration.
+        builder.Property(c => c.PersistenciaCapaceteSegundos).HasDefaultValue(3).ValueGeneratedNever();
+        builder.Property(c => c.PersistenciaColeteSegundos).HasDefaultValue(3).ValueGeneratedNever();
+        builder.Property(c => c.PersistenciaOculosSegundos).HasDefaultValue(3).ValueGeneratedNever();
+        builder.Property(c => c.NaoRepetirSegundos).HasDefaultValue(300).ValueGeneratedNever();
         builder.Property(c => c.SituacaoConexao).HasDefaultValue(SituacaoConexaoCamera.Desconhecida);
         builder.Property(c => c.MensagemConexao).HasMaxLength(300);
         builder.HasIndex(c => c.EquipamentoCameraId);
@@ -38,6 +45,10 @@ public class OcorrenciaEpiCameraConfiguracao : IEntityTypeConfiguration<Ocorrenc
     {
         builder.ToTable("OcorrenciasEpiCamera");
         builder.Property(o => o.Foto).IsRequired();
+        // O default (true) existe só para as linhas já gravadas na migration da Fase 2 e para quem inserir por fora do EF.
+        // ValueGeneratedNever impede o EF de omitir do INSERT o false (padrão do CLR) e deixar o banco gravar true: sem isto,
+        // a ocorrência não confirmada nasceria confirmada.
+        builder.Property(o => o.Confirmada).HasDefaultValue(true).ValueGeneratedNever();
         builder.HasOne(o => o.Camera).WithMany()
             .HasForeignKey(o => o.CameraId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(o => o.Trabalhador).WithMany()

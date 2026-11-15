@@ -23,7 +23,13 @@ public record AtualizarCameraCommand(
     int? IntervaloEnvioSegundos = null,
     // Nulos = não mexe (a tela antiga não envia estes campos e não pode desfazer a escolha já feita).
     ParteImagemCamera? ParteImagem = null,
-    bool? AvisarTelegram = null) : IRequest;
+    bool? AvisarTelegram = null,
+    // Regras de alerta. Nulos = não mexe (a tela antiga não envia estes campos e não pode desfazer o que já foi escolhido).
+    int? PersistenciaCapaceteSegundos = null,
+    int? PersistenciaColeteSegundos = null,
+    int? PersistenciaOculosSegundos = null,
+    int? NaoRepetirSegundos = null,
+    bool? ModoSombra = null) : IRequest;
 
 public class AtualizarCameraCommandValidator : AbstractValidator<AtualizarCameraCommand>
 {
@@ -36,6 +42,10 @@ public class AtualizarCameraCommandValidator : AbstractValidator<AtualizarCamera
         RuleFor(x => x.Fonte).IsInEnum();
         When(x => x.IntervaloEnvioSegundos is not null, () => RuleFor(x => x.IntervaloEnvioSegundos!.Value).IntervaloDeEnvio());
         RuleFor(x => x.ParteImagem).ParteDaImagem();
+        When(x => x.PersistenciaCapaceteSegundos is not null, () => RuleFor(x => x.PersistenciaCapaceteSegundos!.Value).PersistenciaDeConfirmacao());
+        When(x => x.PersistenciaColeteSegundos is not null, () => RuleFor(x => x.PersistenciaColeteSegundos!.Value).PersistenciaDeConfirmacao());
+        When(x => x.PersistenciaOculosSegundos is not null, () => RuleFor(x => x.PersistenciaOculosSegundos!.Value).PersistenciaDeConfirmacao());
+        When(x => x.NaoRepetirSegundos is not null, () => RuleFor(x => x.NaoRepetirSegundos!.Value).NaoRepetirAlerta());
         When(x => x.Fonte == FonteCamera.Navegador && x.ParteImagem is { } p && Enum.IsDefined(p), () =>
             RuleFor(x => x.ParteImagem).Must(p => p == ParteImagemCamera.Inteira).WithMessage(CameraIpRegras.MensagemParteSoEmCameraIp));
         When(x => x.Fonte == FonteCamera.Rtsp, () =>
@@ -104,6 +114,11 @@ public class AtualizarCameraCommandHandler : IRequestHandler<AtualizarCameraComm
             camera.UltimoQuadroRecebidoEmUtc = null;
         }
         if (request.AvisarTelegram is { } avisar) camera.AvisarTelegram = avisar;
+        if (request.PersistenciaCapaceteSegundos is { } persCapacete) camera.PersistenciaCapaceteSegundos = persCapacete;
+        if (request.PersistenciaColeteSegundos is { } persColete) camera.PersistenciaColeteSegundos = persColete;
+        if (request.PersistenciaOculosSegundos is { } persOculos) camera.PersistenciaOculosSegundos = persOculos;
+        if (request.NaoRepetirSegundos is { } naoRepetir) camera.NaoRepetirSegundos = naoRepetir;
+        if (request.ModoSombra is { } modoSombra) camera.ModoSombra = modoSombra;
         if (request.IntervaloEnvioSegundos is { } intervaloEnvio) camera.IntervaloEnvioSegundos = intervaloEnvio;
 
         // Vale também para quem só ligou a câmera (Habilitada) sem mexer na origem: câmera IP ligada exige equipamento com senha.

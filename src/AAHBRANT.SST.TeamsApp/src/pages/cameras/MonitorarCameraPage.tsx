@@ -185,7 +185,7 @@ function Monitoramento({ camera }: { camera: CameraResumo }) {
                     <div className={tipo.corpo}>
                       {soAvisoCor
                         ? 'Aviso de padrão · sem Telegram'
-                        : rotuloAlertaTelegram(analise.alertaEnviado, camera.avisarTelegram).texto}
+                        : rotuloAlertaTelegram(analise.alertaEnviado, camera.modoSombra === true ? false : camera.avisarTelegram).texto}
                     </div>
                   )}
                   {ocorrencia &&

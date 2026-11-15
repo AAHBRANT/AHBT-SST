@@ -21,7 +21,7 @@ import {
   type OpcaoSeletor,
   type Tom,
 } from '@ui';
-import { Checkmark16Regular, Info16Regular, Person16Regular, Warning16Regular, Warning24Regular } from '@fluentui/react-icons';
+import { Checkmark16Regular, Clock16Regular, Eye16Regular, Info16Regular, Person16Regular, Warning16Regular, Warning24Regular } from '@fluentui/react-icons';
 import {
   api,
   SituacaoOcorrenciaEpi,
@@ -38,6 +38,8 @@ import { rotuloAlertaTelegram } from './aoVivoRegras';
 import { descreverIrregularidade, formatarDataHora, linhasNaoConferido, resumoCena } from './rotulos';
 import { FotoOcorrenciaEpi } from './FotoOcorrenciaEpi';
 import { mergeClasses, useEstilosAlertas } from './estilosAlertas';
+import { useEstilosRegrasAlerta } from './estilosRegrasAlerta';
+import { ehNaoConfirmada, ehNaoConfirmadaSemSombra, linhaConfirmacao, resumoSombra } from './regrasAlerta';
 
 const LIMITE_API = 200;
 const FUSO_BRASILIA = 'America/Sao_Paulo';
@@ -147,6 +149,7 @@ function DialogoVincular({ ocorrencia, erro, aoFechar, aoConfirmar }: DialogoVin
 // com conferência (vínculo do trabalhador e marcação de falso alerta).
 export function AlertasEpiTab() {
   const estilos = useEstilosAlertas();
+  const regras = useEstilosRegrasAlerta();
   const tipo = useTipografia();
   const queryClient = useQueryClient();
   const sucessoToast = useSucessoToast();
@@ -158,6 +161,7 @@ export function AlertasEpiTab() {
   const [periodo, setPeriodo] = useState<Periodo>('7dias');
   const [situacao, setSituacao] = useState(0);
   const [tipoOcorrencia, setTipoOcorrencia] = useState<NonNullable<FiltroOcorrenciasEpi['tipo']> | ''>('');
+  const [registro, setRegistro] = useState<NonNullable<FiltroOcorrenciasEpi['registro']> | ''>('');
   const [erro, setErro] = useState<string | null>(null);
   const [vinculando, setVinculando] = useState<OcorrenciaEpi | null>(null);
   const [ocupada, setOcupada] = useState<string | null>(null);
@@ -179,13 +183,16 @@ export function AlertasEpiTab() {
       de,
       situacao: situacao || undefined,
       tipo: tipoOcorrencia || undefined,
+      registro: registro || undefined,
     }),
-    [obraId, cameraId, de, situacao, tipoOcorrencia],
+    [obraId, cameraId, de, situacao, tipoOcorrencia, registro],
   );
   const ocorrencias = useOcorrenciasEpi(filtro);
   const itens = ocorrencias.data;
   const lista = useMemo(() => itens ?? [], [itens]);
-  const novas = lista.filter((o) => o.situacao === SituacaoOcorrenciaEpi.Nova).length;
+  // Não confirmada ainda não é ocorrência para conferir: não entra em "novas".
+  const novas = lista.filter((o) => o.situacao === SituacaoOcorrenciaEpi.Nova && !ehNaoConfirmada(o)).length;
+  const emSombra = lista.filter((o) => o.sombra === true).length;
 
   async function executar(ocorrencia: OcorrenciaEpi, acao: () => Promise<void>, mensagem: string): Promise<boolean> {
     setErro(null);
@@ -236,6 +243,7 @@ export function AlertasEpiTab() {
   }
 
   // Câmeras sem aviso no Telegram (do cadastro já carregado): a ocorrência delas não é "alerta não enviado".
+  const cameraPorId = new Map((listaCameras ?? []).map((c) => [c.id, c]));
   const semAviso = new Set((listaCameras ?? []).filter((c) => c.avisarTelegram === false).map((c) => c.id));
 
   function cartao(o: OcorrenciaEpi) {
@@ -251,6 +259,9 @@ export function AlertasEpiTab() {
       : descreverIrregularidade(o.semCapacete, o.semColete, semOculos);
     const naoConferido = linhasNaoConferido(o.capaceteNaoAvaliavel, o.coleteNaoAvaliavel, o.oculosNaoAvaliavel);
     const rotuloTelegram = rotuloAlertaTelegram(o.alertaEnviado, semAviso.has(o.cameraId) ? false : undefined);
+    const sombra = o.sombra === true;
+    const confirmacao = linhaConfirmacao(o, cameraPorId.get(o.cameraId), irregularidade.toLowerCase());
+    const naoConfirmadaComAviso = ehNaoConfirmadaSemSombra(o);
     const titulo = `${o.cameraNome} · ${formatarDataHora(o.capturadaEmUtc)}`;
     const falso = o.situacao === SituacaoOcorrenciaEpi.FalsoAlerta;
     const bloqueada = ocupada !== null;
@@ -259,6 +270,17 @@ export function AlertasEpiTab() {
     const nomeTrabalhador = o.trabalhadorNome ?? 'Trabalhador vinculado';
     const confiancaRosto =
       o.confiancaIdentificacao != null ? ` · ${Math.round(o.confiancaIdentificacao)}%` : '';
+    function linhaConfirmacaoJsx() {
+      return (
+        <div className={mergeClasses(tipo.legenda, regras.confirmacao, confirmacao.confirmada ? regras.confirmacaoSim : regras.confirmacaoNao)}>
+          {confirmacao.confirmada ? <Checkmark16Regular aria-hidden="true" /> : <Clock16Regular aria-hidden="true" />}
+          {confirmacao.rotulo}
+          {confirmacao.detalhe && (
+            <small className={mergeClasses(tipo.legenda, regras.confirmacaoDetalhe)}>· {confirmacao.detalhe}</small>
+          )}
+        </div>
+      );
+    }
     return (
       <article key={o.id} className={estilos.cartao} aria-label={`Ocorrência de ${titulo}`}>
         <div className={estilos.areaFoto}>
@@ -295,7 +317,17 @@ export function AlertasEpiTab() {
               </div>
             </div>
           )}
-          {avisoCor ? (
+          {sombra ? (
+            <div className={regras.linhaSombra}>
+              <div className={mergeClasses(tipo.legenda, regras.linhaSombraTitulo)}>
+                <Eye16Regular aria-hidden="true" />
+                Registrado em modo sombra (sem aviso)
+              </div>
+              {linhaConfirmacaoJsx()}
+            </div>
+          ) : naoConfirmadaComAviso ? (
+            linhaConfirmacaoJsx()
+          ) : avisoCor ? (
             <div className={mergeClasses(tipo.legenda, estilos.telegram, estilos.telegramNeutro)}>
               <Info16Regular aria-hidden="true" />
               Aviso de padrão · sem Telegram
@@ -490,9 +522,22 @@ export function AlertasEpiTab() {
             </Select>
           </Field>
         </div>
+        <div className={estilos.campoFiltro}>
+          <Field label="Registro">
+            <Select
+              value={registro}
+              onChange={(_, d) => setRegistro(d.value as NonNullable<FiltroOcorrenciasEpi['registro']> | '')}
+            >
+              <option value="">Todos</option>
+              <option value="sombra">Só modo sombra</option>
+              <option value="aviso">Só com aviso</option>
+              <option value="naoConfirmadas">Não confirmadas</option>
+            </Select>
+          </Field>
+        </div>
         {itens && (
           <div className={mergeClasses(tipo.corpo, estilos.resumo)} role="status">
-            {plural(lista.length, 'ocorrência', 'ocorrências')} · {plural(novas, 'nova', 'novas')}
+            {plural(lista.length, 'ocorrência', 'ocorrências')} · {plural(novas, 'nova', 'novas')} · {resumoSombra(emSombra)}
           </div>
         )}
       </div>
