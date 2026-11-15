@@ -81,4 +81,39 @@ public class LegendaAlertaEpiTests
 
         Assert.EndsWith("\nTrabalhador não identificado", legenda);
     }
+
+    [Theory]
+    [InlineData("Beira Rio", "Obra Beira Rio ·")]
+    [InlineData("Obra Beira Rio", "Obra Beira Rio ·")]
+    [InlineData("obra beira rio", "obra beira rio ·")]
+    [InlineData("  Obra Beira Rio ", "Obra Beira Rio ·")]
+    public void NomeDaObra_NaoRepeteOPrefixoObra(string nome, string esperado)
+    {
+        var legenda = LegendaAlertaEpi.Montar(nome, "Betoneira", Momento, 1, 1, 0);
+
+        Assert.Contains("\n" + esperado + " Câmera Betoneira", legenda);
+        Assert.DoesNotContain("Obra Obra", legenda, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ItemNaoAvaliavel_AcrescentaLinhaDeNaoConferido()
+    {
+        var capacete = LegendaAlertaEpi.Montar("Beira Rio", "Betoneira", Momento, 1, 0, 1, capaceteNaoAvaliavel: 1);
+        var colete = LegendaAlertaEpi.Montar("Beira Rio", "Betoneira", Momento, 1, 1, 0, coleteNaoAvaliavel: 1);
+        var nenhum = LegendaAlertaEpi.Montar("Beira Rio", "Betoneira", Momento, 1, 1, 0);
+
+        Assert.EndsWith("\nTrabalhador não identificado\nCapacete não conferido em 1 pessoa", capacete);
+        Assert.EndsWith("\nTrabalhador não identificado\nColete não conferido em 1 pessoa", colete);
+        Assert.DoesNotContain("não conferido", nenhum);
+    }
+
+    [Fact]
+    public void Cena_ItemNaoAvaliavel_AcrescentaLinhaNoFinal()
+    {
+        var legenda = LegendaAlertaEpi.MontarCena("Beira Rio", "Portaria", Momento, 2, 1, 0, Array.Empty<IdentificadoNaCena>(), 1,
+            capaceteNaoAvaliavel: 1, coleteNaoAvaliavel: 2);
+
+        Assert.EndsWith(
+            "\nCapacete não conferido em 1 pessoa\nColete não conferido em 2 pessoas", legenda);
+    }
 }

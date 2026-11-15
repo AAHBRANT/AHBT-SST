@@ -78,4 +78,35 @@ public class CruzamentoRostosPessoasTests
         Assert.False(r.ContainsKey(0));
         Assert.Equal(Pedro, r[1].TrabalhadorId);
     }
+
+    [Fact]
+    public void PessoaComACabecaForaDaImagem_EIgnorada()
+    {
+        // A pessoa 0 tem a cabeça "fora da imagem" (posição é só um palpite) e fica sem rosto, mesmo perto dele.
+        var pessoas = new[]
+        {
+            new PessoaNaCena(0.50, 0.02, false, true, CabecaVisivel: false, CapaceteNaoAvaliavel: true),
+            new PessoaNaCena(0.80, 0.30, true, false),
+        };
+
+        var r = CruzamentoRostosPessoas.Cruzar(pessoas, new[] { Rosto(0.50, 0.03, Joao) });
+
+        Assert.Empty(r);
+    }
+
+    [Fact]
+    public void PessoaSemCabecaVisivel_NaoDisputaORostoComOutraPessoa()
+    {
+        // Sem a regra, as duas pessoas ficariam quase à mesma distância e o rosto não seria ligado a ninguém.
+        var pessoas = new[]
+        {
+            new PessoaNaCena(0.49, 0.30, false, true, CabecaVisivel: false, CapaceteNaoAvaliavel: true),
+            new PessoaNaCena(0.51, 0.30, true, false),
+        };
+
+        var r = CruzamentoRostosPessoas.Cruzar(pessoas, new[] { Rosto(0.50, 0.30, Pedro) });
+
+        Assert.False(r.ContainsKey(0));
+        Assert.Equal(Pedro, r[1].TrabalhadorId);
+    }
 }

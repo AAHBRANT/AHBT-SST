@@ -855,4 +855,99 @@ public class AnalisarQuadroCameraTests
         Assert.Single(telegram.Legendas);
         Assert.True((await db.OcorrenciasEpiCamera.SingleAsync()).AlertaEnviado);
     }
+
+    // Pessoa de que só aparecem as pernas: nada foi julgado.
+    private static ResultadoAnaliseEpi SoPernas() => new(1, 0, 0, ConfiancaAnaliseEpi.Alta,
+        new[] { new PessoaNaCena(0.5, 0.95, false, false, CabecaVisivel: false, TroncoVisivel: false, CapaceteNaoAvaliavel: true, ColeteNaoAvaliavel: true) },
+        CapaceteNaoAvaliavel: 1, ColeteNaoAvaliavel: 1);
+
+    [Fact]
+    public async Task SoPernasNaFoto_CenaLimpaSemOcorrenciaEMensagemNoTelegram()
+    {
+        var (db, camera) = await Preparar(nameof(SoPernasNaFoto_CenaLimpaSemOcorrenciaEMensagemNoTelegram));
+        var telegram = new TelegramFalso();
+        var facial = new FacialFalso(() => Reconhecido(Guid.NewGuid()));
+
+        var r = await Criar(db, new AnalisadorFalso(SoPernas), telegram, facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Limpo, r.Situacao);
+        Assert.False(r.AlertaEnviado);
+        Assert.Equal(1, r.Pessoas);
+        Assert.Equal(0, r.SemCapacete);
+        Assert.Equal(0, r.SemColete);
+        Assert.Equal(1, r.CapaceteNaoAvaliavel);
+        Assert.Equal(1, r.ColeteNaoAvaliavel);
+        Assert.Empty(telegram.Legendas);
+        Assert.Empty(await db.OcorrenciasEpiCamera.ToListAsync());
+        Assert.Equal(0, facial.Chamadas);
+    }
+
+    [Fact]
+    public async Task TroncoSemColeteECabecaForaDaImagem_AlertaDeColeteComALinhaDeCapaceteNaoConferido()
+    {
+        var (db, camera) = await Preparar(nameof(TroncoSemColeteECabecaForaDaImagem_AlertaDeColeteComALinhaDeCapaceteNaoConferido));
+        var telegram = new TelegramFalso();
+        var analise = new ResultadoAnaliseEpi(1, 0, 1, ConfiancaAnaliseEpi.Alta,
+            new[] { new PessoaNaCena(0.5, 0.0, false, true, CabecaVisivel: false, TroncoVisivel: true, CapaceteNaoAvaliavel: true) },
+            CapaceteNaoAvaliavel: 1);
+
+        var r = await Criar(db, new AnalisadorFalso(() => analise), telegram)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.True(r.AlertaEnviado);
+        Assert.Equal(0, r.SemCapacete);
+        Assert.Equal(1, r.SemColete);
+        Assert.Equal(1, r.CapaceteNaoAvaliavel);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(0, ocorrencia.SemCapacete);
+        Assert.Equal(1, ocorrencia.SemColete);
+        var legenda = Assert.Single(telegram.Legendas);
+        Assert.StartsWith("⚠️ EPI — pessoa sem colete\n", legenda);
+        Assert.Contains("Capacete não conferido", legenda);
+        Assert.DoesNotContain("Colete não conferido", legenda);
+        Assert.DoesNotContain("sem capacete", legenda);
+    }
+
+    [Fact]
+    public async Task PessoaInteiraSemCapacete_AlertaNormalSemLinhaDeNaoConferido()
+    {
+        var (db, camera) = await Preparar(nameof(PessoaInteiraSemCapacete_AlertaNormalSemLinhaDeNaoConferido));
+        var telegram = new TelegramFalso();
+        var analise = new ResultadoAnaliseEpi(1, 1, 0, ConfiancaAnaliseEpi.Alta,
+            new[] { new PessoaNaCena(0.5, 0.2, true, false, Caixa: new CaixaPessoa(0.3, 0.1, 0.7, 0.9)) });
+
+        var r = await Criar(db, new AnalisadorFalso(() => analise), telegram)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.True(r.AlertaEnviado);
+        Assert.Equal(1, r.SemCapacete);
+        Assert.Equal(0, r.CapaceteNaoAvaliavel);
+        var legenda = Assert.Single(telegram.Legendas);
+        Assert.StartsWith("⚠️ EPI — pessoa sem capacete\n", legenda);
+        Assert.DoesNotContain("não conferido", legenda);
+    }
+
+    [Fact]
+    public async Task CenaComVariasPessoas_ItemNaoAvaliavelNaoViraIrregularidadeELegendaTrazALinha()
+    {
+        var (db, camera) = await Preparar(nameof(CenaComVariasPessoas_ItemNaoAvaliavelNaoViraIrregularidadeELegendaTrazALinha));
+        var telegram = new TelegramFalso();
+        var analise = new ResultadoAnaliseEpi(2, 1, 0, ConfiancaAnaliseEpi.Alta, new[]
+        {
+            new PessoaNaCena(0.25, 0.30, true, false),
+            new PessoaNaCena(0.75, 0.0, false, false, CabecaVisivel: false, CapaceteNaoAvaliavel: true),
+        }, CapaceteNaoAvaliavel: 1);
+
+        var r = await Criar(db, new AnalisadorFalso(() => analise), telegram)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.Equal(1, r.SemCapacete);
+        Assert.Equal(1, r.CapaceteNaoAvaliavel);
+        var legenda = Assert.Single(telegram.Legendas);
+        Assert.Contains("Capacete não conferido", legenda);
+    }
 }

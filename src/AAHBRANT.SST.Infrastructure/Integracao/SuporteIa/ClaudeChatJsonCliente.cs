@@ -158,6 +158,10 @@ public class ClaudeChatJsonCliente
         }
 
         using var json = await JsonDocument.ParseAsync(await resposta.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+        // Resposta cortada pelo limite de tokens vem com JSON incompleto e a leitura falha logo depois; só o motivo vai ao log.
+        if (json.RootElement.TryGetProperty("stop_reason", out var motivoParada) && motivoParada.ValueKind == JsonValueKind.String
+            && motivoParada.GetString() == "max_tokens")
+            _logger.LogWarning("Claude interrompeu a resposta ao atingir o limite de {MaxTokens} tokens; a leitura deve falhar.", maxTokens);
         var conteudo = json.RootElement.GetProperty("content").EnumerateArray()
             .Where(b => b.GetProperty("type").GetString() == "text")
             .Select(b => b.GetProperty("text").GetString())
