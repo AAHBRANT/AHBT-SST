@@ -950,4 +950,421 @@ public class AnalisarQuadroCameraTests
         var legenda = Assert.Single(telegram.Legendas);
         Assert.Contains("Capacete não conferido", legenda);
     }
+
+    // ---- Óculos e cor do capacete por função (14/11/2026) ----
+
+    private static PessoaNaCena PessoaEmOrdem(CorCapacete? cor, double x = 0.5)
+        => new(x, 0.30, false, false, CorCapaceteVista: cor);
+
+    private static ResultadoAnaliseEpi UmaPessoaComCor(CorCapacete? cor)
+        => new(1, 0, 0, ConfiancaAnaliseEpi.Alta, new[] { PessoaEmOrdem(cor) });
+
+    // Trabalhador com função que tem (ou não) cor de capacete.
+    private static async Task<Trabalhador> ComFuncaoDeCor(SstDbContext db, Camera camera, CorCapacete corDaFuncao, string funcao = "Pedreiro", string nome = "João da Silva")
+    {
+        var f = new Funcao { Nome = funcao, CorCapacete = corDaFuncao };
+        var t = new Trabalhador { ObraId = camera.ObraId, Nome = nome, FuncaoId = f.Id };
+        db.AddRange(f, t);
+        await db.SaveChangesAsync();
+        return t;
+    }
+
+    [Fact]
+    public async Task Oculos_NaoConforme_GeraOcorrenciaEAlertaNoTelegram()
+    {
+        var (db, camera) = await Preparar(nameof(Oculos_NaoConforme_GeraOcorrenciaEAlertaNoTelegram));
+        var telegram = new TelegramFalso();
+        var analise = new ResultadoAnaliseEpi(1, 0, 0, ConfiancaAnaliseEpi.Alta,
+            new[] { new PessoaNaCena(0.5, 0.3, false, false, SemOculos: true) }, SemOculos: 1);
+
+        var r = await Criar(db, new AnalisadorFalso(() => analise), telegram)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.True(r.AlertaEnviado);
+        Assert.Equal(1, r.SemOculos);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(1, ocorrencia.SemOculos);
+        Assert.Equal((0, 0), (ocorrencia.SemCapacete, ocorrencia.SemColete));
+        Assert.False(ocorrencia.AvisoCorCapacete);
+        var legenda = Assert.Single(telegram.Legendas);
+        Assert.StartsWith("⚠️ EPI — pessoa sem óculos\n", legenda);
+        Assert.Contains("1 pessoa na cena, 1 sem óculos", legenda);
+    }
+
+    [Fact]
+    public async Task Oculos_NaoAvaliavel_NaoGeraOcorrenciaNemAlerta()
+    {
+        var (db, camera) = await Preparar(nameof(Oculos_NaoAvaliavel_NaoGeraOcorrenciaNemAlerta));
+        var telegram = new TelegramFalso();
+        var analise = new ResultadoAnaliseEpi(1, 0, 0, ConfiancaAnaliseEpi.Alta,
+            new[] { new PessoaNaCena(0.5, 0.3, false, false, OculosNaoAvaliavel: true) }, OculosNaoAvaliavel: 1);
+
+        var r = await Criar(db, new AnalisadorFalso(() => analise), telegram)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Limpo, r.Situacao);
+        Assert.Equal(1, r.OculosNaoAvaliavel);
+        Assert.Empty(telegram.Legendas);
+        Assert.Empty(await db.OcorrenciasEpiCamera.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Oculos_NaoAvaliavelNaLegendaDeAlertaMotivadoPorOutroItem()
+    {
+        var (db, camera) = await Preparar(nameof(Oculos_NaoAvaliavelNaLegendaDeAlertaMotivadoPorOutroItem));
+        var telegram = new TelegramFalso();
+        var analise = new ResultadoAnaliseEpi(1, 1, 0, ConfiancaAnaliseEpi.Alta,
+            new[] { new PessoaNaCena(0.5, 0.3, true, false, OculosNaoAvaliavel: true) }, OculosNaoAvaliavel: 1);
+
+        await Criar(db, new AnalisadorFalso(() => analise), telegram)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Contains("Óculos não conferido em 1 pessoa", Assert.Single(telegram.Legendas));
+    }
+
+    [Fact]
+    public async Task Cor_PessoaIdentificadaComFuncaoDeOutraCor_GravaAvisoSemTelegramEComGravidadeMenor()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_PessoaIdentificadaComFuncaoDeOutraCor_GravaAvisoSemTelegramEComGravidadeMenor));
+        var trabalhador = await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo);
+        var telegram = new TelegramFalso();
+
+        var r = await Criar(db, new AnalisadorFalso(() => UmaPessoaComCor(CorCapacete.Azul)), telegram, new FacialFalso(() => Reconhecido(trabalhador.Id)))
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.True(r.AvisoCorCapacete);
+        Assert.False(r.AlertaEnviado);
+        Assert.Equal(trabalhador.Id, r.TrabalhadorId);
+        Assert.Empty(telegram.Legendas);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.True(ocorrencia.AvisoCorCapacete);
+        Assert.Equal(CorCapacete.Azul, ocorrencia.CorCapaceteVista);
+        Assert.Equal(CorCapacete.Amarelo, ocorrencia.CorCapaceteEsperada);
+        Assert.Equal((0, 0, 0), (ocorrencia.SemCapacete, ocorrencia.SemColete, ocorrencia.SemOculos));
+        Assert.False(ocorrencia.AlertaEnviado);
+        Assert.Null((await db.Cameras.SingleAsync()).UltimoAlertaEmUtc);
+    }
+
+    [Fact]
+    public async Task Cor_IgualAEsperada_NaoGeraAviso()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_IgualAEsperada_NaoGeraAviso));
+        var trabalhador = await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo);
+        var telegram = new TelegramFalso();
+
+        var r = await Criar(db, new AnalisadorFalso(() => UmaPessoaComCor(CorCapacete.Amarelo)), telegram, new FacialFalso(() => Reconhecido(trabalhador.Id)))
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Limpo, r.Situacao);
+        Assert.Empty(await db.OcorrenciasEpiCamera.ToListAsync());
+        Assert.Empty(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task Cor_PessoaNaoIdentificada_NaoAcusaCor()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_PessoaNaoIdentificada_NaoAcusaCor));
+        await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo);
+
+        var r = await Criar(db, new AnalisadorFalso(() => UmaPessoaComCor(CorCapacete.Azul)), new TelegramFalso(), new FacialFalso(NaoReconhecido))
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Limpo, r.Situacao);
+        Assert.Empty(await db.OcorrenciasEpiCamera.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Cor_FuncaoSemCorDefinida_NaoGeraAviso()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_FuncaoSemCorDefinida_NaoGeraAviso));
+        var trabalhador = await ComFuncaoDeCor(db, camera, CorCapacete.SemPadrao, funcao: "Almoxarife");
+        // Existe outra função com cor e um trabalhador ativo dela na obra, para a conferência de fato rodar.
+        await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo, "Pedreiro", "Outro Trabalhador");
+
+        var r = await Criar(db, new AnalisadorFalso(() => UmaPessoaComCor(CorCapacete.Azul)), new TelegramFalso(), new FacialFalso(() => Reconhecido(trabalhador.Id)))
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Limpo, r.Situacao);
+        Assert.Empty(await db.OcorrenciasEpiCamera.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Cor_NenhumaFuncaoComCor_NaoChamaOReconhecimentoFacial()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_NenhumaFuncaoComCor_NaoChamaOReconhecimentoFacial));
+        var facial = new FacialFalso(() => Reconhecido(Guid.NewGuid()));
+
+        var r = await Criar(db, new AnalisadorFalso(() => UmaPessoaComCor(CorCapacete.Azul)), new TelegramFalso(), facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Limpo, r.Situacao);
+        Assert.Equal(0, facial.Chamadas);
+    }
+
+    [Fact]
+    public async Task Cor_NaoAvaliavelNaCena_NaoChamaOReconhecimentoFacial()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_NaoAvaliavelNaCena_NaoChamaOReconhecimentoFacial));
+        await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo);
+        var facial = new FacialFalso(() => Reconhecido(Guid.NewGuid()));
+
+        var r = await Criar(db, new AnalisadorFalso(() => UmaPessoaComCor(null)), new TelegramFalso(), facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Limpo, r.Situacao);
+        Assert.Equal(0, facial.Chamadas);
+    }
+
+    [Fact]
+    public async Task Cor_ComIrregularidadeReal_VaiJuntaNaOcorrenciaNormalComTelegram()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_ComIrregularidadeReal_VaiJuntaNaOcorrenciaNormalComTelegram));
+        var trabalhador = await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo);
+        var telegram = new TelegramFalso();
+        // Capacete conforme (azul, fora do padrão) e colete faltando: a irregularidade real manda.
+        var analise = new ResultadoAnaliseEpi(1, 0, 1, ConfiancaAnaliseEpi.Alta,
+            new[] { new PessoaNaCena(0.5, 0.3, false, true, CorCapaceteVista: CorCapacete.Azul) });
+
+        var r = await Criar(db, new AnalisadorFalso(() => analise), telegram, new FacialFalso(() => Reconhecido(trabalhador.Id)))
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.False(r.AvisoCorCapacete);
+        Assert.True(r.AlertaEnviado);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.False(ocorrencia.AvisoCorCapacete);
+        Assert.Equal(1, ocorrencia.SemColete);
+        Assert.Equal(CorCapacete.Azul, ocorrencia.CorCapaceteVista);
+        Assert.Equal(CorCapacete.Amarelo, ocorrencia.CorCapaceteEsperada);
+        var legenda = Assert.Single(telegram.Legendas);
+        Assert.StartsWith("⚠️ EPI — pessoa sem colete\n", legenda);
+    }
+
+    [Fact]
+    public async Task Cor_IrregularidadeSemIdentificacao_GravaCorVistaSemAcusarEsperada()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_IrregularidadeSemIdentificacao_GravaCorVistaSemAcusarEsperada));
+        await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo);
+        var analise = new ResultadoAnaliseEpi(1, 0, 1, ConfiancaAnaliseEpi.Alta,
+            new[] { new PessoaNaCena(0.5, 0.3, false, true, CorCapaceteVista: CorCapacete.Verde) });
+
+        await Criar(db, new AnalisadorFalso(() => analise), new TelegramFalso(), new FacialFalso(NaoReconhecido))
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(CorCapacete.Verde, ocorrencia.CorCapaceteVista);
+        Assert.Null(ocorrencia.CorCapaceteEsperada);
+        Assert.False(ocorrencia.AvisoCorCapacete);
+    }
+
+    [Fact]
+    public async Task Cor_AvisoRepetidoDoMesmoTrabalhador_SomaNaOcorrenciaAbertaSemOutraOcorrencia()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_AvisoRepetidoDoMesmoTrabalhador_SomaNaOcorrenciaAbertaSemOutraOcorrencia));
+        var trabalhador = await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo);
+        var agente = Criar(db, new AnalisadorFalso(() => UmaPessoaComCor(CorCapacete.Azul)), new TelegramFalso(), new FacialFalso(() => Reconhecido(trabalhador.Id)));
+
+        var primeiro = await agente.Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+        // O intervalo mínimo entre análises da câmera só barra envio em paralelo, e a identificação só de cor tem limite de
+        // 10 minutos por câmera: recua os dois marcadores para o segundo quadro.
+        var camRep = await db.Cameras.SingleAsync();
+        camRep.UltimaAnaliseEmUtc = DateTime.UtcNow.AddMinutes(-1);
+        camRep.UltimaIdentificacaoSoCorEmUtc = DateTime.UtcNow.AddMinutes(-11);
+        await db.SaveChangesAsync();
+        var segundo = await agente.Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.False(primeiro.Repetida);
+        Assert.True(segundo.Repetida);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(2, ocorrencia.VezesVista);
+        Assert.True(ocorrencia.AvisoCorCapacete);
+    }
+
+    [Fact]
+    public async Task Cor_AvisoAbertoMaisIrregularidadeDepois_SaoDuasOcorrenciasEAIrregularTemFotoEHorarioDela()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_AvisoAbertoMaisIrregularidadeDepois_SaoDuasOcorrenciasEAIrregularTemFotoEHorarioDela));
+        var trabalhador = await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo);
+        var aviso = new OcorrenciaEpiCamera
+        {
+            CameraId = camera.Id, ObraId = camera.ObraId, Foto = new byte[] { 0xFF, 0xD8, 0x55 },
+            CapturadaEmUtc = DateTime.UtcNow.AddMinutes(-20), RecebidaEmUtc = DateTime.UtcNow.AddMinutes(-20),
+            UltimaVezEmUtc = DateTime.UtcNow.AddMinutes(-20), PessoasNaCena = 1, TrabalhadorId = trabalhador.Id, IdentificadoPorRosto = true,
+            AvisoCorCapacete = true, CorCapaceteVista = CorCapacete.Azul, CorCapaceteEsperada = CorCapacete.Amarelo,
+        };
+        db.Add(aviso);
+        await db.SaveChangesAsync();
+        var telegram = new TelegramFalso();
+        var foto = new byte[] { 0xFF, 0xD8, 0x66, 0x77 };
+        var agora = DateTime.UtcNow;
+
+        var r = await Criar(db, new AnalisadorFalso(UmaPessoaSemCapacete), telegram, new FacialFalso(() => Reconhecido(trabalhador.Id)))
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, foto, agora), default);
+
+        Assert.False(r.Repetida);
+        Assert.True(r.AlertaEnviado);
+        var todas = await db.OcorrenciasEpiCamera.ToListAsync();
+        Assert.Equal(2, todas.Count);
+        var intacto = todas.Single(o => o.Id == aviso.Id);
+        Assert.True(intacto.AvisoCorCapacete);
+        Assert.Equal(1, intacto.VezesVista);
+        Assert.Equal(0, intacto.SemCapacete);
+        var irregular = todas.Single(o => o.Id != aviso.Id);
+        Assert.False(irregular.AvisoCorCapacete);
+        Assert.Equal(foto, irregular.Foto);
+        Assert.Equal(agora, irregular.CapturadaEmUtc);
+        Assert.Equal(1, irregular.SemCapacete);
+        Assert.True(irregular.AlertaEnviado);
+        Assert.Single(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task Cor_IrregularAbertaMaisAvisoDepois_NaoAlteraVezesVistaNemUltimaVezDaIrregular()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_IrregularAbertaMaisAvisoDepois_NaoAlteraVezesVistaNemUltimaVezDaIrregular));
+        var trabalhador = await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo);
+        var quando = DateTime.UtcNow.AddMinutes(-40);
+        var irregular = new OcorrenciaEpiCamera
+        {
+            CameraId = camera.Id, ObraId = camera.ObraId, Foto = new byte[] { 0xFF, 0xD8, 0x44 },
+            CapturadaEmUtc = quando, RecebidaEmUtc = quando, UltimaVezEmUtc = quando, PessoasNaCena = 1, SemColete = 1,
+            TrabalhadorId = trabalhador.Id, IdentificadoPorRosto = true, AlertaEnviado = true, AlertaEnviadoEmUtc = quando,
+        };
+        db.Add(irregular);
+        await db.SaveChangesAsync();
+
+        var r = await Criar(db, new AnalisadorFalso(() => UmaPessoaComCor(CorCapacete.Azul)), new TelegramFalso(), new FacialFalso(() => Reconhecido(trabalhador.Id)))
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.True(r.AvisoCorCapacete);
+        Assert.False(r.Repetida);
+        var todas = await db.OcorrenciasEpiCamera.ToListAsync();
+        Assert.Equal(2, todas.Count);
+        var intacta = todas.Single(o => o.Id == irregular.Id);
+        Assert.Equal(1, intacta.VezesVista);
+        Assert.Equal(quando, intacta.UltimaVezEmUtc);
+        Assert.False(intacta.AvisoCorCapacete);
+        Assert.True(todas.Single(o => o.Id != irregular.Id).AvisoCorCapacete);
+    }
+
+    [Fact]
+    public async Task Cor_IdentificacaoSoDeCor_NoMaximoUmaACada10MinutosPorCamera()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_IdentificacaoSoDeCor_NoMaximoUmaACada10MinutosPorCamera));
+        var trabalhador = await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo);
+        var facial = new FacialFalso(() => Reconhecido(trabalhador.Id));
+        var handler = Criar(db, new AnalisadorFalso(() => UmaPessoaComCor(CorCapacete.Amarelo)), new TelegramFalso(), facial);
+
+        await handler.Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+        Assert.Equal(1, facial.Chamadas);
+        Assert.NotNull((await db.Cameras.SingleAsync()).UltimaIdentificacaoSoCorEmUtc);
+
+        // Segundo quadro 5 minutos depois: o limite barra a identificação e a cena sai limpa.
+        var cam = await db.Cameras.SingleAsync();
+        cam.UltimaAnaliseEmUtc = DateTime.UtcNow.AddMinutes(-5);
+        cam.UltimaIdentificacaoSoCorEmUtc = DateTime.UtcNow.AddMinutes(-5);
+        await db.SaveChangesAsync();
+        var r2 = await handler.Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+        Assert.Equal(SituacaoQuadro.Limpo, r2.Situacao);
+        Assert.Equal(1, facial.Chamadas);
+
+        // Passados 10 minutos, identifica de novo.
+        cam.UltimaAnaliseEmUtc = DateTime.UtcNow.AddMinutes(-1);
+        cam.UltimaIdentificacaoSoCorEmUtc = DateTime.UtcNow.AddMinutes(-11);
+        await db.SaveChangesAsync();
+        await handler.Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+        Assert.Equal(2, facial.Chamadas);
+    }
+
+    [Fact]
+    public async Task Cor_CenaComIrregularidade_IdentificaMesmoDentroDosDezMinutos()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_CenaComIrregularidade_IdentificaMesmoDentroDosDezMinutos),
+            c => c.UltimaIdentificacaoSoCorEmUtc = DateTime.UtcNow.AddMinutes(-1));
+        await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo);
+        var facial = new FacialFalso(NaoReconhecido);
+
+        await Criar(db, new AnalisadorFalso(UmaPessoaSemCapacete), new TelegramFalso(), facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(1, facial.Chamadas);
+    }
+
+    [Fact]
+    public async Task Cor_SoFuncaoComCorDeTrabalhadorDeOutraObraOuDemitido_NaoChamaOReconhecimentoFacial()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_SoFuncaoComCorDeTrabalhadorDeOutraObraOuDemitido_NaoChamaOReconhecimentoFacial));
+        var funcao = new Funcao { Nome = "Pedreiro", CorCapacete = CorCapacete.Amarelo };
+        db.AddRange(funcao,
+            new Trabalhador { ObraId = Guid.NewGuid(), Nome = "De outra obra", FuncaoId = funcao.Id },
+            new Trabalhador { ObraId = camera.ObraId, Nome = "Demitido", FuncaoId = funcao.Id, DataDemissao = DateTime.UtcNow.AddDays(-3) });
+        await db.SaveChangesAsync();
+        var facial = new FacialFalso(() => Reconhecido(Guid.NewGuid()));
+
+        var r = await Criar(db, new AnalisadorFalso(() => UmaPessoaComCor(CorCapacete.Azul)), new TelegramFalso(), facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Limpo, r.Situacao);
+        Assert.Equal(0, facial.Chamadas);
+        Assert.Null((await db.Cameras.SingleAsync()).UltimaIdentificacaoSoCorEmUtc);
+    }
+
+    [Fact]
+    public async Task Cor_VariasPessoas_AvisaSoQuemFoiIdentificadoComCorErradaESemTelegram()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_VariasPessoas_AvisaSoQuemFoiIdentificadoComCorErradaESemTelegram));
+        var joao = await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo, "Pedreiro", "João da Silva");
+        var telegram = new TelegramFalso();
+        var analise = new ResultadoAnaliseEpi(2, 0, 0, ConfiancaAnaliseEpi.Alta, new[]
+        {
+            PessoaEmOrdem(CorCapacete.Azul, x: 0.25),    // identificado, cor errada: aviso
+            PessoaEmOrdem(CorCapacete.Azul, x: 0.75),    // não identificado: não se acusa
+        });
+        var facial = new FacialFalso(NaoReconhecido)
+        {
+            RostosDaCena = () => new[] { RostoEm(0.25, 0.31, joao.Id), RostoEm(0.75, 0.31, null) },
+        };
+
+        var r = await Criar(db, new AnalisadorFalso(() => analise), telegram, facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r.Situacao);
+        Assert.True(r.AvisoCorCapacete);
+        Assert.False(r.AlertaEnviado);
+        Assert.Empty(telegram.Legendas);
+        var ocorrencia = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(joao.Id, ocorrencia.TrabalhadorId);
+        Assert.True(ocorrencia.AvisoCorCapacete);
+    }
+
+    [Fact]
+    public async Task Cor_VariasPessoasComIrregularidadeReal_AvisoDeCorNaoEntraNoTelegram()
+    {
+        var (db, camera) = await Preparar(nameof(Cor_VariasPessoasComIrregularidadeReal_AvisoDeCorNaoEntraNoTelegram));
+        var joao = await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo, "Pedreiro", "João da Silva");
+        var pedro = await ComFuncaoDeCor(db, camera, CorCapacete.Branco, "Engenheiro", "Pedro Souza");
+        var telegram = new TelegramFalso();
+        var analise = new ResultadoAnaliseEpi(2, 1, 0, ConfiancaAnaliseEpi.Alta, new[]
+        {
+            new PessoaNaCena(0.25, 0.30, SemCapacete: true, SemColete: false),   // João sem capacete: alerta real
+            PessoaEmOrdem(CorCapacete.Amarelo, x: 0.75),                         // Pedro (branco) de amarelo: só aviso
+        });
+        var facial = new FacialFalso(NaoReconhecido)
+        {
+            RostosDaCena = () => new[] { RostoEm(0.25, 0.31, joao.Id), RostoEm(0.75, 0.31, pedro.Id) },
+        };
+
+        var r = await Criar(db, new AnalisadorFalso(() => analise), telegram, facial)
+            .Handle(new AnalisarQuadroCameraCommand(camera.Id, Jpeg, DateTime.UtcNow), default);
+
+        Assert.True(r.AlertaEnviado);
+        var legenda = Assert.Single(telegram.Legendas);
+        Assert.Contains("João da Silva (sem capacete)", legenda);
+        Assert.DoesNotContain("Pedro Souza", legenda);
+        var doPedro = await db.OcorrenciasEpiCamera.SingleAsync(o => o.TrabalhadorId == pedro.Id);
+        Assert.True(doPedro.AvisoCorCapacete);
+        Assert.False(doPedro.AlertaEnviado);
+        Assert.False((await db.OcorrenciasEpiCamera.SingleAsync(o => o.TrabalhadorId == joao.Id)).AvisoCorCapacete);
+    }
 }

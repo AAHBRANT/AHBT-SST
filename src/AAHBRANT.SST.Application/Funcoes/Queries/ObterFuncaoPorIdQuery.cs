@@ -21,7 +21,8 @@ public class ObterFuncaoPorIdQueryHandler : IRequestHandler<ObterFuncaoPorIdQuer
                 Id = f.Id,
                 Nome = f.Nome,
                 CboCodigo = f.CboCodigo,
-                Descricao = f.Descricao
+                Descricao = f.Descricao,
+                CorCapacete = f.CorCapacete
             })
             .FirstOrDefaultAsync(ct);
     }

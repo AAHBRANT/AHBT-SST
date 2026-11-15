@@ -1163,3 +1163,16 @@ public enum ConfiancaAnaliseEpi
     Media = 2,
     Alta = 3,
 }
+
+// Cor do capacete esperada para uma função (padrão AAHBRANT) e cor vista pela câmera.
+// SemPadrao (0): a função não tem cor definida; na ocorrência a cor vista "outra/indefinida" não se grava (fica nulo).
+public enum CorCapacete
+{
+    SemPadrao = 0,
+    Branco = 1,
+    Amarelo = 2,
+    Azul = 3,
+    Verde = 4,
+    Vermelho = 5,
+    Laranja = 6,
+}

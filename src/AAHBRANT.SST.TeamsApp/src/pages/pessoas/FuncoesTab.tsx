@@ -7,6 +7,12 @@ import {
   Field,
   Input,
   Card,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
   PageHeader,
   DataTable,
   PainelCriacaoInline,
@@ -18,7 +24,7 @@ import {
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Add24Regular, ArrowUndo24Regular, Delete24Regular, Merge24Regular } from '@fluentui/react-icons';
+import { Add24Regular, ArrowUndo24Regular, Color24Regular, Delete24Regular, Edit16Regular, Merge24Regular } from '@fluentui/react-icons';
 import {
   api,
   type Funcao,
@@ -29,8 +35,12 @@ import {
   type NovaFuncao,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useUsuarioLogado } from '../../lib/UsuarioLogadoContext';
+import { PilulaCorCapacete, SeletorCorCapacete } from '../../components/CorCapacete';
+import { grupoPadraoCorCapacete, normalizarCorCapacete, sugerirCorCapacetePorNome } from '../../lib/corCapacete';
+import { QuadroPadraoCores } from './QuadroPadraoCores';
 
-const funcaoVazia: NovaFuncao = { nome: '', cboCodigo: '', descricao: '' };
+const funcaoVazia: NovaFuncao = { nome: '', cboCodigo: '', descricao: '', corCapacete: 0 };
 
 // A matriz de EPI por função fica no módulo EPI (ver MatrizEpiTab.tsx em pages/epi) — aqui é só o
 // cadastro (CRUD) da função em si, usado também por Trabalhadores/Equipes. Migração do formulário
@@ -52,6 +62,14 @@ export function FuncoesTab() {
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [painelAberto, setPainelAberto] = useState(false);
+  const [quadroCoresAberto, setQuadroCoresAberto] = useState(false);
+  // Mudar a cor de uma função existente usa o mesmo acesso de edição do servidor (organizacional:editar).
+  const { usuario } = useUsuarioLogado();
+  const podeEditar = !!usuario && (usuario.ehAdministrador || usuario.permissoes.includes('organizacional:editar'));
+  const [editandoCor, setEditandoCor] = useState<Funcao | null>(null);
+  const [corEditada, setCorEditada] = useState(0);
+  const [salvandoCor, setSalvandoCor] = useState(false);
+  const [erroCor, setErroCor] = useState<string | null>(null);
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -236,6 +254,35 @@ export function FuncoesTab() {
     setErroPainel(null);
   }
 
+  // Depois de "Aplicar" no quadro de conferência: recarrega a lista (coluna "Cor do capacete") e fecha o quadro.
+  async function aoAplicarPadraoCores(quantidade: number) {
+    await carregar();
+    setQuadroCoresAberto(false);
+    sucessoToast(`Padrão de cores aplicado a ${quantidade} ${quantidade === 1 ? 'função' : 'funções'}.`);
+  }
+
+  function abrirEdicaoCor(f: Funcao) {
+    setErroCor(null);
+    setCorEditada(normalizarCorCapacete(f.corCapacete));
+    setEditandoCor(f);
+  }
+
+  async function salvarCor() {
+    if (!editandoCor || salvandoCor) return;
+    try {
+      setSalvandoCor(true);
+      setErroCor(null);
+      await api.funcoes.atualizarCorCapacete(editandoCor, corEditada);
+      await carregar();
+      setEditandoCor(null);
+      sucessoToast('Cor do capacete atualizada com sucesso.');
+    } catch (e) {
+      setErroCor(e instanceof Error ? e.message : 'Não foi possível salvar a cor do capacete.');
+    } finally {
+      setSalvandoCor(false);
+    }
+  }
+
   async function criar() {
     try {
       setCarregando(true);
@@ -267,7 +314,28 @@ export function FuncoesTab() {
     { chave: 'nome', rotulo: 'Nome' },
     { chave: 'cboCodigo', rotulo: 'CBO' },
     { chave: 'descricao', rotulo: 'Descrição' },
+    {
+      chave: 'corCapacete',
+      rotulo: 'Cor do capacete',
+      render: (f) =>
+        podeEditar ? (
+          <Button
+            appearance="subtle"
+            icon={<Edit16Regular />}
+            iconPosition="after"
+            onClick={() => abrirEdicaoCor(f)}
+            aria-label={`Alterar a cor do capacete de ${f.nome}`}
+          >
+            <PilulaCorCapacete cor={f.corCapacete} />
+          </Button>
+        ) : (
+          <PilulaCorCapacete cor={f.corCapacete} />
+        ),
+    },
   ];
+
+  // Sugestão do padrão para o nome digitado no formulário (a regra completa fica no servidor; ver lib/corCapacete).
+  const corSugeridaNome = sugerirCorCapacetePorNome(novaFuncao.nome);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -275,10 +343,20 @@ export function FuncoesTab() {
       <PageHeader
         titulo="Funções cadastradas"
         acoes={
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button onClick={carregarSemTrabalhador} disabled={carregandoSemTrabalhador}>
               {semTrabalhador !== null ? 'Ocultar' : 'Ver'} funções sem trabalhador vinculado
             </Button>
+            {podeEditar && (
+              <Button
+                icon={<Color24Regular />}
+                onClick={() => setQuadroCoresAberto((aberto) => !aberto)}
+                aria-expanded={quadroCoresAberto}
+                aria-controls="painel-padrao-cores"
+              >
+                Aplicar padrão de cores
+              </Button>
+            )}
             <Button
               appearance="primary"
               icon={<Add24Regular />}
@@ -483,14 +561,78 @@ export function FuncoesTab() {
                   />
                 </Field>
               </Campo>
+              <Campo span={12}>
+                <SeletorCorCapacete
+                  rotulo="Cor do capacete"
+                  valor={novaFuncao.corCapacete ?? 0}
+                  aoMudar={(cor) => setNovaFuncao({ ...novaFuncao, corCapacete: cor })}
+                  nomeFuncao={novaFuncao.nome.trim() || undefined}
+                  sugestao={
+                    corSugeridaNome > 0
+                      ? { cor: corSugeridaNome, detalhe: grupoPadraoCorCapacete(corSugeridaNome).toLowerCase() }
+                      : null
+                  }
+                />
+              </Campo>
             </FormGrid>
-            <FormRodape info="A matriz de EPI de cada função é definida em EPI → Matriz de EPI por Função.">
+            <FormRodape info="A matriz de EPI de cada função é definida em EPI → Matriz de EPI por Função. A cor do capacete serve para as câmeras avisarem quando alguém usa uma cor diferente da função.">
               <Button onClick={fecharPainel}>Cancelar</Button>
               <Button appearance="primary" onClick={criar} disabled={carregando}>
                 Adicionar função
               </Button>
             </FormRodape>
           </FormSection>
+        </PainelCriacaoInline>
+      </div>
+      {editandoCor && (
+        <Dialog
+          open
+          onOpenChange={(_, d) => {
+            if (!d.open && !salvandoCor) setEditandoCor(null);
+          }}
+        >
+          <DialogSurface>
+            <DialogBody>
+              <DialogTitle>Cor do capacete · {editandoCor.nome}</DialogTitle>
+              <DialogContent>
+                {erroCor && (
+                  <FeedbackInline tom="erro" aoFechar={() => setErroCor(null)}>
+                    {erroCor}
+                  </FeedbackInline>
+                )}
+                <SeletorCorCapacete
+                  valor={corEditada}
+                  aoMudar={setCorEditada}
+                  nomeFuncao={editandoCor.nome}
+                  sugestao={
+                    sugerirCorCapacetePorNome(editandoCor.nome) > 0
+                      ? {
+                          cor: sugerirCorCapacetePorNome(editandoCor.nome),
+                          detalhe: grupoPadraoCorCapacete(sugerirCorCapacetePorNome(editandoCor.nome)).toLowerCase(),
+                        }
+                      : null
+                  }
+                />
+              </DialogContent>
+              <DialogActions>
+                <Button disabled={salvandoCor} onClick={() => setEditandoCor(null)}>
+                  Cancelar
+                </Button>
+                <Button
+                  appearance="primary"
+                  disabled={salvandoCor || corEditada === normalizarCorCapacete(editandoCor.corCapacete)}
+                  onClick={() => void salvarCor()}
+                >
+                  {salvandoCor ? 'Salvando...' : 'Salvar'}
+                </Button>
+              </DialogActions>
+            </DialogBody>
+          </DialogSurface>
+        </Dialog>
+      )}
+      <div id="painel-padrao-cores">
+        <PainelCriacaoInline aberto={quadroCoresAberto && podeEditar} titulo="Aplicar padrão AAHBRANT de cores">
+          <QuadroPadraoCores aoCancelar={() => setQuadroCoresAberto(false)} aoAplicado={aoAplicarPadraoCores} />
         </PainelCriacaoInline>
       </div>
       <Card>

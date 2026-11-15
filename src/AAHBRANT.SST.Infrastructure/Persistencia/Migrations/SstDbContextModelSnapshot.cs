@@ -2004,6 +2004,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<DateTime?>("UltimaAnaliseEmUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("UltimaIdentificacaoSoCorEmUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("UltimoAlertaEmUtc")
                         .HasColumnType("datetime2");
 
@@ -5130,6 +5133,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int>("CorCapacete")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -7514,17 +7520,32 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("AvisoCorCapacete")
+                        .HasColumnType("bit");
+
                     b.Property<Guid>("CameraId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("CapaceteNaoAvaliavel")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CapturadaEmUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("ColeteNaoAvaliavel")
+                        .HasColumnType("int");
 
                     b.Property<int>("Confianca")
                         .HasColumnType("int");
 
                     b.Property<double?>("ConfiancaIdentificacao")
                         .HasColumnType("float");
+
+                    b.Property<int?>("CorCapaceteEsperada")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CorCapaceteVista")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
@@ -7541,6 +7562,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<Guid>("ObraId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("OculosNaoAvaliavel")
+                        .HasColumnType("int");
 
                     b.Property<int>("Origem")
                         .HasColumnType("int");
@@ -7560,6 +7584,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("SemColete")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SemOculos")
                         .HasColumnType("int");
 
                     b.Property<int>("Situacao")

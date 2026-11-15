@@ -2886,6 +2886,21 @@ public static class NovidadesSeeder
                     "Quando só parte da pessoa aparecia (por exemplo, só as pernas), a análise podia dar capacete como correto sem ter visto a cabeça.",
                     "Câmeras: a análise de EPI só julga capacete quando a cabeça aparece e colete quando o tronco aparece; o que não dá para ver fica como não conferido e não gera alerta."),
             }),
+        new(
+            Versao: "5.165.0",
+            Titulo: "Câmeras: óculos e cor do capacete",
+            DataPublicacao: new DateTime(2026, 11, 14, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Câmeras: análise de óculos de proteção e aviso quando a cor do capacete não é a da função",
+                    "A câmera conferia só capacete e colete, e não havia como saber se o capacete era da cor certa para a função de quem o usava.",
+                    "Câmeras: a análise passa a conferir os óculos de proteção, inclusive de lente escura, e avisa em ordem de gravidade. Pessoa sem óculos, com o rosto visível, gera ocorrência e alerta no Telegram como a falta de capacete ou de colete; quando o rosto não aparece, os óculos ficam como não conferidos. Se a pessoa for identificada pelo rosto e o capacete tiver cor diferente da definida para a função dela, a aba Alertas de EPI mostra um aviso de padrão, sem Telegram. A aba ganha o filtro \"Tipo\" (capacete, colete, óculos ou cor)."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Funções: cor do capacete com padrão AAHBRANT",
+                    "As funções não tinham a cor do capacete esperada, então o sistema não conseguia comparar com o que a câmera via.",
+                    "Funções: cada função ganha o campo \"Cor do capacete\". O botão \"Aplicar padrão de cores\" sugere a cor pelo nome da função (branco, amarelo, azul, verde, vermelho ou laranja) e mostra um quadro de conferência: nada é salvo antes de você confirmar, e funções sem padrão, como Almoxarife, ficam para você decidir."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

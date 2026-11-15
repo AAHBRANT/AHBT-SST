@@ -116,4 +116,32 @@ public class LegendaAlertaEpiTests
         Assert.EndsWith(
             "\nCapacete não conferido em 1 pessoa\nColete não conferido em 2 pessoas", legenda);
     }
+
+    [Fact]
+    public void SemOculos_UsaTituloENaoConferidoTrazALinha()
+    {
+        var legenda = LegendaAlertaEpi.Montar("Beira Rio", "Betoneira", Momento, 2, 0, 0, null, 0, 0, semOculos: 1, oculosNaoAvaliavel: 1);
+
+        Assert.StartsWith("⚠️ EPI — pessoa sem óculos\n", legenda);
+        Assert.Contains("\n2 pessoas na cena, 1 sem óculos\n", legenda);
+        Assert.EndsWith("\nÓculos não conferido em 1 pessoa", legenda);
+    }
+
+    [Fact]
+    public void CapaceteColeteEOculos_TituloComVirgulaEE()
+    {
+        var legenda = LegendaAlertaEpi.Montar("Beira Rio", "Betoneira", Momento, 1, 1, 1, null, 0, 0, semOculos: 1);
+
+        Assert.StartsWith("⚠️ EPI — pessoa sem capacete, sem colete e sem óculos\n", legenda);
+    }
+
+    [Fact]
+    public void CenaComVariasPessoas_IdentificadoSemOculosApareceNaLista()
+    {
+        var legenda = LegendaAlertaEpi.MontarCena("Beira Rio", "Betoneira", Momento, 2, 0, 0,
+            new[] { new IdentificadoNaCena("João da Silva", false, false, SemOculos: true) }, 0, semOculos: 1, oculosNaoAvaliavel: 2);
+
+        Assert.Contains("Identificados pelo rosto: João da Silva (sem óculos)", legenda);
+        Assert.EndsWith("\nÓculos não conferido em 2 pessoas", legenda);
+    }
 }

@@ -12,23 +12,8 @@ export function paraData(data: Date | string): Date {
   return new Date(TEM_FUSO.test(data) || !data.includes('T') ? data : `${data}Z`);
 }
 
-export function descreverIrregularidade(semCapacete: number, semColete: number): string {
-  if (semCapacete > 0 && semColete > 0) return 'Sem capacete e sem colete';
-  if (semCapacete > 0) return 'Sem capacete';
-  if (semColete > 0) return 'Sem colete';
-  return 'Cena regular';
-}
-
-export function resumoCena(pessoas: number, semCapacete: number, semColete: number, capaceteNaoAvaliavel = 0, coleteNaoAvaliavel = 0): string {
-  const partes = [`${pessoas} ${pessoas === 1 ? 'pessoa' : 'pessoas'} na cena`];
-  if (semCapacete > 0) partes.push(`${semCapacete} sem capacete`);
-  if (semColete > 0) partes.push(`${semColete} sem colete`);
-  if (capaceteNaoAvaliavel > 0)
-    partes.push(`${capaceteNaoAvaliavel} ${capaceteNaoAvaliavel === 1 ? 'capacete não conferido' : 'capacetes não conferidos'}`);
-  if (coleteNaoAvaliavel > 0)
-    partes.push(`${coleteNaoAvaliavel} ${coleteNaoAvaliavel === 1 ? 'colete não conferido' : 'coletes não conferidos'}`);
-  return partes.join(', ');
-}
+// Textos de ocorrência (capacete, colete, óculos) ficam em rotulosOcorrencia.ts, sem dependências, para o teste unitário.
+export { descreverIrregularidade, linhasNaoConferido, resumoCena } from './rotulosOcorrencia';
 
 export function estadoDaCamera(camera: CameraResumo, agora = Date.now()): { rotulo: string; tom: Tom } {
   if (!camera.habilitada) return { rotulo: 'Desligada', tom: 'neutro' };
