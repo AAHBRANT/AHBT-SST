@@ -45,6 +45,12 @@ public class RegistrarApuracaoProcessoEleitoralCipaCommandHandler : IRequestHand
         if (processo.Status == StatusProcessoEleitoralCipa.Apurado || processo.Status == StatusProcessoEleitoralCipa.Encerrado)
             throw new InvalidOperationException("Este processo eleitoral já foi apurado.");
 
+        // Urna biométrica (16/11/2026): com votação na urna, os votos vêm da contagem da urna
+        // (EncerrarVotacaoCipaCommand) e não podem ser digitados — o corpo da requisição é ignorado.
+        var votacaoNaUrna = processo.VotacaoAbertaEmUtc.HasValue;
+        if (processo.Status == StatusProcessoEleitoralCipa.VotacaoAberta)
+            throw new InvalidOperationException("A votação na urna ainda está aberta. Encerre a votação antes de apurar.");
+
         var candidatos = await _db.CandidatosCipa
             .Where(c => c.ProcessoEleitoralId == request.ProcessoEleitoralId && c.Ativo)
             .ToListAsync(ct);
@@ -60,11 +66,14 @@ public class RegistrarApuracaoProcessoEleitoralCipaCommandHandler : IRequestHand
             ?? throw new InvalidOperationException(
                 "Não há dimensionamento cadastrado para esta obra — cadastre o número de titulares/suplentes antes de apurar.");
 
-        var votosPorCandidato = request.Votos.ToDictionary(v => v.CandidatoId, v => v.Votos);
-        foreach (var candidato in candidatosDeferidos)
+        if (!votacaoNaUrna)
         {
-            if (votosPorCandidato.TryGetValue(candidato.Id, out var votos))
-                candidato.VotosRecebidos = votos;
+            var votosPorCandidato = request.Votos.ToDictionary(v => v.CandidatoId, v => v.Votos);
+            foreach (var candidato in candidatosDeferidos)
+            {
+                if (votosPorCandidato.TryGetValue(candidato.Id, out var votos))
+                    candidato.VotosRecebidos = votos;
+            }
         }
 
         var ordenados = candidatosDeferidos

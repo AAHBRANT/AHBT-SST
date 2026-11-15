@@ -192,6 +192,8 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DimensionamentoCipa> DimensionamentosCipa => Set<DimensionamentoCipa>();
     public DbSet<ProcessoEleitoralCipa> ProcessosEleitoraisCipa => Set<ProcessoEleitoralCipa>();
     public DbSet<CandidatoCipa> CandidatosCipa => Set<CandidatoCipa>();
+    public DbSet<EleitorCipa> EleitoresCipa => Set<EleitorCipa>();
+    public DbSet<VotoCipa> VotosCipa => Set<VotoCipa>();
     public DbSet<MembroCipa> MembrosCipa => Set<MembroCipa>();
     public DbSet<TreinamentoCipa> TreinamentosCipa => Set<TreinamentoCipa>();
     public DbSet<ReuniaoCipa> ReunioesCipa => Set<ReuniaoCipa>();

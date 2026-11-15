@@ -205,3 +205,45 @@ public class AtividadeSipatConfiguracao : IEntityTypeConfiguration<AtividadeSipa
         builder.HasQueryFilter(a => a.Ativo);
     }
 }
+
+public class EleitorCipaConfiguracao : IEntityTypeConfiguration<EleitorCipa>
+{
+    public void Configure(EntityTypeBuilder<EleitorCipa> builder)
+    {
+        builder.ToTable("EleitoresCipa");
+
+        builder.HasOne(e => e.ProcessoEleitoral)
+            .WithMany()
+            .HasForeignKey(e => e.ProcessoEleitoralId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.Trabalhador)
+            .WithMany()
+            .HasForeignKey(e => e.TrabalhadorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Um comprovante por eleitor por eleição: impede o segundo voto também no banco.
+        builder.HasIndex(e => new { e.ProcessoEleitoralId, e.TrabalhadorId }).IsUnique();
+        builder.HasQueryFilter(e => e.Ativo);
+    }
+}
+
+public class VotoCipaConfiguracao : IEntityTypeConfiguration<VotoCipa>
+{
+    public void Configure(EntityTypeBuilder<VotoCipa> builder)
+    {
+        builder.ToTable("VotosCipa");
+
+        builder.HasOne(v => v.ProcessoEleitoral)
+            .WithMany()
+            .HasForeignKey(v => v.ProcessoEleitoralId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(v => v.CandidatoCipa)
+            .WithMany()
+            .HasForeignKey(v => v.CandidatoCipaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(v => v.ProcessoEleitoralId);
+    }
+}

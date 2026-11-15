@@ -9176,6 +9176,84 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.ToTable("PlanosIntegracao");
                 });
 
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.EleitorCipa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("IdentificadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("LiberadoPorUsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Metodo")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ProcessoEleitoralId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("TrabalhadorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("VotouEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TrabalhadorId");
+
+                    b.HasIndex("ProcessoEleitoralId", "TrabalhadorId")
+                        .IsUnique();
+
+                    b.ToTable("EleitoresCipa");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.VotoCipa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CandidatoCipaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProcessoEleitoralId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidatoCipaId");
+
+                    b.HasIndex("ProcessoEleitoralId");
+
+                    b.ToTable("VotosCipa");
+                });
+
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ProcessoEleitoralCipa", b =>
                 {
                     b.Property<Guid>("Id")
@@ -9224,11 +9302,20 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<int?>("TotalEleitoresAptos")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("VotacaoAbertaEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("VotacaoEncerradaEmUtc")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
@@ -13906,6 +13993,44 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Navigation("ResponsavelUsuario");
 
                     b.Navigation("Trabalhador");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.EleitorCipa", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.ProcessoEleitoralCipa", "ProcessoEleitoral")
+                        .WithMany()
+                        .HasForeignKey("ProcessoEleitoralId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.Trabalhador", "Trabalhador")
+                        .WithMany()
+                        .HasForeignKey("TrabalhadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ProcessoEleitoral");
+
+                    b.Navigation("Trabalhador");
+                });
+
+            modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.VotoCipa", b =>
+                {
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.CandidatoCipa", "CandidatoCipa")
+                        .WithMany()
+                        .HasForeignKey("CandidatoCipaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AAHBRANT.SST.Domain.Entidades.ProcessoEleitoralCipa", "ProcessoEleitoral")
+                        .WithMany()
+                        .HasForeignKey("ProcessoEleitoralId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CandidatoCipa");
+
+                    b.Navigation("ProcessoEleitoral");
                 });
 
             modelBuilder.Entity("AAHBRANT.SST.Domain.Entidades.ProcessoEleitoralCipa", b =>
