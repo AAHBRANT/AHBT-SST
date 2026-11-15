@@ -1954,6 +1954,16 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<bool>("ModoSombra")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("NaoAvaliaveisNoDia")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NaoRepetirSegundos")
+                        .HasColumnType("int")
+                        .HasDefaultValue(300);
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1969,6 +1979,18 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(0);
+
+                    b.Property<int>("PersistenciaCapaceteSegundos")
+                        .HasColumnType("int")
+                        .HasDefaultValue(3);
+
+                    b.Property<int>("PersistenciaColeteSegundos")
+                        .HasColumnType("int")
+                        .HasDefaultValue(3);
+
+                    b.Property<int>("PersistenciaOculosSegundos")
+                        .HasColumnType("int")
+                        .HasDefaultValue(3);
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -7541,6 +7563,13 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<double?>("ConfiancaIdentificacao")
                         .HasColumnType("float");
 
+                    b.Property<bool>("Confirmada")
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("ConfirmadaEmUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<int?>("CorCapaceteEsperada")
                         .HasColumnType("int");
 
@@ -7572,6 +7601,12 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                     b.Property<int>("PessoasNaCena")
                         .HasColumnType("int");
 
+                    b.Property<double?>("PosicaoX")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("PosicaoY")
+                        .HasColumnType("float");
+
                     b.Property<DateTime>("RecebidaEmUtc")
                         .HasColumnType("datetime2");
 
@@ -7579,6 +7614,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
+
+                    b.Property<int?>("SegundosObservados")
+                        .HasColumnType("int");
 
                     b.Property<int>("SemCapacete")
                         .HasColumnType("int");
@@ -7591,6 +7629,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<int>("Situacao")
                         .HasColumnType("int");
+
+                    b.Property<bool>("Sombra")
+                        .HasColumnType("bit");
 
                     b.Property<Guid?>("TrabalhadorId")
                         .HasColumnType("uniqueidentifier");

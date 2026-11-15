@@ -63,7 +63,14 @@ public class AnalisarQuadroCameraTests
     {
         var db = CamerasPersistenciaTests.CriarDb(nomeBanco, interceptor);
         var obra = new Obra { Codigo = "OB1", Nome = "Beira Rio" };
-        var camera = new Camera { ObraId = obra.Id, Nome = "Betoneira" };
+        // Tempo mínimo 0: a primeira vista já confirma (só alcançável gravando direto no banco; a validação exige 1 a 30 s).
+        // Assim os testes de agrupamento, intervalo e Telegram abaixo seguem tratando só do que testam; a confirmação em si
+        // é testada na seção "Fase 2" no fim do arquivo, com o tempo mínimo real (RegraReal).
+        var camera = new Camera
+        {
+            ObraId = obra.Id, Nome = "Betoneira",
+            PersistenciaCapaceteSegundos = 0, PersistenciaColeteSegundos = 0, PersistenciaOculosSegundos = 0,
+        };
         ajustar?.Invoke(camera);
         db.AddRange(obra, camera);
         await db.SaveChangesAsync();
@@ -1366,5 +1373,797 @@ public class AnalisarQuadroCameraTests
         Assert.True(doPedro.AvisoCorCapacete);
         Assert.False(doPedro.AlertaEnviado);
         Assert.False((await db.OcorrenciasEpiCamera.SingleAsync(o => o.TrabalhadorId == joao.Id)).AvisoCorCapacete);
+    }
+
+    // ---- Fase 2: confirmação por persistência, não repetir e modo sombra (15/11/2026) ----
+    // O restante desta classe trata de agrupamento, intervalo e Telegram e usa tempo mínimo 0 (confirma na primeira vista, só
+    // alcançável gravando direto no banco; ver Preparar). Os testes abaixo restauram a regra real, de 3 s.
+
+    private static void RegraReal(Camera c)
+    {
+        c.PersistenciaCapaceteSegundos = 3;
+        c.PersistenciaColeteSegundos = 3;
+        c.PersistenciaOculosSegundos = 3;
+        c.IntervaloMinimoAlertasMinutos = 0;
+    }
+
+    // Faz o tempo andar sem dormir: recua o relógio de tudo que o analisador guardou e libera a próxima análise da câmera.
+    private static async Task Passar(SstDbContext db, Camera camera, double segundos)
+    {
+        var d = TimeSpan.FromSeconds(segundos);
+        foreach (var o in await db.OcorrenciasEpiCamera.ToListAsync())
+        {
+            o.CapturadaEmUtc -= d;
+            o.RecebidaEmUtc -= d;
+            if (o.UltimaVezEmUtc is { } u) o.UltimaVezEmUtc = u - d;
+            if (o.AlertaEnviadoEmUtc is { } a) o.AlertaEnviadoEmUtc = a - d;
+            if (o.ConfirmadaEmUtc is { } c) o.ConfirmadaEmUtc = c - d;
+        }
+        camera.UltimaAnaliseEmUtc = DateTime.UtcNow.AddSeconds(-5);
+        if (camera.UltimoAlertaEmUtc is { } ua) camera.UltimoAlertaEmUtc = ua - d;
+        await db.SaveChangesAsync();
+    }
+
+    private static ResultadoAnaliseEpi SemCapaceteEm(double x, double y = 0.30)
+        => new(1, 1, 0, ConfiancaAnaliseEpi.Alta, new[] { new PessoaNaCena(x, y, true, false) });
+
+    private static Task<ResultadoQuadroDto> Analisar(AnalisarQuadroCameraCommandHandler handler, Guid cameraId)
+        => handler.Handle(new AnalisarQuadroCameraCommand(cameraId, Jpeg, DateTime.UtcNow), default);
+
+    [Fact]
+    public async Task Confirmacao_TravessiaCurta_NaoConfirmaENaoAlerta()
+    {
+        var (db, camera) = await Preparar(nameof(Confirmacao_TravessiaCurta_NaoConfirmaENaoAlerta), RegraReal);
+        var telegram = new TelegramFalso();
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram);
+
+        var r1 = await Analisar(handler, camera.Id);
+
+        Assert.Equal(SituacaoQuadro.Ocorrencia, r1.Situacao);
+        Assert.False(r1.AlertaEnviado);
+        var o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.False(o.Confirmada);
+        Assert.Null(o.ConfirmadaEmUtc);
+        Assert.Equal(0, o.SegundosObservados);
+        Assert.False(o.Sombra);
+
+        // Segunda vista 2 s depois (menos que os 3 s mínimos): continua sem confirmar.
+        await Passar(db, camera, 2);
+        var r2 = await Analisar(handler, camera.Id);
+
+        Assert.False(r2.AlertaEnviado);
+        Assert.True(r2.Repetida);
+        o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.False(o.Confirmada);
+        Assert.Equal(2, o.SegundosObservados);
+        Assert.Equal(2, o.VezesVista);
+        Assert.Empty(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task Confirmacao_PessoaParada10s_ConfirmaEAlertaUmaVez()
+    {
+        var (db, camera) = await Preparar(nameof(Confirmacao_PessoaParada10s_ConfirmaEAlertaUmaVez), RegraReal);
+        var telegram = new TelegramFalso();
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram);
+
+        await Analisar(handler, camera.Id);
+        Assert.Empty(telegram.Legendas);
+
+        await Passar(db, camera, 10);
+        var r2 = await Analisar(handler, camera.Id);
+
+        Assert.True(r2.AlertaEnviado);
+        var o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.True(o.Confirmada);
+        Assert.NotNull(o.ConfirmadaEmUtc);
+        Assert.Equal(10, o.SegundosObservados);
+        Assert.True(o.AlertaEnviado);
+        Assert.Single(telegram.Legendas);
+
+        // Continua parada: soma na mesma ocorrência, sem segundo alerta e sem mexer nos segundos até confirmar.
+        await Passar(db, camera, 5);
+        var r3 = await Analisar(handler, camera.Id);
+
+        Assert.False(r3.AlertaEnviado);
+        o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(3, o.VezesVista);
+        Assert.Equal(10, o.SegundosObservados);
+        Assert.Single(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task Confirmacao_PassouDaJanelaSemConfirmar_FicaRegistradaENovaVistaAbreOutra()
+    {
+        var (db, camera) = await Preparar(nameof(Confirmacao_PassouDaJanelaSemConfirmar_FicaRegistradaENovaVistaAbreOutra), RegraReal);
+        var telegram = new TelegramFalso();
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, AnalisarQuadroCameraCommandHandler.JanelaMaximaConfirmacao.TotalSeconds + 30);
+        var r2 = await Analisar(handler, camera.Id);
+
+        // A vista tardia NÃO confirma a velha (a janela passou): abre outra, também sem aviso; a primeira não some.
+        Assert.False(r2.Repetida);
+        Assert.False(r2.AlertaEnviado);
+        var todas = await db.OcorrenciasEpiCamera.OrderBy(o => o.RecebidaEmUtc).ToListAsync();
+        Assert.Equal(2, todas.Count);
+        Assert.All(todas, o => Assert.False(o.Confirmada));
+        Assert.Equal(1, todas[0].VezesVista);
+        Assert.Empty(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task Confirmacao_TempoPorItem_ColetePedeOTempoDoColete()
+    {
+        var (db, camera) = await Preparar(nameof(Confirmacao_TempoPorItem_ColetePedeOTempoDoColete), c =>
+        {
+            RegraReal(c);
+            c.PersistenciaCapaceteSegundos = 3;
+            c.PersistenciaColeteSegundos = 15;
+        });
+        var telegram = new TelegramFalso();
+        var analise = new ResultadoAnaliseEpi(1, 0, 1, ConfiancaAnaliseEpi.Alta, new[] { new PessoaNaCena(0.4, 0.3, false, true) });
+        var handler = Criar(db, new AnalisadorFalso(() => analise), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 10);
+        await Analisar(handler, camera.Id);
+
+        // 10 s sem colete não bastam: o colete pede 15 s (o capacete pediria 3).
+        Assert.False((await db.OcorrenciasEpiCamera.SingleAsync()).Confirmada);
+        Assert.Empty(telegram.Legendas);
+
+        await Passar(db, camera, 6);
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.True(r.AlertaEnviado);
+        Assert.True((await db.OcorrenciasEpiCamera.SingleAsync()).Confirmada);
+    }
+
+    [Fact]
+    public async Task Confirmacao_ItemDiferenteNaSegundaVista_ConfirmaPoisAMesmaPessoaSegueIrregular()
+    {
+        var (db, camera) = await Preparar(nameof(Confirmacao_ItemDiferenteNaSegundaVista_ConfirmaPoisAMesmaPessoaSegueIrregular), RegraReal);
+        var telegram = new TelegramFalso();
+        var analise = new ResultadoAnaliseEpi(1, 0, 1, ConfiancaAnaliseEpi.Alta, new[] { new PessoaNaCena(0.4, 0.3, false, true) });
+        var handler = Criar(db, new AnalisadorFalso(() => analise), telegram);
+
+        await Analisar(handler, camera.Id);   // sem colete
+        await Passar(db, camera, 10);
+        analise = new ResultadoAnaliseEpi(1, 1, 0, ConfiancaAnaliseEpi.Alta, new[] { new PessoaNaCena(0.4, 0.3, true, false) });
+        var r = await Analisar(handler, camera.Id);   // agora sem capacete: qualquer item irregular persistindo confirma
+
+        var o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.True(o.Confirmada);
+        Assert.True(r.AlertaEnviado);
+        Assert.Equal((1, 1), (o.SemCapacete, o.SemColete));
+        Assert.Single(telegram.Legendas);
+    }
+
+    // Duas ocorrências não confirmadas de outras pessoas, abertas agora: com mais de uma não confirmada na câmera, a regra "única
+    // ocorrência aberta" não vale e só a posição decide.
+    private static async Task SemearNaoConfirmadas(SstDbContext db, Camera camera, params double[] xs)
+    {
+        foreach (var x in xs)
+            db.Add(new OcorrenciaEpiCamera
+            {
+                CameraId = camera.Id, ObraId = camera.ObraId, Foto = Jpeg, PessoasNaCena = 1, SemCapacete = 1,
+                CapturadaEmUtc = DateTime.UtcNow, RecebidaEmUtc = DateTime.UtcNow, UltimaVezEmUtc = DateTime.UtcNow,
+                Confirmada = false, SegundosObservados = 0, PosicaoX = x, PosicaoY = 0.30,
+            });
+        await db.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task Confirmacao_PessoaEmOutraPosicaoComOutrasNaoConfirmadasAbertas_NaoSeConfirmaPelaOutra()
+    {
+        var (db, camera) = await Preparar(nameof(Confirmacao_PessoaEmOutraPosicaoComOutrasNaoConfirmadasAbertas_NaoSeConfirmaPelaOutra), RegraReal);
+        await SemearNaoConfirmadas(db, camera, 0.35, 0.40);
+        var telegram = new TelegramFalso();
+        var posicao = 0.1;
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(posicao)), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 1);
+        posicao = 0.8;   // longe demais para o raio de 1 s (0,25) e das duas semeadas (0,45 e 0,40)
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.False(r.Repetida);
+        Assert.False(r.AlertaEnviado);
+        var todas = await db.OcorrenciasEpiCamera.ToListAsync();
+        Assert.Equal(4, todas.Count);
+        Assert.All(todas, o => Assert.False(o.Confirmada));
+        Assert.Empty(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task Confirmacao_PessoaAtravessandoACena_RaioCresceComOTempoEConfirma()
+    {
+        var (db, camera) = await Preparar(nameof(Confirmacao_PessoaAtravessandoACena_RaioCresceComOTempoEConfirma), RegraReal);
+        await SemearNaoConfirmadas(db, camera, 0.90, 0.95);   // desliga a regra da "única não confirmada": só o raio vale
+        var telegram = new TelegramFalso();
+        var posicao = 0.10;
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(posicao)), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 2);
+        posicao = 0.40;   // andou 0,30 em 2 s: acima de 0,15 fixo, dentro de 0,15 + 0,10 x 2 = 0,35
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 2);
+        posicao = 0.70;
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.True(r.AlertaEnviado);
+        var pessoa = await db.OcorrenciasEpiCamera.SingleAsync(o => o.VezesVista == 3);
+        Assert.True(pessoa.Confirmada);
+        Assert.Equal(0.70, pessoa.PosicaoX);
+        Assert.Equal(3, await db.OcorrenciasEpiCamera.CountAsync());   // as duas semeadas seguem sozinhas
+        Assert.Single(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task Confirmacao_UnicaNaoConfirmadaDaCameraComUmaPessoaIrregular_ValeEmQualquerPosicao()
+    {
+        var (db, camera) = await Preparar(nameof(Confirmacao_UnicaNaoConfirmadaDaCameraComUmaPessoaIrregular_ValeEmQualquerPosicao), RegraReal);
+        var telegram = new TelegramFalso();
+        var posicao = 0.10;
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(posicao)), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 1);
+        posicao = 0.95;   // 0,85 em 1 s: passa do teto de 0,6 do raio, mas é a única pessoa irregular da câmera
+        var r2 = await Analisar(handler, camera.Id);
+        Assert.True(r2.Repetida);
+        Assert.False(r2.AlertaEnviado);
+
+        await Passar(db, camera, 3);
+        posicao = 0.10;
+        var r3 = await Analisar(handler, camera.Id);
+
+        Assert.True(r3.AlertaEnviado);
+        var o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.True(o.Confirmada);
+        Assert.Equal(3, o.VezesVista);
+    }
+
+    [Fact]
+    public async Task Confirmacao_PessoaParada_JanelaSeEstendeACadaVistaEOTempoMinimoContaDaPrimeira()
+    {
+        var (db, camera) = await Preparar(nameof(Confirmacao_PessoaParada_JanelaSeEstendeACadaVistaEOTempoMinimoContaDaPrimeira), c =>
+        {
+            RegraReal(c);
+            c.PersistenciaColeteSegundos = 30;
+        });
+        var telegram = new TelegramFalso();
+        var analise = new ResultadoAnaliseEpi(1, 0, 1, ConfiancaAnaliseEpi.Alta, new[] { new PessoaNaCena(0.4, 0.3, false, true) });
+        var handler = Criar(db, new AnalisadorFalso(() => analise), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 25);
+        await Analisar(handler, camera.Id);   // 25 s desde a primeira: abaixo dos 30 s do colete
+        Assert.False((await db.OcorrenciasEpiCamera.SingleAsync()).Confirmada);
+
+        // 75 s desde a primeira vista, mas só 50 s desde a última: a janela é "vista há menos de 60 s", então ainda é a mesma.
+        await Passar(db, camera, 50);
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.True(r.Repetida);
+        Assert.True(r.AlertaEnviado);
+        var o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.True(o.Confirmada);
+        Assert.Equal(3, o.VezesVista);
+        Assert.Equal(75, o.SegundosObservados);
+    }
+
+    [Fact]
+    public async Task Confirmacao_MesmaPessoaSeAndando_AcompanhaAPosicaoEConfirma()
+    {
+        var (db, camera) = await Preparar(nameof(Confirmacao_MesmaPessoaSeAndando_AcompanhaAPosicaoEConfirma), RegraReal);
+        var telegram = new TelegramFalso();
+        var posicao = 0.30;
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(posicao)), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 2);
+        posicao = 0.42;   // andou 0,12 (dentro de 0,15)
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 2);
+        posicao = 0.54;   // mais 0,12: longe da primeira, perto da última
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.True(r.AlertaEnviado);
+        var o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.True(o.Confirmada);
+        Assert.Equal(3, o.VezesVista);
+        Assert.Equal(0.54, o.PosicaoX);
+    }
+
+    [Fact]
+    public async Task NaoRepetir_MesmoTrabalhadorQueSaiEVolta_NaoAlertaDeNovo()
+    {
+        var (db, camera) = await Preparar(nameof(NaoRepetir_MesmoTrabalhadorQueSaiEVolta_NaoAlertaDeNovo), RegraReal);
+        var trabalhador = new Trabalhador { ObraId = camera.ObraId, Nome = "João da Silva" };
+        db.Add(trabalhador);
+        await db.SaveChangesAsync();
+        var telegram = new TelegramFalso();
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram, new FacialFalso(() => Reconhecido(trabalhador.Id)));
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 10);
+        await Analisar(handler, camera.Id);
+        Assert.Single(telegram.Legendas);
+
+        // Sai da cena e volta 200 s depois (dentro dos 300 s de "não repetir"): nada de novo alerta nem de nova ocorrência.
+        await Passar(db, camera, 200);
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.False(r.AlertaEnviado);
+        Assert.True(r.Repetida);
+        Assert.Single(await db.OcorrenciasEpiCamera.ToListAsync());
+        Assert.Single(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task NaoRepetir_SemIdentificacaoNaMesmaPosicao_AbsorveAteOPrazoConfigurado()
+    {
+        var (db, camera) = await Preparar(nameof(NaoRepetir_SemIdentificacaoNaMesmaPosicao_AbsorveAteOPrazoConfigurado), c =>
+        {
+            RegraReal(c);
+            c.NaoRepetirSegundos = 900;
+        });
+        var telegram = new TelegramFalso();
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 10);
+        await Analisar(handler, camera.Id);
+        Assert.Single(telegram.Legendas);
+
+        // 8 minutos depois (a pausa antiga de 5 minutos já teria encerrado), na mesma posição: ainda é "não repetir".
+        await Passar(db, camera, 480);
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.True(r.Repetida);
+        Assert.False(r.AlertaEnviado);
+        Assert.Single(await db.OcorrenciasEpiCamera.ToListAsync());
+        Assert.Single(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task NaoRepetir_Zero_VoltaAsRegrasAntigasEAbreOutraOcorrenciaDepoisDaPausa()
+    {
+        var (db, camera) = await Preparar(nameof(NaoRepetir_Zero_VoltaAsRegrasAntigasEAbreOutraOcorrenciaDepoisDaPausa), c =>
+        {
+            RegraReal(c);
+            c.NaoRepetirSegundos = 0;
+        });
+        var telegram = new TelegramFalso();
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 10);
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 480);
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.False(r.Repetida);
+        Assert.Equal(2, await db.OcorrenciasEpiCamera.CountAsync());
+        // A nova começa não confirmada: só alerta de novo se a falta persistir.
+        Assert.False(r.AlertaEnviado);
+        Assert.Single(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task ModoSombra_GravaMasNuncaEnviaEPreservaAvisarTelegram()
+    {
+        var (db, camera) = await Preparar(nameof(ModoSombra_GravaMasNuncaEnviaEPreservaAvisarTelegram), c =>
+        {
+            RegraReal(c);
+            c.ModoSombra = true;
+            c.AvisarTelegram = true;
+        });
+        var telegram = new TelegramFalso();
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 10);
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.False(r.AlertaEnviado);
+        Assert.Empty(telegram.Legendas);
+        var o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.True(o.Sombra);
+        Assert.True(o.Confirmada);          // confirmou: é o que a câmera teria avisado
+        Assert.False(o.AlertaEnviado);
+        Assert.Null(o.AlertaEnviadoEmUtc);
+        var cam = await db.Cameras.SingleAsync();
+        Assert.Null(cam.UltimoAlertaEmUtc);
+        Assert.True(cam.AvisarTelegram);    // a escolha do Telegram fica guardada
+        Assert.True(cam.ModoSombra);
+    }
+
+    [Fact]
+    public async Task ModoSombra_CenaComVariasPessoas_TambemNaoEnvia()
+    {
+        var (db, camera) = await Preparar(nameof(ModoSombra_CenaComVariasPessoas_TambemNaoEnvia), c =>
+        {
+            RegraReal(c);
+            c.ModoSombra = true;
+        });
+        var telegram = new TelegramFalso();
+        var handler = Criar(db, new AnalisadorFalso(DuasPessoasIrregulares), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 10);
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.False(r.AlertaEnviado);
+        Assert.Empty(telegram.Legendas);
+        var o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.True(o.Sombra);
+        Assert.True(o.Confirmada);
+    }
+
+    [Fact]
+    public async Task ModoSombra_Desligado_VoltaAEnviarNaVistaSeguinte()
+    {
+        var (db, camera) = await Preparar(nameof(ModoSombra_Desligado_VoltaAEnviarNaVistaSeguinte), c =>
+        {
+            RegraReal(c);
+            c.ModoSombra = true;
+        });
+        var telegram = new TelegramFalso();
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 10);
+        await Analisar(handler, camera.Id);
+        Assert.Empty(telegram.Legendas);
+
+        camera.ModoSombra = false;
+        await db.SaveChangesAsync();
+        await Passar(db, camera, 5);
+
+        // O registro de sombra e o de aviso não se misturam: a primeira vista fora da sombra abre outra ocorrência...
+        var r1 = await Analisar(handler, camera.Id);
+        Assert.False(r1.AlertaEnviado);
+        Assert.Empty(telegram.Legendas);
+        // ...e a confirmação dela volta a enviar.
+        await Passar(db, camera, 10);
+        var r2 = await Analisar(handler, camera.Id);
+
+        Assert.True(r2.AlertaEnviado);
+        Assert.Single(telegram.Legendas);
+        var todas = await db.OcorrenciasEpiCamera.OrderBy(o => o.RecebidaEmUtc).ToListAsync();
+        Assert.Equal(2, todas.Count);
+        Assert.True(todas[0].Sombra);
+        Assert.False(todas[0].AlertaEnviado);
+        Assert.False(todas[1].Sombra);
+        Assert.True(todas[1].AlertaEnviado);
+    }
+
+    [Fact]
+    public async Task AvisarTelegramDesligado_ForaDaSombra_ConfirmaMasNaoEnvia()
+    {
+        var (db, camera) = await Preparar(nameof(AvisarTelegramDesligado_ForaDaSombra_ConfirmaMasNaoEnvia), c =>
+        {
+            RegraReal(c);
+            c.ModoSombra = false;
+            c.AvisarTelegram = false;
+        });
+        var telegram = new TelegramFalso();
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 10);
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.False(r.AlertaEnviado);
+        Assert.Empty(telegram.Legendas);
+        Assert.True((await db.OcorrenciasEpiCamera.SingleAsync()).Confirmada);
+    }
+
+    [Fact]
+    public async Task Fusao_RostoNaoReconhecidoEDepoisReconhecidoNaMesmaPosicao_ViraUmaOcorrenciaDoTrabalhador()
+    {
+        var (db, camera) = await Preparar(nameof(Fusao_RostoNaoReconhecidoEDepoisReconhecidoNaMesmaPosicao_ViraUmaOcorrenciaDoTrabalhador), RegraReal);
+        var trabalhador = new Trabalhador { ObraId = camera.ObraId, Nome = "João da Silva" };
+        db.Add(trabalhador);
+        await db.SaveChangesAsync();
+        var telegram = new TelegramFalso();
+        var reconhecer = false;
+        var facial = new FacialFalso(() => reconhecer ? Reconhecido(trabalhador.Id) : NaoReconhecido());
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram, facial);
+
+        await Analisar(handler, camera.Id);
+        Assert.Null((await db.OcorrenciasEpiCamera.SingleAsync()).TrabalhadorId);
+
+        await Passar(db, camera, 10);
+        reconhecer = true;
+        var r = await Analisar(handler, camera.Id);
+
+        var o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(trabalhador.Id, o.TrabalhadorId);
+        Assert.True(o.IdentificadoPorRosto);
+        Assert.Equal(2, o.VezesVista);
+        Assert.True(o.Confirmada);
+        Assert.True(r.AlertaEnviado);
+        Assert.EndsWith("Trabalhador: João da Silva (identificado pelo rosto)", Assert.Single(telegram.Legendas));
+    }
+
+    [Fact]
+    public async Task Fusao_TrabalhadorReconhecidoEDepoisNaoReconhecidoNaMesmaPosicao_SegueNaMesmaOcorrenciaSemAlertaDuplo()
+    {
+        var (db, camera) = await Preparar(nameof(Fusao_TrabalhadorReconhecidoEDepoisNaoReconhecidoNaMesmaPosicao_SegueNaMesmaOcorrenciaSemAlertaDuplo), RegraReal);
+        var trabalhador = new Trabalhador { ObraId = camera.ObraId, Nome = "João da Silva" };
+        db.Add(trabalhador);
+        await db.SaveChangesAsync();
+        var telegram = new TelegramFalso();
+        var reconhecer = true;
+        var facial = new FacialFalso(() => reconhecer ? Reconhecido(trabalhador.Id) : NaoReconhecido());
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram, facial);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 10);
+        reconhecer = false;   // o mesmo homem, parado no mesmo lugar, mas o rosto não bateu neste quadro
+        var r = await Analisar(handler, camera.Id);
+
+        var o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(trabalhador.Id, o.TrabalhadorId);
+        Assert.Equal(2, o.VezesVista);
+        Assert.True(o.Confirmada);
+        Assert.True(r.AlertaEnviado);
+        Assert.Equal(trabalhador.Id, r.TrabalhadorId);
+
+        // Mais uma vista sem rosto: continua sendo a mesma ocorrência e o alerta não se repete.
+        await Passar(db, camera, 5);
+        var r3 = await Analisar(handler, camera.Id);
+        Assert.False(r3.AlertaEnviado);
+        Assert.Single(await db.OcorrenciasEpiCamera.ToListAsync());
+        Assert.Single(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task Fusao_PosicaoDiferente_NaoFunde()
+    {
+        var (db, camera) = await Preparar(nameof(Fusao_PosicaoDiferente_NaoFunde), RegraReal);
+        var trabalhador = new Trabalhador { ObraId = camera.ObraId, Nome = "João da Silva" };
+        db.Add(trabalhador);
+        await db.SaveChangesAsync();
+        var reconhecer = false;
+        var x = 0.2;
+        var facial = new FacialFalso(() => reconhecer ? Reconhecido(trabalhador.Id) : NaoReconhecido());
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(x)), new TelegramFalso(), facial);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 5);
+        reconhecer = true;
+        x = 0.8;
+        await Analisar(handler, camera.Id);
+
+        var todas = await db.OcorrenciasEpiCamera.ToListAsync();
+        Assert.Equal(2, todas.Count);
+        Assert.Single(todas, o => o.TrabalhadorId == trabalhador.Id);
+        Assert.Single(todas, o => o.TrabalhadorId == null);
+    }
+
+    [Fact]
+    public async Task Confirmacao_AvisoDeCor_NasceConfirmadoENuncaVaiAoTelegram()
+    {
+        var (db, camera) = await Preparar(nameof(Confirmacao_AvisoDeCor_NasceConfirmadoENuncaVaiAoTelegram), RegraReal);
+        var trabalhador = await ComFuncaoDeCor(db, camera, CorCapacete.Amarelo);
+        var telegram = new TelegramFalso();
+        var handler = Criar(db, new AnalisadorFalso(() => UmaPessoaComCor(CorCapacete.Azul)), telegram, new FacialFalso(() => Reconhecido(trabalhador.Id)));
+
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.True(r.AvisoCorCapacete);
+        Assert.False(r.AlertaEnviado);
+        var o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.True(o.AvisoCorCapacete);
+        Assert.True(o.Confirmada);
+        Assert.NotNull(o.ConfirmadaEmUtc);
+        Assert.False(o.AlertaEnviado);
+        Assert.Empty(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task Confirmacao_CenaComVariasPessoas_PrimeiraVistaNaoAlertaESegundaAlertaComOsNomes()
+    {
+        var (db, camera) = await Preparar(nameof(Confirmacao_CenaComVariasPessoas_PrimeiraVistaNaoAlertaESegundaAlertaComOsNomes), RegraReal);
+        var joao = new Trabalhador { ObraId = camera.ObraId, Nome = "João da Silva" };
+        var pedro = new Trabalhador { ObraId = camera.ObraId, Nome = "Pedro Souza" };
+        db.AddRange(joao, pedro);
+        await db.SaveChangesAsync();
+        var telegram = new TelegramFalso();
+        var facial = new FacialFalso(NaoReconhecido)
+        {
+            RostosDaCena = () => new[] { RostoEm(0.25, 0.31, joao.Id), RostoEm(0.75, 0.31, pedro.Id) },
+        };
+        var handler = Criar(db, new AnalisadorFalso(DuasPessoasIrregulares), telegram, facial);
+
+        var r1 = await Analisar(handler, camera.Id);
+        Assert.False(r1.AlertaEnviado);
+        Assert.Empty(telegram.Legendas);
+        Assert.All(await db.OcorrenciasEpiCamera.ToListAsync(), o => Assert.False(o.Confirmada));
+
+        await Passar(db, camera, 10);
+        var r2 = await Analisar(handler, camera.Id);
+
+        Assert.True(r2.AlertaEnviado);
+        Assert.All(await db.OcorrenciasEpiCamera.ToListAsync(), o => Assert.True(o.Confirmada && o.AlertaEnviado));
+        Assert.EndsWith("Identificados pelo rosto: João da Silva (sem capacete), Pedro Souza (sem colete)", Assert.Single(telegram.Legendas));
+    }
+
+    [Fact]
+    public async Task Confirmacao_ConfirmadasPreExistentesContinuamValendo_SemPassarPelaConfirmacao()
+    {
+        // Ocorrência anterior à Fase 2 (linha antiga: Confirmada = true pela migration) segue sendo a ocorrência aberta.
+        var (db, camera) = await Preparar(nameof(Confirmacao_ConfirmadasPreExistentesContinuamValendo_SemPassarPelaConfirmacao), RegraReal);
+        var aberta = await ComOcorrenciaSemNome(db, camera, minutosAtras: 2, alertaEnviado: true);
+        Assert.True(aberta.Confirmada);
+        Assert.Null(aberta.SegundosObservados);
+        var telegram = new TelegramFalso();
+
+        var r = await Analisar(Criar(db, new AnalisadorFalso(UmaPessoaSemCapacete), telegram), camera.Id);
+
+        Assert.True(r.Repetida);
+        Assert.False(r.AlertaEnviado);
+        Assert.Empty(telegram.Legendas);
+        Assert.Null((await db.OcorrenciasEpiCamera.SingleAsync()).SegundosObservados);
+    }
+
+    // O provedor InMemory não aplica rowversion: simula o conflito jogando a exceção NA PRIMEIRA gravação em que uma ocorrência
+    // existente (já salva) satisfaz `quando`, com a entrada conflitante dentro da exceção (como o EF faz de verdade). `antes` roda
+    // antes do conflito e pode gravar por fora, como faria outra réplica.
+    private sealed class ConflitoNaOcorrenciaInterceptor : SaveChangesInterceptor
+    {
+        private readonly Func<OcorrenciaEpiCamera, bool> _quando;
+        private readonly Action<Guid>? _antes;
+        public int Disparos { get; private set; }
+        public bool Armado { get; set; } = true;
+        public ConflitoNaOcorrenciaInterceptor(Func<OcorrenciaEpiCamera, bool> quando, Action<Guid>? antes = null)
+        {
+            _quando = quando;
+            _antes = antes;
+        }
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (Armado && Disparos == 0)
+            {
+                var entrada = eventData.Context!.ChangeTracker.Entries<OcorrenciaEpiCamera>()
+                    .FirstOrDefault(e => e.State == EntityState.Modified && _quando(e.Entity));
+                if (entrada is not null)
+                {
+                    Disparos++;
+                    _antes?.Invoke(entrada.Entity.Id);
+                    throw new DbUpdateConcurrencyException("Conflito simulado na ocorrência.",
+                        new[] { Microsoft.EntityFrameworkCore.Infrastructure.AccessorExtensions.GetInfrastructure(entrada) });
+                }
+            }
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+    }
+
+    [Fact]
+    public async Task Concorrencia_ConflitoAoGravarAVista_ReaplicaUmaVezSemContarEmDobro()
+    {
+        var interceptor = new ConflitoNaOcorrenciaInterceptor(o => !o.AlertaEnviado) { Armado = false };
+        var (db, camera) = await Preparar(nameof(Concorrencia_ConflitoAoGravarAVista_ReaplicaUmaVezSemContarEmDobro), RegraReal, interceptor);
+        var telegram = new TelegramFalso();
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram);
+
+        await Analisar(handler, camera.Id);   // cria (nada "existente e modificado" ainda: não dispara)
+        Assert.Equal(0, interceptor.Disparos);
+        await Passar(db, camera, 10);
+        interceptor.Armado = true;
+        var r = await Analisar(handler, camera.Id);   // soma e confirma: a primeira gravação conflita
+
+        Assert.Equal(1, interceptor.Disparos);
+        Assert.True(r.AlertaEnviado);
+        var o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.Equal(2, o.VezesVista);
+        Assert.True(o.Confirmada);
+        Assert.Single(telegram.Legendas);
+    }
+
+    [Fact]
+    public async Task Concorrencia_OutraReplicaJaReservouOEnvio_NaoEnviaDeNovo()
+    {
+        var nome = nameof(Concorrencia_OutraReplicaJaReservouOEnvio_NaoEnviaDeNovo);
+        // Dispara só na gravação da reserva (AlertaEnviado já true localmente) e, antes, outra "réplica" marca a ocorrência no banco.
+        var interceptor = new ConflitoNaOcorrenciaInterceptor(o => o.AlertaEnviado, id =>
+        {
+            using var outra = CamerasPersistenciaTests.CriarDb(nome);
+            var ocorrencia = outra.OcorrenciasEpiCamera.Single(x => x.Id == id);
+            ocorrencia.AlertaEnviado = true;
+            ocorrencia.AlertaEnviadoEmUtc = DateTime.UtcNow;
+            outra.SaveChanges();
+        });
+        var (db, camera) = await Preparar(nome, RegraReal, interceptor);
+        var telegram = new TelegramFalso();
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 10);
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.Equal(1, interceptor.Disparos);
+        Assert.False(r.AlertaEnviado);
+        Assert.Empty(telegram.Legendas);
+        Assert.True((await db.OcorrenciasEpiCamera.SingleAsync()).AlertaEnviado);   // a da outra réplica
+    }
+
+    [Fact]
+    public async Task Concorrencia_ConflitoNaReservaPorOutraAlteracao_TentaDeNovoEEnviaUmaVez()
+    {
+        var interceptor = new ConflitoNaOcorrenciaInterceptor(o => o.AlertaEnviado);
+        var (db, camera) = await Preparar(nameof(Concorrencia_ConflitoNaReservaPorOutraAlteracao_TentaDeNovoEEnviaUmaVez), RegraReal, interceptor);
+        var telegram = new TelegramFalso();
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 10);
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.Equal(1, interceptor.Disparos);
+        Assert.True(r.AlertaEnviado);
+        Assert.Single(telegram.Legendas);
+        Assert.True((await db.OcorrenciasEpiCamera.SingleAsync()).AlertaEnviado);
+    }
+
+    [Fact]
+    public async Task Concorrencia_TelegramRecusaDepoisDaReserva_DesfazAReservaParaNovaTentativa()
+    {
+        var (db, camera) = await Preparar(nameof(Concorrencia_TelegramRecusaDepoisDaReserva_DesfazAReservaParaNovaTentativa), RegraReal);
+        var telegram = new TelegramFalso { Resultado = false };
+        var handler = Criar(db, new AnalisadorFalso(() => SemCapaceteEm(0.4)), telegram);
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 10);
+        var r = await Analisar(handler, camera.Id);
+
+        Assert.False(r.AlertaEnviado);
+        var o = await db.OcorrenciasEpiCamera.SingleAsync();
+        Assert.True(o.Confirmada);
+        Assert.False(o.AlertaEnviado);
+        Assert.Null(o.AlertaEnviadoEmUtc);
+        Assert.Single(telegram.Legendas);   // tentou uma vez
+
+        telegram.Resultado = true;
+        await Passar(db, camera, 2);
+        var r2 = await Analisar(handler, camera.Id);
+        Assert.True(r2.AlertaEnviado);
+        Assert.Equal(2, telegram.Legendas.Count);
+    }
+
+    [Fact]
+    public async Task NaoAvaliaveisNoDia_ContaSoAnaliseComItemNaoConferidoESemIrregularidade()
+    {
+        var (db, camera) = await Preparar(nameof(NaoAvaliaveisNoDia_ContaSoAnaliseComItemNaoConferidoESemIrregularidade), RegraReal);
+        var naoAvaliavel = new ResultadoAnaliseEpi(1, 0, 0, ConfiancaAnaliseEpi.Alta,
+            new[] { new PessoaNaCena(0.5, 0.3, false, false, OculosNaoAvaliavel: true) }, OculosNaoAvaliavel: 1);
+        var analise = naoAvaliavel;
+        var handler = Criar(db, new AnalisadorFalso(() => analise), new TelegramFalso());
+
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 5);
+        await Analisar(handler, camera.Id);
+        Assert.Equal(2, (await db.Cameras.SingleAsync()).NaoAvaliaveisNoDia);
+
+        // Cena regular completa e cena com irregularidade não entram na conta.
+        await Passar(db, camera, 5);
+        analise = new ResultadoAnaliseEpi(1, 0, 0, ConfiancaAnaliseEpi.Alta);
+        await Analisar(handler, camera.Id);
+        await Passar(db, camera, 5);
+        analise = SemCapaceteEm(0.4);
+        await Analisar(handler, camera.Id);
+
+        var cam = await db.Cameras.SingleAsync();
+        Assert.Equal(2, cam.NaoAvaliaveisNoDia);
+        Assert.Equal(4, cam.AnalisesNoDia);
     }
 }

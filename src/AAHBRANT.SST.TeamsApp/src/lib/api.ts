@@ -2833,6 +2833,12 @@ export interface CameraResumo {
   // Respostas antigas (cache do service worker) não trazem estes dois: sem o campo vale 0 (imagem inteira) e true.
   parteImagem?: number;
   avisarTelegram?: boolean;
+  // Regras de alerta (Fase 2). Respostas antigas não trazem: sem o campo valem 3 s, 3 s, 3 s, 300 s e modo sombra desligado.
+  persistenciaCapaceteSegundos?: number;
+  persistenciaColeteSegundos?: number;
+  persistenciaOculosSegundos?: number;
+  naoRepetirSegundos?: number;
+  modoSombra?: boolean;
 }
 
 // De onde vem a imagem da câmera. A API serializa enums como número.
@@ -2858,6 +2864,12 @@ export interface DadosCamera {
   // Ausentes = o servidor assume 0 (imagem inteira) e true. parteImagem só vale para câmera IP.
   parteImagem?: number;
   avisarTelegram?: boolean;
+  // Ausentes na edição = o servidor não muda. Na criação, o servidor assume 3, 3, 3, 300 e modo sombra ligado.
+  persistenciaCapaceteSegundos?: number;
+  persistenciaColeteSegundos?: number;
+  persistenciaOculosSegundos?: number;
+  naoRepetirSegundos?: number;
+  modoSombra?: boolean;
 }
 
 // Agente de câmeras: programa instalado no PC da obra que lê as câmeras pela rede local. Nunca traz o segredo.
@@ -3018,6 +3030,11 @@ export interface OcorrenciaEpi {
   capaceteNaoAvaliavel?: number;
   coleteNaoAvaliavel?: number;
   oculosNaoAvaliavel?: number;
+  // Confirmação e modo sombra (Fase 2). Ausentes em respostas antigas: confirmada = true, sombra = false.
+  confirmada?: boolean;
+  sombra?: boolean;
+  // Segundos em que a irregularidade ficou à vista até confirmar (ou até expirar, se não confirmou).
+  segundosObservados?: number | null;
 }
 
 export interface FiltroOcorrenciasEpi {
@@ -3028,6 +3045,9 @@ export interface FiltroOcorrenciasEpi {
   situacao?: number;
   // Só ocorrências que tenham este item: capacete, colete, oculos ou cor (cor do capacete).
   tipo?: 'capacete' | 'colete' | 'oculos' | 'cor';
+  // sombra = só as registradas em modo sombra; aviso = só as de câmera com aviso; naoConfirmadas = só as que não se
+  // confirmaram. Ausente = todas (o servidor esconde as não confirmadas de câmera fora do modo sombra).
+  registro?: 'sombra' | 'aviso' | 'naoConfirmadas';
 }
 
 export const StatusItemChecklist = {
@@ -7330,6 +7350,7 @@ export const api = {
       if (filtro.ate) qs.set('ate', filtro.ate);
       if (filtro.situacao) qs.set('situacao', String(filtro.situacao));
       if (filtro.tipo) qs.set('tipo', filtro.tipo);
+      if (filtro.registro) qs.set('registro', filtro.registro);
       const s = qs.toString();
       return request<OcorrenciaEpi[]>(`/api/cameras/ocorrencias${s ? `?${s}` : ''}`);
     },

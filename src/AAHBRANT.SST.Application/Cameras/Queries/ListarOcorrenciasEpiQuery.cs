@@ -11,7 +11,20 @@ public record ListarOcorrenciasEpiQuery(
     DateTime? DeUtc,
     DateTime? AteUtc,
     SituacaoOcorrenciaEpi? Situacao,
-    TipoOcorrenciaEpi? Tipo = null) : IRequest<List<OcorrenciaEpiDto>>;
+    TipoOcorrenciaEpi? Tipo = null,
+    RegistroOcorrenciaEpi? Registro = null) : IRequest<List<OcorrenciaEpiDto>>;
+
+// Filtro "Registro" da aba de alertas. Todos (padrão) = confirmadas de qualquer câmera e, em modo sombra, também as não confirmadas
+// (para conferência); as não confirmadas de câmera que avisa ficam de fora. Sombra = gravadas por câmera em modo sombra (nunca foram
+// ao Telegram). Aviso = gravadas por câmera avisando e confirmadas (as anteriores à Fase 2 contam como confirmadas).
+// NaoConfirmadas = só as que não confirmaram, de qualquer câmera.
+public enum RegistroOcorrenciaEpi
+{
+    Todos = 0,
+    Sombra = 1,
+    Aviso = 2,
+    NaoConfirmadas = 3,
+}
 
 // Filtro "Tipo" da aba de alertas: o que motivou a ocorrência. Cor = aviso de capacete de cor diferente da função e
 // também ocorrência irregular em que a cor vista difere da esperada (as duas cores conhecidas).
@@ -58,7 +71,12 @@ public record OcorrenciaEpiDto(
     // Pessoas da ocorrência cujo item não pôde ser julgado (informativo; 0 em ocorrências antigas).
     int CapaceteNaoAvaliavel = 0,
     int ColeteNaoAvaliavel = 0,
-    int OculosNaoAvaliavel = 0);
+    int OculosNaoAvaliavel = 0,
+    // Confirmação e modo sombra (Fase 2). Confirmada = a falta de EPI durou o tempo mínimo; SegundosObservados = quanto tempo ficou
+    // à vista até confirmar (ou até a última vista, se não confirmou); nulo nas ocorrências anteriores à Fase 2.
+    bool Confirmada = true,
+    bool Sombra = false,
+    int? SegundosObservados = null);
 
 public class ListarOcorrenciasEpiQueryHandler : IRequestHandler<ListarOcorrenciasEpiQuery, List<OcorrenciaEpiDto>>
 {
@@ -75,6 +93,13 @@ public class ListarOcorrenciasEpiQueryHandler : IRequestHandler<ListarOcorrencia
         if (request.DeUtc is { } de) query = query.Where(o => o.RecebidaEmUtc >= de);
         if (request.AteUtc is { } ate) query = query.Where(o => o.RecebidaEmUtc <= ate);
         if (request.Situacao is { } situacao) query = query.Where(o => o.Situacao == situacao);
+        query = request.Registro switch
+        {
+            RegistroOcorrenciaEpi.Sombra => query.Where(o => o.Sombra),
+            RegistroOcorrenciaEpi.Aviso => query.Where(o => !o.Sombra && o.Confirmada),
+            RegistroOcorrenciaEpi.NaoConfirmadas => query.Where(o => !o.Confirmada),
+            _ => query.Where(o => o.Confirmada || o.Sombra),
+        };
         if (request.Tipo is { } tipo)
             query = tipo switch
             {
@@ -97,6 +122,7 @@ public class ListarOcorrenciasEpiQueryHandler : IRequestHandler<ListarOcorrencia
                 o.IdentificadoPorRosto, o.ConfiancaIdentificacao, o.VezesVista, o.UltimaVezEmUtc,
                 o.SemOculos, o.CorCapaceteVista, o.CorCapaceteEsperada, o.AvisoCorCapacete,
                 o.CapaceteNaoAvaliavel, o.ColeteNaoAvaliavel, o.OculosNaoAvaliavel,
+                o.Confirmada, o.Sombra, o.SegundosObservados,
             })
             .ToListAsync(ct);
 
@@ -145,6 +171,9 @@ public class ListarOcorrenciasEpiQueryHandler : IRequestHandler<ListarOcorrencia
             o.TrabalhadorId is { } fid && trabalhadorPorId.TryGetValue(fid, out var trabFunc) ? funcoes.GetValueOrDefault(trabFunc.FuncaoId) : null,
             o.CapaceteNaoAvaliavel,
             o.ColeteNaoAvaliavel,
-            o.OculosNaoAvaliavel)).ToList();
+            o.OculosNaoAvaliavel,
+            o.Confirmada,
+            o.Sombra,
+            o.SegundosObservados)).ToList();
     }
 }

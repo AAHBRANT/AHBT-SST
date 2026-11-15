@@ -2901,6 +2901,17 @@ public static class NovidadesSeeder
                     "As funções não tinham a cor do capacete esperada, então o sistema não conseguia comparar com o que a câmera via.",
                     "Funções: cada função ganha o campo \"Cor do capacete\". O botão \"Aplicar padrão de cores\" sugere a cor pelo nome da função (branco, amarelo, azul, verde, vermelho ou laranja) e mostra um quadro de conferência: nada é salvo antes de você confirmar, e funções sem padrão, como Almoxarife, ficam para você decidir."),
             }),
+        new(
+            Versao: "5.166.0",
+            Titulo: "Câmeras: alerta confirmado e modo sombra",
+            DataPublicacao: new DateTime(2026, 11, 15, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Câmeras: alerta só depois de confirmar, sem repetir, e modo sombra para testar",
+                    "Quem apenas passava na frente da câmera podia disparar um alerta no Telegram, a mesma pessoa podia gerar alertas repetidos e não havia como testar uma câmera nova sem enviar mensagens.",
+                    "Câmeras: o alerta só sai quando a falta de EPI se confirma por alguns segundos, a mesma pessoa não gera alerta repetido e há o modo sombra para testar uma câmera sem enviar mensagens. A aba Alertas de EPI ganha o filtro \"Registro\" e mostra se cada ocorrência foi confirmada. Câmeras novas começam em modo sombra; as que já existem continuam avisando como antes."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

@@ -40,7 +40,15 @@ public record CameraDto(
     DateTime? UltimoQuadroRecebidoEmUtc = null,
     string? MensagemConexao = null,
     ParteImagemCamera ParteImagem = ParteImagemCamera.Inteira,
-    bool AvisarTelegram = true);
+    bool AvisarTelegram = true,
+    // Regras de alerta (confirmação, não repetir, modo sombra). Câmera anterior à Fase 2: 3 s, 3 s, 3 s, 300 s e sem modo sombra.
+    int PersistenciaCapaceteSegundos = RegrasAlertaCamera.PersistenciaPadraoSegundos,
+    int PersistenciaColeteSegundos = RegrasAlertaCamera.PersistenciaPadraoSegundos,
+    int PersistenciaOculosSegundos = RegrasAlertaCamera.PersistenciaPadraoSegundos,
+    int NaoRepetirSegundos = RegrasAlertaCamera.NaoRepetirPadraoSegundos,
+    bool ModoSombra = false,
+    // Análises do dia só com itens não conferidos (câmera possivelmente mal posicionada); vale para o dia corrente em Brasília.
+    int NaoAvaliaveisNoDia = 0);
 
 public class ListarCamerasQueryHandler : IRequestHandler<ListarCamerasQuery, List<CameraDto>>
 {
@@ -69,7 +77,8 @@ public class ListarCamerasQueryHandler : IRequestHandler<ListarCamerasQuery, Lis
                 c.Habilitada,
                 c.IntervaloMinimoAlertasMinutos,
                 c.UltimaAnaliseEmUtc,
-                OcorrenciasHoje = _db.OcorrenciasEpiCamera.Count(o => o.CameraId == c.Id && o.RecebidaEmUtc >= desde),
+                // Só as confirmadas: a primeira vista de quem apenas passou pela câmera não é uma ocorrência.
+                OcorrenciasHoje = _db.OcorrenciasEpiCamera.Count(o => o.CameraId == c.Id && o.RecebidaEmUtc >= desde && o.Confirmada),
                 c.TotalAnalises,
                 c.TotalTokensEntrada,
                 c.TotalTokensSaida,
@@ -86,6 +95,12 @@ public class ListarCamerasQueryHandler : IRequestHandler<ListarCamerasQuery, Lis
                 c.MensagemConexao,
                 c.ParteImagem,
                 c.AvisarTelegram,
+                c.PersistenciaCapaceteSegundos,
+                c.PersistenciaColeteSegundos,
+                c.PersistenciaOculosSegundos,
+                c.NaoRepetirSegundos,
+                c.ModoSombra,
+                c.NaoAvaliaveisNoDia,
             })
             .ToListAsync(ct);
 
@@ -145,6 +160,13 @@ public class ListarCamerasQueryHandler : IRequestHandler<ListarCamerasQuery, Lis
             c.UltimoQuadroRecebidoEmUtc is { } uq ? DateTime.SpecifyKind(uq, DateTimeKind.Utc) : null,
             c.MensagemConexao,
             c.ParteImagem,
-            c.AvisarTelegram)).ToList();
+            c.AvisarTelegram,
+            c.PersistenciaCapaceteSegundos,
+            c.PersistenciaColeteSegundos,
+            c.PersistenciaOculosSegundos,
+            c.NaoRepetirSegundos,
+            c.ModoSombra,
+            // O contador pertence ao dia de DiaDoConsumo; em outro dia a câmera ainda não analisou nada hoje.
+            c.DiaDoConsumo == agora.AddHours(-3).Date ? c.NaoAvaliaveisNoDia : 0)).ToList();
     }
 }

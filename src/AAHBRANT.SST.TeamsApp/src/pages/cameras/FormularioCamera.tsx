@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { PauseCircle16Regular } from '@fluentui/react-icons';
 import { Button, Campo, FeedbackInline, Field, FormGrid, FormRodape, FormSection, Input, Select, Switch, tokensUi } from '@ui';
 import { api, FonteCamera, ParteImagemCamera, StreamCamera, TipoCamera, tipoCameraLabel, type CameraResumo, type DadosCamera, type Obra } from '../../lib/api';
 import { useAgentesCamera, useCameras, useEquipamentosCamera } from '../../lib/consultas';
 import { OrigemImagemCamera, type OrigemImagem } from './OrigemImagemCamera';
 import { ehCameraIp } from './rotulos';
+import { RegrasAlertaCamera, type RegrasAlertaTextos } from './RegrasAlertaCamera';
+import { LIMITE_NAO_REPETIR, LIMITE_PERSISTENCIA, lerSegundos, mensagemLimite, NAO_REPETIR_PADRAO, PERSISTENCIA_PADRAO } from './regrasAlerta';
+import { useEstilosRegrasAlerta } from './estilosRegrasAlerta';
 import { useEstilosCameraIp } from './estilosCameraIp';
 
 const INTERVALOS_PADRAO = [0, 5, 10, 30, 60];
@@ -37,6 +41,15 @@ export function FormularioCamera({ camera, obras, obraInicial, ipInicial, aoSalv
   const [avisarTelegram, setAvisarTelegram] = useState(camera?.avisarTelegram ?? true);
   const [parteImagem, setParteImagem] = useState<number>(camera?.parteImagem ?? ParteImagemCamera.Inteira);
   const [intervalo, setIntervalo] = useState(camera?.intervaloMinimoAlertasMinutos ?? INTERVALO_INICIAL);
+  const estilosRegras = useEstilosRegrasAlerta();
+  // Etapa 3. Câmera nova nasce em modo sombra; câmera de resposta antiga (sem o campo) segue sem modo sombra.
+  const [modoSombra, setModoSombra] = useState(camera ? (camera.modoSombra ?? false) : true);
+  const [regras, setRegras] = useState<RegrasAlertaTextos>({
+    capacete: String(camera?.persistenciaCapaceteSegundos ?? PERSISTENCIA_PADRAO),
+    colete: String(camera?.persistenciaColeteSegundos ?? PERSISTENCIA_PADRAO),
+    oculos: String(camera?.persistenciaOculosSegundos ?? PERSISTENCIA_PADRAO),
+    naoRepetir: String(camera?.naoRepetirSegundos ?? NAO_REPETIR_PADRAO),
+  });
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
@@ -73,6 +86,14 @@ export function FormularioCamera({ camera, obras, obraInicial, ipInicial, aoSalv
     if (!obraId) return setErro('Selecione a obra da câmera.');
     if (!nomeLimpo) return setErro('Informe o nome da câmera.');
     if (nomeLimpo.length > 100) return setErro('O nome da câmera pode ter no máximo 100 caracteres.');
+    const capacete = lerSegundos(regras.capacete, LIMITE_PERSISTENCIA);
+    const colete = lerSegundos(regras.colete, LIMITE_PERSISTENCIA);
+    const oculos = lerSegundos(regras.oculos, LIMITE_PERSISTENCIA);
+    const naoRepetir = lerSegundos(regras.naoRepetir, LIMITE_NAO_REPETIR);
+    if (capacete === null) return setErro(`Confirmar falta de capacete: ${mensagemLimite(LIMITE_PERSISTENCIA)}`);
+    if (colete === null) return setErro(`Confirmar falta de colete: ${mensagemLimite(LIMITE_PERSISTENCIA)}`);
+    if (oculos === null) return setErro(`Confirmar falta de óculos: ${mensagemLimite(LIMITE_PERSISTENCIA)}`);
+    if (naoRepetir === null) return setErro(`Não repetir alerta da mesma pessoa: ${mensagemLimite(LIMITE_NAO_REPETIR)}`);
     if (origem === 'ip') {
       if (!equipamentoId) return setErro('Escolha o equipamento da câmera IP.');
       if (canal === null) return setErro('Escolha a lente da câmera.');
@@ -86,6 +107,11 @@ export function FormularioCamera({ camera, obras, obraInicial, ipInicial, aoSalv
       habilitada: ligada,
       intervaloMinimoAlertasMinutos: intervalo,
       avisarTelegram,
+      persistenciaCapaceteSegundos: capacete,
+      persistenciaColeteSegundos: colete,
+      persistenciaOculosSegundos: oculos,
+      naoRepetirSegundos: naoRepetir,
+      modoSombra,
     };
     if (origem === 'ip') {
       dados.fonte = FonteCamera.Rtsp;
@@ -210,12 +236,19 @@ export function FormularioCamera({ camera, obras, obraInicial, ipInicial, aoSalv
         <Campo span={6}>
           <Switch
             checked={avisarTelegram}
+            disabled={modoSombra}
             label="Avisar no Telegram"
             onChange={(_, d) => setAvisarTelegram(d.checked)}
           />
           <div className={ip.dica} style={{ fontSize: 12, lineHeight: '16px' }}>
             Desligado, a câmera continua analisando e registrando as ocorrências no sistema, só não envia mensagem no Telegram.
           </div>
+          {modoSombra && (
+            <div className={estilosRegras.pausado}>
+              <PauseCircle16Regular aria-hidden="true" />
+              <span>Em pausa pelo modo sombra. Ao desligar o modo sombra, volta a valer esta escolha.</span>
+            </div>
+          )}
         </Campo>
       </FormGrid>
       <FormSection titulo="Origem da imagem" numero={2}>
@@ -237,6 +270,14 @@ export function FormularioCamera({ camera, obras, obraInicial, ipInicial, aoSalv
           todasCameras={todasCameras.data ?? []}
         />
       </FormSection>
+      <RegrasAlertaCamera
+        valores={regras}
+        aoMudar={(parcial) => setRegras((atual) => ({ ...atual, ...parcial }))}
+        modoSombra={modoSombra}
+        aoMudarModoSombra={setModoSombra}
+        avisarTelegram={avisarTelegram}
+        cameraNova={!edicao}
+      />
       <FormRodape>
         <Button onClick={aoCancelar} disabled={salvando}>
           Cancelar

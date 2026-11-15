@@ -124,7 +124,13 @@ public class AgentesCameraTests
 
         var obraA = new Obra { Codigo = "OA", Nome = "Obra A" };
         var obraB = new Obra { Codigo = "OB", Nome = "Obra B" };
-        var cameraA = new Camera { ObraId = obraA.Id, Nome = "Betoneira" };
+        // Tempo mínimo de confirmação 0: a primeira vista já confirma (só alcançável gravando direto no banco). Estes testes tratam de
+        // autenticação, escopo e agrupamento de quadros do agente; a regra de confirmação é testada em AnalisarQuadroCameraTests.
+        var cameraA = new Camera
+        {
+            ObraId = obraA.Id, Nome = "Betoneira",
+            PersistenciaCapaceteSegundos = 0, PersistenciaColeteSegundos = 0, PersistenciaOculosSegundos = 0,
+        };
         var cameraB = new Camera { ObraId = obraB.Id, Nome = "Portaria B" };
         var segredo = Hasher.GerarSegredo();
         var agenteA = new AgenteCamera { ObraId = obraA.Id, Nome = "PC da obra A", SegredoHash = Hasher.GerarHash(segredo) };
@@ -662,6 +668,48 @@ public class AgentesCameraTests
         Assert.True(DateTime.UtcNow - o.RecebidaEmUtc < TimeSpan.FromMinutes(1)); // recebimento = relógio do servidor
         // Alerta de quadro atrasado não ocupa o intervalo entre alertas da câmera.
         Assert.Null((await c.Global.Cameras.AsNoTracking().SingleAsync(x => x.Id == c.CameraA.Id)).UltimoAlertaEmUtc);
+    }
+
+    [Fact]
+    public async Task EnviarQuadro_AtrasadosConfirmamPeloHorarioDaCaptura_NaoPeloDoRecebimento()
+    {
+        var c = await Preparar(nameof(EnviarQuadro_AtrasadosConfirmamPeloHorarioDaCaptura_NaoPeloDoRecebimento));
+        // Regra real de confirmação (3 s) nesta câmera: os dois quadros chegam juntos, mas foram capturados com 10 s de diferença.
+        c.CameraA.PersistenciaCapaceteSegundos = 3;
+        await c.Global.SaveChangesAsync();
+        var capturada = DateTime.UtcNow.AddHours(-3);
+
+        var primeiro = await c.Handler.Handle(Quadro(c, capturadaEm: capturada), default);
+        Assert.False(primeiro!.AlertaEnviado);
+        Assert.Equal(0, c.Telegram.Fotos);
+        Assert.False((await c.Global.OcorrenciasEpiCamera.AsNoTracking().SingleAsync()).Confirmada);
+
+        await LiberarCamera(c);
+        var segundo = await c.Handler.Handle(Quadro(c, capturadaEm: capturada.AddSeconds(10)), default);
+
+        Assert.True(segundo!.AlertaEnviado);
+        Assert.Equal(1, c.Telegram.Fotos);
+        var o = await c.Global.OcorrenciasEpiCamera.AsNoTracking().SingleAsync();
+        Assert.True(o.Confirmada);
+        Assert.Equal(10, o.SegundosObservados);
+    }
+
+    [Fact]
+    public async Task EnviarQuadro_AoVivo_ConfirmacaoContaPeloRecebimentoNaoPelaCaptura()
+    {
+        var c = await Preparar(nameof(EnviarQuadro_AoVivo_ConfirmacaoContaPeloRecebimentoNaoPelaCaptura));
+        c.CameraA.PersistenciaCapaceteSegundos = 3;
+        await c.Global.SaveChangesAsync();
+
+        // Quadros dentro da tolerância (ao vivo) cujos horários de captura diferem 10 s (relógio da câmera adiantado/atrasado), mas
+        // chegam no mesmo instante: para quadro ao vivo vale o relógio do servidor, então ainda não passaram 3 s.
+        await c.Handler.Handle(Quadro(c, capturadaEm: DateTime.UtcNow.AddSeconds(-50)), default);
+        await LiberarCamera(c);
+        var r = await c.Handler.Handle(Quadro(c, capturadaEm: DateTime.UtcNow.AddSeconds(-40)), default);
+
+        Assert.False(r!.AlertaEnviado);
+        Assert.Equal(0, c.Telegram.Fotos);
+        Assert.False((await c.Global.OcorrenciasEpiCamera.AsNoTracking().SingleAsync()).Confirmada);
     }
 
     [Fact]

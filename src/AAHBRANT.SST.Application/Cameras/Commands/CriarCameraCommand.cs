@@ -24,7 +24,15 @@ public record CriarCameraCommand(
     // Câmera IP de duas lentes empilhadas: metade da imagem analisada (só vale para Fonte = Rtsp). AvisarTelegram = false
     // mantém a análise e a ocorrência, mas não envia o alerta ao Telegram. Omitidos = imagem inteira e com aviso, como sempre foi.
     ParteImagemCamera ParteImagem = ParteImagemCamera.Inteira,
-    bool AvisarTelegram = true) : IRequest<Guid>;
+    bool AvisarTelegram = true,
+    // Regras de alerta: segundos para confirmar a falta de cada item e para não repetir o alerta da mesma pessoa/posição.
+    // ModoSombra omitido = LIGADO: câmera nova só registra, sem Telegram, até alguém desligar. As câmeras já existentes
+    // continuam como estão (migration) e a tela envia o valor escolhido.
+    int PersistenciaCapaceteSegundos = RegrasAlertaCamera.PersistenciaPadraoSegundos,
+    int PersistenciaColeteSegundos = RegrasAlertaCamera.PersistenciaPadraoSegundos,
+    int PersistenciaOculosSegundos = RegrasAlertaCamera.PersistenciaPadraoSegundos,
+    int NaoRepetirSegundos = RegrasAlertaCamera.NaoRepetirPadraoSegundos,
+    bool ModoSombra = true) : IRequest<Guid>;
 
 public class CriarCameraCommandValidator : AbstractValidator<CriarCameraCommand>
 {
@@ -37,6 +45,10 @@ public class CriarCameraCommandValidator : AbstractValidator<CriarCameraCommand>
         RuleFor(x => x.Fonte).IsInEnum();
         RuleFor(x => x.IntervaloEnvioSegundos).IntervaloDeEnvio();
         RuleFor(x => x.ParteImagem).ParteDaImagem();
+        RuleFor(x => x.PersistenciaCapaceteSegundos).PersistenciaDeConfirmacao();
+        RuleFor(x => x.PersistenciaColeteSegundos).PersistenciaDeConfirmacao();
+        RuleFor(x => x.PersistenciaOculosSegundos).PersistenciaDeConfirmacao();
+        RuleFor(x => x.NaoRepetirSegundos).NaoRepetirAlerta();
         When(x => x.Fonte != FonteCamera.Rtsp && Enum.IsDefined(x.ParteImagem), () =>
             RuleFor(x => x.ParteImagem).Equal(ParteImagemCamera.Inteira).WithMessage(CameraIpRegras.MensagemParteSoEmCameraIp));
         When(x => x.Fonte == FonteCamera.Rtsp, () =>
@@ -87,6 +99,11 @@ public class CriarCameraCommandHandler : IRequestHandler<CriarCameraCommand, Gui
             IntervaloEnvioSegundos = request.IntervaloEnvioSegundos,
             ParteImagem = ip ? request.ParteImagem : ParteImagemCamera.Inteira,
             AvisarTelegram = request.AvisarTelegram,
+            PersistenciaCapaceteSegundos = request.PersistenciaCapaceteSegundos,
+            PersistenciaColeteSegundos = request.PersistenciaColeteSegundos,
+            PersistenciaOculosSegundos = request.PersistenciaOculosSegundos,
+            NaoRepetirSegundos = request.NaoRepetirSegundos,
+            ModoSombra = request.ModoSombra,
         };
         _db.Cameras.Add(camera);
         await _db.SaveChangesAsync(ct);
