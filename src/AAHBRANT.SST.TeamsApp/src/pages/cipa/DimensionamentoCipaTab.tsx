@@ -19,7 +19,7 @@ import {
   type Coluna,
 } from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
-import { api, nivelRiscoLabel, type DimensionamentoCipa, type NovoDimensionamentoCipa, type Obra } from '../../lib/api';
+import { api, nivelRiscoLabel, type DimensionamentoCipa, type NovoDimensionamentoCipa, type Obra, type SituacaoCipaObra } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 function vazio(): NovoDimensionamentoCipa {
@@ -36,6 +36,8 @@ function vazio(): NovoDimensionamentoCipa {
 export function DimensionamentoCipaTab() {
   const [lista, setLista] = useState<DimensionamentoCipa[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
+  // Empregados ativos por obra (contagem automática) — preenche o nº de funcionários ao escolher a obra.
+  const [situacoes, setSituacoes] = useState<SituacaoCipaObra[]>([]);
   const [novo, setNovo] = useState<NovoDimensionamentoCipa>(vazio());
   const [erro, setErro] = useState<string | null>(null);
   const [erroPainel, setErroPainel] = useState<string | null>(null);
@@ -51,6 +53,7 @@ export function DimensionamentoCipaTab() {
       const [listaDim, listaObras] = await Promise.all([api.cipa.dimensionamento.listar(), api.obras.listar()]);
       setLista(listaDim);
       setObras(listaObras);
+      api.cipa.dimensionamento.situacaoObras().then(setSituacoes).catch(() => setSituacoes([]));
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar dimensionamentos.');
     } finally {
@@ -145,7 +148,13 @@ export function DimensionamentoCipaTab() {
             <FormGrid>
               <Campo span={4}>
                 <Field label="Obra" required>
-                  <Select value={novo.obraId} onChange={(_, d) => setNovo({ ...novo, obraId: d.value })}>
+                  <Select
+                    value={novo.obraId}
+                    onChange={(_, d) => {
+                      const contagem = situacoes.find((s) => s.obraId === d.value)?.empregadosAtivos;
+                      setNovo({ ...novo, obraId: d.value, numeroFuncionarios: contagem ?? novo.numeroFuncionarios });
+                    }}
+                  >
                     <option value="">Selecione</option>
                     {obras.map((obra) => (
                       <option key={obra.id} value={obra.id}>
@@ -172,7 +181,7 @@ export function DimensionamentoCipaTab() {
                 </Field>
               </Campo>
               <Campo span={3}>
-                <Field label="Número de funcionários" required>
+                <Field label="Número de funcionários" required hint="Preenchido com os empregados CLT ativos da obra; ajuste se necessário.">
                   <Input
                     type="number"
                     value={String(novo.numeroFuncionarios)}

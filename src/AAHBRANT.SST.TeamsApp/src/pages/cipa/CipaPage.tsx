@@ -1,4 +1,5 @@
 import { Abas, PageHeader, useAbaNaUrl } from '@ui';
+import { SituacaoObrasCipaTab } from './SituacaoObrasCipaTab';
 import { DimensionamentoCipaTab } from './DimensionamentoCipaTab';
 import { ProcessoEleitoralCipaTab } from './ProcessoEleitoralCipaTab';
 import { MembrosCipaTab } from './MembrosCipaTab';
@@ -6,7 +7,7 @@ import { ReunioesCipaTab } from './ReunioesCipaTab';
 import { InspecoesCipaTab } from './InspecoesCipaTab';
 import { SipatTab } from './SipatTab';
 
-const ABAS_CIPA = ['dimensionamento', 'eleicao', 'membros', 'reunioes', 'inspecoes', 'sipat'] as const;
+const ABAS_CIPA = ['situacao', 'dimensionamento', 'eleicao', 'membros', 'reunioes', 'inspecoes', 'sipat'] as const;
 type AbaCipa = (typeof ABAS_CIPA)[number];
 
 // Módulo CIPA (NR-5, requisito do usuário, 31/08/2026), item de 1º nível próprio na sidebar (saiu
@@ -18,7 +19,7 @@ type AbaCipa = (typeof ABAS_CIPA)[number];
 // próprio (mostrarTitulo) ou embutida como seção de outra página-pilar (hoje só o segundo caso, dentro
 // de OperacaoPage — ver comentário acima sobre a saída do pilar Operação ainda não refletida no roteiro).
 export function CipaPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } = {}) {
-  const [aba, setAba] = useAbaNaUrl<AbaCipa>('aba', ABAS_CIPA, 'dimensionamento');
+  const [aba, setAba] = useAbaNaUrl<AbaCipa>('aba', ABAS_CIPA, 'situacao');
 
   return (
     <div>
@@ -30,6 +31,7 @@ export function CipaPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } =
         aoMudar={setAba}
         aria-label="Seções da CIPA"
         abas={[
+          { valor: 'situacao', rotulo: 'Situação por obra' },
           { valor: 'dimensionamento', rotulo: 'Dimensionamento' },
           { valor: 'eleicao', rotulo: 'Processo Eleitoral' },
           { valor: 'membros', rotulo: 'Membros' },
@@ -39,6 +41,7 @@ export function CipaPage({ mostrarTitulo = true }: { mostrarTitulo?: boolean } =
         ]}
       />
 
+      {aba === 'situacao' && <SituacaoObrasCipaTab />}
       {aba === 'dimensionamento' && <DimensionamentoCipaTab />}
       {aba === 'eleicao' && <ProcessoEleitoralCipaTab />}
       {aba === 'membros' && <MembrosCipaTab />}

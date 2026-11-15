@@ -5087,6 +5087,48 @@ export const statusReuniaoCipaLabel: Record<number, string> = {
   3: 'Ata registrada',
 };
 
+// Situação da CIPA por obra — ver ObterSituacaoCipaPorObraQuery (backend). Empregados = CLT ativos
+// contados do cadastro; terceirizados aparecem só como informação.
+export const SituacaoCipaObraTipo = {
+  PrecisaDeCipa: 1,
+  ConvocarEleicao: 2,
+  NomearRepresentante: 3,
+  EleicaoEmAndamento: 4,
+  RepresentanteNomeado: 5,
+  CipaAtiva: 6,
+} as const;
+export type SituacaoCipaObraTipo = (typeof SituacaoCipaObraTipo)[keyof typeof SituacaoCipaObraTipo];
+
+export const situacaoCipaObraLabel: Record<number, string> = {
+  1: 'Precisa de CIPA',
+  2: 'Convocar eleição',
+  3: 'Nomear representante',
+  4: 'Eleição em andamento',
+  5: 'Representante nomeado',
+  6: 'CIPA ativa',
+};
+
+export interface SituacaoCipaObra {
+  obraId: string;
+  obraNome: string;
+  obraCodigo: string;
+  empregadosAtivos: number;
+  terceirizadosAtivos: number;
+  terceirosExigemRepresentante: boolean;
+  situacao: SituacaoCipaObraTipo;
+  membrosComMandatoVigente: number;
+  fimMandatoVigente: string | null;
+  processoEleitoralId: string | null;
+  statusProcessoEleitoral: number | null;
+  dataVotacao: string | null;
+  ultimoDimensionamentoData: string | null;
+  ultimoDimensionamentoFuncionarios: number | null;
+  ultimoDimensionamentoGrauRisco: number | null;
+  titularesDimensionados: number | null;
+  suplentesDimensionados: number | null;
+  dimensionamentoDesatualizado: boolean;
+}
+
 export interface DimensionamentoCipa {
   id: string;
   obraId: string;
@@ -8053,6 +8095,7 @@ export const api = {
     dimensionamento: {
       listar: (obraId?: string) =>
         request<DimensionamentoCipa[]>(`/api/dimensionamentocipa${obraId ? `?obraId=${obraId}` : ''}`),
+      situacaoObras: () => request<SituacaoCipaObra[]>('/api/dimensionamentocipa/situacao-obras'),
       criar: (dados: NovoDimensionamentoCipa) =>
         request<{ id: string }>('/api/dimensionamentocipa', { method: 'POST', body: JSON.stringify(dados) }),
       excluir: (id: string) => request<void>(`/api/dimensionamentocipa/${id}`, { method: 'DELETE' }),
