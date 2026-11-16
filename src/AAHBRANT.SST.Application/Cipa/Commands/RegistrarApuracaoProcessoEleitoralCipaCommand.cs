@@ -76,10 +76,15 @@ public class RegistrarApuracaoProcessoEleitoralCipaCommandHandler : IRequestHand
             }
         }
 
-        var ordenados = candidatosDeferidos
-            .OrderByDescending(c => c.VotosRecebidos)
-            .ThenBy(c => c.DataInscricao)
-            .ToList();
+        // Desempate (decisão do usuário, 16/11/2026, critério usual da NR-5): maior tempo de serviço,
+        // ou seja, a admissão mais antiga. Persistindo o empate, vale a inscrição mais antiga.
+        var trabalhadorIds = candidatosDeferidos.Select(c => c.TrabalhadorId).ToList();
+        var admissoes = await _db.Trabalhadores
+            .Where(t => trabalhadorIds.Contains(t.Id))
+            .Select(t => new { t.Id, t.DataAdmissao })
+            .ToDictionaryAsync(t => t.Id, t => t.DataAdmissao, ct);
+
+        var ordenados = OrdenarParaApuracao(candidatosDeferidos, admissoes);
 
         var membrosIds = new List<Guid>();
         for (var i = 0; i < ordenados.Count; i++)
@@ -121,4 +126,11 @@ public class RegistrarApuracaoProcessoEleitoralCipaCommandHandler : IRequestHand
         await _db.SaveChangesAsync(ct);
         return membrosIds;
     }
+
+    public static List<CandidatoCipa> OrdenarParaApuracao(IEnumerable<CandidatoCipa> candidatos, IReadOnlyDictionary<Guid, DateTime> admissoes) =>
+        candidatos
+            .OrderByDescending(c => c.VotosRecebidos)
+            .ThenBy(c => admissoes.TryGetValue(c.TrabalhadorId, out var adm) ? adm : DateTime.MaxValue)
+            .ThenBy(c => c.DataInscricao)
+            .ToList();
 }

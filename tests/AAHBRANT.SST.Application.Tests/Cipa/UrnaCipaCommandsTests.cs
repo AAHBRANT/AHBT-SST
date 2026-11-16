@@ -136,4 +136,22 @@ public class UrnaCipaCommandsTests
     [InlineData(0, 0, false)]
     public void Quorum_ExigeMetadeDosAptos(int votantes, int aptos, bool esperado)
         => Assert.Equal(esperado, EncerrarVotacaoCipaCommandHandler.AtingiuQuorum(votantes, aptos));
+
+    [Fact]
+    public void Apuracao_EmpateDesempataPorMaiorTempoDeServico()
+    {
+        var novato = new CandidatoCipa { TrabalhadorId = Guid.NewGuid(), VotosRecebidos = 10, DataInscricao = new DateTime(2026, 1, 1) };
+        var antigo = new CandidatoCipa { TrabalhadorId = Guid.NewGuid(), VotosRecebidos = 10, DataInscricao = new DateTime(2026, 1, 5) };
+        var maisVotado = new CandidatoCipa { TrabalhadorId = Guid.NewGuid(), VotosRecebidos = 12, DataInscricao = new DateTime(2026, 1, 9) };
+        var admissoes = new Dictionary<Guid, DateTime>
+        {
+            [novato.TrabalhadorId] = new DateTime(2025, 6, 1),
+            [antigo.TrabalhadorId] = new DateTime(2019, 3, 1),
+            [maisVotado.TrabalhadorId] = new DateTime(2026, 1, 1),
+        };
+
+        var ordem = RegistrarApuracaoProcessoEleitoralCipaCommandHandler.OrdenarParaApuracao(new[] { novato, antigo, maisVotado }, admissoes);
+
+        Assert.Equal(new[] { maisVotado, antigo, novato }, ordem);
+    }
 }
