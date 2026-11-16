@@ -34,6 +34,7 @@ import {
   type VotoApuradoCipa,
 } from '../../lib/api';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { PainelUrnaCipa } from './urna/PainelUrnaCipa';
 
 const tomPorStatusProcesso: Record<number, Tom> = {
   [StatusProcessoEleitoralCipa.Convocado]: 'neutro',
@@ -42,6 +43,7 @@ const tomPorStatusProcesso: Record<number, Tom> = {
   [StatusProcessoEleitoralCipa.VotacaoRealizada]: 'atencao',
   [StatusProcessoEleitoralCipa.Apurado]: 'ok',
   [StatusProcessoEleitoralCipa.Encerrado]: 'neutro',
+  [StatusProcessoEleitoralCipa.VotacaoAberta]: 'info',
 };
 
 const tomPorStatusCandidato: Record<number, Tom> = {
@@ -167,6 +169,10 @@ export function ProcessoEleitoralCipaDetalhePage() {
 
   if (!id) return <FeedbackInline tom="erro">Processo eleitoral não encontrado.</FeedbackInline>;
 
+  // Urna (16/11): depois de encerrada a votação, os votos vêm contados da urna e não são digitados.
+  const votacaoNaUrna = detalhe?.processo.status === StatusProcessoEleitoralCipa.VotacaoRealizada && (detalhe?.candidatos.some((c) => c.votosRecebidos > 0) ?? false);
+  const urnaAberta = detalhe?.processo.status === StatusProcessoEleitoralCipa.VotacaoAberta;
+
   const jaApurado =
     detalhe?.processo.status === StatusProcessoEleitoralCipa.Apurado ||
     detalhe?.processo.status === StatusProcessoEleitoralCipa.Encerrado;
@@ -253,7 +259,9 @@ export function ProcessoEleitoralCipaDetalhePage() {
             )}
           </Card>
 
-          {!jaApurado && (
+          <PainelUrnaCipa processoId={id} status={detalhe.processo.status} aoMudar={() => void carregar()} />
+
+          {!jaApurado && !urnaAberta && detalhe.processo.status !== StatusProcessoEleitoralCipa.VotacaoRealizada && (
             <Card titulo="Inscrever candidato">
               <FormSection titulo="Dados do Candidato" primeira>
                 <FormGrid>
@@ -289,7 +297,7 @@ export function ProcessoEleitoralCipaDetalhePage() {
             />
           </Card>
 
-          {!jaApurado && (
+          {!jaApurado && !urnaAberta && (
             <Card titulo="Apuração (manual)">
               <Text size={200} style={{ display: 'block', marginBottom: 12 }}>
                 Informe os votos recebidos por cada candidato deferido e o período do mandato. Ao
@@ -318,11 +326,15 @@ export function ProcessoEleitoralCipaDetalhePage() {
                     chave: 'votos',
                     rotulo: 'Votos',
                     render: (c: CandidatoCipa) => (
-                      <Input
-                        type="number"
-                        value={String(votos[c.id] ?? 0)}
-                        onChange={(_, d) => setVotos({ ...votos, [c.id]: Number(d.value) })}
-                      />
+                      votacaoNaUrna ? (
+                        <strong>{c.votosRecebidos}</strong>
+                      ) : (
+                        <Input
+                          type="number"
+                          value={String(votos[c.id] ?? 0)}
+                          onChange={(_, d) => setVotos({ ...votos, [c.id]: Number(d.value) })}
+                        />
+                      )
                     ),
                   },
                 ]}

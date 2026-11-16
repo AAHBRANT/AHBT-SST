@@ -57,6 +57,12 @@ public class ProcessoEleitoralCipa : AuditableEntity
     public DateTime? DataApuracao { get; set; }
     public StatusProcessoEleitoralCipa Status { get; set; } = StatusProcessoEleitoralCipa.Convocado;
 
+    // Urna biométrica (16/11/2026). Aptos = empregados CLT ativos da obra no momento em que a
+    // votação foi aberta (base do quórum de 50% da NR-5).
+    public DateTime? VotacaoAbertaEmUtc { get; set; }
+    public DateTime? VotacaoEncerradaEmUtc { get; set; }
+    public int? TotalEleitoresAptos { get; set; }
+
     public ICollection<CandidatoCipa> Candidatos { get; set; } = new List<CandidatoCipa>();
 }
 
@@ -186,4 +192,39 @@ public class AtividadeSipat : AuditableEntity
     public string? Horario { get; set; }
     public string TemaPalestra { get; set; } = string.Empty;
     public string? Palestrante { get; set; }
+}
+
+// Urna biométrica da CIPA (16/11/2026). SIGILO DO VOTO — duas tabelas sem ligação entre si:
+// - EleitorCipa: QUEM se identificou e QUANDO votou (comprovante, impede o 2º voto, base do quórum).
+//   Não guarda em quem votou.
+// - VotoCipa: o voto em si (processo + candidato). Não herda AuditableEntity de propósito: não tem
+//   data, usuário nem trabalhador; o Id é um Guid aleatório gerado no código (não sequencial), para que
+//   nem a ordem física das linhas permita cruzar um voto com o horário de um eleitor.
+// A identificação gera a "cédula" (o Id do EleitorCipa, aleatório e válido por poucos minutos) que o
+// tablet usa no voto — o voto nunca recebe o Id do trabalhador.
+public class EleitorCipa : AuditableEntity
+{
+    public Guid ProcessoEleitoralId { get; set; }
+    public ProcessoEleitoralCipa? ProcessoEleitoral { get; set; }
+
+    public Guid TrabalhadorId { get; set; }
+    public Trabalhador? Trabalhador { get; set; }
+
+    public DateTime IdentificadoEmUtc { get; set; }
+    public DateTime? VotouEmUtc { get; set; }
+    public MetodoIdentificacaoEleitorCipa Metodo { get; set; }
+
+    // Preenchido quando o mesário liberou o eleitor manualmente (biometria falhou) — vai para a ata.
+    public Guid? LiberadoPorUsuarioId { get; set; }
+}
+
+public class VotoCipa
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public Guid ProcessoEleitoralId { get; set; }
+    public ProcessoEleitoralCipa? ProcessoEleitoral { get; set; }
+
+    public Guid CandidatoCipaId { get; set; }
+    public CandidatoCipa? CandidatoCipa { get; set; }
 }

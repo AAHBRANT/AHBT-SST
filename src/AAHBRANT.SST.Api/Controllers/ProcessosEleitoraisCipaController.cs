@@ -73,6 +73,101 @@ public class ProcessosEleitoraisCipaController : ControllerBase
     }
 }
 
+// ---------- Urna biométrica (16/11/2026) ----------
+// O tablet do canteiro roda logado como o técnico/mesário (cipa:gerenciar). A identidade do ELEITOR
+// é provada pela biometria em cada voto (ver UrnaCipaCommands.cs).
+[ApiController]
+[Route("api/processoseleitoraiscipa/{id:guid}/urna")]
+[Authorize(Policy = "cipa:gerenciar")]
+public class UrnaCipaController : ControllerBase
+{
+    private readonly IMediator _mediator;
+    public UrnaCipaController(IMediator mediator) => _mediator = mediator;
+
+    [HttpGet]
+    public async Task<IActionResult> Obter(Guid id, CancellationToken ct)
+    {
+        var urna = await _mediator.Send(new ObterUrnaCipaQuery(id), ct);
+        return urna is null ? NotFound() : Ok(urna);
+    }
+
+    [HttpGet("candidatos/{candidatoId:guid}/foto")]
+    public async Task<IActionResult> Foto(Guid id, Guid candidatoId, CancellationToken ct)
+    {
+        var foto = await _mediator.Send(new ObterFotoCandidatoUrnaCipaQuery(id, candidatoId), ct);
+        return foto is null ? NotFound() : File(foto.Value.Conteudo, foto.Value.ContentType);
+    }
+
+    [HttpPost("abrir")]
+    public async Task<IActionResult> Abrir(Guid id, CancellationToken ct)
+        => Ok(new { totalEleitoresAptos = await _mediator.Send(new AbrirVotacaoCipaCommand(id), ct) });
+
+    [HttpPost("encerrar")]
+    public async Task<IActionResult> Encerrar(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new EncerrarVotacaoCipaCommand(id), ct));
+
+    [HttpPost("identificar/digital")]
+    public Task<IActionResult> IdentificarDigital(Guid id, IdentificarEleitorDigitalCipaRequestBody body, CancellationToken ct)
+        => Cedula(() => _mediator.Send(new IdentificarEleitorDigitalCipaCommand(id, body.TrabalhadorId, body.DispositivoId,
+            body.SegredoDispositivo, body.Score, body.Desafio, body.AssinaturaLeitura), ct));
+
+    [HttpPost("identificar/facial")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> IdentificarFacial(Guid id, [FromForm] IdentificarEleitorFacialCipaRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+        var foto = stream.ToArray();
+        try
+        {
+            return await Cedula(() => _mediator.Send(new IdentificarEleitorFacialCipaCommand(id, foto), ct));
+        }
+        catch (AAHBRANT.SST.Application.Assinatura.Commands.RejeicaoFacialException ex)
+        {
+            return BadRequest(new { erro = ex.Message, motivo = ex.Motivo.ToString() });
+        }
+    }
+
+    [HttpPost("identificar/mesario")]
+    public Task<IActionResult> LiberarMesario(Guid id, LiberarEleitorMesarioCipaRequestBody body, CancellationToken ct)
+        => Cedula(() => _mediator.Send(new LiberarEleitorMesarioCipaCommand(id, body.TrabalhadorId), ct));
+
+    [HttpPost("votar")]
+    public async Task<IActionResult> Votar(Guid id, VotarCipaRequestBody body, CancellationToken ct)
+        => Ok(new { totalVotantes = await _mediator.Send(new VotarCipaCommand(id, body.CedulaId, body.CandidatoId), ct) });
+
+    // "Já votou" não é erro de sistema: volta 409 com o horário para a tela mostrar.
+    private static async Task<IActionResult> Cedula(Func<Task<CedulaCipaDto>> emitir)
+    {
+        try
+        {
+            return new OkObjectResult(await emitir());
+        }
+        catch (JaVotouCipaException ex)
+        {
+            return new ConflictObjectResult(new { erro = ex.Message, jaVotou = true, nome = ex.Nome, votouEmUtc = ex.VotouEmUtc });
+        }
+    }
+}
+
+public class IdentificarEleitorDigitalCipaRequestBody
+{
+    public Guid TrabalhadorId { get; set; }
+    public Guid DispositivoId { get; set; }
+    public string SegredoDispositivo { get; set; } = string.Empty;
+    public double Score { get; set; }
+    public string? Desafio { get; set; }
+    public string? AssinaturaLeitura { get; set; }
+}
+
+public class IdentificarEleitorFacialCipaRequestBody
+{
+    public IFormFile Foto { get; set; } = null!;
+}
+
+public record LiberarEleitorMesarioCipaRequestBody(Guid TrabalhadorId);
+public record VotarCipaRequestBody(Guid CedulaId, Guid CandidatoId);
+
 public record InscreverCandidatoCipaRequestBody(Guid TrabalhadorId);
 public record AvaliarInscricaoCandidatoCipaRequestBody(bool Deferido, string? MotivoIndeferimento);
 public record RegistrarApuracaoProcessoEleitoralCipaRequestBody(List<VotoApuradoCipa> Votos, DateTime DataInicioMandato, DateTime DataFimMandato);

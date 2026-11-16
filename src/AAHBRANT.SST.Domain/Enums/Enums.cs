@@ -961,7 +961,16 @@ public enum StatusProcessoEleitoralCipa
     InscricoesEncerradas = 3,
     VotacaoRealizada = 4,
     Apurado = 5,
-    Encerrado = 6
+    Encerrado = 6,
+    // Urna biométrica (16/11/2026): votação aberta no tablet do canteiro.
+    VotacaoAberta = 7
+}
+
+public enum MetodoIdentificacaoEleitorCipa
+{
+    Digital = 1,
+    Facial = 2,
+    Mesario = 3
 }
 
 public enum StatusCandidatoCipa

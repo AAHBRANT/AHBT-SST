@@ -54,6 +54,7 @@ const AssinarTermoEpiPage = lazy(() => import('./pages/epi/AssinarTermoEpiPage')
 const SaudeOcupacionalPage = lazy(() => import('./pages/saude-ocupacional/SaudeOcupacionalPage').then((m) => ({ default: m.SaudeOcupacionalPage })));
 const PcmsoDetalhePage = lazy(() => import('./pages/saude-ocupacional/PcmsoDetalhePage').then((m) => ({ default: m.PcmsoDetalhePage })));
 const ProcessoEleitoralCipaDetalhePage = lazy(() => import('./pages/cipa/ProcessoEleitoralCipaDetalhePage').then((m) => ({ default: m.ProcessoEleitoralCipaDetalhePage })));
+const UrnaCipaPage = lazy(() => import('./pages/cipa/urna/UrnaCipaPage').then((m) => ({ default: m.UrnaCipaPage })));
 const MembroCipaDetalhePage = lazy(() => import('./pages/cipa/MembroCipaDetalhePage').then((m) => ({ default: m.MembroCipaDetalhePage })));
 const ReuniaoCipaDetalhePage = lazy(() => import('./pages/cipa/ReuniaoCipaDetalhePage').then((m) => ({ default: m.ReuniaoCipaDetalhePage })));
 const EventoSipatDetalhePage = lazy(() => import('./pages/cipa/EventoSipatDetalhePage').then((m) => ({ default: m.EventoSipatDetalhePage })));
@@ -235,6 +236,7 @@ function AppRoteado() {
               <Route path="/operacao/saude-ocupacional/pcmso/:id" element={<PcmsoDetalhePage />} />
               <Route path="/operacao/cipa" element={<RedirecionarParaPilar pilar="/operacao" secao="cipa" />} />
               <Route path="/operacao/cipa/eleicao/:id" element={<ProcessoEleitoralCipaDetalhePage />} />
+              <Route path="/operacao/cipa/eleicao/:id/urna" element={<UrnaCipaPage />} />
               <Route path="/operacao/cipa/membro/:id" element={<MembroCipaDetalhePage />} />
               <Route path="/operacao/cipa/reuniao/:id" element={<ReuniaoCipaDetalhePage />} />
               <Route path="/operacao/cipa/sipat/:id" element={<EventoSipatDetalhePage />} />

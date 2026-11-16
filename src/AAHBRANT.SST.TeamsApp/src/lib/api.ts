@@ -5010,6 +5010,7 @@ export const StatusProcessoEleitoralCipa = {
   VotacaoRealizada: 4,
   Apurado: 5,
   Encerrado: 6,
+  VotacaoAberta: 7,
 } as const;
 
 export const statusProcessoEleitoralCipaLabel: Record<number, string> = {
@@ -5019,7 +5020,41 @@ export const statusProcessoEleitoralCipaLabel: Record<number, string> = {
   4: 'Votação realizada',
   5: 'Apurado',
   6: 'Encerrado',
+  7: 'Votação aberta',
 };
+
+// Urna biométrica da CIPA (16/11/2026) — ver UrnaCipaCommands.cs. Sem fila offline: voto só com rede.
+export interface CandidatoUrnaCipa {
+  candidatoId: string;
+  trabalhadorId: string;
+  nome: string;
+  funcao: string;
+  temFoto: boolean;
+}
+export interface UrnaCipa {
+  processoEleitoralId: string;
+  obraId: string;
+  obraNome: string;
+  numeroDocumento: string | null;
+  status: number;
+  votacaoAbertaEmUtc: string | null;
+  votacaoEncerradaEmUtc: string | null;
+  totalEleitoresAptos: number;
+  totalVotantes: number;
+  candidatos: CandidatoUrnaCipa[];
+}
+export interface CedulaCipa {
+  cedulaId: string;
+  eleitorNome: string;
+  eleitorFuncao: string;
+  expiraEmUtc: string;
+}
+export interface ResultadoEncerramentoCipa {
+  apurado: boolean;
+  votantes: number;
+  aptos: number;
+  mensagem: string;
+}
 
 export const StatusCandidatoCipa = {
   Inscrito: 1,
@@ -8099,6 +8134,34 @@ export const api = {
       criar: (dados: NovoDimensionamentoCipa) =>
         request<{ id: string }>('/api/dimensionamentocipa', { method: 'POST', body: JSON.stringify(dados) }),
       excluir: (id: string) => request<void>(`/api/dimensionamentocipa/${id}`, { method: 'DELETE' }),
+    },
+    urna: {
+      obter: (id: string) => requestOnline<UrnaCipa>(`/api/processoseleitoraiscipa/${id}/urna`),
+      foto: (id: string, candidatoId: string) => baixarBlobOuNulo(`/api/processoseleitoraiscipa/${id}/urna/candidatos/${candidatoId}/foto`),
+      abrir: (id: string) =>
+        requestOnline<{ totalEleitoresAptos: number }>(`/api/processoseleitoraiscipa/${id}/urna/abrir`, { method: 'POST' }),
+      encerrar: (id: string) =>
+        requestOnline<ResultadoEncerramentoCipa>(`/api/processoseleitoraiscipa/${id}/urna/encerrar`, { method: 'POST' }),
+      identificarDigital: (id: string, trabalhadorId: string, credencial: CredencialLeitura, score: number) =>
+        requestOnline<CedulaCipa>(`/api/processoseleitoraiscipa/${id}/urna/identificar/digital`, {
+          method: 'POST',
+          body: JSON.stringify({ trabalhadorId, ...credencial, score }),
+        }),
+      identificarFacial: (id: string, foto: File) => {
+        const formData = new FormData();
+        formData.append('foto', foto);
+        return enviarFormulario<CedulaCipa>(`/api/processoseleitoraiscipa/${id}/urna/identificar/facial`, formData);
+      },
+      liberarMesario: (id: string, trabalhadorId: string) =>
+        requestOnline<CedulaCipa>(`/api/processoseleitoraiscipa/${id}/urna/identificar/mesario`, {
+          method: 'POST',
+          body: JSON.stringify({ trabalhadorId }),
+        }),
+      votar: (id: string, cedulaId: string, candidatoId: string) =>
+        requestOnline<{ totalVotantes: number }>(`/api/processoseleitoraiscipa/${id}/urna/votar`, {
+          method: 'POST',
+          body: JSON.stringify({ cedulaId, candidatoId }),
+        }),
     },
     processosEleitorais: {
       listar: (obraId?: string) =>
