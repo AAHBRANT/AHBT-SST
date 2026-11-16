@@ -33,7 +33,7 @@ export function PainelUrnaCipa({ processoId, status, aoMudar }: { processoId: st
   }, [carregar, aberta]);
 
   async function abrir() {
-    if (!(await confirmar('Abrir a votação? A partir de agora os funcionários votam no tablet e não é mais possível inscrever candidatos.'))) return;
+    if (!(await confirmar({ titulo: 'Abrir votação', mensagem: 'A partir de agora os funcionários votam no tablet e não é mais possível inscrever candidatos.', rotuloConfirmar: 'Abrir votação', tom: 'neutro' }))) return;
     try {
       setOcupado(true);
       const r = await api.cipa.urna.abrir(processoId);
@@ -47,7 +47,7 @@ export function PainelUrnaCipa({ processoId, status, aoMudar }: { processoId: st
   }
 
   async function encerrar() {
-    if (!(await confirmar('Encerrar a votação? Depois de encerrada, ninguém mais vota e os votos são contados.'))) return;
+    if (!(await confirmar({ titulo: 'Encerrar votação', mensagem: 'Depois de encerrada, ninguém mais vota e os votos são contados.', rotuloConfirmar: 'Encerrar votação', tom: 'neutro' }))) return;
     try {
       setOcupado(true);
       const r = await api.cipa.urna.encerrar(processoId);
@@ -66,6 +66,7 @@ export function PainelUrnaCipa({ processoId, status, aoMudar }: { processoId: st
   const pct = aptos > 0 ? Math.round((votantes * 100) / aptos) : 0;
   const quorum = aptos > 0 && votantes * 2 >= aptos;
   const podeAbrir = STATUS_ANTES_DA_VOTACAO.includes(status);
+  const semCandidatos = podeAbrir && urna !== null && urna.candidatos.length === 0;
 
   if (!podeAbrir && !aberta && !urna?.votacaoAbertaEmUtc) return null;
 
@@ -89,12 +90,14 @@ export function PainelUrnaCipa({ processoId, status, aoMudar }: { processoId: st
       )}
       {podeAbrir && urna && (
         <p style={{ margin: 0, fontSize: 14 }}>
-          {urna.candidatos.length} candidato(s) deferido(s) na urna. Eleitores: empregados CLT ativos da obra.
+          {semCandidatos
+            ? 'Aprove (defira) pelo menos um candidato para abrir a votação.'
+            : `${urna.candidatos.length} candidato(s) aprovado(s) na urna. Eleitores: empregados CLT ativos da obra.`}
         </p>
       )}
       <FormRodape>
         {podeAbrir && (
-          <Button appearance="primary" icon={<Play24Regular />} onClick={() => void abrir()} disabled={ocupado}>
+          <Button appearance="primary" icon={<Play24Regular />} onClick={() => void abrir()} disabled={ocupado || semCandidatos}>
             Abrir votação
           </Button>
         )}
