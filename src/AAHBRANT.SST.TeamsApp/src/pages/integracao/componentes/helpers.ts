@@ -192,3 +192,8 @@ export function fraseFicaParaDepois(fora: number): string {
 }
 
 export const MOTIVO_NENHUMA_PESSOA = 'Marque ao menos uma pessoa para começar.';
+
+/** Fora desta integração: já participa de um atendimento em andamento ou foi desmarcada pelo técnico. */
+export function pessoaForaDaIntegracao(candidato: { trabalhadorId: string; jaParticipa: boolean }, marcados: ReadonlySet<string>): boolean {
+  return candidato.jaParticipa || !marcados.has(candidato.trabalhadorId);
+}

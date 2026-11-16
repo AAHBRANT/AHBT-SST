@@ -80,6 +80,9 @@ export function RealizarIntegracaoPage() {
   const [processando, setProcessando] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const iniciouAgora = useRef(false);
+  // Obra hoje selecionada: respostas de outra obra (que chegam atrasadas) são descartadas.
+  const obraSelecionadaRef = useRef(obraId);
+  obraSelecionadaRef.current = obraId;
   // Trava de duplo clique (ref, vale antes do re-render): começar, avançar e concluir não repetem a chamada.
   const emAcao = useRef(false);
 
@@ -102,21 +105,28 @@ export function RealizarIntegracaoPage() {
         setCarregando(false);
         return;
       }
+      let obraDescartada = false;
       try {
         setErroCarga(null);
         setCarregando(true);
         const r = await api.integracoesAtendimento.entrada(alvo);
+        if (obraSelecionadaRef.current !== alvo) {
+          obraDescartada = true;
+          return;
+        }
         // Já existe atendimento aberto na obra: abre direto na etapa em que parou.
         if (r.atendimentoEmAndamento) {
           navigate(`/treinamentos/integracao/${r.atendimentoEmAndamento.id}`, { replace: true });
           return;
         }
         setEntrada(r);
+        // Seleção inicial junto com a carga: a primeira pintura já vem com todos marcados.
+        setMarcados(new Set(elegiveisDaObra(r.candidatos).map((c) => c.trabalhadorId)));
         setInstrutorId((atual) => (r.instrutores.some((i) => i.trabalhadorId === atual) ? atual : r.instrutores[0]?.trabalhadorId ?? ''));
       } catch (err) {
-        setErroCarga(err instanceof Error ? err.message : 'Não foi possível consultar a obra.');
+        if (obraSelecionadaRef.current === alvo) setErroCarga(err instanceof Error ? err.message : 'Não foi possível consultar a obra.');
       } finally {
-        setCarregando(false);
+        if (!obraDescartada && obraSelecionadaRef.current === alvo) setCarregando(false);
       }
     },
     [navigate],
@@ -147,10 +157,6 @@ export function RealizarIntegracaoPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, obraId]);
-
-  useEffect(() => {
-    setMarcados(new Set(elegiveisDaObra(entrada?.candidatos ?? []).map((c) => c.trabalhadorId)));
-  }, [entrada]);
 
   const elegiveis = elegiveisDaObra(entrada?.candidatos ?? []);
   const nMarcados = elegiveis.filter((c) => marcados.has(c.trabalhadorId)).length;

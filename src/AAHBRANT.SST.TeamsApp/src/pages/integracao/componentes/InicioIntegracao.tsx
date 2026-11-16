@@ -5,7 +5,7 @@ import { Card, Checkbox, FeedbackInline, Select, StatusChip, type Tom } from '@u
 import type { CandidatoIntegracao, EntradaIntegracao, Obra, SituacaoPessoaEtapaIntegracao, TipoEtapaIntegracao } from '../../../lib/api';
 import { AvatarIniciais, TituloSecao } from './pecas';
 import { corDoPonto, mergeClasses, useEstilosIntegracao } from './estilos';
-import { TIPOS_EM_ORDEM, elegiveisDaObra, estadoSelecionarTodos, primeiroNome, rotuloEtapa, tituloSelecao } from './helpers';
+import { TIPOS_EM_ORDEM, elegiveisDaObra, estadoSelecionarTodos, pessoaForaDaIntegracao, primeiroNome, rotuloEtapa, tituloSelecao } from './helpers';
 
 interface Props {
   obras: Obra[];
@@ -46,6 +46,7 @@ export function InicioIntegracao({ obras, obraId, aoMudarObra, entrada, marcados
   const nMarcados = elegiveis.filter((c) => marcados.has(c.trabalhadorId)).length;
   const instrutores = entrada?.instrutores ?? [];
   const selecionado = candidatos.find((c) => c.trabalhadorId === selecionadoId) ?? candidatos[0] ?? null;
+  const foraDaIntegracao = !!selecionado && pessoaForaDaIntegracao(selecionado, marcados);
 
   const pontoTom = (s: SituacaoEtapa) => corDoPonto(s === 'valido' ? 'valida' : s === 'naoExigido' ? 'neutra' : 'marca');
 
@@ -115,7 +116,7 @@ export function InicioIntegracao({ obras, obraId, aoMudarObra, entrada, marcados
               <div className={e.listaPessoas} role="group" aria-label="Admitidos da obra">
                 {candidatos.map((p) => {
                   const aberto = p.trabalhadorId === selecionado?.trabalhadorId;
-                  const marcado = !p.jaParticipa && marcados.has(p.trabalhadorId);
+                  const marcado = !pessoaForaDaIntegracao(p, marcados);
                   return (
                     <div
                       key={p.trabalhadorId}
@@ -161,7 +162,7 @@ export function InicioIntegracao({ obras, obraId, aoMudarObra, entrada, marcados
                           ) : (
                             <span className={e.fica}>
                               <Clock16Regular aria-hidden="true" />
-                              Fica para a próxima integração
+                              {p.jaParticipa ? 'Já está na integração em andamento' : 'Fica para a próxima integração'}
                             </span>
                           )}
                         </span>
@@ -181,6 +182,9 @@ export function InicioIntegracao({ obras, obraId, aoMudarObra, entrada, marcados
                     <div className={e.funcaoPessoa}>{selecionado.funcao}</div>
                   </div>
                 </div>
+                {foraDaIntegracao && (
+                  <FeedbackInline tom="aviso">Fora desta integração. As etapas abaixo ficam para a próxima.</FeedbackInline>
+                )}
                 <div className={e.tituloMini} style={{ marginTop: 4 }}>Etapas da integração, em ordem</div>
                 {TIPOS_EM_ORDEM.map((t) => {
                   const { situacao, detalhe } = situacaoDa(selecionado, t);
@@ -201,7 +205,11 @@ export function InicioIntegracao({ obras, obraId, aoMudarObra, entrada, marcados
                         <b>{rot.nome}</b>
                         <small style={{ display: 'block' }} className={e.mudo}>{hint}</small>
                       </span>
-                      <StatusChip tom={tomDa[situacao]}>{rotuloDa[situacao]}</StatusChip>
+                      {foraDaIntegracao && situacao === 'nestaIntegracao' ? (
+                        <StatusChip tom="neutro">Na próxima integração</StatusChip>
+                      ) : (
+                        <StatusChip tom={tomDa[situacao]}>{rotuloDa[situacao]}</StatusChip>
+                      )}
                     </div>
                   );
                 })}

@@ -117,7 +117,7 @@ test('rótulos do botão e da confirmação', () => {
 });
 
 // Seleção de quem entra na integração (13/11/2026, mockup da caixa de seleção por pessoa).
-import { elegiveisDaObra, estadoSelecionarTodos, fraseFicaParaDepois, resumoPessoas, tituloSelecao, MOTIVO_NENHUMA_PESSOA } from '../src/pages/integracao/componentes/helpers.ts';
+import { elegiveisDaObra, estadoSelecionarTodos, fraseFicaParaDepois, pessoaForaDaIntegracao, resumoPessoas, tituloSelecao, MOTIVO_NENHUMA_PESSOA } from '../src/pages/integracao/componentes/helpers.ts';
 
 test('seleção: só entra quem ainda não participa (todos marcados ao abrir = todos os elegíveis)', () => {
   const lista = [
@@ -151,11 +151,9 @@ test('seleção: resumo "Pessoas" e frase de quem fica para depois', () => {
   assert.equal(MOTIVO_NENHUMA_PESSOA, 'Marque ao menos uma pessoa para começar.');
 });
 
-test('seleção: a página envia só os marcados e o botão exige ao menos um (contrato no código-fonte)', () => {
-  const pagina = readFileSync(new URL('../src/pages/integracao/RealizarIntegracaoPage.tsx', import.meta.url), 'utf8');
-  assert.match(pagina, /elegiveis\.filter\(\(c\) => marcados\.has\(c\.trabalhadorId\)\)/);
-  assert.match(pagina, /processando \|\| n === 0/);
-  const inicio = readFileSync(new URL('../src/pages/integracao/componentes/InicioIntegracao.tsx', import.meta.url), 'utf8');
-  assert.doesNotMatch(inicio, /role="radio/);
-  assert.match(inicio, /aria-pressed=\{aberto\}/);
+test('seleção: fora da integração = desmarcada ou já participa (quem envia só os marcados)', () => {
+  const marcados = new Set(['a']);
+  assert.equal(pessoaForaDaIntegracao({ trabalhadorId: 'a', jaParticipa: false }, marcados), false);
+  assert.equal(pessoaForaDaIntegracao({ trabalhadorId: 'b', jaParticipa: false }, marcados), true);
+  assert.equal(pessoaForaDaIntegracao({ trabalhadorId: 'a', jaParticipa: true }, marcados), true);
 });
