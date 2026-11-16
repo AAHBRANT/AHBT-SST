@@ -22,7 +22,6 @@ import { Add24Regular } from '@fluentui/react-icons';
 import {
   api,
   cargoMembroCipaLabel,
-  origemMembroCipaLabel,
   CargoMembroCipa,
   OrigemMembroCipa,
   type MembroCipa,
@@ -40,6 +39,23 @@ function vazio(): NovoMembroCipa {
     dataInicioMandato: '',
     dataFimMandato: '',
   };
+}
+
+// 16/11/2026 (pedido do usuário): tela deixou claro que aqui só entram os REPRESENTANTES DA EMPRESA
+// (indicados, sem voto). Origem fixa = Empregador; cargos sem Vice-presidente (o vice sai dos eleitos);
+// datas do mandato sugeridas a partir do mandato vigente da obra (ou 1 ano a partir de hoje).
+const CARGOS_EMPRESA = [CargoMembroCipa.Presidente, CargoMembroCipa.Titular, CargoMembroCipa.Suplente, CargoMembroCipa.Secretario];
+
+function hojeIso() {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+function umAnoMenosUmDia(inicio: string) {
+  const d = new Date(`${inicio}T12:00:00`);
+  d.setFullYear(d.getFullYear() + 1);
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
 // Membros eleitos pelos empregados normalmente entram aqui pela apuração do Processo Eleitoral
@@ -83,7 +99,11 @@ export function MembrosCipaTab() {
   }, [somenteMandatoAtivo]);
 
   async function trocarObra(obraId: string) {
-    setNovo({ ...novo, obraId, trabalhadorId: '' });
+    // Sugere o mesmo período do mandato vigente da obra; sem mandato vigente, 1 ano a partir de hoje.
+    const vigente = lista.find((m) => m.obraId === obraId && m.mandatoAtivo);
+    const inicio = vigente?.dataInicioMandato?.slice(0, 10) ?? hojeIso();
+    const fim = vigente?.dataFimMandato?.slice(0, 10) ?? umAnoMenosUmDia(inicio);
+    setNovo({ ...novo, obraId, trabalhadorId: '', origemMembro: OrigemMembroCipa.Empregador, dataInicioMandato: inicio, dataFimMandato: fim });
     setTrabalhadores(obraId ? await api.trabalhadores.listar(obraId) : []);
   }
 
@@ -106,7 +126,7 @@ export function MembrosCipaTab() {
       await carregar();
       fecharPainel();
     } catch (e) {
-      setErroPainel(e instanceof Error ? e.message : 'Falha ao cadastrar membro.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao cadastrar o representante.');
     } finally {
       setCarregando(false);
     }
@@ -115,7 +135,15 @@ export function MembrosCipaTab() {
   const colunas: Coluna<MembroCipa>[] = [
     { chave: 'nome', rotulo: 'Nome', render: (m) => m.trabalhadorNome },
     { chave: 'obra', rotulo: 'Obra', render: (m) => m.obraNome },
-    { chave: 'origem', rotulo: 'Origem', render: (m) => origemMembroCipaLabel[m.origemMembro] },
+    {
+      chave: 'origem',
+      rotulo: 'Origem',
+      render: (m) => (
+        <StatusChip tom={m.origemMembro === OrigemMembroCipa.Empregador ? 'neutro' : 'info'}>
+          {m.origemMembro === OrigemMembroCipa.Empregador ? 'Empresa' : 'Eleito'}
+        </StatusChip>
+      ),
+    },
     { chave: 'cargo', rotulo: 'Cargo', render: (m) => cargoMembroCipaLabel[m.cargo] },
     {
       chave: 'mandato',
@@ -149,7 +177,7 @@ export function MembrosCipaTab() {
             aria-expanded={painelAberto}
             aria-controls="painel-novo-membro-cipa"
           >
-            {painelAberto ? 'Fechar' : 'Indicar membro'}
+            {painelAberto ? 'Fechar' : 'Indicar representante da empresa'}
           </Button>
         }
       />
@@ -159,8 +187,12 @@ export function MembrosCipaTab() {
         </FeedbackInline>
       )}
       <div id="painel-novo-membro-cipa">
-        <PainelCriacaoInline aberto={painelAberto} titulo="Indicar membro (empregador)">
-          <FormSection titulo="Dados do membro" numero={1} primeira>
+        <PainelCriacaoInline aberto={painelAberto} titulo="Representante da empresa (indicado)">
+          <FormSection titulo="Dados do representante" numero={1} primeira>
+            <FeedbackInline tom="info">
+              Aqui a empresa indica os representantes dela, como o Presidente da CIPA. Os representantes dos empregados não são
+              cadastrados aqui: eles entram sozinhos pela eleição, quando você registra a apuração no Processo Eleitoral.
+            </FeedbackInline>
             {erroPainel && (
               <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
                 {erroPainel}
@@ -196,29 +228,18 @@ export function MembrosCipaTab() {
                 </Field>
               </Campo>
               <Campo span={6}>
-                <Field label="Origem">
-                  <Select value={String(novo.origemMembro)} onChange={(_, d) => setNovo({ ...novo, origemMembro: Number(d.value) })}>
-                    {Object.entries(origemMembroCipaLabel).map(([valor, rotulo]) => (
-                      <option key={valor} value={valor}>
-                        {rotulo}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </Campo>
-              <Campo span={6}>
                 <Field label="Cargo">
                   <Select value={String(novo.cargo)} onChange={(_, d) => setNovo({ ...novo, cargo: Number(d.value) })}>
-                    {Object.entries(cargoMembroCipaLabel).map(([valor, rotulo]) => (
+                    {CARGOS_EMPRESA.map((valor) => (
                       <option key={valor} value={valor}>
-                        {rotulo}
+                        {cargoMembroCipaLabel[valor]}
                       </option>
                     ))}
                   </Select>
                 </Field>
               </Campo>
               <Campo span={6}>
-                <Field label="Início do mandato" required>
+                <Field label="Início do mandato" required hint="Sugerido pelo mandato atual da obra; ajuste se precisar.">
                   <CampoData value={novo.dataInicioMandato} onChange={(_, d) => setNovo({ ...novo, dataInicioMandato: d.value })} />
                 </Field>
               </Campo>
@@ -231,7 +252,7 @@ export function MembrosCipaTab() {
             <FormRodape>
               <Button onClick={fecharPainel}>Cancelar</Button>
               <Button appearance="primary" onClick={criar} disabled={carregando}>
-                Cadastrar membro
+                Cadastrar representante
               </Button>
             </FormRodape>
           </FormSection>
