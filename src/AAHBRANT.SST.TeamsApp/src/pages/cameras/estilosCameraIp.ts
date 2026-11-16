@@ -33,6 +33,15 @@ export const useEstilosCameraIp = makeStyles({
     ':hover': { border: `2px solid ${designTokens.colorNeutralMedium}` },
     ':focus-visible': { outline: `2px solid ${designTokens.colorPrimary}`, outlineOffset: '2px' },
   },
+  // "Parte da imagem": três cartões lado a lado (um por linha em tela estreita).
+  opcoesTres: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: tokensUi.espaco.md,
+    [TABLET]: { gridTemplateColumns: 'minmax(0, 1fr)' },
+  },
+  glifo: { flexShrink: 0, marginLeft: 'auto', color: designTokens.colorNeutralMedium },
+  glifoAtivo: { color: designTokens.colorPrimary },
   opcAtiva: { border: `2px solid ${designTokens.colorPrimary}`, ':hover': { border: `2px solid ${designTokens.colorPrimary}` } },
   opcBloqueada: {
     opacity: 0.6,
@@ -138,6 +147,8 @@ export const useEstilosCameraIp = makeStyles({
     backgroundColor: designTokens.colorNeutralLight,
     flexShrink: 0,
   },
+  // Imagem inteira da câmera de duas lentes é mais alta que larga (cerca de 640 x 720): a miniatura ganha a proporção dela.
+  miniaturaAlta: { width: '133px', aspectRatio: 'auto', height: '150px' },
   miniaturaImg: { width: '100%', height: '100%', display: 'block', objectFit: 'cover' },
   carimboMiniatura: {
     position: 'absolute',
@@ -298,5 +309,40 @@ export const useEstilosCameraIp = makeStyles({
     textAlign: 'center',
     overflow: 'hidden',
   },
+  // Selo "Sem aviso no Telegram" (ao lado do nome, só com o interruptor desligado) e linha do nome com selo.
+  nomeComSelo: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 8px', minWidth: 0 },
+  seloSemTelegram: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '3px 10px',
+    borderRadius: tokensUi.raio.full,
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    backgroundColor: tokensUi.status.neutro.fundo,
+    color: tokensUi.status.neutro.tinta,
+    fontSize: '12px',
+    lineHeight: '16px',
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+  },
+
+  // ---- Botão "Ver ao vivo" e o motivo quando não dá para abrir ----
+  nota: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'flex-start',
+    padding: '8px 10px',
+    borderRadius: tokensUi.raio.sm,
+    fontSize: '12px',
+    lineHeight: '16px',
+    fontWeight: 600,
+  },
+  notaAtencao: { backgroundColor: tokensUi.status.atencao.fundo, color: tokensUi.status.atencao.tinta },
+  notaInfo: { backgroundColor: tokensUi.status.info.fundo, color: tokensUi.status.info.tinta },
+  notaNeutra: { backgroundColor: tokensUi.status.neutro.fundo, color: tokensUi.status.neutro.tinta },
+  notaIcone: { flexShrink: 0, width: '16px', height: '16px' },
+  // Botão apagado não recebe toque: o toque cai no invólucro, que mostra o motivo (balão) como no mockup.
+  aoVivoApagado: { pointerEvents: 'none' },
+  aoVivoInvolucro: { display: 'inline-flex', borderRadius: tokensUi.raio.full, ':focus-visible': { outline: `2px solid ${designTokens.colorPrimary}`, outlineOffset: '2px' } },
   reservaBotao: { display: 'inline-block', width: TOQUE, height: TOQUE, flexShrink: 0 },
 });

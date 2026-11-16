@@ -64,6 +64,21 @@ public class FuncoesController : ControllerBase
     public async Task<IActionResult> ListarSemTrabalhador(CancellationToken ct)
         => Ok(await _mediator.Send(new ListarFuncoesSemTrabalhadorQuery(), ct));
 
+    // Cor do capacete por função (padrão AAHBRANT): a sugestão sai do nome da função; quem grava é o aplicar,
+    // depois da conferência na tela. Mesma autorização de editar função.
+    [Authorize(Policy = "organizacional:editar")]
+    [HttpGet("cor-capacete/sugestoes")]
+    public async Task<IActionResult> ListarSugestoesCorCapacete(CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarSugestoesCorCapaceteQuery(), ct));
+
+    [Authorize(Policy = "organizacional:editar")]
+    [HttpPost("cor-capacete/aplicar")]
+    public async Task<IActionResult> AplicarCorCapacete([FromBody] List<AplicarCorCapaceteItem> itens, CancellationToken ct)
+    {
+        await _mediator.Send(new AplicarCorCapaceteFuncoesCommand(itens ?? new List<AplicarCorCapaceteItem>()), ct);
+        return NoContent();
+    }
+
     [Authorize(Policy = "organizacional:ver")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> ObterPorId(Guid id, CancellationToken ct)

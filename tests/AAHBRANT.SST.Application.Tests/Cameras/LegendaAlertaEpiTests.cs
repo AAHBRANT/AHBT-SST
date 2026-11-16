@@ -81,4 +81,67 @@ public class LegendaAlertaEpiTests
 
         Assert.EndsWith("\nTrabalhador não identificado", legenda);
     }
+
+    [Theory]
+    [InlineData("Beira Rio", "Obra Beira Rio ·")]
+    [InlineData("Obra Beira Rio", "Obra Beira Rio ·")]
+    [InlineData("obra beira rio", "obra beira rio ·")]
+    [InlineData("  Obra Beira Rio ", "Obra Beira Rio ·")]
+    public void NomeDaObra_NaoRepeteOPrefixoObra(string nome, string esperado)
+    {
+        var legenda = LegendaAlertaEpi.Montar(nome, "Betoneira", Momento, 1, 1, 0);
+
+        Assert.Contains("\n" + esperado + " Câmera Betoneira", legenda);
+        Assert.DoesNotContain("Obra Obra", legenda, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ItemNaoAvaliavel_AcrescentaLinhaDeNaoConferido()
+    {
+        var capacete = LegendaAlertaEpi.Montar("Beira Rio", "Betoneira", Momento, 1, 0, 1, capaceteNaoAvaliavel: 1);
+        var colete = LegendaAlertaEpi.Montar("Beira Rio", "Betoneira", Momento, 1, 1, 0, coleteNaoAvaliavel: 1);
+        var nenhum = LegendaAlertaEpi.Montar("Beira Rio", "Betoneira", Momento, 1, 1, 0);
+
+        Assert.EndsWith("\nTrabalhador não identificado\nCapacete não conferido em 1 pessoa", capacete);
+        Assert.EndsWith("\nTrabalhador não identificado\nColete não conferido em 1 pessoa", colete);
+        Assert.DoesNotContain("não conferido", nenhum);
+    }
+
+    [Fact]
+    public void Cena_ItemNaoAvaliavel_AcrescentaLinhaNoFinal()
+    {
+        var legenda = LegendaAlertaEpi.MontarCena("Beira Rio", "Portaria", Momento, 2, 1, 0, Array.Empty<IdentificadoNaCena>(), 1,
+            capaceteNaoAvaliavel: 1, coleteNaoAvaliavel: 2);
+
+        Assert.EndsWith(
+            "\nCapacete não conferido em 1 pessoa\nColete não conferido em 2 pessoas", legenda);
+    }
+
+    [Fact]
+    public void SemOculos_UsaTituloENaoConferidoTrazALinha()
+    {
+        var legenda = LegendaAlertaEpi.Montar("Beira Rio", "Betoneira", Momento, 2, 0, 0, null, 0, 0, semOculos: 1, oculosNaoAvaliavel: 1);
+
+        Assert.StartsWith("⚠️ EPI — pessoa sem óculos\n", legenda);
+        Assert.Contains("\n2 pessoas na cena, 1 sem óculos\n", legenda);
+        Assert.EndsWith("\nÓculos não conferido em 1 pessoa", legenda);
+    }
+
+    [Fact]
+    public void CapaceteColeteEOculos_TituloComVirgulaEE()
+    {
+        var legenda = LegendaAlertaEpi.Montar("Beira Rio", "Betoneira", Momento, 1, 1, 1, null, 0, 0, semOculos: 1);
+
+        Assert.StartsWith("⚠️ EPI — pessoa sem capacete, sem colete e sem óculos\n", legenda);
+    }
+
+    [Fact]
+    public void CenaComVariasPessoas_IdentificadoSemOculosApareceNaLista()
+    {
+        var legenda = LegendaAlertaEpi.MontarCena("Beira Rio", "Betoneira", Momento, 2, 0, 0,
+            new[] { new IdentificadoNaCena("João da Silva", false, false, SemOculos: true) }, 0, semOculos: 1, oculosNaoAvaliavel: 2);
+
+        Assert.Contains("Identificados pelo rosto: João da Silva (sem óculos)", legenda);
+        Assert.EndsWith("\nÓculos não conferido em 2 pessoas", legenda);
+    }
 }

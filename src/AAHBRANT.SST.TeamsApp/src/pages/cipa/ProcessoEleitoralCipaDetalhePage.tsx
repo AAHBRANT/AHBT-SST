@@ -14,8 +14,8 @@ import {
   FormRodape,
   FormSection,
   Input,
+  ListaSelecaoMultipla,
   PageHeader,
-  Select,
   StatusChip,
   Text,
   type Coluna,
@@ -34,6 +34,7 @@ import {
   type VotoApuradoCipa,
 } from '../../lib/api';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { PainelUrnaCipa } from './urna/PainelUrnaCipa';
 
 const tomPorStatusProcesso: Record<number, Tom> = {
   [StatusProcessoEleitoralCipa.Convocado]: 'neutro',
@@ -42,6 +43,7 @@ const tomPorStatusProcesso: Record<number, Tom> = {
   [StatusProcessoEleitoralCipa.VotacaoRealizada]: 'atencao',
   [StatusProcessoEleitoralCipa.Apurado]: 'ok',
   [StatusProcessoEleitoralCipa.Encerrado]: 'neutro',
+  [StatusProcessoEleitoralCipa.VotacaoAberta]: 'info',
 };
 
 const tomPorStatusCandidato: Record<number, Tom> = {
@@ -60,7 +62,8 @@ export function ProcessoEleitoralCipaDetalhePage() {
   const { id } = useParams<{ id: string }>();
   const [detalhe, setDetalhe] = useState<ProcessoEleitoralCipaDetalhe | null>(null);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
-  const [trabalhadorSelecionado, setTrabalhadorSelecionado] = useState('');
+  // 16/11: inscrição de vários candidatos de uma vez (pedido do usuário).
+  const [selecionados, setSelecionados] = useState<string[]>([]);
   const [votos, setVotos] = useState<Record<string, number>>({});
   const [dataInicioMandato, setDataInicioMandato] = useState('');
   const [dataFimMandato, setDataFimMandato] = useState('');
@@ -87,15 +90,17 @@ export function ProcessoEleitoralCipaDetalhePage() {
   }, [id]);
 
   async function inscrever() {
-    if (!id || !trabalhadorSelecionado) {
-      setErro('Selecione um funcionário para inscrever.');
+    if (!id || selecionados.length === 0) {
+      setErro('Selecione pelo menos um funcionário para inscrever.');
       return;
     }
     try {
       setProcessando(true);
       setErro(null);
-      await api.cipa.processosEleitorais.inscreverCandidato(id, trabalhadorSelecionado);
-      setTrabalhadorSelecionado('');
+      for (const trabalhadorId of selecionados) {
+        await api.cipa.processosEleitorais.inscreverCandidato(id, trabalhadorId);
+      }
+      setSelecionados([]);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao inscrever candidato.');
@@ -113,6 +118,24 @@ export function ProcessoEleitoralCipaDetalhePage() {
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao avaliar inscrição.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  // Aprova de uma vez todas as inscrições ainda pendentes.
+  async function deferirTodos() {
+    const pendentes = detalhe?.candidatos.filter((c) => c.status === StatusCandidatoCipa.Inscrito) ?? [];
+    if (pendentes.length === 0) return;
+    try {
+      setProcessando(true);
+      setErro(null);
+      for (const c of pendentes) {
+        await api.cipa.processosEleitorais.avaliarInscricao(c.id, true, null);
+      }
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao aprovar inscrições.');
     } finally {
       setProcessando(false);
     }
@@ -166,6 +189,10 @@ export function ProcessoEleitoralCipaDetalhePage() {
   }
 
   if (!id) return <FeedbackInline tom="erro">Processo eleitoral não encontrado.</FeedbackInline>;
+
+  // Urna (16/11): depois de encerrada a votação, os votos vêm contados da urna e não são digitados.
+  const votacaoNaUrna = detalhe?.processo.status === StatusProcessoEleitoralCipa.VotacaoRealizada && (detalhe?.candidatos.some((c) => c.votosRecebidos > 0) ?? false);
+  const urnaAberta = detalhe?.processo.status === StatusProcessoEleitoralCipa.VotacaoAberta;
 
   const jaApurado =
     detalhe?.processo.status === StatusProcessoEleitoralCipa.Apurado ||
@@ -253,33 +280,39 @@ export function ProcessoEleitoralCipaDetalhePage() {
             )}
           </Card>
 
-          {!jaApurado && (
+          <PainelUrnaCipa processoId={id} status={detalhe.processo.status} aoMudar={() => void carregar()} />
+
+          {!jaApurado && !urnaAberta && detalhe.processo.status !== StatusProcessoEleitoralCipa.VotacaoRealizada && (
             <Card titulo="Inscrever candidato">
               <FormSection titulo="Dados do Candidato" primeira>
-                <FormGrid>
-                  <Campo span={4}>
-                    <Field label="Funcionário">
-                      <Select value={trabalhadorSelecionado} onChange={(_, d) => setTrabalhadorSelecionado(d.value)}>
-                        <option value="">Selecione</option>
-                        {trabalhadores.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.matricula ? `${t.nome} (${t.matricula})` : t.nome}
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
-                  </Campo>
-                </FormGrid>
+                <ListaSelecaoMultipla
+                  aria-label="Funcionários para inscrever"
+                  placeholderBusca="Buscar funcionário..."
+                  opcoes={trabalhadores
+                    .filter((t) => !t.dataDemissao && !detalhe.candidatos.some((c) => c.trabalhadorId === t.id))
+                    .map((t) => ({ id: t.id, rotulo: t.matricula ? `${t.nome} (${t.matricula})` : t.nome }))}
+                  selecionados={selecionados}
+                  aoMudar={(atualizar) => setSelecionados(atualizar)}
+                />
                 <FormRodape>
-                  <Button appearance="primary" onClick={inscrever} disabled={processando}>
-                    Inscrever
+                  <Button appearance="primary" onClick={inscrever} disabled={processando || selecionados.length === 0}>
+                    {selecionados.length > 1 ? `Inscrever ${selecionados.length} candidatos` : 'Inscrever'}
                   </Button>
                 </FormRodape>
               </FormSection>
             </Card>
           )}
 
-          <Card titulo="Candidatos">
+          <Card
+            titulo="Candidatos"
+            acoes={
+              !jaApurado && detalhe.candidatos.some((c) => c.status === StatusCandidatoCipa.Inscrito) ? (
+                <Button appearance="primary" onClick={() => void deferirTodos()} disabled={processando}>
+                  Aprovar todos os inscritos
+                </Button>
+              ) : undefined
+            }
+          >
             <DataTable
               aria-label="Candidatos do processo eleitoral"
               colunas={colunasCandidatos}
@@ -289,7 +322,7 @@ export function ProcessoEleitoralCipaDetalhePage() {
             />
           </Card>
 
-          {!jaApurado && (
+          {!jaApurado && !urnaAberta && (
             <Card titulo="Apuração (manual)">
               <Text size={200} style={{ display: 'block', marginBottom: 12 }}>
                 Informe os votos recebidos por cada candidato deferido e o período do mandato. Ao
@@ -318,11 +351,15 @@ export function ProcessoEleitoralCipaDetalhePage() {
                     chave: 'votos',
                     rotulo: 'Votos',
                     render: (c: CandidatoCipa) => (
-                      <Input
-                        type="number"
-                        value={String(votos[c.id] ?? 0)}
-                        onChange={(_, d) => setVotos({ ...votos, [c.id]: Number(d.value) })}
-                      />
+                      votacaoNaUrna ? (
+                        <strong>{c.votosRecebidos}</strong>
+                      ) : (
+                        <Input
+                          type="number"
+                          value={String(votos[c.id] ?? 0)}
+                          onChange={(_, d) => setVotos({ ...votos, [c.id]: Number(d.value) })}
+                        />
+                      )
                     ),
                   },
                 ]}

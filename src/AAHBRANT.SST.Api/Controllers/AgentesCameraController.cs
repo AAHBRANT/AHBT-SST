@@ -42,6 +42,23 @@ namespace AAHBRANT.SST.Api.Controllers;
 //   400  corpo ilegível ou miniatura inválida.   401  igual acima.
 //   404  { "codigo": "teste_nao_encontrado" }: teste inexistente ou de outro agente.   429  limites.
 //
+// Contrato de EnviarQuadroAoVivo (POST {agenteId}/ao-vivo/{sessaoId}/quadros, corpo image/jpeg CRU até 300 KB, sem multipart;
+// cabeçalho X-Capturado-Em opcional, ISO 8601; ilegível ou no futuro além de 5 min = vale o horário do servidor):
+//   204  gravado: continuar.
+//   400  corpo vazio, fora de JPEG ou Content-Type diferente de image/jpeg.
+//   401  igual acima.
+//   404  { "codigo": "sessao_nao_encontrada" }: sessão inexistente, de outra obra OU de outro agente (indistinguíveis).
+//   410  { "codigo": "sessao_encerrada" }: o agente PARA já esta transmissão (tela fechou, tempo, inatividade, câmera desligada...).
+//   413  corpo acima do limite (300 KB, Cameras:AoVivo:TamanhoMaximoQuadroBytes).
+//   429  limite por IP (policy agente-camera-aovivo, própria e separada da análise) ou teto de quadros da sessão (fps x 60 x 1,2/min).
+//   Não há o limite por agente da análise (LimitadorAgenteCamera): a transmissão não pode consumir a cota dos quadros de EPI.
+//   Nenhuma resposta, de sucesso ou erro, carrega bytes de imagem; o quadro nunca vai para log.
+//
+// Contrato de RegistrarFalhaAoVivo (POST {agenteId}/ao-vivo/{sessaoId}/falha, application/json até 4 KB):
+//   corpo { "codigo": string?, "motivo": string? }: codigo de CodigosTesteConexaoCamera (outro vira erro_desconhecido); motivo é descartado.
+//   204  sessão encerrada com o código da falha (ou já estava encerrada).   400 corpo ilegível.   401 igual acima.
+//   404  { "codigo": "sessao_nao_encontrada" }.   429 limite por IP.
+//
 // Nenhuma resposta desta rota carrega dado de ocorrência ou de trabalhador além do ResultadoQuadroDto: não passa pelo
 // 409 de conflito do TratamentoDeExcecaoMiddleware, que devolve todas as colunas da linha (inclusive a foto).
 [ApiController]
@@ -52,6 +69,12 @@ public class AgentesCameraController : ControllerBase
     public const string CabecalhoVersao = "X-Agente-Versao";
     public const string CodigoCameraNaoEncontrada = "camera_nao_encontrada";
     public const string CodigoTesteNaoEncontrado = RegistrarResultadoTesteConexaoCameraCommandHandler.CodigoTesteNaoEncontrado;
+    public const string CodigoSessaoNaoEncontrada = RegistrarQuadroAoVivoAgenteCommandHandler.CodigoSessaoNaoEncontrada;
+    public const string CodigoSessaoEncerrada = "sessao_encerrada";
+
+    // Quadro ao vivo: JPEG cru de até 300 KB (teto duro do RequestSizeLimit; o valor configurável só pode ficar abaixo dele).
+    public const int LimiteCorpoQuadroAoVivoBytes = 307_200;
+    public const int LimiteCorpoFalhaAoVivoBytes = 4_096;
 
     // JSON do resultado do teste: miniatura de até 150 KB em base64 (~200 KB) mais o envelope.
     public const int LimiteCorpoResultadoTesteBytes = 262_144;
@@ -66,10 +89,13 @@ public class AgentesCameraController : ControllerBase
     private readonly IAgenteCameraAutenticador _autenticador;
     private readonly LimitadorAgenteCamera _limitador;
     private readonly ILogger<AgentesCameraController> _logger;
+    private readonly AoVivoCameraOpcoes _opcoesAoVivo;
 
     public AgentesCameraController(
-        IMediator mediator, IAgenteCameraAutenticador autenticador, LimitadorAgenteCamera limitador, ILogger<AgentesCameraController> logger)
+        IMediator mediator, IAgenteCameraAutenticador autenticador, LimitadorAgenteCamera limitador, ILogger<AgentesCameraController> logger,
+        Microsoft.Extensions.Options.IOptions<AoVivoCameraOpcoes>? opcoesAoVivo = null)
     {
+        _opcoesAoVivo = opcoesAoVivo?.Value ?? new AoVivoCameraOpcoes();
         _mediator = mediator;
         _autenticador = autenticador;
         _limitador = limitador;
@@ -230,7 +256,113 @@ public class AgentesCameraController : ControllerBase
         }
     }
 
+    // Ordem: limite por IP (antes da action) -> autenticação -> SÓ ENTÃO lê o corpo (quem não tem o segredo não faz o servidor
+    // bufferizar nada). A leitura é limitada ao tamanho máximo: acima dele responde 413 sem guardar o resto.
+    [AllowAnonymous]
+    [EnableRateLimiting("agente-camera-aovivo")]
+    [HttpPost("{agenteId:guid}/ao-vivo/{sessaoId:guid}/quadros")]
+    [RequestSizeLimit(LimiteCorpoQuadroAoVivoBytes)]
+    public async Task<IActionResult> EnviarQuadroAoVivo(Guid agenteId, Guid sessaoId, CancellationToken ct)
+    {
+        var segredo = Request.Headers[CabecalhoSegredo].ToString();
+        var agente = await _autenticador.ValidarAsync(agenteId, segredo, ct);
+        if (agente is null) return NaoAutorizado();
+
+        var tipo = Request.ContentType;
+        if (tipo is null || !tipo.StartsWith("image/jpeg", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { erro = "Envie o quadro como image/jpeg." });
+
+        var limite = Math.Min(Math.Max(1, _opcoesAoVivo.TamanhoMaximoQuadroBytes), LimiteCorpoQuadroAoVivoBytes);
+        if (Request.ContentLength is { } declarado && declarado > limite) return StatusCode(StatusCodes.Status413PayloadTooLarge);
+
+        byte[] jpeg;
+        try
+        {
+            using var memoria = new MemoryStream();
+            var buffer = new byte[16 * 1024];
+            int lidos;
+            while ((lidos = await Request.Body.ReadAsync(buffer, ct)) > 0)
+            {
+                if (memoria.Length + lidos > limite) return StatusCode(StatusCodes.Status413PayloadTooLarge);
+                memoria.Write(buffer, 0, lidos);
+            }
+            jpeg = memoria.ToArray();
+        }
+        catch (BadHttpRequestException ex) // corpo acima do limite (413) ou ilegível
+        {
+            return StatusCode(ex.StatusCode);
+        }
+        if (jpeg.Length == 0) return BadRequest(new { erro = "Envie o quadro." });
+
+        DateTime? capturadoEm = null;
+        var informada = Request.Headers["X-Capturado-Em"].ToString();
+        if (!string.IsNullOrWhiteSpace(informada)
+            && DateTimeOffset.TryParse(informada, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var c))
+            capturadoEm = c.UtcDateTime;
+
+        try
+        {
+            var resultado = await _mediator.Send(new RegistrarQuadroAoVivoAgenteCommand(
+                agente.Id, segredo, Request.Headers[CabecalhoVersao].ToString(), sessaoId, jpeg, capturadoEm), ct);
+            return resultado switch
+            {
+                ResultadoQuadroAoVivo.Continuar => NoContent(),
+                ResultadoQuadroAoVivo.SessaoEncerrada => StatusCode(StatusCodes.Status410Gone, new { codigo = CodigoSessaoEncerrada }),
+                ResultadoQuadroAoVivo.LimiteExcedido => StatusCode(StatusCodes.Status429TooManyRequests),
+                _ => NaoAutorizado(),
+            };
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { codigo = CodigoSessaoNaoEncontrada });
+        }
+        catch (FluentValidation.ValidationException ex)
+        {
+            return BadRequest(new { erro = string.Join(" ", ex.Errors.Select(e => e.ErrorMessage)) });
+        }
+    }
+
+    [AllowAnonymous]
+    [EnableRateLimiting("agente-camera-aovivo")]
+    [HttpPost("{agenteId:guid}/ao-vivo/{sessaoId:guid}/falha")]
+    [RequestSizeLimit(LimiteCorpoFalhaAoVivoBytes)]
+    public async Task<IActionResult> RegistrarFalhaAoVivo(Guid agenteId, Guid sessaoId, CancellationToken ct)
+    {
+        var segredo = Request.Headers[CabecalhoSegredo].ToString();
+        var agente = await _autenticador.ValidarAsync(agenteId, segredo, ct);
+        if (agente is null) return NaoAutorizado();
+
+        if (!Request.HasJsonContentType()) return BadRequest(new { erro = "Envie a falha como application/json." });
+        FalhaAoVivoRequest? corpo;
+        try
+        {
+            corpo = await Request.ReadFromJsonAsync<FalhaAoVivoRequest>(ct);
+        }
+        catch (BadHttpRequestException ex)
+        {
+            return StatusCode(ex.StatusCode);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return BadRequest(new { erro = "Corpo JSON inválido." });
+        }
+        if (corpo is null) return BadRequest(new { erro = "Informe a falha." });
+
+        try
+        {
+            var registrado = await _mediator.Send(new RegistrarFalhaAoVivoAgenteCommand(
+                agente.Id, segredo, Request.Headers[CabecalhoVersao].ToString(), sessaoId, corpo.Codigo, corpo.Motivo), ct);
+            return registrado ? NoContent() : NaoAutorizado();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { codigo = CodigoSessaoNaoEncontrada });
+        }
+    }
+
     private IActionResult NaoAutorizado() => Unauthorized(new { erro = "Agente não autorizado." });
 }
+
+public record FalhaAoVivoRequest(string? Codigo, string? Motivo);
 
 public record ResultadoTesteConexaoRequest(bool Sucesso, string? Motivo, string? Detalhe, string? MiniaturaBase64, string? Codigo = null);

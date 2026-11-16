@@ -55,7 +55,28 @@ public sealed record CameraConfig(
     int Canal,
     int Stream,
     string? ModeloUrl,
-    TimeSpan IntervaloEnvio);
+    TimeSpan IntervaloEnvio,
+    int ParteImagem = ParteImagemCamera.Inteira);
+
+// "Parte da imagem" da câmera: algumas (A31) entregam duas lentes empilhadas numa imagem só. O recorte é feito no
+// ffmpeg, antes de qualquer envio. Faz parte da configuração de leitura: mudar a parte reinicia a câmera.
+public static class ParteImagemCamera
+{
+    public const int Inteira = 0;
+    public const int MetadeSuperior = 1;
+    public const int MetadeInferior = 2;
+
+    /// <summary>Ausente ou fora de 0..2 vira 0 (imagem inteira).</summary>
+    public static int Normalizar(int valor) => valor is MetadeSuperior or MetadeInferior ? valor : Inteira;
+
+    /// <summary>Filtro de recorte do ffmpeg (sem vírgula final), ou null para a imagem inteira.</summary>
+    public static string? FiltroCrop(int parte) => Normalizar(parte) switch
+    {
+        MetadeSuperior => "crop=iw:ih/2:0:0",
+        MetadeInferior => "crop=iw:ih/2:0:ih/2",
+        _ => null,
+    };
+}
 
 public sealed record ResultadoConfiguracao(
     ConfiguracaoAgente? Configuracao,

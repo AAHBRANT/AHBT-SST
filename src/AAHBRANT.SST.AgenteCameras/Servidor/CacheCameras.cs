@@ -44,7 +44,8 @@ public sealed class CacheCameras
                 return Array.Empty<CameraConfig>();
             }
             _ultimoGravado = json;
-            return conteudo.Cameras;
+            // Cache gravado por versão sem a parte da imagem: o campo falta e vira 0 (a propriedade do record tem o padrão).
+            return conteudo.Cameras.Select(c => c with { ParteImagem = ParteImagemCamera.Normalizar(c.ParteImagem) }).ToList();
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or InvalidDataException
             or System.Security.Cryptography.CryptographicException or ArgumentException)

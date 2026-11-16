@@ -307,9 +307,21 @@ export interface Funcao {
   nome: string;
   cboCodigo?: string | null;
   descricao?: string | null;
+  // Cor do capacete esperada para a função (0 = sem padrão ... 6 = laranja; ver lib/corCapacete).
+  // Ausente em respostas antigas = 0.
+  corCapacete?: number;
 }
 
 export type NovaFuncao = Omit<Funcao, 'id'>;
+
+// Sugestão do padrão AAHBRANT por função (corSugerida 0 = o padrão não cobre a função).
+export interface SugestaoCorCapaceteApi {
+  funcaoId: string;
+  nome: string;
+  corAtual?: number;
+  corSugerida?: number;
+  grupo?: string | null;
+}
 
 export interface FuncaoDuplicada {
   id: string;
@@ -2818,12 +2830,24 @@ export interface CameraResumo {
   situacaoConexao?: string | null;
   ultimoQuadroRecebidoEmUtc?: string | null;
   mensagemConexao?: string | null;
+  // Respostas antigas (cache do service worker) não trazem estes dois: sem o campo vale 0 (imagem inteira) e true.
+  parteImagem?: number;
+  avisarTelegram?: boolean;
+  // Regras de alerta (Fase 2). Respostas antigas não trazem: sem o campo valem 3 s, 3 s, 3 s, 300 s e modo sombra desligado.
+  persistenciaCapaceteSegundos?: number;
+  persistenciaColeteSegundos?: number;
+  persistenciaOculosSegundos?: number;
+  naoRepetirSegundos?: number;
+  modoSombra?: boolean;
 }
 
 // De onde vem a imagem da câmera. A API serializa enums como número.
 export const FonteCamera = { Navegador: 0, Rtsp: 1 } as const;
 // Qualidade da imagem da câmera IP: stream 0 = principal, 1 = secundária (mais leve, recomendada).
 export const StreamCamera = { Principal: 0, Secundaria: 1 } as const;
+// Parte da imagem usada pela câmera IP: a câmera de duas lentes entrega as duas vistas empilhadas numa imagem só.
+export const ParteImagemCamera = { Inteira: 0, MetadeSuperior: 1, MetadeInferior: 2 } as const;
+export type ParteImagemCameraValor = (typeof ParteImagemCamera)[keyof typeof ParteImagemCamera];
 
 export interface DadosCamera {
   obraId: string;
@@ -2837,6 +2861,15 @@ export interface DadosCamera {
   equipamentoCameraId?: string | null;
   canal?: number | null;
   stream?: number | null;
+  // Ausentes = o servidor assume 0 (imagem inteira) e true. parteImagem só vale para câmera IP.
+  parteImagem?: number;
+  avisarTelegram?: boolean;
+  // Ausentes na edição = o servidor não muda. Na criação, o servidor assume 3, 3, 3, 300 e modo sombra ligado.
+  persistenciaCapaceteSegundos?: number;
+  persistenciaColeteSegundos?: number;
+  persistenciaOculosSegundos?: number;
+  naoRepetirSegundos?: number;
+  modoSombra?: boolean;
 }
 
 // Agente de câmeras: programa instalado no PC da obra que lê as câmeras pela rede local. Nunca traz o segredo.
@@ -2904,6 +2937,39 @@ export interface TesteConexaoCamera {
   concluidoEmUtc: string | null;
 }
 
+// "Ver ao vivo" (câmera IP, imagem JPEG em sequência, nada gravado). As recusas e os encerramentos são tratados
+// SEMPRE pelo código estável que o servidor envia, nunca pelo texto.
+export interface SessaoAoVivoCamera {
+  sessaoId: string;
+  situacao: 'Aguardando' | 'AoVivo';
+  fps: number;
+  encerraEmSegundos: number;
+}
+
+export type ResultadoIniciarAoVivo =
+  | { ok: true; sessao: SessaoAoVivoCamera }
+  // status 404 = câmera fora do escopo; 409/429 trazem o código (nao_e_camera_ip, camera_desabilitada, agente_revogado,
+  // agente_sem_contato, agente_desatualizado, limite_sessoes).
+  | { ok: false; status: number; codigo: string | null };
+
+export type ResultadoQuadroAoVivo =
+  | { tipo: 'quadro'; imagem: Blob; sequencia: number | null; capturadoEm: string | null }
+  | { tipo: 'semNovo' }
+  | { tipo: 'aguardando' }
+  // motivo: inatividade, tempo_maximo, encerrada, agente_sem_resposta ou falha:<codigo>.
+  | { tipo: 'encerrada'; motivo: string | null }
+  | { tipo: 'erro'; status: number };
+
+async function lerCampoJson(response: Response, campo: 'codigo' | 'motivo'): Promise<string | null> {
+  try {
+    const json = (await response.json()) as Record<string, unknown>;
+    const valor = json[campo];
+    return typeof valor === 'string' ? valor : null;
+  } catch {
+    return null;
+  }
+}
+
 export type SituacaoQuadro = 'ignorado' | 'limpo' | 'ocorrencia' | 'falha';
 
 export interface ResultadoQuadro {
@@ -2918,6 +2984,15 @@ export interface ResultadoQuadro {
   trabalhadorNome?: string | null;
   // true = nenhuma ocorrência nova: a irregularidade foi somada a uma ocorrência já aberta.
   repetida?: boolean;
+  // Pessoas cujo capacete/colete não foi avaliado porque a parte do corpo não aparece na imagem.
+  // Não entram em semCapacete/semColete e nunca geram ocorrência sozinhos. Ausentes em respostas antigas.
+  capaceteNaoAvaliavel?: number;
+  coleteNaoAvaliavel?: number;
+  // Óculos de proteção: não conforme e não avaliável (longe, de costas). Ausentes = 0.
+  semOculos?: number;
+  oculosNaoAvaliavel?: number;
+  // true = só a cor do capacete foge da função (aviso de padrão, sem Telegram). Ausente = false.
+  avisoCorCapacete?: boolean;
 }
 
 export interface OcorrenciaEpi {
@@ -2943,6 +3018,23 @@ export interface OcorrenciaEpi {
   // Repetições da mesma irregularidade somadas nesta ocorrência (1 = vista uma única vez) e a última vez.
   vezesVista: number;
   ultimaVezEmUtc: string | null;
+  // Campos de óculos e de cor do capacete. Ausentes em respostas antigas = 0 / false / null.
+  semOculos?: number;
+  // true = ocorrência só de cor (aviso de padrão, gravidade menor, sem Telegram).
+  avisoCorCapacete?: boolean;
+  corCapaceteVista?: number | null;
+  corCapaceteEsperada?: number | null;
+  // Função do trabalhador identificado (base do "esperado amarelo (Pedreiro)").
+  funcaoNome?: string | null;
+  // Pessoas não conferidas (cabeça ou tronco fora da imagem, longe, de costas). Ausentes = 0.
+  capaceteNaoAvaliavel?: number;
+  coleteNaoAvaliavel?: number;
+  oculosNaoAvaliavel?: number;
+  // Confirmação e modo sombra (Fase 2). Ausentes em respostas antigas: confirmada = true, sombra = false.
+  confirmada?: boolean;
+  sombra?: boolean;
+  // Segundos em que a irregularidade ficou à vista até confirmar (ou até expirar, se não confirmou).
+  segundosObservados?: number | null;
 }
 
 export interface FiltroOcorrenciasEpi {
@@ -2951,6 +3043,11 @@ export interface FiltroOcorrenciasEpi {
   de?: string;
   ate?: string;
   situacao?: number;
+  // Só ocorrências que tenham este item: capacete, colete, oculos ou cor (cor do capacete).
+  tipo?: 'capacete' | 'colete' | 'oculos' | 'cor';
+  // sombra = só as registradas em modo sombra; aviso = só as de câmera com aviso; naoConfirmadas = só as que não se
+  // confirmaram. Ausente = todas (o servidor esconde as não confirmadas de câmera fora do modo sombra).
+  registro?: 'sombra' | 'aviso' | 'naoConfirmadas';
 }
 
 export const StatusItemChecklist = {
@@ -4913,6 +5010,7 @@ export const StatusProcessoEleitoralCipa = {
   VotacaoRealizada: 4,
   Apurado: 5,
   Encerrado: 6,
+  VotacaoAberta: 7,
 } as const;
 
 export const statusProcessoEleitoralCipaLabel: Record<number, string> = {
@@ -4922,7 +5020,41 @@ export const statusProcessoEleitoralCipaLabel: Record<number, string> = {
   4: 'Votação realizada',
   5: 'Apurado',
   6: 'Encerrado',
+  7: 'Votação aberta',
 };
+
+// Urna biométrica da CIPA (16/11/2026) — ver UrnaCipaCommands.cs. Sem fila offline: voto só com rede.
+export interface CandidatoUrnaCipa {
+  candidatoId: string;
+  trabalhadorId: string;
+  nome: string;
+  funcao: string;
+  temFoto: boolean;
+}
+export interface UrnaCipa {
+  processoEleitoralId: string;
+  obraId: string;
+  obraNome: string;
+  numeroDocumento: string | null;
+  status: number;
+  votacaoAbertaEmUtc: string | null;
+  votacaoEncerradaEmUtc: string | null;
+  totalEleitoresAptos: number;
+  totalVotantes: number;
+  candidatos: CandidatoUrnaCipa[];
+}
+export interface CedulaCipa {
+  cedulaId: string;
+  eleitorNome: string;
+  eleitorFuncao: string;
+  expiraEmUtc: string;
+}
+export interface ResultadoEncerramentoCipa {
+  apurado: boolean;
+  votantes: number;
+  aptos: number;
+  mensagem: string;
+}
 
 export const StatusCandidatoCipa = {
   Inscrito: 1,
@@ -4989,6 +5121,48 @@ export const statusReuniaoCipaLabel: Record<number, string> = {
   2: 'Realizada',
   3: 'Ata registrada',
 };
+
+// Situação da CIPA por obra — ver ObterSituacaoCipaPorObraQuery (backend). Empregados = CLT ativos
+// contados do cadastro; terceirizados aparecem só como informação.
+export const SituacaoCipaObraTipo = {
+  PrecisaDeCipa: 1,
+  ConvocarEleicao: 2,
+  NomearRepresentante: 3,
+  EleicaoEmAndamento: 4,
+  RepresentanteNomeado: 5,
+  CipaAtiva: 6,
+} as const;
+export type SituacaoCipaObraTipo = (typeof SituacaoCipaObraTipo)[keyof typeof SituacaoCipaObraTipo];
+
+export const situacaoCipaObraLabel: Record<number, string> = {
+  1: 'Precisa de CIPA',
+  2: 'Convocar eleição',
+  3: 'Nomear representante',
+  4: 'Eleição em andamento',
+  5: 'Representante nomeado',
+  6: 'CIPA ativa',
+};
+
+export interface SituacaoCipaObra {
+  obraId: string;
+  obraNome: string;
+  obraCodigo: string;
+  empregadosAtivos: number;
+  terceirizadosAtivos: number;
+  terceirosExigemRepresentante: boolean;
+  situacao: SituacaoCipaObraTipo;
+  membrosComMandatoVigente: number;
+  fimMandatoVigente: string | null;
+  processoEleitoralId: string | null;
+  statusProcessoEleitoral: number | null;
+  dataVotacao: string | null;
+  ultimoDimensionamentoData: string | null;
+  ultimoDimensionamentoFuncionarios: number | null;
+  ultimoDimensionamentoGrauRisco: number | null;
+  titularesDimensionados: number | null;
+  suplentesDimensionados: number | null;
+  dimensionamentoDesatualizado: boolean;
+}
 
 export interface DimensionamentoCipa {
   id: string;
@@ -5867,6 +6041,23 @@ export const api = {
       request<FuncaoInativaComTrabalhador[]>('/api/funcoes/inativas-com-trabalhador'),
     reativar: (id: string) => request<void>(`/api/funcoes/${id}/reativar`, { method: 'POST' }),
     listarSemTrabalhador: () => request<FuncaoSemTrabalhador[]>('/api/funcoes/sem-trabalhador'),
+    // Sugestão do padrão AAHBRANT de cor do capacete por função; nada é salvo aqui.
+    // Altera os dados da função; corCapacete é opcional no servidor (ausente = não muda).
+    atualizarCorCapacete: (funcao: Funcao, cor: number) =>
+      request<void>(`/api/funcoes/${funcao.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          id: funcao.id,
+          nome: funcao.nome,
+          cboCodigo: funcao.cboCodigo ?? null,
+          descricao: funcao.descricao ?? null,
+          corCapacete: cor,
+        }),
+      }),
+    listarSugestoesCorCapacete: () => request<SugestaoCorCapaceteApi[]>('/api/funcoes/cor-capacete/sugestoes'),
+    // Grava a cor escolhida nas funções informadas (204).
+    aplicarCorCapacete: (itens: { funcaoId: string; cor: number }[]) =>
+      request<void>('/api/funcoes/cor-capacete/aplicar', { method: 'POST', body: JSON.stringify(itens) }),
     // Com obraId: a matriz que vale para a obra (a dela, ou a antiga enquanto ela não tiver a própria).
     listarEpis: (funcaoId: string, obraId?: string) =>
       request<CatalogoEpi[]>(`/api/funcoes/${funcaoId}/epis${obraId ? `?obraId=${encodeURIComponent(obraId)}` : ''}`),
@@ -7135,11 +7326,87 @@ export const api = {
     // "Testar conexão": só cria o pedido (202 com o id); o agente executa e a tela consulta o resultado.
     testarConexaoDaCamera: (cameraId: string) =>
       request<{ id: string }>(`/api/cameras/${cameraId}/teste-conexao`, { method: 'POST' }),
-    testarConexaoDoEquipamento: (equipamentoId: string, canal: number, stream: number) =>
+    // parteImagem vai junto para a miniatura do teste sair recortada mesmo antes de salvar.
+    testarConexaoDoEquipamento: (equipamentoId: string, canal: number, stream: number, parteImagem = 0) =>
       request<{ id: string }>(`/api/cameras/equipamentos/${equipamentoId}/teste-conexao`, {
         method: 'POST',
-        body: JSON.stringify({ canal, stream }),
+        body: JSON.stringify({ canal, stream, parteImagem }),
       }),
+
+    // "Ver ao vivo": fetch direto (e não request) porque o quadro é imagem e os códigos de recusa precisam chegar à tela.
+    // Nenhuma URL carrega token; a autenticação vai só no cabeçalho.
+    aoVivo: {
+      iniciar: async (
+        cameraId: string,
+        signal?: AbortSignal,
+        aoAutenticar?: (headers: Record<string, string>) => void,
+      ): Promise<ResultadoIniciarAoVivo> => {
+        const headers = await montarHeadersAuth();
+        aoAutenticar?.(headers);
+        const response = await fetch(`${API_BASE_URL}/api/cameras/${cameraId}/ao-vivo`, {
+          method: 'POST',
+          headers,
+          signal,
+        });
+        if (response.ok) return { ok: true, sessao: (await response.json()) as SessaoAoVivoCamera };
+        if (response.status === 404 || response.status === 409 || response.status === 429) {
+          return { ok: false, status: response.status, codigo: await lerCampoJson(response, 'codigo') };
+        }
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      },
+      quadro: async (
+        sessaoId: string,
+        apos: number | null,
+        signal?: AbortSignal,
+        aoAutenticar?: (headers: Record<string, string>) => void,
+      ): Promise<ResultadoQuadroAoVivo> => {
+        const qs = apos === null ? '' : `?apos=${apos}`;
+        let response: Response;
+        try {
+          const headers = await montarHeadersAuth();
+          aoAutenticar?.(headers);
+          response = await fetch(`${API_BASE_URL}/api/cameras/ao-vivo/${sessaoId}/quadro${qs}`, {
+            headers,
+            cache: 'no-store',
+            signal,
+          });
+        } catch (e) {
+          if (e instanceof DOMException && e.name === 'AbortError') throw e;
+          return { tipo: 'erro', status: 0 };
+        }
+        if (response.status === 200) {
+          const cabecalho = response.headers.get('X-Quadro-Sequencia');
+          const sequencia = cabecalho === null ? NaN : Number(cabecalho);
+          return {
+            tipo: 'quadro',
+            imagem: await response.blob(),
+            sequencia: Number.isFinite(sequencia) ? sequencia : null,
+            capturadoEm: response.headers.get('X-Capturado-Em'),
+          };
+        }
+        if (response.status === 204) return { tipo: 'semNovo' };
+        if (response.status === 202) return { tipo: 'aguardando' };
+        if (response.status === 410) return { tipo: 'encerrada', motivo: await lerCampoJson(response, 'motivo') };
+        // 404 (a sessão não existe mais) conta como encerrada; o resto é falha passageira (rede, 5xx, 429).
+        if (response.status === 404) return { tipo: 'encerrada', motivo: 'encerrada' };
+        return { tipo: 'erro', status: response.status };
+      },
+      // keepalive: a requisição termina mesmo se a página estiver fechando. Falha aqui é ignorada (o servidor encerra sozinho).
+      // Com cabecalhos (os do último pedido, guardados em memória) o fetch sai na hora, sem await antes: é o que funciona
+      // no pagehide. Sem eles, busca o token (pode não dar tempo se a página já estiver fechando).
+      encerrar: async (sessaoId: string, cabecalhos?: Record<string, string>): Promise<void> => {
+        try {
+          await fetch(`${API_BASE_URL}/api/cameras/ao-vivo/${sessaoId}/encerrar`, {
+            method: 'POST',
+            headers: cabecalhos ?? (await montarHeadersAuth()),
+            keepalive: true,
+          });
+        } catch {
+          // Sem rede ou página fechando: o servidor encerra por inatividade em 60 s.
+        }
+      },
+    },
     // A miniatura vem só na primeira consulta depois da resposta do agente: quem chama guarda na memória.
     obterTesteConexao: (id: string) => request<TesteConexaoCamera>(`/api/cameras/testes-conexao/${id}`),
 
@@ -7159,6 +7426,8 @@ export const api = {
       if (filtro.de) qs.set('de', filtro.de);
       if (filtro.ate) qs.set('ate', filtro.ate);
       if (filtro.situacao) qs.set('situacao', String(filtro.situacao));
+      if (filtro.tipo) qs.set('tipo', filtro.tipo);
+      if (filtro.registro) qs.set('registro', filtro.registro);
       const s = qs.toString();
       return request<OcorrenciaEpi[]>(`/api/cameras/ocorrencias${s ? `?${s}` : ''}`);
     },
@@ -7861,9 +8130,38 @@ export const api = {
     dimensionamento: {
       listar: (obraId?: string) =>
         request<DimensionamentoCipa[]>(`/api/dimensionamentocipa${obraId ? `?obraId=${obraId}` : ''}`),
+      situacaoObras: () => request<SituacaoCipaObra[]>('/api/dimensionamentocipa/situacao-obras'),
       criar: (dados: NovoDimensionamentoCipa) =>
         request<{ id: string }>('/api/dimensionamentocipa', { method: 'POST', body: JSON.stringify(dados) }),
       excluir: (id: string) => request<void>(`/api/dimensionamentocipa/${id}`, { method: 'DELETE' }),
+    },
+    urna: {
+      obter: (id: string) => requestOnline<UrnaCipa>(`/api/processoseleitoraiscipa/${id}/urna`),
+      foto: (id: string, candidatoId: string) => baixarBlobOuNulo(`/api/processoseleitoraiscipa/${id}/urna/candidatos/${candidatoId}/foto`),
+      abrir: (id: string) =>
+        requestOnline<{ totalEleitoresAptos: number }>(`/api/processoseleitoraiscipa/${id}/urna/abrir`, { method: 'POST' }),
+      encerrar: (id: string) =>
+        requestOnline<ResultadoEncerramentoCipa>(`/api/processoseleitoraiscipa/${id}/urna/encerrar`, { method: 'POST' }),
+      identificarDigital: (id: string, trabalhadorId: string, credencial: CredencialLeitura, score: number) =>
+        requestOnline<CedulaCipa>(`/api/processoseleitoraiscipa/${id}/urna/identificar/digital`, {
+          method: 'POST',
+          body: JSON.stringify({ trabalhadorId, ...credencial, score }),
+        }),
+      identificarFacial: (id: string, foto: File) => {
+        const formData = new FormData();
+        formData.append('foto', foto);
+        return enviarFormulario<CedulaCipa>(`/api/processoseleitoraiscipa/${id}/urna/identificar/facial`, formData);
+      },
+      liberarMesario: (id: string, trabalhadorId: string) =>
+        requestOnline<CedulaCipa>(`/api/processoseleitoraiscipa/${id}/urna/identificar/mesario`, {
+          method: 'POST',
+          body: JSON.stringify({ trabalhadorId }),
+        }),
+      votar: (id: string, cedulaId: string, candidatoId: string) =>
+        requestOnline<{ totalVotantes: number }>(`/api/processoseleitoraiscipa/${id}/urna/votar`, {
+          method: 'POST',
+          body: JSON.stringify({ cedulaId, candidatoId }),
+        }),
     },
     processosEleitorais: {
       listar: (obraId?: string) =>

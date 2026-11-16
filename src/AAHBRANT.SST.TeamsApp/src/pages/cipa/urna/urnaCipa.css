@@ -1,0 +1,73 @@
+/* Urna da CIPA — tela cheia sobre o app (tablet do canteiro). Paleta AAHBRANT; tema fixo claro de
+   propósito (a urna é um equipamento, não segue o tema escuro do Teams). */
+.urna-raiz{position:fixed;inset:0;z-index:1000;background:#fbfaf6;color:#1a1414;font-family:Inter,'Segoe UI',system-ui,sans-serif;display:flex;flex-direction:column;container-type:inline-size;user-select:none;-webkit-user-select:none}
+.urna-raiz button{font-family:inherit}
+.urna-barra{flex:none;background:#670000;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px max(16px,3cqi);padding-top:max(10px,env(safe-area-inset-top,0px))}
+.urna-barra-t{display:flex;align-items:center;gap:10px;min-width:0}
+.urna-barra-t div{display:flex;flex-direction:column;min-width:0}
+.urna-barra-t b{font-size:clamp(14px,2cqi,18px)}
+.urna-barra-t small{opacity:.8;font-size:clamp(11px,1.4cqi,13px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.urna-logo{width:40px;height:30px;border-radius:6px;border:2px solid #ebe9ad;display:grid;place-items:center;font-weight:700;font-size:10px;color:#ebe9ad;flex:none}
+.urna-barra-d{display:flex;align-items:center;gap:12px}
+.urna-cnt{font-weight:700;color:#ebe9ad;font-variant-numeric:tabular-nums;font-size:clamp(12px,1.6cqi,15px);white-space:nowrap}
+.urna-sair{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer}
+.urna-view{flex:1;min-height:0;display:flex;flex-direction:column;padding:max(16px,3cqi);position:relative;animation:urna-fade .25s ease-out}
+@keyframes urna-fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.urna-espera,.urna-msg,.urna-fim{align-items:center;justify-content:center;text-align:center;gap:max(12px,2.2cqi)}
+.urna-espera{background:radial-gradient(ellipse at 50% 60%,#fff 0%,#f3eee6 70%)}
+.urna-espera h2,.urna-msg h2{font-size:clamp(22px,4cqi,40px);margin:0}
+.urna-espera p,.urna-msg p{margin:0;color:#6b5f5f;font-size:clamp(14px,1.8cqi,18px);max-width:42ch}
+.urna-sensor{width:clamp(120px,20cqi,200px);aspect-ratio:1;border-radius:50%;background:#fff;border:3px solid #670000;display:grid;place-items:center;position:relative;box-shadow:0 10px 30px rgba(103,0,0,.15)}
+.urna-sensor svg{width:46%;height:46%;stroke:#670000}
+.urna-sensor::before,.urna-sensor::after{content:"";position:absolute;inset:-14px;border-radius:50%;border:2px solid #670000;opacity:0;animation:urna-ping 2.2s infinite}
+.urna-sensor::after{animation-delay:1.1s}
+.urna-sensor.sem-leitor{opacity:.35}
+.urna-sensor.sem-leitor::before,.urna-sensor.sem-leitor::after{display:none}
+@keyframes urna-ping{0%{transform:scale(.85);opacity:.5}100%{transform:scale(1.25);opacity:0}}
+.urna-sensor.lendo{border-color:#1f7a3d}.urna-sensor.lendo svg{stroke:#1f7a3d}
+.urna-scan{position:absolute;left:12%;right:12%;height:3px;background:#1f7a3d;border-radius:2px;top:20%;opacity:0;box-shadow:0 0 12px #1f7a3d}
+.urna-sensor.lendo .urna-scan{opacity:1;animation:urna-scan .9s ease-in-out infinite alternate}
+@keyframes urna-scan{to{top:78%}}
+.urna-alt{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:center}
+.urna-btn-rosto{border:2px solid #670000;background:#fff;color:#670000;border-radius:12px;padding:14px 24px;font-weight:700;font-size:clamp(15px,2cqi,19px);cursor:pointer}
+.urna-btn-link{border:0;background:transparent;color:#6b5f5f;text-decoration:underline;font-size:14px;cursor:pointer;padding:10px}
+.urna-ola{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:max(12px,2cqi)}
+.urna-ola h2{font-size:clamp(18px,2.8cqi,28px);margin:0}
+.urna-ola small{color:#6b5f5f;font-size:clamp(12px,1.5cqi,15px)}
+.urna-grade{flex:1;min-height:0;overflow-y:auto;display:grid;gap:max(10px,1.8cqi);grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));align-content:center;padding:4px}
+@container (max-width:640px){.urna-grade{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.urna-cand{border:3px solid transparent;background:#fff;border-radius:16px;padding:max(10px,1.6cqi) 8px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;color:#1a1414;box-shadow:0 4px 14px rgba(0,0,0,.07);transition:transform .18s,opacity .18s,box-shadow .18s,border-color .18s;min-width:0}
+.urna-cand:focus-visible{outline:3px solid #670000;outline-offset:3px}
+.urna-cand b{font-size:clamp(14px,2cqi,20px);text-align:center}
+.urna-cand small{color:#6b5f5f;font-size:clamp(11px,1.4cqi,14px);text-align:center}
+.urna-grade.sel .urna-cand{opacity:.28;transform:scale(.97)}
+.urna-grade.sel .urna-cand.on{opacity:1;transform:scale(1.06);border-color:#670000;box-shadow:0 14px 34px rgba(103,0,0,.3)}
+.urna-foto{width:clamp(64px,12cqi,132px);aspect-ratio:1;border-radius:50%;object-fit:cover;display:grid;place-items:center;font-weight:700;font-size:clamp(20px,3.6cqi,38px);color:#fff;border:3px solid #fff;box-shadow:0 0 0 2px #e2dbd7}
+.urna-grade.sel .urna-cand.on .urna-foto{box-shadow:0 0 0 3px #e9c66b}
+.urna-sheet{position:absolute;inset:0;background:rgba(26,8,8,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:2}
+.urna-card{background:#fff;border-radius:20px;width:min(92%,520px);padding:24px 24px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;border-top:8px solid #670000;animation:urna-pop .2s ease-out}
+@keyframes urna-pop{from{transform:scale(.9);opacity:0}to{transform:none;opacity:1}}
+.urna-louro{position:relative;width:clamp(140px,24cqi,210px);aspect-ratio:1;display:grid;place-items:center}
+.urna-louro-svg{position:absolute;inset:0;width:100%;height:100%}
+.urna-foto.grande{width:66%;font-size:clamp(28px,5cqi,52px);border:4px solid #e9c66b;box-shadow:0 0 0 2px #670000}
+.urna-card h3{font-size:clamp(20px,3cqi,30px);margin:0}
+.urna-fn{color:#6b5f5f;font-size:clamp(14px,1.8cqi,17px)}
+.urna-q{font-size:clamp(13px,1.6cqi,15px);margin-top:4px}
+.urna-acts{display:grid;grid-template-columns:1fr 1.6fr;gap:12px;width:100%;margin-top:12px}
+.urna-acts button{border:0;border-radius:12px;padding:clamp(14px,2.2cqi,22px) 8px;font-weight:700;font-size:clamp(16px,2.2cqi,22px);letter-spacing:.06em;cursor:pointer}
+.urna-acts button:disabled{opacity:.6}
+.urna-corr{background:#e0a400;color:#1a1414}
+.urna-conf{background:#1f7a3d;color:#fff;box-shadow:0 6px 18px rgba(31,122,61,.35)}
+.urna-fim{background:#1f7a3d;color:#fff}
+.urna-fim p{margin:0;font-size:clamp(16px,2.2cqi,22px)}
+.urna-fim small{opacity:.85}
+.urna-big{font-weight:700;font-size:clamp(72px,16cqi,170px);letter-spacing:.08em;line-height:1}
+.urna-check{width:clamp(60px,9cqi,90px);aspect-ratio:1;border-radius:50%;background:#fff;color:#1f7a3d;display:grid;place-items:center;font-weight:700;font-size:clamp(30px,5cqi,50px)}
+.urna-ic{width:clamp(76px,12cqi,120px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:clamp(32px,6cqi,60px);color:#fff}
+.urna-mesario{align-items:center;gap:12px}
+.urna-mesario h2{margin:0}
+.urna-mesario p{margin:0;color:#6b5f5f}
+.urna-busca{width:min(100%,480px);font-size:18px;padding:12px 14px;border-radius:10px;border:2px solid #d8cfcb}
+.urna-lista{width:min(100%,480px);flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.urna-lista button{text-align:left;padding:12px 14px;border-radius:10px;border:1px solid #e2dbd7;background:#fff;font-size:16px;cursor:pointer}
+@media (prefers-reduced-motion:reduce){.urna-raiz *{animation:none!important;transition:none!important}}

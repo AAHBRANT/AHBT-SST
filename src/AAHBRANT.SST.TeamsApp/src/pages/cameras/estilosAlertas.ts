@@ -42,7 +42,22 @@ export const useEstilosAlertas = makeStyles({
   apoio: { color: designTokens.colorNeutralMedium },
   telegram: { display: 'inline-flex', alignItems: 'center', gap: tokensUi.espaco.sm },
   telegramOk: { color: tokensUi.status.ok.tinta },
+  telegramNeutro: { color: designTokens.colorNeutralMedium },
   telegramAviso: { color: tokensUi.status.atencao.tinta },
+  linhaNaoConferido: { marginTop: tokensUi.espaco.sm },
+  // Aviso de padrão (cor do capacete): âmbar, gravidade menor que a falta de EPI (vermelho).
+  avisoPadrao: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokensUi.espaco.md,
+    padding: `${tokensUi.espaco.md} ${tokensUi.espaco.md}`,
+    borderRadius: tokensUi.raio.sm,
+    backgroundColor: tokensUi.status.atencao.fundo,
+    border: `1px solid color-mix(in srgb, ${tokensUi.status.atencao.tinta} 35%, transparent)`,
+    color: tokensUi.status.atencao.tinta,
+    fontWeight: 700,
+  },
+  avisoPadraoApoio: { display: 'block', fontWeight: 500, marginTop: '2px' },
   faixaTrabalhador: {
     display: 'flex',
     flexDirection: 'column',

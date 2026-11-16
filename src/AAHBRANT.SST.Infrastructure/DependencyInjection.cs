@@ -76,6 +76,8 @@ public static class DependencyInjection
         if (!string.IsNullOrWhiteSpace(chaveCredenciaisCamera))
             CredencialCameraCriptografiaContexto.Configurar(Convert.FromBase64String(chaveCredenciaisCamera));
         services.AddScoped<AAHBRANT.SST.Application.Cameras.ICredencialCameraCriptografia, CredencialCameraCriptografiaService>();
+        services.Configure<AAHBRANT.SST.Application.Cameras.AoVivoCameraOpcoes>(
+            configuration.GetSection(AAHBRANT.SST.Application.Cameras.AoVivoCameraOpcoes.Secao));
 
         services.AddHttpClient();
         services.Configure<AAHBRANT.SST.Application.Integracoes.OpcoesIntegracao>(

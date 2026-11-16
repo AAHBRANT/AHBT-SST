@@ -127,6 +127,7 @@ public interface IAppDbContext
     DbSet<AgenteCamera> AgentesCamera { get; }
     DbSet<EquipamentoCamera> EquipamentosCamera { get; }
     DbSet<TesteConexaoCamera> TestesConexaoCamera { get; }
+    DbSet<SessaoAoVivoCamera> SessoesAoVivoCamera { get; }
     DbSet<OrdemServico> OrdensServico { get; }
     DbSet<TemaInspecao> TemasInspecao { get; }
     DbSet<ItemInspecionavel> ItensInspecionaveis { get; }
@@ -180,6 +181,8 @@ public interface IAppDbContext
 
     DbSet<DimensionamentoCipa> DimensionamentosCipa { get; }
     DbSet<ProcessoEleitoralCipa> ProcessosEleitoraisCipa { get; }
+    DbSet<EleitorCipa> EleitoresCipa { get; }
+    DbSet<VotoCipa> VotosCipa { get; }
     DbSet<CandidatoCipa> CandidatosCipa { get; }
     DbSet<MembroCipa> MembrosCipa { get; }
     DbSet<TreinamentoCipa> TreinamentosCipa { get; }

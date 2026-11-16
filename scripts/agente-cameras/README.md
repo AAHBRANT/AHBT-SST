@@ -100,6 +100,32 @@ a leitura normal da mesma câmera (algumas câmeras limitam as conexões simult�
   trazem senha nem URL.
 - O resultado do teste fica no log (sem a senha): `Teste de conexão <id>: ...`.
 
+## Câmera quase ao vivo (versão 1.1.0 ou mais nova)
+
+Quando alguém abre uma câmera "ao vivo" na tela, a consulta de configuração passa a trazer a lista `aoVivo` (sessão,
+câmera, quadros por segundo, largura máxima e `segundosRestantes`). O agente abre **um segundo ffmpeg** só para a
+sessão, no **stream 1** (secundário, 640x720) do mesmo canal, host, usuário e senha da câmera, e envia a imagem (JPEG,
+2 q/s por padrão, no máximo 5) para a API, que guarda só o último quadro. Não grava vídeo e **não usa a fila em disco**.
+
+- **A versão 1.1.0 é obrigatória.** A API compara a versão informada em `X-Agente-Versao` e recusa o ao vivo
+  (`agente_desatualizado`) para agentes mais antigos. Agente antigo apenas ignora o campo `aoVivo`.
+- **A análise de EPI não muda:** continua no ffmpeg dela (stream, 1 q/s, 1280 px, q4), com fila, envio e limites
+  próprios. Falha ou parada do ao vivo nunca reinicia nem interrompe a análise. A câmera precisa aceitar uma segunda
+  conexão RTSP (a do piloto aceitou; confirme nas outras).
+- **A transmissão para sozinha** quando: a API responde 410; a sessão some da configuração; acabam os
+  `segundosRestantes` (contados no relógio monotônico do agente, não na data/hora do PC); o servidor fica sem responder
+  por esse prazo; ou o serviço é parado. O ffmpeg filho é encerrado junto (e, se o serviço cair, o Job Object do
+  Windows o encerra). Se a câmera não abrir, o agente informa o motivo à API (`.../ao-vivo/{sessao}/falha`) e não
+  tenta de novo sozinho: a tela pede uma sessão nova.
+- Só o quadro mais recente é enviado: com a rede lenta, os anteriores são descartados. Senha e segredo nunca vão para
+  log, motivo de falha ou mensagem de erro.
+- **ffmpeg de produção: use um build LGPL.** A transmissão só **decodifica** (HEVC, nativo no ffmpeg) e gera JPEG
+  (mjpeg); não precisa de nenhum codificador GPL (como x264/x265). Um build LGPL basta; não use build GPL/"nonfree" (a validação jurídica de
+  redistribuição segue pendente, como descrito em "Antes de instalar").
+- O `instalar.ps1` não muda: basta publicar a nova versão por cima (o serviço usa a mesma conta, pasta e configuração).
+
+- **Parte da imagem (opcional, por câmera):** o cadastro pode pedir só a metade de cima ou a de baixo da imagem (câmeras que entregam duas lentes empilhadas, como a A31). O agente recorta no ffmpeg (`crop`, antes de `fps`/`scale`) na análise, no teste de conexão e no ao vivo; trocar a parte reinicia a leitura só daquela câmera, e duas câmeras do mesmo equipamento (mesmo canal e stream) com partes diferentes abrem uma leitura cada (uma conexão RTSP por câmera cadastrada). Sem o campo ou com valor inválido, vale a imagem inteira.
+
 ## Onde ver o que está acontecendo
 
 - Logs em arquivo (rotação diária): `C:\ProgramData\AAHBRANT\AgenteCameras\logs\agente-cameras-AAAAMMDD.log`

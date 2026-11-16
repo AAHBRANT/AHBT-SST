@@ -1,3 +1,4 @@
+using AAHBRANT.SST.AgenteCameras.AoVivo;
 using AAHBRANT.SST.AgenteCameras.Envio;
 using AAHBRANT.SST.AgenteCameras.Fila;
 using AAHBRANT.SST.AgenteCameras.Infra;
@@ -118,6 +119,7 @@ public sealed class AgenteCamerasWorker : BackgroundService
 
         var reconciliador = new ReconciliadorCameras(ExecutarCamera, parada, _fabrica.CreateLogger("Reconciliador"));
         ProcessadorTestesConexao? testes = null;
+        GerenciadorAoVivo? aoVivo = null;
 
         if (config.LerConfiguracaoDoServidor)
         {
@@ -126,7 +128,16 @@ public sealed class AgenteCamerasWorker : BackgroundService
             var clienteConfig = new ClienteConfiguracao(http, config.ApiBaseUrl, config.AgenteId, config.Segredo, _mascarador);
             testes = new ProcessadorTestesConexao(fonte, clienteConfig, _mascarador, _relogio, _fabrica.CreateLogger("TesteConexao"), parada);
             var cache = new CacheCameras(config.PastaDados, _protetor, config.AgenteId, logServidor);
-            var sincronizador = new SincronizadorConfiguracao(clienteConfig, reconciliador, testes, cache, config.Cameras, estado, _relogio, _mascarador, logServidor);
+
+            // "Quase ao vivo": um ffmpeg próprio por sessão (stream 1), com cliente e envio próprios; não usa a FilaQuadros
+            // nem o EnviadorCamera/MonitorCamera da análise. Só existe com a leitura da configuração do servidor ligada.
+            var clienteAoVivo = new ClienteAoVivo(http, config.ApiBaseUrl, config.AgenteId, config.Segredo, _mascarador);
+            var relogioMonotonico = new RelogioMonotonicoSistema();
+            var logAoVivo = _fabrica.CreateLogger("AoVivo");
+            aoVivo = new GerenciadorAoVivo(
+                (sessao, camera) => new TransmissaoAoVivo(sessao, camera, fonte, clienteAoVivo, _relogio, relogioMonotonico, _mascarador, logAoVivo),
+                parada, logAoVivo);
+            var sincronizador = new SincronizadorConfiguracao(clienteConfig, reconciliador, testes, cache, config.Cameras, estado, _relogio, _mascarador, logServidor, aoVivo);
             tarefas.Add(Task.Run(() => Supervisor.ExecutarAsync("configuração do servidor", sincronizador.ExecutarAsync, _relogio, logServidor, parada), CancellationToken.None));
         }
         else
@@ -139,6 +150,7 @@ public sealed class AgenteCamerasWorker : BackgroundService
 
         await Task.WhenAll(tarefas).ConfigureAwait(false);
         await reconciliador.AguardarTodasAsync().ConfigureAwait(false);
+        if (aoVivo is not null) await aoVivo.AguardarTodasAsync().ConfigureAwait(false);
         if (testes is not null) await testes.AguardarTodosAsync().ConfigureAwait(false);
 
         if (!parada.IsCancellationRequested)

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.AgenteCameras.AoVivo;
 using AAHBRANT.SST.AgenteCameras.Envio;
 using AAHBRANT.SST.AgenteCameras.Infra;
 using AAHBRANT.SST.AgenteCameras.Opcoes;
@@ -31,7 +32,9 @@ public sealed class SincronizadorConfiguracao
     private readonly IRelogio _relogio;
     private readonly Mascarador _mascarador;
     private readonly ILogger _log;
+    private readonly GerenciadorAoVivo? _aoVivo;
 
+    private IReadOnlyList<SessaoAoVivoServidor> _sessoesAoVivo = Array.Empty<SessaoAoVivoServidor>();
     private IReadOnlyList<CameraConfig> _doServidor = Array.Empty<CameraConfig>();
     private TimeSpan _intervalo = TimeSpan.FromSeconds(ConversorServidor.IntervaloPadraoSegundos);
     private int _falhasSeguidas;
@@ -39,7 +42,7 @@ public sealed class SincronizadorConfiguracao
     private bool _cacheCarregado;
 
     public SincronizadorConfiguracao(IClienteConfiguracao cliente, ReconciliadorCameras reconciliador, ProcessadorTestesConexao? testes,
-        CacheCameras? cache, IReadOnlyList<CameraConfig> locais, EstadoApi estado, IRelogio relogio, Mascarador mascarador, ILogger log)
+        CacheCameras? cache, IReadOnlyList<CameraConfig> locais, EstadoApi estado, IRelogio relogio, Mascarador mascarador, ILogger log, GerenciadorAoVivo? aoVivo = null)
     {
         _cliente = cliente;
         _reconciliador = reconciliador;
@@ -50,6 +53,7 @@ public sealed class SincronizadorConfiguracao
         _relogio = relogio;
         _mascarador = mascarador;
         _log = log;
+        _aoVivo = aoVivo;
     }
 
     /// <summary>Câmeras que vieram do servidor (ou do cache) e valem hoje.</summary>
@@ -144,6 +148,7 @@ public sealed class SincronizadorConfiguracao
     {
         var havia = _doServidor.Count;
         _doServidor = Array.Empty<CameraConfig>();
+        _sessoesAoVivo = Array.Empty<SessaoAoVivoServidor>(); // agente revogado: nada de câmera ao vivo
         _cache?.Apagar();
         if (havia > 0)
         {
@@ -169,6 +174,7 @@ public sealed class SincronizadorConfiguracao
             lista.Add(conv);
         }
         _doServidor = lista;
+        _sessoesAoVivo = config.AoVivo ?? new List<SessaoAoVivoServidor>(); // campo ausente (API antiga) = nenhuma
         _cache?.Salvar(lista);
         await AplicarAsync().ConfigureAwait(false);
     }
@@ -183,5 +189,25 @@ public sealed class SincronizadorConfiguracao
         if (resumo.HouveMudanca)
             _log.LogInformation("Câmeras reconciliadas com o servidor: {I} iniciada(s), {P} parada(s), {R} reiniciada(s), {M} sem mudança.",
                 resumo.Iniciadas.Count, resumo.Paradas.Count, resumo.Reiniciadas.Count, resumo.Mantidas.Count);
+
+        await AplicarAoVivoAsync(desejadas).ConfigureAwait(false);
+    }
+
+    // As transmissões ao vivo são reconciliadas DEPOIS das câmeras e isoladas: qualquer erro aqui é registrado e não
+    // afeta a análise nem a consulta de configuração. Sessões não são guardadas em cache (o prazo é relativo).
+    private async Task AplicarAoVivoAsync(IReadOnlyDictionary<string, CameraConfig> cameras)
+    {
+        if (_aoVivo is null) return;
+        try
+        {
+            var r = await _aoVivo.ReconciliarAsync(_sessoesAoVivo, cameras).ConfigureAwait(false);
+            if (r.HouveMudanca)
+                _log.LogInformation("Transmissões ao vivo reconciliadas: {I} iniciada(s), {P} parada(s), {R} reiniciada(s), {M} sem mudança.",
+                    r.Iniciadas.Count, r.Paradas.Count, r.Reiniciadas.Count, r.Mantidas.Count);
+        }
+        catch (Exception e) when (e is not OutOfMemoryException and not OperationCanceledException)
+        {
+            _log.LogError("Não foi possível reconciliar as transmissões ao vivo: {Erro}", _mascarador.Mascarar(e.Message));
+        }
     }
 }

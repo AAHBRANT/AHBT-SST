@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Enums;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
@@ -42,13 +43,33 @@ public static class CameraIpRegras
             throw new InvalidOperationException("O agente deste equipamento foi revogado. Escolha outro agente no equipamento antes de ativar a câmera.");
     }
 
-    // Cada lente (equipamento + canal) tem uma única câmera em uso: duas câmeras na mesma lente enviariam o mesmo quadro duas vezes.
+    public static IRuleBuilderOptions<T, ParteImagemCamera> ParteDaImagem<T>(this IRuleBuilder<T, ParteImagemCamera> regra)
+        => regra.IsInEnum().WithMessage("A parte da imagem precisa ser inteira, metade de cima ou metade de baixo.");
+
+    public static IRuleBuilderOptions<T, ParteImagemCamera?> ParteDaImagem<T>(this IRuleBuilder<T, ParteImagemCamera?> regra)
+        => regra.IsInEnum().WithMessage("A parte da imagem precisa ser inteira, metade de cima ou metade de baixo.");
+
+    public const string MensagemParteSoEmCameraIp = "A parte da imagem só pode ser escolhida em câmera IP.";
+
+    public static string NomeDaParte(ParteImagemCamera parte) => parte switch
+    {
+        ParteImagemCamera.MetadeSuperior => "a metade de cima",
+        ParteImagemCamera.MetadeInferior => "a metade de baixo",
+        _ => "a imagem inteira",
+    };
+
+    // Cada parte de cada lente (equipamento + canal + parte da imagem) tem uma única câmera em uso: duas câmeras na mesma lente
+    // e na mesma parte enviariam o mesmo quadro duas vezes. Partes diferentes da mesma lente (ex.: metade de cima e de baixo
+    // de uma câmera de duas lentes empilhadas) são câmeras distintas e podem coexistir.
     public static async Task ExigirLenteLivreAsync(
-        IAppDbContext db, Guid equipamentoId, int canal, Guid? cameraAtualId, CancellationToken ct)
+        IAppDbContext db, Guid equipamentoId, int canal, ParteImagemCamera parte, Guid? cameraAtualId, CancellationToken ct)
     {
         var ocupada = await db.Cameras.AnyAsync(c =>
-            c.EquipamentoCameraId == equipamentoId && c.Canal == canal && (cameraAtualId == null || c.Id != cameraAtualId), ct);
+            c.EquipamentoCameraId == equipamentoId && c.Canal == canal && c.ParteImagem == parte
+            && (cameraAtualId == null || c.Id != cameraAtualId), ct);
         if (ocupada)
-            throw new InvalidOperationException($"Já existe uma câmera para o canal {canal} deste equipamento.");
+            throw new InvalidOperationException(parte == ParteImagemCamera.Inteira
+                ? $"Já existe uma câmera para o canal {canal} deste equipamento."
+                : $"Já existe uma câmera para o canal {canal} deste equipamento usando {NomeDaParte(parte)}.");
     }
 }

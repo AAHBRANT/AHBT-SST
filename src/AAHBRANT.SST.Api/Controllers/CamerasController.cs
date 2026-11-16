@@ -158,7 +158,7 @@ public class CamerasController : ControllerBase
     [Authorize(Policy = PoliticasAutorizacao.CamerasPiloto)]
     [HttpPost("equipamentos/{id:guid}/teste-conexao")]
     public async Task<IActionResult> TestarConexaoDoEquipamento(Guid id, TesteConexaoEquipamentoRequest? corpo, CancellationToken ct)
-        => Accepted(new { id = await _mediator.Send(new SolicitarTesteConexaoCameraCommand(EquipamentoCameraId: id, Canal: corpo?.Canal, Stream: corpo?.Stream), ct) });
+        => Accepted(new { id = await _mediator.Send(new SolicitarTesteConexaoCameraCommand(EquipamentoCameraId: id, Canal: corpo?.Canal, Stream: corpo?.Stream, ParteImagem: corpo?.ParteImagem), ct) });
 
     [Authorize(Policy = PoliticasAutorizacao.CamerasPiloto)]
     [HttpGet("testes-conexao/{id:guid}")]
@@ -170,6 +170,57 @@ public class CamerasController : ControllerBase
         return Ok(teste);
     }
 
+    // Câmera IP "quase ao vivo": JPEG em sequência, sob demanda. Sem vídeo gravado; o servidor guarda só o último quadro na
+    // sessão (SQL) e a tela o busca com o token do usuário. Imagem de pessoa possível: nada de cache em navegador ou proxy,
+    // em nenhuma resposta destas rotas.
+    //   POST {id}/ao-vivo  200 { sessaoId, situacao: Aguardando|AoVivo, fps, encerraEmSegundos }; 404 câmera fora do escopo;
+    //     409 { codigo }: nao_e_camera_ip, camera_desabilitada, agente_revogado, agente_sem_contato, agente_desatualizado;
+    //     429 { codigo: limite_sessoes }.
+    [Authorize(Policy = PoliticasAutorizacao.CamerasPiloto)]
+    [HttpPost("{id:guid}/ao-vivo")]
+    public async Task<IActionResult> IniciarAoVivo(Guid id, CancellationToken ct)
+    {
+        Response.Headers.CacheControl = "no-store";
+        var resultado = await _mediator.Send(new IniciarSessaoAoVivoCameraCommand(id), ct);
+        if (resultado.Sessao is { } sessao) return Ok(sessao);
+        var corpo = new { codigo = resultado.CodigoRecusa };
+        return resultado.LimiteDeSessoes ? StatusCode(StatusCodes.Status429TooManyRequests, corpo) : Conflict(corpo);
+    }
+
+    //   GET ao-vivo/{sessaoId}/quadro?apos={seq}  200 image/jpeg + X-Quadro-Sequencia e X-Capturado-Em (ISO UTC); 204 sem quadro
+    //     novo; 202 { situacao: Aguardando }; 410 { motivo }: inatividade, tempo_maximo, encerrada, agente_sem_resposta, limite_sessoes, falha:<codigo>.
+    //     agente_sem_resposta vale tanto para o agente que não começou em 60 s quanto para o que parou de enviar quadros há mais de 30 s.
+    [Authorize(Policy = PoliticasAutorizacao.CamerasPiloto)]
+    [HttpGet("ao-vivo/{sessaoId:guid}/quadro")]
+    public async Task<IActionResult> ObterQuadroAoVivo(Guid sessaoId, [FromQuery] long? apos, CancellationToken ct)
+    {
+        Response.Headers.CacheControl = "private, no-store";
+        var quadro = await _mediator.Send(new ObterQuadroAoVivoQuery(sessaoId, apos), ct);
+        switch (quadro.Situacao)
+        {
+            case SituacaoQuadroAoVivo.Quadro:
+                Response.Headers["X-Quadro-Sequencia"] = quadro.Sequencia.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                if (quadro.CapturadoEmUtc is { } capturado)
+                    Response.Headers["X-Capturado-Em"] = capturado.ToString("o", System.Globalization.CultureInfo.InvariantCulture);
+                return File(quadro.Jpeg!, "image/jpeg");
+            case SituacaoQuadroAoVivo.Aguardando:
+                return Accepted(new { situacao = "Aguardando" });
+            case SituacaoQuadroAoVivo.Encerrada:
+                return StatusCode(StatusCodes.Status410Gone, new { motivo = quadro.Motivo });
+            default:
+                return NoContent();
+        }
+    }
+
+    [Authorize(Policy = PoliticasAutorizacao.CamerasPiloto)]
+    [HttpPost("ao-vivo/{sessaoId:guid}/encerrar")]
+    public async Task<IActionResult> EncerrarAoVivo(Guid sessaoId, CancellationToken ct)
+    {
+        Response.Headers.CacheControl = "no-store";
+        await _mediator.Send(new EncerrarSessaoAoVivoCameraCommand(sessaoId), ct);
+        return NoContent();
+    }
+
     [Authorize(Policy = PoliticasAutorizacao.CamerasPiloto)]
     [HttpGet("ocorrencias")]
     public async Task<IActionResult> ListarOcorrencias(
@@ -178,8 +229,10 @@ public class CamerasController : ControllerBase
         [FromQuery] DateTimeOffset? de,
         [FromQuery] DateTimeOffset? ate,
         [FromQuery] SituacaoOcorrenciaEpi? situacao,
+        [FromQuery] TipoOcorrenciaEpi? tipo,
+        [FromQuery] RegistroOcorrenciaEpi? registro,
         CancellationToken ct)
-        => Ok(await _mediator.Send(new ListarOcorrenciasEpiQuery(obraId, cameraId, de?.UtcDateTime, ate?.UtcDateTime, situacao), ct));
+        => Ok(await _mediator.Send(new ListarOcorrenciasEpiQuery(obraId, cameraId, de?.UtcDateTime, ate?.UtcDateTime, situacao, tipo, registro), ct));
 
     [Authorize(Policy = PoliticasAutorizacao.CamerasPiloto)]
     [HttpGet("ocorrencias/{id:guid}/foto")]
@@ -225,7 +278,7 @@ public record DefinirSenhaEquipamentoRequest(string? Senha)
     public override string ToString() => nameof(DefinirSenhaEquipamentoRequest);
 }
 
-public record TesteConexaoEquipamentoRequest(int? Canal, int? Stream);
+public record TesteConexaoEquipamentoRequest(int? Canal, int? Stream, ParteImagemCamera? ParteImagem = null);
 
 public record VincularTrabalhadorRequest(Guid? TrabalhadorId);
 

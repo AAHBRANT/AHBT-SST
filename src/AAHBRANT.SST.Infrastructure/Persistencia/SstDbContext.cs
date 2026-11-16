@@ -140,6 +140,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<AgenteCamera> AgentesCamera => Set<AgenteCamera>();
     public DbSet<EquipamentoCamera> EquipamentosCamera => Set<EquipamentoCamera>();
     public DbSet<TesteConexaoCamera> TestesConexaoCamera => Set<TesteConexaoCamera>();
+    public DbSet<SessaoAoVivoCamera> SessoesAoVivoCamera => Set<SessaoAoVivoCamera>();
     public DbSet<OrdemServico> OrdensServico => Set<OrdemServico>();
     public DbSet<TemaInspecao> TemasInspecao => Set<TemaInspecao>();
     public DbSet<ItemInspecionavel> ItensInspecionaveis => Set<ItemInspecionavel>();
@@ -191,6 +192,8 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DimensionamentoCipa> DimensionamentosCipa => Set<DimensionamentoCipa>();
     public DbSet<ProcessoEleitoralCipa> ProcessosEleitoraisCipa => Set<ProcessoEleitoralCipa>();
     public DbSet<CandidatoCipa> CandidatosCipa => Set<CandidatoCipa>();
+    public DbSet<EleitorCipa> EleitoresCipa => Set<EleitorCipa>();
+    public DbSet<VotoCipa> VotosCipa => Set<VotoCipa>();
     public DbSet<MembroCipa> MembrosCipa => Set<MembroCipa>();
     public DbSet<TreinamentoCipa> TreinamentosCipa => Set<TreinamentoCipa>();
     public DbSet<ReuniaoCipa> ReunioesCipa => Set<ReuniaoCipa>();
@@ -345,6 +348,8 @@ public class SstDbContext : DbContext, IAppDbContext
             e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
         modelBuilder.Entity<TesteConexaoCamera>().HasQueryFilter(t =>
             t.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(t.ObraId)));
+        modelBuilder.Entity<SessaoAoVivoCamera>().HasQueryFilter(s =>
+            s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
         modelBuilder.Entity<OcorrenciaEpiCamera>().HasQueryFilter(o =>
             o.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(o.ObraId)));
         modelBuilder.Entity<OrdemServico>().HasQueryFilter(o =>

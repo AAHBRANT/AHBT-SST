@@ -2860,6 +2860,58 @@ public static class NovidadesSeeder
                     "Não dava para ver se uma câmera da obra estava mandando imagem.",
                     "A lista de câmeras e o Mosaico mostram a situação de cada câmera IP: \"Recebendo imagem\", \"Aguardando sinal\" ou \"Agente sem contato\", para o técnico saber logo se precisa olhar a câmera ou o PC da obra."),
             }),
+        new(
+            Versao: "5.163.0",
+            Titulo: "Câmera IP quase ao vivo",
+            DataPublicacao: new DateTime(2026, 11, 13, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Câmeras: veja a câmera IP da obra quase ao vivo dentro do sistema",
+                    "Para ver o que a câmera da obra estava filmando, era preciso usar o aplicativo do fabricante.",
+                    "Na câmera IP, abra a imagem quase ao vivo direto no sistema: o quadro se renova algumas vezes por segundo e fecha sozinho depois de alguns minutos ou quando ninguém está olhando. O sistema não grava vídeo, e a última imagem recebida é apagada quando a transmissão termina."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Câmeras: escolha a parte da imagem e desligue o aviso no Telegram por câmera",
+                    "Câmeras de duas lentes mostram as duas imagens empilhadas, e a mesma pessoa podia ser contada duas vezes. Também não dava para silenciar o Telegram de uma câmera sem desligar a análise dela.",
+                    "No cadastro da câmera IP, escolha \"Parte da imagem\": inteira, metade de cima ou metade de baixo. Assim dá para cadastrar a mesma câmera duas vezes, uma para cada lente. O interruptor \"Avisar no Telegram\" desliga só o aviso daquela câmera: a análise continua e as ocorrências seguem registradas."),
+            }),
+        new(
+            Versao: "5.164.0",
+            Titulo: "Câmeras: só julga o que aparece",
+            DataPublicacao: new DateTime(2026, 11, 13, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Câmeras: a análise de EPI só julga o que aparece na imagem",
+                    "Quando só parte da pessoa aparecia (por exemplo, só as pernas), a análise podia dar capacete como correto sem ter visto a cabeça.",
+                    "Câmeras: a análise de EPI só julga capacete quando a cabeça aparece e colete quando o tronco aparece; o que não dá para ver fica como não conferido e não gera alerta."),
+            }),
+        new(
+            Versao: "5.165.0",
+            Titulo: "Câmeras: óculos e cor do capacete",
+            DataPublicacao: new DateTime(2026, 11, 14, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Câmeras: análise de óculos de proteção e aviso quando a cor do capacete não é a da função",
+                    "A câmera conferia só capacete e colete, e não havia como saber se o capacete era da cor certa para a função de quem o usava.",
+                    "Câmeras: a análise passa a conferir os óculos de proteção, inclusive de lente escura, e avisa em ordem de gravidade. Pessoa sem óculos, com o rosto visível, gera ocorrência e alerta no Telegram como a falta de capacete ou de colete; quando o rosto não aparece, os óculos ficam como não conferidos. Se a pessoa for identificada pelo rosto e o capacete tiver cor diferente da definida para a função dela, a aba Alertas de EPI mostra um aviso de padrão, sem Telegram. A aba ganha o filtro \"Tipo\" (capacete, colete, óculos ou cor)."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Funções: cor do capacete com padrão AAHBRANT",
+                    "As funções não tinham a cor do capacete esperada, então o sistema não conseguia comparar com o que a câmera via.",
+                    "Funções: cada função ganha o campo \"Cor do capacete\". O botão \"Aplicar padrão de cores\" sugere a cor pelo nome da função (branco, amarelo, azul, verde, vermelho ou laranja) e mostra um quadro de conferência: nada é salvo antes de você confirmar, e funções sem padrão, como Almoxarife, ficam para você decidir."),
+            }),
+        new(
+            Versao: "5.166.0",
+            Titulo: "Câmeras: alerta confirmado e modo sombra",
+            DataPublicacao: new DateTime(2026, 11, 15, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Câmeras: alerta só depois de confirmar, sem repetir, e modo sombra para testar",
+                    "Quem apenas passava na frente da câmera podia disparar um alerta no Telegram, a mesma pessoa podia gerar alertas repetidos e não havia como testar uma câmera nova sem enviar mensagens.",
+                    "Câmeras: o alerta só sai quando a falta de EPI se confirma por alguns segundos, a mesma pessoa não gera alerta repetido e há o modo sombra para testar uma câmera sem enviar mensagens. A aba Alertas de EPI ganha o filtro \"Registro\" e mostra se cada ocorrência foi confirmada. Câmeras novas começam em modo sombra; as que já existem continuam avisando como antes."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

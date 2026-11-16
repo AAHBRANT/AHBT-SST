@@ -18,9 +18,11 @@ import { tipoCameraLabel, type CameraResumo } from '../../lib/api';
 import { useCameras } from '../../lib/consultas';
 import { CORES_DETECTOR, QuadradoRosto } from '../../components/camera/QuadradoRosto';
 import { useDetectorRosto } from '../../components/camera/useDetectorRosto';
+import { rotuloAlertaTelegram } from './aoVivoRegras';
 import { useMonitoramentoCamera, type EstadoMonitoramento } from './useMonitoramentoCamera';
 import { mergeClasses, useStyles } from './estilos';
 import { descreverIrregularidade, formatarHora, resumoCena } from './rotulos';
+import { ehSoAvisoDeCor } from './rotulosOcorrencia';
 
 const chipPorEstado: Record<EstadoMonitoramento, { tom: Tom; rotulo: string }> = {
   monitorando: { tom: 'ok', rotulo: 'Monitorando' },
@@ -66,6 +68,8 @@ function Monitoramento({ camera }: { camera: CameraResumo }) {
   const chip = chipPorEstado[m.estado];
   const analise = m.ultimaAnalise;
   const ocorrencia = analise?.situacao === 'ocorrencia';
+  // Só a cor do capacete fora do padrão: aviso (âmbar), não falta de EPI.
+  const soAvisoCor = !!analise && ehSoAvisoDeCor(analise);
   // Mesmo detector de rosto do cadastro e da assinatura facial, em modo "assinatura" (só exige um rosto
   // no quadro). Aqui ele apenas mostra ao operador que o rosto está visível para a identificação.
   const detector = useDetectorRosto(videoRef, monitorando, 'assinatura');
@@ -77,8 +81,10 @@ function Monitoramento({ camera }: { camera: CameraResumo }) {
       situacaoRotulo = 'Análise não concluída';
       situacaoTom = 'atencao';
     } else {
-      situacaoRotulo = descreverIrregularidade(analise.semCapacete, analise.semColete);
-      situacaoTom = ocorrencia ? 'alerta' : 'ok';
+      situacaoRotulo = soAvisoCor
+        ? 'Cor do capacete fora do padrão'
+        : descreverIrregularidade(analise.semCapacete, analise.semColete, analise.semOculos ?? 0);
+      situacaoTom = soAvisoCor ? 'atencao' : ocorrencia ? 'alerta' : 'ok';
     }
   }
 
@@ -163,13 +169,23 @@ function Monitoramento({ camera }: { camera: CameraResumo }) {
                     <StatusChip tom={situacaoTom}>{situacaoRotulo}</StatusChip>
                     {analise.situacao !== 'falha' && (
                       <span className={tipo.corpo}>
-                        {resumoCena(analise.pessoas, analise.semCapacete, analise.semColete)}
+                        {resumoCena(
+                          analise.pessoas,
+                          analise.semCapacete,
+                          analise.semColete,
+                          analise.capaceteNaoAvaliavel ?? 0,
+                          analise.coleteNaoAvaliavel ?? 0,
+                          analise.semOculos ?? 0,
+                          analise.oculosNaoAvaliavel ?? 0,
+                        )}
                       </span>
                     )}
                   </div>
                   {ocorrencia && (
                     <div className={tipo.corpo}>
-                      {analise.alertaEnviado ? 'Alerta enviado ao Telegram' : 'Alerta não enviado'}
+                      {soAvisoCor
+                        ? 'Aviso de padrão · sem Telegram'
+                        : rotuloAlertaTelegram(analise.alertaEnviado, camera.modoSombra === true ? false : camera.avisarTelegram).texto}
                     </div>
                   )}
                   {ocorrencia &&
@@ -226,10 +242,10 @@ function Monitoramento({ camera }: { camera: CameraResumo }) {
                   {m.ocorrenciasSessao.map((o) => (
                     <li key={o.ocorrenciaId ?? o.em.getTime()} className={estilos.itemOcorrencia}>
                       <div className={tipo.corpo}>
-                        {formatarHora(o.em)} · {descreverIrregularidade(o.semCapacete, o.semColete)}
+                        {formatarHora(o.em)} · {descreverIrregularidade(o.semCapacete, o.semColete, o.semOculos ?? 0)}
                       </div>
                       <div className={mergeClasses(tipo.legenda, estilos.rotuloMedio)}>
-                        {resumoCena(o.pessoas, o.semCapacete, o.semColete)}
+                        {resumoCena(o.pessoas, o.semCapacete, o.semColete, 0, 0, o.semOculos ?? 0)}
                       </div>
                       {o.trabalhadorNome ? (
                         <StatusChip tom="ok" icone={<Person16Regular />}>

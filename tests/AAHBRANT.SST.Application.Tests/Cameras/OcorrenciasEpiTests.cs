@@ -139,4 +139,67 @@ public class OcorrenciasEpiTests
 
         Assert.Equal(SituacaoOcorrenciaEpi.FalsoAlerta, (await db.OcorrenciasEpiCamera.SingleAsync(o => o.Id == recente.Id)).Situacao);
     }
+
+    [Fact]
+    public async Task Listar_FiltraPorTipoEDevolveOsCamposNovos()
+    {
+        var (db, obra, camera, recente, antiga) = await Preparar(nameof(Listar_FiltraPorTipoEDevolveOsCamposNovos));
+        var funcao = new Funcao { Nome = "Pedreiro", CorCapacete = CorCapacete.Amarelo };
+        var joao = new Trabalhador { ObraId = obra.Id, Nome = "João da Silva", FuncaoId = funcao.Id };
+        var semOculos = new OcorrenciaEpiCamera
+        {
+            CameraId = camera.Id, ObraId = obra.Id, Foto = new byte[] { 0xFF, 0xD8, 0x03 },
+            RecebidaEmUtc = DateTime.UtcNow.AddMinutes(-1), CapturadaEmUtc = DateTime.UtcNow.AddMinutes(-1), PessoasNaCena = 1, SemOculos = 1,
+        };
+        var cor = new OcorrenciaEpiCamera
+        {
+            CameraId = camera.Id, ObraId = obra.Id, Foto = new byte[] { 0xFF, 0xD8, 0x04 },
+            RecebidaEmUtc = DateTime.UtcNow.AddMinutes(-2), CapturadaEmUtc = DateTime.UtcNow.AddMinutes(-2), PessoasNaCena = 1,
+            AvisoCorCapacete = true, CorCapaceteVista = CorCapacete.Azul, CorCapaceteEsperada = CorCapacete.Amarelo, TrabalhadorId = joao.Id,
+        };
+        // Irregular (sem colete) com cor vista diferente da esperada: também entra em tipo=cor. Cor igual ou sem esperada, não.
+        var irregularCorDiferente = new OcorrenciaEpiCamera
+        {
+            CameraId = camera.Id, ObraId = obra.Id, Foto = new byte[] { 0xFF, 0xD8, 0x05 },
+            RecebidaEmUtc = DateTime.UtcNow.AddMinutes(-3), CapturadaEmUtc = DateTime.UtcNow.AddMinutes(-3), PessoasNaCena = 1, SemColete = 1,
+            CorCapaceteVista = CorCapacete.Verde, CorCapaceteEsperada = CorCapacete.Amarelo,
+        };
+        var irregularCorIgual = new OcorrenciaEpiCamera
+        {
+            CameraId = camera.Id, ObraId = obra.Id, Foto = new byte[] { 0xFF, 0xD8, 0x06 },
+            RecebidaEmUtc = DateTime.UtcNow.AddMinutes(-4), CapturadaEmUtc = DateTime.UtcNow.AddMinutes(-4), PessoasNaCena = 1, SemColete = 1,
+            CorCapaceteVista = CorCapacete.Amarelo, CorCapaceteEsperada = CorCapacete.Amarelo,
+        };
+        var irregularSoVista = new OcorrenciaEpiCamera
+        {
+            CameraId = camera.Id, ObraId = obra.Id, Foto = new byte[] { 0xFF, 0xD8, 0x07 },
+            RecebidaEmUtc = DateTime.UtcNow.AddMinutes(-5), CapturadaEmUtc = DateTime.UtcNow.AddMinutes(-5), PessoasNaCena = 1, SemColete = 1,
+            CorCapaceteVista = CorCapacete.Verde,
+        };
+        db.AddRange(funcao, joao, semOculos, cor, irregularCorDiferente, irregularCorIgual, irregularSoVista);
+        await db.SaveChangesAsync();
+        var handler = new ListarOcorrenciasEpiQueryHandler(db);
+
+        var porOculos = await handler.Handle(new ListarOcorrenciasEpiQuery(null, null, null, null, null, TipoOcorrenciaEpi.Oculos), default);
+        Assert.Equal(semOculos.Id, Assert.Single(porOculos).Id);
+        Assert.Equal(1, porOculos[0].SemOculos);
+
+        var tiposCor = await handler.Handle(new ListarOcorrenciasEpiQuery(null, null, null, null, null, TipoOcorrenciaEpi.Cor), default);
+        Assert.Equal(new[] { cor.Id, irregularCorDiferente.Id }, tiposCor.Select(o => o.Id).ToArray());
+        var porCor = tiposCor.Single(o => o.Id == cor.Id);
+        Assert.True(porCor.AvisoCorCapacete);
+        Assert.Equal(CorCapacete.Azul, porCor.CorCapaceteVista);
+        Assert.Equal(CorCapacete.Amarelo, porCor.CorCapaceteEsperada);
+        Assert.Equal("João da Silva", porCor.TrabalhadorNome);
+        Assert.Equal("Pedreiro", porCor.FuncaoNome);
+
+        var porCapacete = await handler.Handle(new ListarOcorrenciasEpiQuery(null, null, null, null, null, TipoOcorrenciaEpi.Capacete), default);
+        Assert.Equal(new[] { recente.Id }, porCapacete.Select(o => o.Id).ToArray());
+
+        var porColete = await handler.Handle(new ListarOcorrenciasEpiQuery(null, null, null, null, null, TipoOcorrenciaEpi.Colete), default);
+        Assert.Equal(new[] { irregularCorDiferente.Id, irregularCorIgual.Id, irregularSoVista.Id, antiga.Id }, porColete.Select(o => o.Id).ToArray());
+
+        var todas = await handler.Handle(new ListarOcorrenciasEpiQuery(null, null, null, null, null), default);
+        Assert.Equal(7, todas.Count);
+    }
 }

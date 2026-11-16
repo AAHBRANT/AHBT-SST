@@ -8,6 +8,7 @@ import {
 } from '@fluentui/react-icons';
 import {
   api,
+  ParteImagemCamera,
   StreamCamera,
   type AgenteCamera,
   type CameraResumo,
@@ -15,7 +16,7 @@ import {
 } from '../../lib/api';
 import { mergeClasses, useEstilosCameraIp } from './estilosCameraIp';
 import { FormularioEquipamento } from './FormularioEquipamento';
-import { MarcaEstado, OpcaoCartao } from './PecasCameraIp';
+import { GlifoParteImagem, MarcaEstado, OpcaoCartao } from './PecasCameraIp';
 import { PainelSenhaEquipamento } from './PainelSenhaEquipamento';
 import { TesteConexaoCamera } from './TesteConexaoCamera';
 import { situacaoDoAgente } from './rotulos';
@@ -37,6 +38,8 @@ export interface OrigemImagemCameraProps {
   aoMudarCanal: (canal: number | null) => void;
   stream: number;
   aoMudarStream: (stream: number) => void;
+  parteImagem: number;
+  aoMudarParteImagem: (parte: number) => void;
   equipamentos: EquipamentoCamera[];
   agentes: AgenteCamera[];
   todasCameras: CameraResumo[];
@@ -55,6 +58,8 @@ export function OrigemImagemCamera({
   aoMudarCanal,
   stream,
   aoMudarStream,
+  parteImagem,
+  aoMudarParteImagem,
   equipamentos,
   agentes,
   todasCameras,
@@ -68,19 +73,34 @@ export function OrigemImagemCamera({
   const agente = equipamento ? agentes.find((a) => a.id === equipamento.agenteCameraId) : undefined;
   const agentesDaObra = agentes.filter((a) => a.ativo && a.obraId === obraId);
 
-  // Lente (canal) já usada por outra câmera do equipamento escolhido: aparece bloqueada com o nome dela.
+  // Lente (canal) já usada por outra câmera do equipamento escolhido, na MESMA parte da imagem: aparece bloqueada com o nome
+  // dela. Partes diferentes da mesma lente (metade de cima e de baixo) são câmeras distintas e podem coexistir.
   const lentesEmUso = useMemo(() => {
     const mapa = new Map<number, string>();
     if (!equipamentoId) return mapa;
     for (const c of todasCameras) {
-      if (c.equipamentoCameraId === equipamentoId && c.canal && c.id !== camera?.id) mapa.set(c.canal, c.nome);
+      if (
+        c.equipamentoCameraId === equipamentoId &&
+        c.canal &&
+        c.id !== camera?.id &&
+        (c.parteImagem ?? ParteImagemCamera.Inteira) === parteImagem
+      )
+        mapa.set(c.canal, c.nome);
     }
     return mapa;
-  }, [todasCameras, equipamentoId, camera?.id]);
+  }, [todasCameras, equipamentoId, camera?.id, parteImagem]);
 
   function primeiraLenteLivre(id: string): number | null {
     const usadas = new Set(
-      todasCameras.filter((c) => c.equipamentoCameraId === id && c.canal && c.id !== camera?.id).map((c) => c.canal as number),
+      todasCameras
+        .filter(
+          (c) =>
+            c.equipamentoCameraId === id &&
+            c.canal &&
+            c.id !== camera?.id &&
+            (c.parteImagem ?? ParteImagemCamera.Inteira) === parteImagem,
+        )
+        .map((c) => c.canal as number),
     );
     return LENTES.find((n) => !usadas.has(n)) ?? null;
   }
@@ -108,11 +128,12 @@ export function OrigemImagemCamera({
     !!camera &&
     camera.equipamentoCameraId === equipamentoId &&
     camera.canal === canal &&
-    (camera.stream ?? StreamCamera.Secundaria) === stream;
+    (camera.stream ?? StreamCamera.Secundaria) === stream &&
+    (camera.parteImagem ?? ParteImagemCamera.Inteira) === parteImagem;
   const solicitarTeste = () =>
     igualAoSalvo && camera
       ? api.cameras.testarConexaoDaCamera(camera.id)
-      : api.cameras.testarConexaoDoEquipamento(equipamentoId, canal ?? 1, stream);
+      : api.cameras.testarConexaoDoEquipamento(equipamentoId, canal ?? 1, stream, parteImagem);
 
   return (
     <>
@@ -279,6 +300,53 @@ export function OrigemImagemCamera({
                 </div>
               </div>
 
+              <div className={e.grupoCampo}>
+                <span className={mergeClasses(tipo.corpo, e.rotuloCampo)} id="rotulo-parte" style={{ marginBottom: 0 }}>
+                  Parte da imagem
+                </span>
+                <div className={e.opcoesTres} role="radiogroup" aria-labelledby="rotulo-parte">
+                  <OpcaoCartao
+                    ativa={parteImagem === ParteImagemCamera.Inteira}
+                    aoEscolher={() => aoMudarParteImagem(ParteImagemCamera.Inteira)}
+                    titulo={
+                      <>
+                        Imagem inteira <StatusChip tom="neutro">Padrão</StatusChip>
+                      </>
+                    }
+                    descricao="Usa tudo o que a câmera envia. É como funciona hoje."
+                    lateral={<GlifoParteImagem parte={ParteImagemCamera.Inteira} ativa={parteImagem === ParteImagemCamera.Inteira} />}
+                  />
+                  <OpcaoCartao
+                    ativa={parteImagem === ParteImagemCamera.MetadeSuperior}
+                    aoEscolher={() => aoMudarParteImagem(ParteImagemCamera.MetadeSuperior)}
+                    titulo="Só a metade de cima"
+                    descricao="Usa só a parte de cima da imagem."
+                    lateral={
+                      <GlifoParteImagem
+                        parte={ParteImagemCamera.MetadeSuperior}
+                        ativa={parteImagem === ParteImagemCamera.MetadeSuperior}
+                      />
+                    }
+                  />
+                  <OpcaoCartao
+                    ativa={parteImagem === ParteImagemCamera.MetadeInferior}
+                    aoEscolher={() => aoMudarParteImagem(ParteImagemCamera.MetadeInferior)}
+                    titulo="Só a metade de baixo"
+                    descricao="Usa só a parte de baixo da imagem."
+                    lateral={
+                      <GlifoParteImagem
+                        parte={ParteImagemCamera.MetadeInferior}
+                        ativa={parteImagem === ParteImagemCamera.MetadeInferior}
+                      />
+                    }
+                  />
+                </div>
+                <div className={mergeClasses(tipo.legenda, e.dica)}>
+                  Use quando a câmera tem duas lentes e mostra as duas vistas juntas. Escolha a metade da lente que fica parada,
+                  para a mesma pessoa não ser contada duas vezes.
+                </div>
+              </div>
+
               {semSenha && (
                 <>
                   <FeedbackInline
@@ -307,7 +375,8 @@ export function OrigemImagemCamera({
                 }
                 lente={canal}
                 stream={stream}
-                chaveResultado={`${equipamentoId}|${canal ?? ''}|${stream}`}
+                parteImagem={parteImagem}
+                chaveResultado={`${equipamentoId}|${canal ?? ''}|${stream}|${parteImagem}`}
                 solicitar={solicitarTeste}
               />
             </>

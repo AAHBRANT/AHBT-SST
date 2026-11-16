@@ -961,7 +961,16 @@ public enum StatusProcessoEleitoralCipa
     InscricoesEncerradas = 3,
     VotacaoRealizada = 4,
     Apurado = 5,
-    Encerrado = 6
+    Encerrado = 6,
+    // Urna biométrica (16/11/2026): votação aberta no tablet do canteiro.
+    VotacaoAberta = 7
+}
+
+public enum MetodoIdentificacaoEleitorCipa
+{
+    Digital = 1,
+    Facial = 2,
+    Mesario = 3
 }
 
 public enum StatusCandidatoCipa
@@ -1133,6 +1142,15 @@ public enum FonteCamera
     Rtsp = 1,
 }
 
+// Parte da imagem da câmera IP que a análise usa. Câmera de duas lentes (ex.: A31) entrega as lentes empilhadas numa imagem só;
+// cadastrar uma câmera por metade evita contar a mesma pessoa duas vezes. O recorte é feito pelo agente (ffmpeg).
+public enum ParteImagemCamera
+{
+    Inteira = 0,
+    MetadeSuperior = 1,
+    MetadeInferior = 2,
+}
+
 // Último estado gravado para a câmera. A situação mostrada na tela é calculada na consulta (ver ListarCamerasQuery),
 // porque depende também do último contato do agente.
 public enum SituacaoConexaoCamera
@@ -1153,4 +1171,17 @@ public enum ConfiancaAnaliseEpi
     Baixa = 1,
     Media = 2,
     Alta = 3,
+}
+
+// Cor do capacete esperada para uma função (padrão AAHBRANT) e cor vista pela câmera.
+// SemPadrao (0): a função não tem cor definida; na ocorrência a cor vista "outra/indefinida" não se grava (fica nulo).
+public enum CorCapacete
+{
+    SemPadrao = 0,
+    Branco = 1,
+    Amarelo = 2,
+    Azul = 3,
+    Verde = 4,
+    Vermelho = 5,
+    Laranja = 6,
 }
