@@ -115,3 +115,45 @@ test('rótulos do botão e da confirmação', () => {
     'NR-06 concluída — 2 certificados gerados, cada um com a assinatura do trabalhador',
   );
 });
+
+// Seleção de quem entra na integração (13/11/2026, mockup da caixa de seleção por pessoa).
+import { elegiveisDaObra, estadoSelecionarTodos, fraseFicaParaDepois, pessoaForaDaIntegracao, resumoPessoas, tituloSelecao, MOTIVO_NENHUMA_PESSOA } from '../src/pages/integracao/componentes/helpers.ts';
+
+test('seleção: só entra quem ainda não participa (todos marcados ao abrir = todos os elegíveis)', () => {
+  const lista = [
+    { trabalhadorId: 'a', jaParticipa: false },
+    { trabalhadorId: 'b', jaParticipa: true },
+    { trabalhadorId: 'c', jaParticipa: false },
+  ];
+  assert.deepEqual(elegiveisDaObra(lista).map((x) => x.trabalhadorId), ['a', 'c']);
+});
+
+test('seleção: estado do "Selecionar todos" (marcado, parcial, vazio)', () => {
+  assert.equal(estadoSelecionarTodos(3, 3), true);
+  assert.equal(estadoSelecionarTodos(2, 3), 'mixed');
+  assert.equal(estadoSelecionarTodos(0, 3), false);
+  assert.equal(estadoSelecionarTodos(0, 0), false);
+});
+
+test('seleção: título "(3 selecionados)", "(2 de 3 selecionados)", "(1 de 3 selecionado)"', () => {
+  assert.equal(tituloSelecao(3, 3), '3 selecionados');
+  assert.equal(tituloSelecao(2, 3), '2 de 3 selecionados');
+  assert.equal(tituloSelecao(1, 3), '1 de 3 selecionado');
+  assert.equal(tituloSelecao(0, 3), '0 de 3 selecionados');
+  assert.equal(tituloSelecao(1, 1), '1 selecionado');
+});
+
+test('seleção: resumo "Pessoas" e frase de quem fica para depois', () => {
+  assert.equal(resumoPessoas(3, 3), '3');
+  assert.equal(resumoPessoas(2, 3), '2 de 3');
+  assert.equal(fraseFicaParaDepois(1), '1 pessoa fica para a próxima integração.');
+  assert.equal(fraseFicaParaDepois(2), '2 pessoas ficam para a próxima integração.');
+  assert.equal(MOTIVO_NENHUMA_PESSOA, 'Marque ao menos uma pessoa para começar.');
+});
+
+test('seleção: fora da integração = desmarcada ou já participa (quem envia só os marcados)', () => {
+  const marcados = new Set(['a']);
+  assert.equal(pessoaForaDaIntegracao({ trabalhadorId: 'a', jaParticipa: false }, marcados), false);
+  assert.equal(pessoaForaDaIntegracao({ trabalhadorId: 'b', jaParticipa: false }, marcados), true);
+  assert.equal(pessoaForaDaIntegracao({ trabalhadorId: 'a', jaParticipa: true }, marcados), true);
+});
