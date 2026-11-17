@@ -938,7 +938,29 @@ export interface InstrutorSessaoTreinamento {
   podeAssinarEmOutrasObras: boolean;
   totalCertificados: number;
   certificadosAssinados: number;
+  // 16/11/2026: o instrutor assina por digital ou facial ANTES de encerrar a turma (o encerramento exige).
+  assinouAntesDeEncerrar?: boolean;
+  assinadoEmUtc?: string | null;
+  /** 'biometria' (digital) | 'reconhecimentoFacial' */
+  metodoAssinatura?: 'biometria' | 'reconhecimentoFacial' | null;
+  temDigital?: boolean;
+  temFacial?: boolean;
 }
+
+/** Resposta de POST sessoes-treinamento/{id}/instrutor/assinatura/(digital|facial). */
+export interface AssinaturaInstrutorTurma {
+  sessaoTreinamentoId: string;
+  instrutorTrabalhadorId: string;
+  metodo: 'biometria' | 'reconhecimentoFacial';
+  assinadoEmUtc: string;
+}
+
+/** Dados da leitura de digital enviados junto da credencial do leitor (corpo da biometria local). */
+export type CorpoDigitalInstrutor = {
+  trabalhadorId: string;
+  score: number;
+  imagemDigital?: string | null;
+};
 
 export const FormacaoInstrutor = { TecnicoSegurancaTrabalho: 1, EngenheiroSegurancaTrabalho: 2 } as const;
 export const ConselhoInstrutor = { Mte: 1, Crea: 2 } as const;
@@ -4977,6 +4999,27 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return parsearJsonSeguro<T>(texto, response);
 }
 
+// Assinatura facial do instrutor/técnico (16/11/2026): multipart SEM fila offline — a resposta (aceita ou
+// recusada) precisa chegar na hora, porque a tela decide o próximo passo da fila por ela. O servidor busca o
+// grupo de rostos pela obra do instrutor/da OS, por isso não vai obraId. Erros: 400 {erro, motivo}, 409, 404.
+async function enviarFotoAssinaturaFacial<T>(caminho: string, foto: File, enviarCapturadaEm = false): Promise<T> {
+  const formData = new FormData();
+  formData.append('foto', foto);
+  anexarDadosFoto(formData, foto);
+  if (enviarCapturadaEm) formData.append('capturadaEm', new Date().toISOString());
+  const localizacao = await obterLocalizacaoAssinatura();
+  formData.append('localizacaoStatus', String(localizacao.status));
+  if (localizacao.latitude != null) formData.append('latitude', String(localizacao.latitude));
+  if (localizacao.longitude != null) formData.append('longitude', String(localizacao.longitude));
+  if (localizacao.precisaoMetros != null) formData.append('precisaoMetros', String(localizacao.precisaoMetros));
+  const response = await fetch(`${API_BASE_URL}${caminho}`, { method: 'POST', headers: await montarHeadersAuth(), body: formData });
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  return parsearJsonSeguro<T>(await response.text(), response);
+}
+
 async function requestPublico<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -5637,6 +5680,21 @@ export interface InstrutorIntegracao {
   trabalhadorId: string;
   nome: string;
   registro?: string | null;
+  /** 16/11/2026: o instrutor precisa de digital ou facial cadastrada para assinar cada etapa. Ausente em servidor antigo. */
+  temDigital?: boolean;
+  temFacial?: boolean;
+}
+
+/** Segundos de espera das fotos automáticas: 1ª depois da abertura da etapa, 2ª depois da 1ª, 3ª depois da 2ª. */
+export interface FotosAutomaticasIntegracao {
+  primeiraAposSegundos: number;
+  segundaAposSegundos: number;
+  terceiraAposSegundos: number;
+}
+
+export interface ConfiguracaoIntegracao {
+  habilitada: boolean;
+  fotosAutomaticas: FotosAutomaticasIntegracao;
 }
 
 export interface EntradaIntegracao {
@@ -5648,6 +5706,7 @@ export interface EntradaIntegracao {
   bloqueios: BloqueioIntegracao[];
   candidatos: CandidatoIntegracao[];
   instrutores: InstrutorIntegracao[];
+  fotosAutomaticas?: FotosAutomaticasIntegracao;
 }
 
 export interface ParticipanteIntegracaoAtendimento {
@@ -5668,6 +5727,8 @@ export interface PeriodoEtapaIntegracao {
   /** HH:mm */
   fim: string;
   minutos: number;
+  /** Lançado pelo sistema ao abrir a etapa (16/11/2026). Ajustar = remover este e lançar um manual. */
+  automatico?: boolean;
 }
 
 export interface ParticipanteEtapaIntegracao {
@@ -5710,6 +5771,19 @@ export interface EtapaIntegracao {
   periodos: PeriodoEtapaIntegracao[];
   /** Só na etapa em andamento: o que ainda impede o "Avançar" (texto do servidor). */
   faltas: string[];
+  /** Mesma lista de `faltas`, na mesma ordem, com código estável (ver CODIGOS_PENDENCIA em helpers). */
+  pendencias?: PendenciaEtapaIntegracao[];
+  /** O instrutor assina cada etapa de curso por digital ou facial (16/11/2026). 'biometria' = digital. */
+  instrutorAssinou?: boolean;
+  instrutorAssinadoEmUtc?: string | null;
+  instrutorMetodo?: 'biometria' | 'reconhecimentoFacial' | null;
+  instrutorTemDigital?: boolean;
+  instrutorTemFacial?: boolean;
+}
+
+export interface PendenciaEtapaIntegracao {
+  codigo: string;
+  texto: string;
 }
 
 export interface IntegracaoAtendimentoDetalhe {
@@ -6346,6 +6420,16 @@ export const api = {
         { method: 'POST', body: JSON.stringify({ ...credencial, trabalhadorId, score, imagemDigital: imagemDigital ?? null, localizacao }) },
       );
     },
+    // Turma comum (16/11/2026): o instrutor assina por digital ou facial ANTES de encerrar a turma.
+    assinarInstrutorDigital: async (sessaoId: string, credencial: CredencialLeitura, corpo: CorpoDigitalInstrutor) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<AssinaturaInstrutorTurma>(`/api/sessoestreinamento/${sessaoId}/instrutor/assinatura/digital`, {
+        method: 'POST',
+        body: JSON.stringify({ ...credencial, trabalhadorId: corpo.trabalhadorId, score: corpo.score, imagemDigital: corpo.imagemDigital ?? null, localizacao }),
+      });
+    },
+    assinarInstrutorFacial: (sessaoId: string, foto: File) =>
+      enviarFotoAssinaturaFacial<AssinaturaInstrutorTurma>(`/api/sessoestreinamento/${sessaoId}/instrutor/assinatura/facial`, foto),
     listar: (obraId?: string) => request<SessaoTreinamento[]>(`/api/sessoestreinamento${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<SessaoTreinamentoDetalhe>(`/api/sessoestreinamento/${id}`),
     padrao: (cursoTreinamentoId: string, obraId?: string) =>
@@ -7729,6 +7813,17 @@ export const api = {
         body: JSON.stringify({ ...credencial, trabalhadorId, score, imagemDigital: imagemDigital ?? null, localizacao }),
       });
     },
+    // Técnico da Ordem de Serviço (16/11/2026): só digital ou facial, em rotas próprias (a assinatura pelo login saiu).
+    // Dentro de uma integração quem assina é o instrutor; fora, o técnico/engenheiro de segurança da obra da OS.
+    assinarTecnicoOsDigital: async (documentoId: string, credencial: CredencialLeitura, trabalhadorId: string, score: number, imagemDigital?: string | null) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<DocumentoSignatario>(`/api/documentos/${documentoId}/tecnico-os/biometria-local`, {
+        method: 'POST',
+        body: JSON.stringify({ ...credencial, trabalhadorId, score, imagemDigital: imagemDigital ?? null, localizacao }),
+      });
+    },
+    assinarTecnicoOsFacial: (documentoId: string, foto: File) =>
+      enviarFotoAssinaturaFacial<DocumentoSignatario>(`/api/documentos/${documentoId}/tecnico-os/facial`, foto, true),
     // Assinatura via reconhecimento facial (Azure Face API) — multipart e offline-aware, mesmo
     // padrão de anexarFotoEvidencia (DDS): syncMutateMultipart enfileira sozinho se faltar conexão.
     autenticarFacial: async (documentoAssinaturaId: string, obraId: string, foto: File) => {
@@ -8069,6 +8164,13 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(periodo),
       }),
+    // Ajustar horário em UMA transação: SUBSTITUI todos os períodos da etapa pelos informados (se falhar, nada muda).
+    // 400 {erro}: início antes da abertura, fim futuro, mais de 12 h por período ou sobreposição.
+    ajustarPeriodos: (id: string, etapaId: string, periodos: Array<{ data: string; inicio: string; fim: string }>) =>
+      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/periodos/ajustar`, {
+        method: 'POST',
+        body: JSON.stringify({ periodos }),
+      }),
     removerPeriodo: (id: string, etapaId: string, periodoId: string) =>
       request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/periodos/${periodoId}`, {
         method: 'DELETE',
@@ -8080,6 +8182,19 @@ export const api = {
         body: JSON.stringify({ etapaOrdem }),
       }),
     ordensServico: (id: string) => request<OsIntegracao>(`/api/integracoes-atendimento/${id}/ordens-servico`),
+    // Intervalos das fotos automáticas e chave da integração em etapas (16/11/2026).
+    configuracao: () => request<ConfiguracaoIntegracao>('/api/integracoes-atendimento/configuracao'),
+    // O instrutor assina a etapa por digital (corpo da biometria local) ou facial (multipart). Respondem o atendimento atualizado.
+    // 400: pessoa lida não é o instrutor / rosto rejeitado ({erro, motivo}); 409: já assinou; 404: sem acesso.
+    assinarInstrutorDigital: async (id: string, etapaId: string, credencial: CredencialLeitura, corpo: CorpoDigitalInstrutor) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/instrutor/assinar/digital`, {
+        method: 'POST',
+        body: JSON.stringify({ ...credencial, trabalhadorId: corpo.trabalhadorId, score: corpo.score, imagemDigital: corpo.imagemDigital ?? null, localizacao }),
+      });
+    },
+    assinarInstrutorFacial: (id: string, etapaId: string, foto: File) =>
+      enviarFotoAssinaturaFacial<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/instrutor/assinar/facial`, foto),
     concluir: (id: string) =>
       request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/concluir`, { method: 'POST' }),
     // Registro "Integração realizada" do perfil (sem certificado). Falhou (ex.: 404 fora da obra): o bloco some.

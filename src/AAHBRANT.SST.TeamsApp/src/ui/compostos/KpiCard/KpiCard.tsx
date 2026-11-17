@@ -4,6 +4,7 @@ import { makeStyles, mergeClasses } from '@fluentui/react-components';
 import { designTokens, tokensUi, type Tom } from '../../tokens/tokens';
 import { useTons, usePulsos } from '../../tokens/tons';
 import { useTipografia } from '../../tokens/tipografia';
+import { useEstilosEsmeralda } from '../../tokens/esmeralda';
 import { escalonado } from '../../tokens/movimento';
 import { Carregando } from '../../primitivos/Carregando/Carregando';
 
@@ -49,50 +50,9 @@ const useStyles = makeStyles({
   icone: { width: '40px', height: '40px', borderRadius: tokensUi.raio.md, display: 'grid', placeItems: 'center', flexShrink: 0 },
   deltas: { display: 'flex', flexWrap: 'wrap', gap: '6px' },
   delta: { fontSize: '11px', lineHeight: '14px', fontWeight: 700, padding: '3px 8px', borderRadius: tokensUi.raio.full },
-  // Indicador principal (Início, 28/10/2026): vidro esmeralda translúcido com um brilho que passa
-  // devagar. O usuário pediu GARANTIA de que esse visual não se perde — não simplificar.
-  destaque: {
-    position: 'relative',
-    overflow: 'hidden',
-    isolation: 'isolate',
-    color: '#ffffff',
-    backgroundImage: 'linear-gradient(140deg, rgba(16,185,129,0.92) 0%, rgba(5,150,105,0.86) 48%, rgba(6,95,70,0.92) 100%)',
-    border: '1px solid rgba(167,243,208,0.55)',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(0,0,0,0.12), 0 10px 30px rgba(5,150,105,0.28)',
-    backdropFilter: 'blur(14px) saturate(160%)',
-    '::before': {
-      content: '""',
-      position: 'absolute',
-      inset: 0,
-      zIndex: -1,
-      pointerEvents: 'none',
-      backgroundImage:
-        'radial-gradient(120% 80% at 0% 0%, rgba(255,255,255,0.35), transparent 55%), radial-gradient(90% 70% at 100% 100%, rgba(6,78,59,0.45), transparent 60%)',
-    },
-    '::after': {
-      content: '""',
-      position: 'absolute',
-      top: '-40%',
-      bottom: '-40%',
-      width: '38%',
-      left: '-60%',
-      zIndex: -1,
-      pointerEvents: 'none',
-      backgroundImage: 'linear-gradient(100deg, transparent, rgba(167,243,208,0.55), transparent)',
-      transform: 'skewX(-18deg)',
-      animationName: { '0%': { left: '-60%' }, '60%': { left: '-60%' }, '100%': { left: '130%' } },
-      animationDuration: '5.5s',
-      animationTimingFunction: 'ease-in-out',
-      animationDelay: '1s',
-      animationIterationCount: 'infinite',
-      '@media (prefers-reduced-motion: reduce)': { animationName: 'none' },
-    },
-    ':hover': {
-      border: '1px solid rgba(209,250,229,0.9)',
-      backgroundColor: 'transparent',
-      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.55), 0 14px 38px rgba(5,150,105,0.38)',
-    },
-  },
+  // Indicador principal (Início, 28/10/2026): o vidro esmeralda com brilho mora em ui/tokens/esmeralda.ts
+  // (compartilhado com a "Realizar integração", 16/11/2026). O usuário pediu GARANTIA de que esse visual
+  // não se perde — não simplificar.
   textoDestaque: { color: '#ffffff' },
   rotuloDestaque: { color: 'rgba(255, 255, 255, 0.9)' },
   iconeDestaque: { backgroundColor: 'rgba(255, 255, 255, 0.18)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.3)' },
@@ -120,13 +80,13 @@ export interface KpiCardProps {
 // é o que elimina os 41 hex soltos dos painéis. Entrada escalonada pelo `indice`. Deltas de
 // vencimento podem pulsar (`pulsar`): vencido rápido, a vencer leve — pedido do usuário, 07/09.
 export function KpiCard({ rotulo, valor, tom, icone, deltas, indice = 0, carregando, onClick, ariaLabel, destaque, extra }: KpiCardProps) {
-  const e = useStyles(); const tipo = useTipografia(); const tons = useTons(); const pulsos = usePulsos();
+  const e = useStyles(); const esm = useEstilosEsmeralda(); const tipo = useTipografia(); const tons = useTons(); const pulsos = usePulsos();
   if (carregando) return <Carregando variante="kpi" linhas={1} />;
   const Elemento = onClick ? motion.button : motion.div;
   return (
     <Elemento
       type={onClick ? 'button' : undefined}
-      className={mergeClasses(e.root, onClick && e.acionavel, destaque && e.destaque)}
+      className={mergeClasses(e.root, onClick && e.acionavel, destaque && esm.vidro, destaque && esm.vidroHover)}
       variants={escalonado(indice)}
       initial="inicial"
       animate="visivel"

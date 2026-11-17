@@ -110,10 +110,21 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         if (documento.EntidadeTipo == nameof(Apr) && papel is null && resultado.Metodo != MetodoAutenticacaoAssinatura.SessaoLogada)
             papel = await PapelNaAprAsync(documento.EntidadeId, resultado.TrabalhadorId, ct);
 
+        // OS (16/11): o técnico assina só por biometria. A sessão logada nunca mais registra a assinatura do técnico
+        // (OS antigas já assinadas por login continuam válidas: são só lidas, ver AssinaturasOrdemServico). O papel
+        // TecnicoSegurancaOs só existe na OS.
+        var ehOs = documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura;
+        if (ehOs && resultado.Metodo == MetodoAutenticacaoAssinatura.SessaoLogada)
+            throw new InvalidOperationException(TecnicoOrdemServicoRegra.MensagemLoginRecusado);
+        var comoTecnicoOs = papel == PapelAssinatura.TecnicoSegurancaOs;
+        if (comoTecnicoOs && (!ehOs || resultado.Metodo is not (MetodoAutenticacaoAssinatura.Biometria or MetodoAutenticacaoAssinatura.ReconhecimentoFacial)))
+            throw new InvalidOperationException("Este papel de assinatura só vale para o técnico da Ordem de Serviço, por digital ou reconhecimento facial.");
+
         var comoInstrutor = papel == PapelAssinatura.Instrutor;
         if (comoInstrutor && !await _db.PerfisInstrutor.AnyAsync(p => p.TrabalhadorId == resultado.TrabalhadorId, ct))
             throw new InvalidOperationException("Este trabalhador não tem perfil de instrutor cadastrado.");
-        var trabalhador = await (comoInstrutor ? _db.Trabalhadores.IgnoreQueryFilters() : _db.Trabalhadores)
+        // O instrutor da integração pode ser de outra obra: a identidade dele é conferida explicitamente na regra da OS.
+        var trabalhador = await (comoInstrutor || comoTecnicoOs ? _db.Trabalhadores.IgnoreQueryFilters() : _db.Trabalhadores)
             .Include(t => t.Funcao).FirstAsync(t => t.Id == resultado.TrabalhadorId, ct);
         var permiteDuplaAssinaturaTecnicoEpi = documento.EntidadeTipo == "EntregaEpi"
             && FuncaoSstClassifier.EhTecnicoSeguranca(trabalhador.Funcao?.Nome);
@@ -129,7 +140,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
 
         // O instrutor não é o dono do certificado: a conferência "a digital é do dono do documento" não vale
         // para ele (a identidade dele já foi conferida contra o instrutor da turma antes do registro).
-        if (!comoInstrutor)
+        if (!comoInstrutor && !comoTecnicoOs)
             await GarantirQueEhOSignatarioEsperadoAsync(documento, resultado, trabalhador, ct);
 
         // Regras específicas de Inspeção/Patrulha de Segurança (pedido do usuário, 01/09) — o Motor
@@ -160,7 +171,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         }
 
         if (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura)
-            await GarantirOrdemAssinaturaOsAsync(documento, resultado, trabalhador, ct);
+            await GarantirOrdemAssinaturaOsAsync(documento, resultado, trabalhador, papel, ct);
 
         var operadorUsuarioId = await ObterOperadorAsync(ct);
         var signatario = new DocumentoSignatario
@@ -214,7 +225,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         // fecha com a assinatura do técnico, que é sempre a última.
         var fechaAgora = documento.EntidadeTipo == nameof(Inspecao)
             || documento.EntidadeTipo == "Acidente"
-            || (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura && resultado.Metodo == MetodoAutenticacaoAssinatura.SessaoLogada);
+            || (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura && papel == PapelAssinatura.TecnicoSegurancaOs);
         if (fechaAgora && _mediator is not null)
             await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, documento.Id, ct);
 
@@ -334,25 +345,22 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
             "se for, o cadastro biométrico de um dos dois precisa ser refeito.");
     }
 
-    // Ordem de Serviço (03/11): o funcionário assina primeiro, por digital ou facial; depois o técnico de
-    // segurança com o próprio login. Quem assina como técnico não pode ser o dono da OS e precisa ter
-    // função de Técnico ou Engenheiro de Segurança (mesmo critério da inspeção).
+    // Ordem de Serviço (16/11): o funcionário assina primeiro, por digital ou facial; depois o técnico, também por
+    // digital ou facial, com o papel TecnicoSegurancaOs. Quem pode ser o técnico depende de a OS estar dentro de uma
+    // integração (só o instrutor dela) ou fora (técnico/engenheiro de segurança da obra da OS) — ver TecnicoOrdemServicoRegra.
+    // A sessão logada já foi recusada acima; as assinaturas antigas por login só são lidas (AssinaturasOrdemServico).
     private async Task GarantirOrdemAssinaturaOsAsync(
-        DocumentoAssinatura documento, ResultadoAutenticacaoAssinatura resultado, Trabalhador assinante, CancellationToken ct)
+        DocumentoAssinatura documento, ResultadoAutenticacaoAssinatura resultado, Trabalhador assinante, PapelAssinatura? papel, CancellationToken ct)
     {
-        if (resultado.Metodo != MetodoAutenticacaoAssinatura.SessaoLogada)
+        if (papel != PapelAssinatura.TecnicoSegurancaOs)
             return;
 
-        var donoId = await _db.OrdensServico.IgnoreQueryFilters()
-            .Where(o => o.Id == documento.EntidadeId).Select(o => (Guid?)o.TrabalhadorId).FirstOrDefaultAsync(ct)
-            ?? throw new KeyNotFoundException("Ordem de Serviço não encontrada.");
-        if (assinante.Id == donoId)
-            throw new InvalidOperationException("O próprio funcionário não pode assinar a OS como técnico de segurança.");
-        if (!FuncaoPodeAssinarInspecao(assinante.Funcao?.Nome))
-            throw new InvalidOperationException("Apenas Técnico de Segurança ou Engenheiro de Segurança podem assinar a Ordem de Serviço como responsável de SST.");
-        if (!await _db.DocumentoSignatarios.AnyAsync(s => s.DocumentoAssinaturaId == documento.Id && s.TrabalhadorId == donoId, ct))
+        var contexto = await TecnicoOrdemServicoRegra.CarregarContextoPorOsAsync(_db, documento.EntidadeId, ct);
+        TecnicoOrdemServicoRegra.GarantirIdentidade(contexto, assinante, resultado.Metodo);
+        if (!await _db.DocumentoSignatarios.AnyAsync(s => s.DocumentoAssinaturaId == documento.Id && s.TrabalhadorId == contexto.FuncionarioId, ct))
             throw new InvalidOperationException("O funcionário assina primeiro. Colha a digital ou a facial dele antes da assinatura do técnico.");
-        if (await _db.DocumentoSignatarios.AnyAsync(s => s.DocumentoAssinaturaId == documento.Id && s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada, ct))
+        if (await _db.DocumentoSignatarios.AnyAsync(s => s.DocumentoAssinaturaId == documento.Id
+                && (s.Papel == PapelAssinatura.TecnicoSegurancaOs || s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada), ct))
             throw new InvalidOperationException("Esta Ordem de Serviço já tem a assinatura do técnico de segurança.");
     }
 

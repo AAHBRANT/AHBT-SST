@@ -31,7 +31,9 @@ public class DefinirInstrutorSessaoTreinamentoCommandHandler : IRequestHandler<D
     {
         var sessao = await _db.SessoesTreinamento.FirstOrDefaultAsync(s => s.Id == request.SessaoTreinamentoId, ct)
             ?? throw new KeyNotFoundException("Turma não encontrada.");
-        await AAHBRANT.SST.Application.IntegracoesAtendimento.ProtecaoTurmaIntegracao.GarantirEtapaEmAndamentoAsync(_db, sessao.Id, ct);
+        // O instrutor da integração é único para a integração toda (definido ao iniciá-la): a turma de etapa não troca de instrutor.
+        if (await AAHBRANT.SST.Application.IntegracoesAtendimento.ProtecaoTurmaIntegracao.AtendimentoDaTurmaAsync(_db, sessao.Id, ct) is not null)
+            throw new InvalidOperationException("O instrutor desta turma é o da integração e não pode ser trocado aqui.");
 
         var perfil = await _db.PerfisInstrutor.FirstOrDefaultAsync(p => p.TrabalhadorId == request.InstrutorTrabalhadorId, ct)
             ?? throw new InvalidOperationException("Este trabalhador não tem perfil de instrutor cadastrado.");
@@ -51,6 +53,10 @@ public class DefinirInstrutorSessaoTreinamentoCommandHandler : IRequestHandler<D
                 && certificadosDaTurma.Contains(d.EntidadeId)), ct);
         if (jaAssinou && sessao.InstrutorTrabalhadorId != trabalhador.Id)
             throw new InvalidOperationException("O instrutor desta turma já assinou os certificados e não pode ser trocado.");
+
+        // A assinatura biométrica guardada antes do encerramento é de quem assinou: trocar o instrutor depois dela a invalidaria.
+        if (await _db.AssinaturasInstrutorSessaoTreinamento.AnyAsync(a => a.SessaoTreinamentoId == sessao.Id && a.InstrutorTrabalhadorId != trabalhador.Id, ct))
+            throw new InvalidOperationException("O instrutor desta turma já assinou com biometria e não pode ser trocado.");
 
         sessao.InstrutorTrabalhadorId = trabalhador.Id;
         sessao.InstituicaoInstrutor = trabalhador.Nome;

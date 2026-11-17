@@ -8,8 +8,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.IntegracoesAtendimento.Commands;
 
-// "Avançar" a etapa de curso em andamento (decisão de 11/11/2026). Exige instrutor, carga lançada >= mínimo (0 não
-// trava), 3 fotos e a assinatura biométrica de todos os participantes da etapa. Então grava a carga e a data (último dia)
+// "Avançar" a etapa de curso em andamento (decisão de 11/11/2026). Exige instrutor com assinatura biométrica guardada (16/11),
+// carga lançada >= mínimo (0 não trava; período automático só libera depois do fim dele), 3 fotos e a assinatura biométrica de
+// todos os participantes da etapa. Então grava a carga e a data (último dia)
 // na turma, encerra a turma (um certificado por pessoa, cada um com o próprio documento de assinatura), marca a etapa
 // Concluída e abre a próxima que tem gente. Sem volta: etapa concluída é imutável.
 //
@@ -64,6 +65,9 @@ public class AvancarEtapaIntegracaoCommandHandler : IRequestHandler<AvancarEtapa
             .Where(p => p.SessaoTreinamentoId == sessao.Id && p.Ativo).ToListAsync(ct);
         var periodos = await _db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == atual.Id).ToListAsync(ct);
         var minutos = periodos.Sum(p => p.Minutos);
+        var jaAssinouInstrutor = await _db.AssinaturasInstrutorSessaoTreinamento.AnyAsync(a => a.SessaoTreinamentoId == sessao.Id, ct);
+        var (comDigital, comFacial) = await BiometriaInstrutor.CarregarAsync(_db, [at.InstrutorTrabalhadorId], ct);
+        var instrutor = new SituacaoInstrutorEtapa(jaAssinouInstrutor, comDigital.Contains(at.InstrutorTrabalhadorId), comFacial.Contains(at.InstrutorTrabalhadorId));
         var fotos = await _db.FotosEvidenciaSessaoTreinamento.CountAsync(f => f.SessaoTreinamentoId == sessao.Id && f.Ativo, ct);
         var nomes = await _db.ParticipantesIntegracao.Where(p => p.IntegracaoAtendimentoId == at.Id)
             .ToDictionaryAsync(p => p.TrabalhadorId, p => p.Nome, ct);
@@ -79,7 +83,7 @@ public class AvancarEtapaIntegracaoCommandHandler : IRequestHandler<AvancarEtapa
         }
         else if (!retomando)
         {
-            var faltas = AvaliadorEtapaIntegracao.Faltas(atual, sessao, participantesTurma, nomes, minutos, fotos);
+            var faltas = AvaliadorEtapaIntegracao.Faltas(atual, sessao, participantesTurma, nomes, periodos, fotos, instrutor);
             if (faltas.Count > 0)
                 throw new IntegracaoBloqueadaException(
                     $"A etapa {CalculadoraEtapasIntegracao.Titulo(atual.Tipo)} ainda não pode avançar: {faltas.Count} pendência(s).", faltas);

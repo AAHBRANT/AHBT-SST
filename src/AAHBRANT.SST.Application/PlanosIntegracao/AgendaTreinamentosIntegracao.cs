@@ -30,6 +30,10 @@ public static class AgendaTreinamentosIntegracao
 
     public static DateTime AgoraBrasilia() => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, FusoBrasilia);
 
+    // Data e hora de Brasília de um instante UTC.
+    public static DateTime HoraBrasilia(DateTime utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), FusoBrasilia);
+
     public static DateTime DataBrasilia(DateTime utc) =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), FusoBrasilia).Date;
 

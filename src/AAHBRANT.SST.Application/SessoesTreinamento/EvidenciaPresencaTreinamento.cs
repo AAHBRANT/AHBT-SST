@@ -38,6 +38,36 @@ public static class EvidenciaPresencaTreinamento
         participante.ValidacaoRequisicaoId = Truncar(resultado.ValidacaoRequisicaoId, 80);
     }
 
+    // Mesma prova, para a assinatura biométrica do instrutor na turma (16/11): imagem com SHA-256, IP, aparelho,
+    // localização e validação (Azure ou leitor).
+    public static void AplicarNaAssinaturaInstrutor(
+        AssinaturaInstrutorSessaoTreinamento assinatura,
+        ResultadoAutenticacaoAssinatura resultado,
+        byte[]? imagem,
+        string? contentType,
+        LocalizacaoAssinatura? localizacao,
+        IClienteIpProvider? clienteIp)
+    {
+        if (imagem is { Length: > 0 })
+        {
+            assinatura.EvidenciaConteudo = imagem;
+            assinatura.EvidenciaContentType = string.IsNullOrWhiteSpace(contentType) ? "image/jpeg" : contentType;
+            assinatura.EvidenciaHash = Convert.ToHexString(SHA256.HashData(imagem));
+        }
+
+        assinatura.IpAddress = Truncar(clienteIp?.ObterIp(), 64);
+        assinatura.UserAgent = Truncar(clienteIp?.ObterUserAgent(), 300);
+        var local = (localizacao ?? new LocalizacaoAssinatura(Domain.Enums.StatusLocalizacaoAssinatura.NaoInformada)).Normalizada();
+        assinatura.LocalizacaoStatus = local.Status;
+        assinatura.Latitude = local.Latitude;
+        assinatura.Longitude = local.Longitude;
+        assinatura.PrecisaoMetros = local.PrecisaoMetros;
+        assinatura.DispositivoAgenteId = resultado.DispositivoAgenteId;
+        assinatura.ValidacaoModelo = Truncar(resultado.ValidacaoModelo, 60);
+        assinatura.ValidacaoGrupoId = Truncar(resultado.ValidacaoGrupoId, 80);
+        assinatura.ValidacaoRequisicaoId = Truncar(resultado.ValidacaoRequisicaoId, 80);
+    }
+
     private static string? Truncar(string? valor, int max) =>
         string.IsNullOrEmpty(valor) || valor.Length <= max ? valor : valor[..max];
 }

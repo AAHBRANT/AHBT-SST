@@ -1,70 +1,145 @@
 import { useState } from 'react';
-import { BarraProgresso, Button, CampoData, Field, Input, StatusChip } from '@ui';
-import { Delete20Regular, Flag16Regular } from '@fluentui/react-icons';
+import { Button, Card, CampoData, Field, Input, StatusChip, useEstilosEsmeralda } from '@ui';
+import { Clock16Regular, Delete20Regular, Edit16Regular, Warning16Regular } from '@fluentui/react-icons';
 import { api, type EtapaIntegracao, type IntegracaoAtendimentoDetalhe } from '../../../lib/api';
-import { useEstilosIntegracao } from './estilos';
+import { mergeClasses, useEstilosIntegracao } from './estilos';
 import { dataBrasil, formatarCarga } from './helpers';
+import {
+  aberturaEtapaMs,
+  avisoAbaixoDoMinimo,
+  cargaDecorridaMin,
+  corpoAjustePeriodos,
+  estadoCarga,
+  fimCargaAutomaticaMs,
+  formatarHoraBrasil,
+  hojeIsoBrasilia,
+  instanteBrasilia,
+  periodosSobrepostos,
+  percentualCarga,
+  textoFechaAs,
+  validarPeriodosAjuste,
+  type PeriodoAjuste,
+} from './helpersInstrutor';
+import { TituloSecao } from './pecas';
 
 interface Props {
   integracaoId: string;
   etapa: EtapaIntegracao;
+  codigoCurso: string;
   somenteLeitura: boolean;
+  /** Relógio da tela (ms): a barra e a espera do fim recalculam por ele. */
+  agoraMs: number;
   aoAtualizar: (detalhe: IntegracaoAtendimentoDetalhe) => void;
   aoErro: (mensagem: string | null) => void;
 }
 
-function hojeIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function minutosDe(hhmm: string): number | null {
-  const m = /^(\d{2}):(\d{2})$/.exec(hhmm);
-  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
-}
-
-// Carga horária da etapa (mockup v4): "cumprida x mínimo da NR", barra de progresso e a mensagem do que
-// falta. A carga é a soma dos períodos lançados (data, início e fim), pois a etapa pode durar mais de
-// um dia. Mínimo 0 = sem trava (ex.: NR-06 até o QSMS definir): a tela só pede a carga registrada.
-export function CargaEtapa({ integracaoId, etapa, somenteLeitura, aoAtualizar, aoErro }: Props) {
+// Carga horária da etapa (16/11/2026, mockup v3 e decisão 1 do usuário): AUTOMÁTICA. O servidor lança o
+// período ao abrir a etapa (início = hora da abertura, fim = início + carga prevista); o técnico não confirma
+// nada. A tela mostra o período, a barra (esmeralda, igual ao KpiCard) e, enquanto o fim não chega, "Fecha às
+// HH:mm". "Ajustar horário" abre o formulário manual (data, início e fim), que é o único caminho manual:
+// substitui o período automático pelo informado numa só chamada (se falhar, nada muda). O Avançar só libera depois do fim (regra do servidor).
+export function CargaEtapa({ integracaoId, etapa, codigoCurso, somenteLeitura, agoraMs, aoAtualizar, aoErro }: Props) {
   const e = useEstilosIntegracao();
-  const [data, setData] = useState(hojeIso());
-  const [inicio, setInicio] = useState('');
-  const [fim, setFim] = useState('');
+  const esm = useEstilosEsmeralda();
+  const [ajustando, setAjustando] = useState(false);
+  // Linhas do ajuste: uma por período automático (a janela que cruza a meia-noite vira dois); ao lançar do zero, uma só.
+  const [linhas, setLinhas] = useState<PeriodoAjuste[]>([]);
   const [salvando, setSalvando] = useState(false);
+  const [erroForm, setErroForm] = useState<string | null>(null);
 
+  const periodos = etapa.periodos ?? [];
   const minimoMin = Math.round(etapa.cargaMinimaHoras * 60);
   const temMinimo = minimoMin > 0;
-  const temPeriodo = etapa.periodos.length > 0;
-  const cargaOk = temPeriodo && (temMinimo ? etapa.cargaLancadaMinutos >= minimoMin : true);
-  const pct = temMinimo ? Math.min(100, Math.round((etapa.cargaLancadaMinutos / minimoMin) * 100)) : etapa.cargaLancadaMinutos > 0 ? 100 : 0;
-  const mensagem = temMinimo
-    ? cargaOk
-      ? `Carga atende o mínimo de ${etapa.cargaMinimaHoras} h.`
-      : `Faltam ${formatarCarga(minimoMin - etapa.cargaLancadaMinutos)} para o mínimo de ${etapa.cargaMinimaHoras} h. A etapa só avança com a carga atendida.`
-    : cargaOk
-      ? 'Sem trava de mínimo até o QSMS definir. Registre a carga cumprida, que vai para o certificado.'
-      : 'Registre a carga cumprida.';
+  const estado = estadoCarga(etapa, agoraMs);
+  const fimAuto = fimCargaAutomaticaMs(periodos);
+  const temAuto = periodos.some((p) => p.automatico);
+  const pct = percentualCarga(etapa, agoraMs);
+  const decorrida = cargaDecorridaMin(periodos, agoraMs);
+  const abertura = aberturaEtapaMs(etapa.iniciadaEmUtc);
+  // Aviso de mínimo: soma o que o ajuste deixa (linhas válidas) com os manuais que ficam.
+  const avisoMinimo = ajustando && linhas.length === 1 ? avisoAbaixoDoMinimo(linhas[0].inicio, linhas[0].fim, etapa.cargaMinimaHoras) : null;
 
-  async function adicionar() {
-    const ini = minutosDe(inicio);
-    const fi = minutosDe(fim);
-    if (!data || ini == null || fi == null) {
-      aoErro('Informe a data, o horário de início e o de fim do período.');
-      return;
+  const chip =
+    estado === 'cumprida' ? (
+      <StatusChip tom="ok">Carga cumprida</StatusChip>
+    ) : estado === 'aguardando_fim' && fimAuto != null ? (
+      <StatusChip tom="neutro" icone={<Clock16Regular />}>Fecha às {textoFechaAs(fimAuto, agoraMs)}</StatusChip>
+    ) : estado === 'abaixo_minimo' ? (
+      <StatusChip tom="alerta">Abaixo do mínimo</StatusChip>
+    ) : (
+      <StatusChip tom="atencao">Falta lançar</StatusChip>
+    );
+
+  const mensagem = (() => {
+    if (estado === 'aguardando_fim' && fimAuto != null) {
+      return `Passaram ${formatarCarga(decorrida)}${temMinimo ? ` de ${etapa.cargaMinimaHoras} h` : ''}. O período fecha sozinho às ${textoFechaAs(fimAuto, agoraMs)}, sem você confirmar nada. Para encerrar antes, use "Ajustar horário".`;
     }
-    if (fi <= ini) {
-      aoErro('O horário de fim precisa ser depois do início.');
+    if (estado === 'cumprida') {
+      return temAuto && fimAuto != null
+        ? `O período fechou às ${formatarHoraBrasil(fimAuto)}${temMinimo ? ` e atende o mínimo de ${etapa.cargaMinimaHoras} h da ${codigoCurso}` : ''}.`
+        : temMinimo
+          ? `Carga atende o mínimo de ${etapa.cargaMinimaHoras} h.`
+          : 'Sem trava de mínimo até o QSMS definir. A carga registrada vai para o certificado.';
+    }
+    if (estado === 'abaixo_minimo') {
+      return `Faltam ${formatarCarga(minimoMin - etapa.cargaLancadaMinutos)} para o mínimo de ${etapa.cargaMinimaHoras} h da ${codigoCurso}. A etapa só avança com a carga atendida.`;
+    }
+    return temMinimo
+      ? 'Nenhum período lançado. Lance o período com "Lançar período"; a etapa só avança com a carga atendida.'
+      : 'Nenhum período lançado. Registre a carga cumprida, que vai para o certificado.';
+  })();
+
+  function abrirAjuste() {
+    const hoje = hojeIsoBrasilia(agoraMs);
+    const agoraHhmm = formatarHoraBrasil(agoraMs);
+    const autos = periodos
+      .filter((p) => p.automatico)
+      .map((p) => ({ data: p.data.slice(0, 10), inicio: p.inicio, fim: p.fim }))
+      .sort((x, y) => instanteBrasilia(x.data, x.inicio) - instanteBrasilia(y.data, y.inicio));
+    // Linha que ainda não começou (a 2ª de uma janela que cruza a meia-noite, antes da meia-noite) não entra: não dá para ajustar o futuro.
+    const jaComecou = autos.filter((p) => instanteBrasilia(p.data, p.inicio) <= agoraMs);
+    const base = jaComecou.length > 0 ? jaComecou : autos.slice(0, 1);
+    const iniciais: PeriodoAjuste[] = base.length > 0 ? base : [{ data: hoje, inicio: '', fim: '' }];
+    // Sugere encerrar agora na última linha (o fim não pode estar no futuro), sem passar do fim previsto.
+    const ultima = iniciais[iniciais.length - 1];
+    if (ultima.data === hoje && agoraHhmm && (!ultima.fim || agoraHhmm < ultima.fim)) ultima.fim = agoraHhmm;
+    setLinhas(iniciais);
+    setErroForm(null);
+    setAjustando(true);
+  }
+
+  function editarLinha(i: number, parte: Partial<PeriodoAjuste>) {
+    setLinhas((atual) => atual.map((l, idx) => (idx === i ? { ...l, ...parte } : l)));
+  }
+
+  async function salvar() {
+    const agora = Date.now();
+    const erro = validarPeriodosAjuste(linhas, agora, abertura);
+    if (erro) {
+      setErroForm(erro);
       return;
     }
     try {
       setSalvando(true);
+      setErroForm(null);
       aoErro(null);
-      aoAtualizar(await api.integracoesAtendimento.registrarPeriodo(integracaoId, etapa.id, { data, inicio, fim }));
-      setInicio('');
-      setFim('');
+      if (temAuto) {
+        // UMA chamada atômica: o servidor substitui todos os períodos da etapa (os manuais seguem na lista).
+        const corpo = corpoAjustePeriodos(linhas, periodos);
+        if (periodosSobrepostos(corpo)) {
+          setErroForm('Os períodos não podem se sobrepor aos que a etapa já tem.');
+          return;
+        }
+        aoAtualizar(await api.integracoesAtendimento.ajustarPeriodos(integracaoId, etapa.id, corpo));
+      } else {
+        // Sem período automático (lançar do zero ou outro período): é só acrescentar.
+        const { data, inicio, fim } = linhas[0];
+        aoAtualizar(await api.integracoesAtendimento.registrarPeriodo(integracaoId, etapa.id, { data, inicio, fim }));
+      }
+      setAjustando(false);
     } catch (err) {
-      aoErro(err instanceof Error ? err.message : 'Não foi possível registrar o período.');
+      // Mensagem do servidor na tela, com o formulário como estava (nada foi perdido: a chamada é atômica).
+      setErroForm(err instanceof Error ? err.message : 'Não foi possível salvar o ajuste.');
     } finally {
       setSalvando(false);
     }
@@ -83,64 +158,120 @@ export function CargaEtapa({ integracaoId, etapa, somenteLeitura, aoAtualizar, a
   }
 
   return (
-    <div className={e.carga}>
-      <div className={e.cargaLinha}>
-        <span className={e.mudo}>Carga horária cumprida</span>
-        {temMinimo ? (
-          <StatusChip tom="info">Mínimo da NR: {etapa.cargaMinimaHoras} h</StatusChip>
-        ) : (
-          <span className={e.chipAberto}>
-            <Flag16Regular /> Mínimo: a definir pelo QSMS
-          </span>
-        )}
-      </div>
-      <div>
-        <strong className={e.cargaValor}>{formatarCarga(etapa.cargaLancadaMinutos)}</strong>
-        {temMinimo && <span className={e.mudo}> de {etapa.cargaMinimaHoras} h</span>}
-      </div>
-      <div style={{ margin: '8px 0 6px' }}>
-        <BarraProgresso percentual={pct} tom={cargaOk ? 'ok' : 'atencao'} aria-label="Carga horária cumprida" />
-      </div>
-      <div className={e.mudo}>{mensagem}</div>
-
-      {etapa.periodos.length > 0 && (
-        <ul className={e.periodos} style={{ listStyleType: 'none', padding: 0, margin: '10px 0 0' }} aria-label="Períodos lançados">
-          {etapa.periodos.map((p) => (
-            <li key={p.id} className={e.periodo}>
-              <span>
-                <b>{dataBrasil(p.data)}</b> · {p.inicio} às {p.fim} · {formatarCarga(p.minutos)}
-              </span>
-              {!somenteLeitura && (
+    <Card
+      titulo={
+        <TituloSecao numero={<Clock16Regular />} estado={estado === 'cumprida' ? 'feito' : 'atual'}>
+          Carga horária
+        </TituloSecao>
+      }
+      acoes={chip}
+      subtitulo={`Lançada ao abrir a etapa: início = hora da abertura, fim = início + carga prevista do curso${temMinimo ? ` (${etapa.cargaMinimaHoras} h)` : ''}.`}
+    >
+      {ajustando && !somenteLeitura ? (
+        <div>
+          {linhas.map((l, i) => (
+            <div key={i} role="group" aria-label={linhas.length > 1 ? `Período ${i + 1}` : 'Período'}>
+              {linhas.length > 1 && <div className={e.mudo}>Período {i + 1}</div>}
+              <div className={e.ajusteGrade}>
+                <Field label="Data">
+                  <CampoData naoFutura value={l.data} onChange={(_, d) => editarLinha(i, { data: d.value })} />
+                </Field>
+                <Field label="Início">
+                  <Input type="time" value={l.inicio} onChange={(_, d) => editarLinha(i, { inicio: d.value })} />
+                </Field>
+                <Field label="Fim">
+                  <Input type="time" value={l.fim} onChange={(_, d) => editarLinha(i, { fim: d.value })} />
+                </Field>
+              </div>
+              {linhas.length > 1 && (
                 <Button
                   appearance="subtle"
-                  size="small"
+                  className={e.btnMedio}
                   icon={<Delete20Regular />}
-                  aria-label={`Remover o período de ${dataBrasil(p.data)}, ${p.inicio} às ${p.fim}`}
                   disabled={salvando}
-                  onClick={() => void remover(p.id)}
-                />
+                  onClick={() => setLinhas((atual) => atual.filter((_, idx) => idx !== i))}
+                >
+                  Tirar o período {i + 1}
+                </Button>
               )}
-            </li>
+            </div>
           ))}
-        </ul>
-      )}
-
-      {!somenteLeitura && (
-        <div className={e.periodoForm}>
-          <Field label="Data">
-            <CampoData naoFutura value={data} onChange={(_, d) => setData(d.value)} />
-          </Field>
-          <Field label="Início">
-            <Input type="time" value={inicio} onChange={(_, d) => setInicio(d.value)} />
-          </Field>
-          <Field label="Fim">
-            <Input type="time" value={fim} onChange={(_, d) => setFim(d.value)} />
-          </Field>
-          <Button appearance="secondary" className={e.btnMedio} disabled={salvando || !inicio || !fim} onClick={() => void adicionar()}>
-            Lançar período
-          </Button>
+          {avisoMinimo && (
+            <div className={e.avisoAjuste} role="status">
+              <Warning16Regular aria-hidden="true" />
+              <div>
+                <b>{avisoMinimo.split('. ')[0]}.</b> {avisoMinimo.split('. ').slice(1).join('. ')}
+              </div>
+            </div>
+          )}
+          {erroForm && (
+            <div className={e.motivo} role="alert">
+              <Warning16Regular aria-hidden="true" />
+              <span>{erroForm}</span>
+            </div>
+          )}
+          <div className={e.acoesLivres}>
+            <Button appearance="primary" className={e.btnGrande} disabled={salvando || linhas.length === 0 || linhas.some((l) => !l.inicio || !l.fim)} onClick={() => void salvar()}>
+              Salvar ajuste
+            </Button>
+            <Button className={e.btnGrande} disabled={salvando} onClick={() => setAjustando(false)}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          {periodos.length > 0 && (
+            <ul style={{ listStyleType: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Períodos lançados">
+              {periodos.map((p, i) => (
+                <li key={p.id} className={e.periodoAuto}>
+                  <div>
+                    <div className={e.mudo}>{p.automatico ? 'Período lançado automaticamente' : 'Período lançado manualmente'}</div>
+                    <b>
+                      {dataBrasil(p.data)} · {p.inicio} às {p.fim} · {formatarCarga(p.minutos)}
+                    </b>
+                  </div>
+                  {!somenteLeitura && p.automatico && i === periodos.findIndex((x) => x.automatico) && (
+                    <Button appearance="subtle" className={e.btnMedio} icon={<Edit16Regular />} onClick={abrirAjuste}>
+                      Ajustar horário
+                    </Button>
+                  )}
+                  {!somenteLeitura && !p.automatico && (
+                    <Button
+                      appearance="subtle"
+                      className={e.btnMedio}
+                      icon={<Delete20Regular />}
+                      aria-label={`Remover o período de ${dataBrasil(p.data)}, ${p.inicio} às ${p.fim}`}
+                      disabled={salvando}
+                      onClick={() => void remover(p.id)}
+                    />
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {periodos.length === 0 && !somenteLeitura && (
+            <Button appearance="primary" className={e.btnGrande} onClick={abrirAjuste}>
+              Lançar período
+            </Button>
+          )}
+          {periodos.length > 0 && (
+            <div className={e.barraTrilho} role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Carga horária cumprida">
+              <div className={mergeClasses(e.barraPreench, esm.vidro)} style={{ width: `${pct}%`, display: pct > 0 ? undefined : 'none' }} />
+            </div>
+          )}
+          <div className={e.mudo} style={{ marginTop: 8 }}>
+            {mensagem}
+          </div>
+          {!somenteLeitura && !temAuto && periodos.length > 0 && (
+            <div className={e.acoesLivres}>
+              <Button className={e.btnMedio} onClick={abrirAjuste}>
+                Lançar outro período
+              </Button>
+            </div>
+          )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

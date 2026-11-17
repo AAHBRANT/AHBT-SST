@@ -3,13 +3,10 @@ import { recorteNoRosto } from '../../lib/rosto/moldura';
 import { comprimirImagem } from '../../lib/imagem';
 import { leituraParaLocalizacao, pendenciasFoto, vincularDadosFoto, type ContextoFoto, type DadosFoto, type LocalizacaoFoto } from '../../lib/dadosFoto';
 import { criarRastreadorFoto } from '../../lib/fontesLocalizacao';
-import { desenharCarimbo, enderecoDaPosicao, linhasCarimbo, observarEndereco, type ObservadorEndereco } from '../../lib/carimboFoto';
+import { observarEndereco, type ObservadorEndereco } from '../../lib/carimboFoto';
+import { prepararDadosEvidencia } from '../../lib/capturaEvidencia';
 import type { EstadoRastreio, Rastreador } from '../../lib/rastreadorLocalizacao';
 import type { ModoCapturaRosto } from '../../lib/rosto/avaliarRosto';
-
-// Quanto o clique em "capturar" espera pela posição quando ela ainda não está boa. O quadro já foi
-// congelado no clique; a posição que chegar nesse intervalo fica dentro da janela de 60 s.
-const ESPERA_LOCALIZACAO_NO_CLIQUE_MS = 15_000;
 
 export interface UseCapturaFotoOptions {
   contextoFoto?: ContextoFoto;
@@ -350,41 +347,23 @@ export function useCapturaFoto({
     // O rastreio roda desde a abertura, então a posição normalmente já está pronta. Se ainda não
     // estiver (GPS frio, precisão ruim), espera um pouco — o quadro já foi congelado acima, então a
     // hora da captura continua sendo a do clique.
-    let loc: LocalizacaoFoto = {};
+    // Carimbo, posição e metadados da foto de evidência: o mesmo caminho das fotos automáticas da integração
+    // (lib/capturaEvidencia.ts, extraído daqui em 16/11/2026 sem mudar o comportamento).
     const r = rastreador.current;
+    let dados: DadosFoto;
     if (contextoFoto && r) {
-      let e = r.estado();
-      if (e.status === 'buscando' || e.status === 'imprecisa') {
-        setProcessando(true);
-        setAguardandoLocalizacao(true);
-        try { await r.aguardarPronta(ESPERA_LOCALIZACAO_NO_CLIQUE_MS); } finally { setAguardandoLocalizacao(false); setProcessando(false); }
-        e = r.estado();
-      }
-      loc = e.leitura ? leituraParaLocalizacao(e.leitura)
-        : { motivoLocalizacao: e.motivo ?? 'A localização não chegou a tempo. Tente novamente no local.' };
-      if (carimbar) {
-        const ctx = canvas.getContext('2d');
-        const l = e.leitura;
-        let linhasEndereco: string[] = [];
-        if (l) {
-          linhasEndereco = endereco.current?.linhas(l.latitude, l.longitude) ?? [];
-          if (linhasEndereco.length === 0) {
-            setProcessando(true);
-            try { linhasEndereco = await enderecoDaPosicao(l.latitude, l.longitude); } finally { setProcessando(false); }
-          }
-        }
-        const nota = [contextoFoto.obraNome, localFoto.trim()].filter(Boolean).join(' · ');
-        if (ctx) desenharCarimbo(ctx, canvas.width, canvas.height, linhasCarimbo(capturadaEm.toISOString(),
-          { latitude: l?.latitude, longitude: l?.longitude, altitudeMetros: l?.altitudeMetros, precisaoMetros: l?.precisaoMetros, motivo: loc.motivoLocalizacao },
-          nota, linhasEndereco));
-      }
+      dados = await prepararDadosEvidencia({
+        canvas, contextoFoto, localFoto, capturadaEm, rastreador: r, endereco: endereco.current, carimbar,
+        aoOcupar: (motivo, ativo) => { setProcessando(ativo); if (motivo === 'localizacao') setAguardandoLocalizacao(ativo); },
+      });
+    } else {
+      dados = {
+        origem: 'camera', registroId: contextoFoto?.registroId,
+        capturadaEm: capturadaEm.toISOString(), fusoMinutos: capturadaEm.getTimezoneOffset(),
+        obraId: contextoFoto?.obraId, obraNome: contextoFoto?.obraNome, local: localFoto.trim(),
+      };
     }
     if (contextoFoto && r !== rastreador.current) return;
-    const dados: DadosFoto = {
-      ...loc, origem: 'camera', registroId: contextoFoto?.registroId,
-      capturadaEm: capturadaEm.toISOString(), fusoMinutos: capturadaEm.getTimezoneOffset(),
-      obraId: contextoFoto?.obraId, obraNome: contextoFoto?.obraNome, local: localFoto.trim(),
-    };
     fecharCamera();
     canvas.toBlob(
       (blob) => {

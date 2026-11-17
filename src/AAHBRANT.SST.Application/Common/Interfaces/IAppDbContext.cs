@@ -14,6 +14,7 @@ public interface IAppDbContext
     DbSet<RegistroIntegracao> RegistrosIntegracao { get; }
     DbSet<NaoAssinouEtapaIntegracao> NaoAssinouEtapasIntegracao { get; }
     DbSet<TokenCapturaFoto> TokensCapturaFoto { get; }
+    DbSet<AssinaturaInstrutorSessaoTreinamento> AssinaturasInstrutorSessaoTreinamento { get; }
     DbSet<Obra> Obras { get; }
     DbSet<Setor> Setores { get; }
     DbSet<Equipe> Equipes { get; }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using AAHBRANT.SST.Application.PlanosIntegracao;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
 using FluentValidation;
@@ -32,7 +33,6 @@ public class RegistrarPeriodoEtapaIntegracaoCommandValidator : AbstractValidator
 
 public class RegistrarPeriodoEtapaIntegracaoCommandHandler : IRequestHandler<RegistrarPeriodoEtapaIntegracaoCommand, Guid>
 {
-    private const int MinutosMaximosPorPeriodo = 12 * 60;
     private readonly IAppDbContext _db;
 
     public RegistrarPeriodoEtapaIntegracaoCommandHandler(IAppDbContext db) => _db = db;
@@ -42,26 +42,11 @@ public class RegistrarPeriodoEtapaIntegracaoCommandHandler : IRequestHandler<Reg
         var (at, _) = await AutorizacaoIntegracaoAtendimento.CarregarAsync(_db, request.IntegracaoId, request.AzureAdObjectId, request.AutenticacaoHabilitada, ct);
         var etapa = await EtapaDeCursoEmAndamentoAsync(_db, at, request.EtapaId, ct);
 
-        if (!DateTime.TryParseExact(request.Data, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var data))
-            throw new InvalidOperationException("Informe a data do período (aaaa-mm-dd).");
-        if (!TimeSpan.TryParseExact(request.Inicio, @"hh\:mm", CultureInfo.InvariantCulture, out var inicio)
-            || !TimeSpan.TryParseExact(request.Fim, @"hh\:mm", CultureInfo.InvariantCulture, out var fim))
-            throw new InvalidOperationException("Informe o horário de início e de fim (hh:mm).");
-        if (fim <= inicio)
-            throw new InvalidOperationException("O horário de fim precisa ser depois do início.");
-        var minutos = (int)(fim - inicio).TotalMinutes;
-        if (minutos > MinutosMaximosPorPeriodo)
-            throw new InvalidOperationException("Um período não pode passar de 12 horas. Divida em períodos menores.");
-        if (data.Date > ExigenciasEtapasIntegracao.HojeBrasilia())
-            throw new InvalidOperationException("A data do período não pode ser futura.");
-
-        // O período é da própria etapa: não começa antes dela, não está no futuro e a mesma hora não vale para dois cursos.
-        var diaDeInicio = AAHBRANT.SST.Application.PlanosIntegracao.AgendaTreinamentosIntegracao.DataBrasilia(etapa.IniciadaEmUtc ?? DateTime.UtcNow);
-        if (data.Date < diaDeInicio)
-            throw new InvalidOperationException("A data do período não pode ser anterior ao início desta etapa.");
-        var agora = AAHBRANT.SST.Application.PlanosIntegracao.AgendaTreinamentosIntegracao.AgoraBrasilia();
-        if (data.Date == agora.Date && fim > agora.TimeOfDay)
-            throw new InvalidOperationException("O horário de fim não pode estar no futuro. Lance o período depois que ele terminar.");
+        var validado = ValidadorPeriodoEtapaIntegracao.Validar(etapa, request.Data, request.Inicio, request.Fim);
+        var data = validado.Data;
+        var inicio = validado.Inicio;
+        var fim = validado.Fim;
+        var minutos = validado.Minutos;
 
         var existentes = await _db.PeriodosEtapaIntegracao
             .Where(p => p.IntegracaoEtapaId == etapa.Id && p.Data == data.Date).ToListAsync(ct);
@@ -119,6 +104,119 @@ public class RemoverPeriodoEtapaIntegracaoCommandHandler : IRequestHandler<Remov
         var periodo = await _db.PeriodosEtapaIntegracao.FirstOrDefaultAsync(p => p.Id == request.PeriodoId && p.IntegracaoEtapaId == etapa.Id, ct)
             ?? throw new KeyNotFoundException("Período não encontrado nesta etapa.");
         _db.PeriodosEtapaIntegracao.Remove(periodo);
+        await _db.SaveChangesAsync(ct);
+    }
+}
+
+// Regras de UM período, iguais no lançamento manual e no "ajustar horário" (a sobreposição, que olha o banco ou a lista, fica com quem chama).
+internal static class ValidadorPeriodoEtapaIntegracao
+{
+    private const int MinutosMaximosPorPeriodo = 12 * 60;
+
+    internal sealed record PeriodoValidado(DateTime Data, TimeSpan Inicio, TimeSpan Fim, int Minutos);
+
+    internal static PeriodoValidado Validar(IntegracaoEtapa etapa, string? dataTexto, string? inicioTexto, string? fimTexto)
+    {
+        if (!DateTime.TryParseExact(dataTexto, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var data))
+            throw new InvalidOperationException("Informe a data do período (aaaa-mm-dd).");
+        if (!TimeSpan.TryParseExact(inicioTexto, @"hh\:mm", CultureInfo.InvariantCulture, out var inicio)
+            || !TimeSpan.TryParseExact(fimTexto, @"hh\:mm", CultureInfo.InvariantCulture, out var fim))
+            throw new InvalidOperationException("Informe o horário de início e de fim (hh:mm).");
+        if (fim <= inicio)
+            throw new InvalidOperationException("O horário de fim precisa ser depois do início.");
+        var minutos = (int)(fim - inicio).TotalMinutes;
+        if (minutos > MinutosMaximosPorPeriodo)
+            throw new InvalidOperationException("Um período não pode passar de 12 horas. Divida em períodos menores.");
+        if (data.Date > ExigenciasEtapasIntegracao.HojeBrasilia())
+            throw new InvalidOperationException("A data do período não pode ser futura.");
+
+        // O período é da própria etapa: não começa antes da abertura dela, não está no futuro e a mesma hora não vale para dois cursos.
+        var abertura = AgendaTreinamentosIntegracao.HoraBrasilia(etapa.IniciadaEmUtc ?? DateTime.UtcNow);
+        var aberturaNoMinuto = new DateTime(abertura.Year, abertura.Month, abertura.Day, abertura.Hour, abertura.Minute, 0);
+        if (data.Date < aberturaNoMinuto.Date)
+            throw new InvalidOperationException("A data do período não pode ser anterior ao início desta etapa.");
+        if (data.Date.Add(inicio) < aberturaNoMinuto)
+            throw new InvalidOperationException($"O início do período não pode ser anterior à abertura da etapa ({aberturaNoMinuto:HH:mm}).");
+        var agora = AgendaTreinamentosIntegracao.AgoraBrasilia();
+        if (data.Date == agora.Date && fim > agora.TimeOfDay)
+            throw new InvalidOperationException("O horário de fim não pode estar no futuro. Lance o período depois que ele terminar.");
+
+        return new PeriodoValidado(data.Date, inicio, fim, minutos);
+    }
+}
+
+public record PeriodoAjusteEtapaIntegracao(string? Data, string? Inicio, string? Fim);
+
+// "Ajustar horário": troca TODOS os períodos da etapa pelos informados, de uma vez (um único SaveChanges: se algo falha, nada muda).
+// Os períodos gravados deixam de ser automáticos. A lista permite janelas que cruzam a meia-noite.
+public record AjustarPeriodosEtapaIntegracaoCommand(
+    Guid IntegracaoId,
+    Guid EtapaId,
+    IReadOnlyList<PeriodoAjusteEtapaIntegracao> Periodos,
+    string? AzureAdObjectId = null,
+    bool AutenticacaoHabilitada = false) : IRequest;
+
+public class AjustarPeriodosEtapaIntegracaoCommandValidator : AbstractValidator<AjustarPeriodosEtapaIntegracaoCommand>
+{
+    public AjustarPeriodosEtapaIntegracaoCommandValidator()
+    {
+        RuleFor(x => x.IntegracaoId).NotEmpty();
+        RuleFor(x => x.EtapaId).NotEmpty();
+        RuleFor(x => x.Periodos).NotEmpty().WithMessage("Informe pelo menos um período.");
+        RuleFor(x => x.Periodos.Count).LessThanOrEqualTo(31).WithMessage("Informe no máximo 31 períodos.");
+    }
+}
+
+public class AjustarPeriodosEtapaIntegracaoCommandHandler : IRequestHandler<AjustarPeriodosEtapaIntegracaoCommand>
+{
+    private readonly IAppDbContext _db;
+
+    public AjustarPeriodosEtapaIntegracaoCommandHandler(IAppDbContext db) => _db = db;
+
+    public async Task Handle(AjustarPeriodosEtapaIntegracaoCommand request, CancellationToken ct)
+    {
+        var (at, _) = await AutorizacaoIntegracaoAtendimento.CarregarAsync(_db, request.IntegracaoId, request.AzureAdObjectId, request.AutenticacaoHabilitada, ct);
+        var etapa = await RegistrarPeriodoEtapaIntegracaoCommandHandler.EtapaDeCursoEmAndamentoAsync(_db, at, request.EtapaId, ct);
+        if (request.Periodos is null || request.Periodos.Count == 0)
+            throw new InvalidOperationException("Informe pelo menos um período.");
+
+        var novos = request.Periodos
+            .Select(p => ValidadorPeriodoEtapaIntegracao.Validar(etapa, p.Data, p.Inicio, p.Fim))
+            .OrderBy(p => p.Data).ThenBy(p => p.Inicio)
+            .ToList();
+
+        for (var i = 1; i < novos.Count; i++)
+            if (novos[i].Data == novos[i - 1].Data && novos[i].Inicio < novos[i - 1].Fim)
+                throw new InvalidOperationException("Dois dos períodos informados se sobrepõem no mesmo dia.");
+
+        var idsOutras = await _db.IntegracaoEtapas.Where(e => e.IntegracaoAtendimentoId == at.Id && e.Id != etapa.Id).Select(e => e.Id).ToListAsync(ct);
+        var datas = novos.Select(p => p.Data).Distinct().ToList();
+        var deOutrasEtapas = await _db.PeriodosEtapaIntegracao
+            .Where(p => idsOutras.Contains(p.IntegracaoEtapaId) && datas.Contains(p.Data)).ToListAsync(ct);
+        if (novos.Any(n => deOutrasEtapas.Any(o => o.Data == n.Data && n.Inicio < o.Fim && n.Fim > o.Inicio)))
+            throw new InvalidOperationException("Este horário já foi lançado em outra etapa desta integração. A mesma hora não conta para dois cursos.");
+
+        var atuais = await _db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapa.Id).ToListAsync(ct);
+        _db.PeriodosEtapaIntegracao.RemoveRange(atuais);
+        foreach (var n in novos)
+        {
+            // Janela que cruza a meia-noite: o período que termina às 23:59 e é seguido por outro à 00:00 do dia seguinte conta o minuto
+            // até a meia-noite (igual ao período automático), para a soma bater com o tempo real.
+            var minutos = n.Minutos;
+            if (n.Fim == PeriodosAutomaticosEtapa.FimDoDia
+                && novos.Any(x => x.Data == n.Data.AddDays(1) && x.Inicio == TimeSpan.Zero))
+                minutos++;
+            _db.PeriodosEtapaIntegracao.Add(new PeriodoEtapaIntegracao
+            {
+                ObraId = at.ObraId,
+                IntegracaoEtapaId = etapa.Id,
+                Data = n.Data,
+                Inicio = n.Inicio,
+                Fim = n.Fim,
+                Minutos = minutos,
+                Automatico = false,
+            });
+        }
         await _db.SaveChangesAsync(ct);
     }
 }

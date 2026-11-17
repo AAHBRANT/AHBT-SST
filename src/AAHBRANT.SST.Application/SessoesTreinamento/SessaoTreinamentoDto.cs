@@ -68,4 +68,10 @@ public class InstrutorSessaoTreinamentoDto
     public bool PodeAssinarEmOutrasObras { get; set; }
     public int TotalCertificados { get; set; }
     public int CertificadosAssinados { get; set; }
+    // 16/11/2026: assinatura biométrica colhida ANTES de encerrar (o encerramento exige). Método: "biometria" (digital) ou "reconhecimentoFacial".
+    public bool AssinouAntesDeEncerrar { get; set; }
+    public DateTime? AssinadoEmUtc { get; set; }
+    public string? MetodoAssinatura { get; set; }
+    public bool TemDigital { get; set; }
+    public bool TemFacial { get; set; }
 }

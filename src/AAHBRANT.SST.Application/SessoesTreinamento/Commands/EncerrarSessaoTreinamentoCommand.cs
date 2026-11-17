@@ -18,11 +18,14 @@ namespace AAHBRANT.SST.Application.SessoesTreinamento.Commands;
 // Certificado já sai assinado (04/09, pedido do usuário: "não dá certo assinar duas vezes") — a
 // digital capturada na presença (ver RegistrarPresencaSessaoTreinamentoCommand) já autenticou o
 // trabalhador; aqui, ao gerar o certificado, essa MESMA autenticação vira a assinatura dele no
-// documento, sem pedir uma segunda leitura. A assinatura do instrutor/responsável (sessão logada,
-// já era 1 clique) também é automática, usando quem está logado encerrando a turma. As duas são
-// melhor esforço: se falharem por qualquer motivo (ex.: usuário não vinculado a um Trabalhador), o
-// certificado é gerado do mesmo jeito, sem assinatura — a tela de "Assinar" no detalhe da turma
-// continua disponível como reforço/correção manual.
+// documento, sem pedir uma segunda leitura. 16/11/2026: o instrutor deixa de assinar pela sessão
+// logada. Ele assina por digital ou facial ANTES de encerrar (AssinaturaInstrutorSessaoTreinamento,
+// uma por turma) e o encerramento fica BLOQUEADO até lá, na turma comum e na da integração: sem a
+// assinatura guardada o comando recusa antes de gravar qualquer coisa. Ao gerar cada certificado, essa
+// assinatura vira a do instrutor (papel Instrutor). Se o registro dela falhar depois de encerrar, o
+// certificado NÃO é finalizado (nunca sai certificado sem instrutor) e a falha vai para o log; o
+// instrutor pode assinar o certificado reaberto pela tela de detalhe da turma (AssinarTurmaComoInstrutor).
+// Turma já encerrada e certificados já emitidos não são alterados.
 // ViaIntegracao: só o atendimento (Avançar etapa) encerra a turma que é etapa de integração; pela tela comum é recusado.
 public record EncerrarSessaoTreinamentoCommand(Guid Id, string? AzureAdObjectId = null, bool ViaIntegracao = false) : IRequest;
 
@@ -69,6 +72,13 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
 
         if (sessao.IntegracaoAtendimentoId is not null && !request.ViaIntegracao)
             throw new InvalidOperationException("Esta turma é uma etapa de integração e só é encerrada ao avançar a etapa em \"Realizar integração\".");
+
+        var contexto = sessao.IntegracaoAtendimentoId is null ? "turma" : "etapa da integração";
+        var assinaturaInstrutor = await _db.AssinaturasInstrutorSessaoTreinamento.FirstOrDefaultAsync(a => a.SessaoTreinamentoId == sessao.Id, ct);
+        if (assinaturaInstrutor is null)
+            throw new InvalidOperationException($"O instrutor precisa assinar com biometria (digital ou facial) antes de encerrar esta {contexto}.");
+        if (sessao.InstrutorTrabalhadorId != assinaturaInstrutor.InstrutorTrabalhadorId)
+            throw new InvalidOperationException($"A assinatura biométrica guardada não é do instrutor atual desta {contexto}. O instrutor atual precisa assinar.");
 
         var totalFotos = await _db.FotosEvidenciaSessaoTreinamento.CountAsync(f => f.SessaoTreinamentoId == sessao.Id && f.Ativo, ct);
         if (totalFotos < TotalFotosObrigatorias)
@@ -123,6 +133,7 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
         var ocorrencias = await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.OcorrenciasComTreinamentoAsync(_db, sessao.CursoTreinamentoId, ct);
         await AAHBRANT.SST.Application.AcoesPlano.ResolucaoVinculadaAcaoPlano.ConcluirAtendidasAsync(_db, ocorrencias, ct);
 
+        var falhasInstrutor = 0;
         foreach (var (treinamentoId, participante) in geradosParaAssinar)
         {
             var trabalhadorId = participante.TrabalhadorId;
@@ -166,20 +177,36 @@ public class EncerrarSessaoTreinamentoCommandHandler : IRequestHandler<EncerrarS
                 _logger.LogWarning(ex, "Falha ao registrar a assinatura automática do trabalhador no certificado {TreinamentoId}.", treinamentoId);
             }
 
-            if (!string.IsNullOrEmpty(request.AzureAdObjectId))
+            // Assinatura do instrutor: a biometria guardada antes do encerramento, com a prova dela (imagem, IP, aparelho,
+            // localização, validação). Sem ela o certificado não é finalizado.
+            try
             {
-                try
-                {
-                    await _mediator.Send(new RegistrarAssinaturaSessaoLogadaCommand(documentoId.Value, request.AzureAdObjectId), ct);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Falha ao registrar a assinatura automática do instrutor no certificado {TreinamentoId}.", treinamentoId);
-                }
+                var resultadoInstrutor = new ResultadoAutenticacaoAssinatura(
+                    assinaturaInstrutor.InstrutorTrabalhadorId, assinaturaInstrutor.Metodo, assinaturaInstrutor.DispositivoAgenteId,
+                    assinaturaInstrutor.ValidacaoModelo, assinaturaInstrutor.ValidacaoGrupoId, assinaturaInstrutor.ValidacaoRequisicaoId,
+                    assinaturaInstrutor.ScoreConfianca, assinaturaInstrutor.AssinadoEmUtc);
+                var localizacaoInstrutor = new LocalizacaoAssinatura(
+                    assinaturaInstrutor.LocalizacaoStatus, assinaturaInstrutor.Latitude, assinaturaInstrutor.Longitude, assinaturaInstrutor.PrecisaoMetros);
+                await _registrador.RegistrarAsync(documentoId.Value, resultadoInstrutor, assinaturaInstrutor.IpAddress, ct,
+                    assinaturaInstrutor.EvidenciaConteudo, assinaturaInstrutor.EvidenciaContentType,
+                    papel: PapelAssinatura.Instrutor, localizacao: localizacaoInstrutor, userAgent: assinaturaInstrutor.UserAgent);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                falhasInstrutor++;
+                _logger.LogError(ex, "Falha ao registrar a assinatura biométrica do instrutor no certificado {TreinamentoId} da turma {SessaoId}; o certificado não foi finalizado.", treinamentoId, sessao.Id);
+                continue;
             }
 
             // Certificado com as assinaturas da turma encerrada: fecha o documento.
             await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, documentoId.Value, ct);
+        }
+
+        // A imagem de evidência já foi copiada para cada assinatura; só sai daqui quando todas deram certo (o hash permanece).
+        if (falhasInstrutor == 0 && assinaturaInstrutor.EvidenciaConteudo is not null)
+        {
+            assinaturaInstrutor.EvidenciaConteudo = null;
+            await _db.SaveChangesAsync(ct);
         }
 
         // Quem concluiu o curso que faltava para uma integração já concluída recebe o registro "Integração realizada" (melhor esforço).
