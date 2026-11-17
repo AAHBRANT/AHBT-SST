@@ -33,7 +33,11 @@ public record RelatoOcorrenciaSugestaoDto(
     Guid? AtividadeId,
     IReadOnlyList<Guid> TrabalhadoresIds,
     IReadOnlyList<PerguntaRelatoOcorrencia> Perguntas,
-    IReadOnlyList<string> Avisos);
+    IReadOnlyList<string> Avisos,
+    IReadOnlyList<PessoaExternaSugeridaDto> PessoasExternasSugeridas);
+
+/// <summary>Pessoa que a IA entendeu não ser funcionário da obra (terceiro, visitante, transeunte...).</summary>
+public record PessoaExternaSugeridaDto(string Nome, VinculoPessoaExterna Vinculo, string? Trecho);
 
 public class ClassificarRelatoOcorrenciaCommandValidator : AbstractValidator<ClassificarRelatoOcorrenciaCommand>
 {
@@ -83,7 +87,11 @@ public class ClassificarRelatoOcorrenciaCommandHandler : IRequestHandler<Classif
             .Where(t => t.ObraId == request.ObraId)
             .Select(t => new CorrespondenciaNomesTrabalhadores.Candidato(t.Id, t.Nome))
             .ToListAsync(ct);
-        var correspondencia = CorrespondenciaNomesTrabalhadores.Localizar(sugestao.NomesCitados, trabalhadores);
+        var externasCitadas = NormalizarPessoasExternas(sugestao.PessoasExternasCitadas);
+        var correspondencia = CorrespondenciaNomesTrabalhadores.Localizar(sugestao.NomesCitados, trabalhadores, externasCitadas);
+        var pessoasExternas = correspondencia.Externas
+            .Select(p => new PessoaExternaSugeridaDto(p.Nome!, NormalizarVinculo(p.VinculoProvavel), p.Trecho))
+            .ToList();
 
         var atividadeId = string.IsNullOrWhiteSpace(sugestao.Atividade)
             ? null
@@ -110,9 +118,31 @@ public class ClassificarRelatoOcorrenciaCommandHandler : IRequestHandler<Classif
         if (gravidade == GravidadeAcidente.IncapacidadePermanenteParcial)
             avisos.Add("Informe os dias debitados conforme o Quadro III da NBR 14280.");
 
+        var tipo = Enum.TryParse<TipoOcorrencia>(sugestao.Tipo, out var t) ? t : TipoOcorrencia.Incidente;
+        if (tipo == TipoOcorrencia.OcorrenciaComPessoaExterna)
+        {
+            if (correspondencia.LocalizadosDeExternas.Count > 0)
+            {
+                // A IA chamou de externo alguém que é funcionário da obra: ele provavelmente se feriu, então o
+                // tipo vira Acidente (as demais pessoas externas continuam na lista) e afastamento fica como a IA disse.
+                tipo = TipoOcorrencia.Acidente;
+            }
+            else if (pessoasExternas.Count == 0)
+            {
+                // Sem pessoa externa o tipo não se sustenta: o registro exigiria ao menos uma.
+                tipo = correspondencia.Localizados.Count > 0 ? TipoOcorrencia.Acidente : TipoOcorrencia.Incidente;
+            }
+            else
+            {
+                // Pessoa externa não tem afastamento: dias e afastamento não são sugeridos.
+                houveAfastamento = false;
+                gravidade = GravidadeAcidente.SemAfastamento;
+            }
+        }
+
         // Mesmos limites do CriarAcidenteCommandValidator, para a sugestão nunca ser recusada ao registrar.
         return new RelatoOcorrenciaSugestaoDto(
-            Enum.TryParse<TipoOcorrencia>(sugestao.Tipo, out var tipo) ? tipo : TipoOcorrencia.Incidente,
+            tipo,
             gravidade,
             LimitarOuNulo(sugestao.Local, 200),
             DateOnly.TryParseExact(sugestao.Data, "yyyy-MM-dd", out var data) ? data.ToString("yyyy-MM-dd") : null,
@@ -126,7 +156,47 @@ public class ClassificarRelatoOcorrenciaCommandHandler : IRequestHandler<Classif
             atividadeId,
             correspondencia.Localizados,
             perguntas,
-            avisos);
+            avisos,
+            pessoasExternas);
+    }
+
+    private const int MaximoPessoasExternas = 10;
+
+    // Limites de nome (200) e trecho (300); sem nome não há pessoa; duplicata por nome (sem acento/caixa) some.
+    private static List<PessoaExternaCitadaIa> NormalizarPessoasExternas(IReadOnlyList<PessoaExternaCitadaIa>? citadas)
+    {
+        var resultado = new List<PessoaExternaCitadaIa>();
+        var vistos = new HashSet<string>();
+        foreach (var p in citadas ?? Array.Empty<PessoaExternaCitadaIa>())
+        {
+            var nome = LimitarOuNulo(p.Nome is null ? null : string.Join(' ', p.Nome.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)), 200);
+            if (nome is null) continue;
+            if (!vistos.Add(SemAcentoECaixa(nome))) continue;
+            resultado.Add(new PessoaExternaCitadaIa(nome, p.VinculoProvavel, LimitarOuNulo(p.Trecho, 300)));
+            if (resultado.Count == MaximoPessoasExternas) break;
+        }
+        return resultado;
+    }
+
+    public static VinculoPessoaExterna NormalizarVinculo(string? texto)
+    {
+        var chave = SemAcentoECaixa(texto ?? string.Empty);
+        return chave switch
+        {
+            "terceiro" or "terceirizado" => VinculoPessoaExterna.Terceiro,
+            "visitante" => VinculoPessoaExterna.Visitante,
+            "transeunte" or "pedestre" => VinculoPessoaExterna.Transeunte,
+            _ => VinculoPessoaExterna.Outro,
+        };
+    }
+
+    private static string SemAcentoECaixa(string texto)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var c in string.Join(' ', texto.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).Normalize(System.Text.NormalizationForm.FormD))
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark)
+                sb.Append(char.ToLowerInvariant(c));
+        return sb.ToString();
     }
 
     // "outro" (circunstâncias da análise) não corresponde a um campo do formulário: sempre passa.
