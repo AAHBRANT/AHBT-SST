@@ -143,6 +143,41 @@ public class RelatorioFiscalizacaoResumoTests
         Assert.True(pdf.Length > 1000);
     }
 
+    [Fact]
+    public void LinhaOcorrencia_Testemunha_MostraRotuloSemGravidadeNemAfastamento()
+    {
+        var data = new DateTime(2026, 10, 5);
+        var testemunha = new OcorrenciaDto(Guid.NewGuid(), TipoOcorrencia.Acidente, data, "Bloco A", "d",
+            GravidadeAcidente.ComAfastamento, true, 12, StatusAcidente.Concluido, PapelEnvolvido.Testemunha);
+        var envolvido = testemunha with { Papel = PapelEnvolvido.Envolvido };
+
+        var linhaTestemunha = RelatorioFiscalizacaoPdfService.LinhaOcorrencia(testemunha);
+        var linhaEnvolvido = RelatorioFiscalizacaoPdfService.LinhaOcorrencia(envolvido);
+
+        Assert.Contains("Testemunha", linhaTestemunha);
+        Assert.DoesNotContain("gravidade", linhaTestemunha);
+        Assert.DoesNotContain("afastamento", linhaTestemunha);
+        Assert.Contains("gravidade ComAfastamento", linhaEnvolvido);
+        Assert.Contains("12 dia(s) de afastamento", linhaEnvolvido);
+    }
+
+    [Fact]
+    public void Gerar_ComOcorrenciaDeTestemunha_GeraPdf()
+    {
+        var perfil = CriarPerfil() with
+        {
+            Ocorrencias = new List<OcorrenciaDto>
+            {
+                new(Guid.NewGuid(), TipoOcorrencia.Acidente, new DateTime(2026, 10, 5), "Bloco A", "d",
+                    GravidadeAcidente.ComAfastamento, true, 12, StatusAcidente.Concluido, PapelEnvolvido.Testemunha),
+            },
+        };
+
+        var pdf = new RelatorioFiscalizacaoPdfService().Gerar(perfil, identificacao: null);
+
+        Assert.True(pdf.Length > 1000);
+    }
+
     private static EntregaEpiDto Epi(DateTime? validade) => new(
         Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Hoje.AddDays(-60), null, validade, 1, null, null, null, null, null, null, null);
 

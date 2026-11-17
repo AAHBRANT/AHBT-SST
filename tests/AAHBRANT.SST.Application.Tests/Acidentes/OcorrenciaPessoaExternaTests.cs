@@ -295,6 +295,30 @@ public class OcorrenciaPessoaExternaTests
     }
 
     [Fact]
+    public void ExigeTresFotos_SobrecargaPorTipoEData_SegueAMesmaRegra()
+    {
+        var corte = AvancarStatusAcidenteCommandHandler.ExigeTresFotosParaTodosOsTiposApartirDe;
+        Assert.True(AvancarStatusAcidenteCommandHandler.ExigeTresFotos(TipoOcorrencia.Acidente, corte.AddYears(-1)));
+        Assert.False(AvancarStatusAcidenteCommandHandler.ExigeTresFotos(TipoOcorrencia.Incidente, corte.AddTicks(-1)));
+        Assert.True(AvancarStatusAcidenteCommandHandler.ExigeTresFotos(TipoOcorrencia.Incidente, corte));
+    }
+
+    [Theory]
+    [InlineData(TipoOcorrencia.Acidente, 2026, 5, 1, true)]
+    [InlineData(TipoOcorrencia.Incidente, 2026, 11, 10, false)]
+    [InlineData(TipoOcorrencia.Incidente, 2026, 11, 20, true)]
+    public async Task Dto_DetalheELista_ExpoemExigeTresFotos(TipoOcorrencia tipo, int ano, int mes, int dia, bool esperado)
+    {
+        var (db, acidente) = await EmInvestigacaoAsync(tipo, criadoEm: new DateTime(ano, mes, dia, 0, 0, 0, DateTimeKind.Utc));
+
+        var detalhe = await new ObterAcidenteDetalheQueryHandler(db).Handle(new ObterAcidenteDetalheQuery(acidente.Id), default);
+        var lista = await new ListarAcidentesQueryHandler(db).Handle(new ListarAcidentesQuery(null, null, null), default);
+
+        Assert.Equal(esperado, detalhe.Acidente.ExigeTresFotos);
+        Assert.Equal(esperado, Assert.Single(lista).ExigeTresFotos);
+    }
+
+    [Fact]
     public async Task Concluir_IncidenteCriadoAposCorte_SemFotos_Recusa()
     {
         var (db, acidente) = await EmInvestigacaoAsync(TipoOcorrencia.Incidente, criadoEm: new DateTime(2026, 11, 20, 0, 0, 0, DateTimeKind.Utc));

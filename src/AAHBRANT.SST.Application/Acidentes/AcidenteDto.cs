@@ -26,6 +26,8 @@ public class AcidenteDto
 {
     public Guid Id { get; set; }
     public TipoOcorrencia Tipo { get; set; }
+    // Calculado no servidor (AvancarStatusAcidenteCommandHandler.ExigeTresFotos); a tela só segue o valor.
+    public bool ExigeTresFotos { get; set; }
 
     public Guid ObraId { get; set; }
     public string? ObraNome { get; set; }

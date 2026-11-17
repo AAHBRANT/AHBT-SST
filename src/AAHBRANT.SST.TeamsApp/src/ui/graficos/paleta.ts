@@ -10,7 +10,9 @@ function resolver() {
   const ok = ler('--sst-status-ok-tinta'), atencao = ler('--sst-status-atencao-tinta'), alerta = ler('--sst-status-alerta-tinta');
   const info = ler('--sst-status-info-tinta'), neutro = ler('--sst-status-neutro-tinta');
   const chrome = ler('--sst-chrome-ativo-fundo'), marca = ler('--sst-color-primary');
-  return { ok, atencao, alerta, info, neutro, chrome, marca, serie: [chrome, info, atencao, marca, ok, neutro] };
+  // Roxo próprio de "Pessoas externas" nos donuts de ocorrência: nenhum dos tons de status acima fica livre sem repetir outro tipo.
+  const pessoaExterna = '#7B5EA7';
+  return { ok, atencao, alerta, info, neutro, chrome, marca, pessoaExterna, serie: [chrome, info, atencao, marca, ok, neutro] };
 }
 
 export type PaletaGraficos = ReturnType<typeof resolver>;
