@@ -603,10 +603,15 @@ export interface UsuarioLogado {
   // Administrador é o único que pode excluir registro operacional (regra fixa no servidor, não
   // configurável pela matriz de permissões — ver PoliticasAutorizacao no backend).
   ehAdministrador: boolean;
-  // Só o Engenheiro de Segurança confirma atividades por função: global ou nas obras da lista.
+  // Perfil de Engenheiro de Segurança (aprovar/devolver o PGR continua só dele): global ou nas obras da lista.
   ehEngenheiroSeguranca?: boolean;
   engenheiroSegurancaGlobal?: boolean;
   obrasEngenheiroSeguranca?: string[];
+  // Técnico, Engenheiro de Segurança OU Administrador aprovam cursos obrigatórios e atividades por função (17/11/2026):
+  // global ou nas obras da lista. Ausente = servidor antigo (a tela cai na regra do engenheiro).
+  podeDecidirSugestoes?: boolean;
+  podeDecidirSugestoesGlobal?: boolean;
+  obrasPodeDecidirSugestoes?: string[];
   permissoes: string[];
   // Onde cada permissão vale (Responsável x Supervisão, 06/11/2026). global = todas as obras;
   // obras = obras atribuídas. Ausente = servidor antigo ou acesso total.
@@ -649,7 +654,7 @@ export interface PadraoNr {
 // Trabalhadores ativos que precisam do curso (pela matriz de função) e a situação de cada um.
 // "Apto" = treinamento válido hoje = emDia + vencemEm30Dias.
 // Cursos obrigatórios por função a partir do PGR (21/10): por obra, sugeridos pelas regras e
-// aprovados/recusados pelo Engenheiro de Segurança. Só Aprovado conta para a aptidão.
+// aprovados/recusados pelo técnico, engenheiro de segurança ou administrador da obra. Só Aprovado conta para a aptidão.
 export const StatusCursoObrigatorio = { Sugerido: 1, Aprovado: 2, Recusado: 3 } as const;
 export const OrigemCursoObrigatorio = { Pgr: 1, Manual: 2 } as const;
 
@@ -1551,7 +1556,7 @@ export interface Ghe {
   riscos: GheRisco[];
 }
 
-// Atividades por função na OS (Entrega 4, 10/11/2026): a IA sugere, o Engenheiro de Segurança confirma.
+// Atividades por função na OS (Entrega 4, 10/11/2026): a IA sugere, o técnico, o engenheiro de segurança ou o administrador da obra confirma.
 export type EstadoAtividadeFuncao = 'SemDecisao' | 'Pendente' | 'Validada' | 'Descartada';
 export interface FuncaoMatrizAtividades {
   funcaoId: string; nome: string; descricaoNoPgr?: string | null;
@@ -6747,7 +6752,7 @@ export const api = {
     listar: () => request<MatrizRiscoConfig[]>('/api/matrizrisco'),
     // A matriz que classifica os riscos hoje; undefined enquanto a empresa não cadastrou a primeira.
     vigente: () => request<MatrizRiscoConfig | undefined>('/api/matrizrisco/vigente'),
-    // Cria a primeira matriz ou uma nova versão que substitui a vigente (só o Engenheiro de Segurança).
+    // Cria a primeira matriz ou uma nova versão que substitui a vigente (técnico ou engenheiro de segurança; o servidor recusa os demais, inclusive o administrador).
     novaVersao: (matriz: NovaVersaoMatrizRisco) =>
       request<{ id: string }>('/api/matrizrisco', { method: 'POST', body: JSON.stringify(matriz) }),
   },

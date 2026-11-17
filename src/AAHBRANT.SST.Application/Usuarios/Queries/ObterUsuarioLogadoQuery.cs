@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -32,7 +33,13 @@ public record UsuarioLogadoDto(
     // Vínculo global (sem obra): vale em todas as obras.
     bool EngenheiroSegurancaGlobal = false,
     // Obras em que ele é engenheiro por vínculo de obra. Vazio quando só é global ou não é engenheiro.
-    List<Guid>? ObrasEngenheiroSeguranca = null);
+    List<Guid>? ObrasEngenheiroSeguranca = null,
+    // Aprovar cursos obrigatórios e atividades por função (17/11/2026): Técnico, Engenheiro de Segurança OU
+    // Administrador. Verdadeiro com vínculo ativo de um deles em alguma obra ou global; a tela cruza com a obra aberta.
+    // Entra desligado (dev) = verdadeiro e global, como Admin.
+    bool PodeDecidirSugestoes = false,
+    bool PodeDecidirSugestoesGlobal = false,
+    List<Guid>? ObrasPodeDecidirSugestoes = null);
 
 public record AlcancePermissaoDto(bool Global, List<Guid> Obras);
 
@@ -49,7 +56,8 @@ public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogado
         // aceitaria — o pior dos dois mundos para quem está desenvolvendo.
         if (!request.AutenticacaoHabilitada)
             return new UsuarioLogadoDto("Usuário", null, EhAdministrador: true, new List<string>(),
-                EhEngenheiroSeguranca: true, EngenheiroSegurancaGlobal: true, ObrasEngenheiroSeguranca: new List<Guid>());
+                EhEngenheiroSeguranca: true, EngenheiroSegurancaGlobal: true, ObrasEngenheiroSeguranca: new List<Guid>(),
+                PodeDecidirSugestoes: true, PodeDecidirSugestoesGlobal: true, ObrasPodeDecidirSugestoes: new List<Guid>());
 
         if (string.IsNullOrWhiteSpace(request.AzureAdObjectId))
             return new UsuarioLogadoDto(string.Empty, null, EhAdministrador: false, new List<string>());
@@ -99,9 +107,13 @@ public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogado
 
         var engenheiro = perfis.Where(p => p.Tipo == TipoPerfilAcesso.EngenheiroSeguranca).ToList();
         var obrasEngenheiro = engenheiro.Where(p => p.ObraId is not null).Select(p => p.ObraId!.Value).Distinct().ToList();
+        var decidem = perfis.Where(p => p.Tipo is { } t && DecisaoTecnicaNaObra.PerfilPodeDecidir(t)).ToList();
         return new UsuarioLogadoDto(usuario.Nome, usuario.Email, ehAdministrador, permissoes, alcance,
             EhEngenheiroSeguranca: engenheiro.Count > 0,
             EngenheiroSegurancaGlobal: engenheiro.Any(p => p.ObraId is null),
-            ObrasEngenheiroSeguranca: obrasEngenheiro);
+            ObrasEngenheiroSeguranca: obrasEngenheiro,
+            PodeDecidirSugestoes: decidem.Count > 0,
+            PodeDecidirSugestoesGlobal: decidem.Any(p => p.ObraId is null),
+            ObrasPodeDecidirSugestoes: decidem.Where(p => p.ObraId is not null).Select(p => p.ObraId!.Value).Distinct().ToList());
     }
 }

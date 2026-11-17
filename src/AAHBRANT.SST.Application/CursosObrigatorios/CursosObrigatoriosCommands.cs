@@ -26,8 +26,10 @@ public class GerarCursosObrigatoriosObraCommandHandler : IRequestHandler<GerarCu
     }
 }
 
-// Aprovar ou recusar uma sugestão (Engenheiro de Segurança). Recusa exige justificativa.
-public record DecidirCursoObrigatorioCommand(Guid Id, bool Aprovar, string? Justificativa, Guid? UsuarioId, string? NomeUsuario) : IRequest;
+// Aprovar ou recusar uma sugestão (Técnico, Engenheiro de Segurança ou Administrador da obra). Recusa exige justificativa.
+// ExigirPerfilNaObra: confere o perfil na obra do item (o controller desliga só com o Entra ID desligado).
+public record DecidirCursoObrigatorioCommand(Guid Id, bool Aprovar, string? Justificativa, Guid? UsuarioId, string? NomeUsuario,
+    bool ExigirPerfilNaObra) : IRequest;
 
 public class DecidirCursoObrigatorioCommandValidator : AbstractValidator<DecidirCursoObrigatorioCommand>
 {
@@ -48,6 +50,7 @@ public class DecidirCursoObrigatorioCommandHandler : IRequestHandler<DecidirCurs
     {
         var item = await _db.CursosObrigatoriosFuncaoObra.FirstOrDefaultAsync(c => c.Id == request.Id, ct)
             ?? throw new KeyNotFoundException($"Curso obrigatório {request.Id} não encontrado.");
+        await DecisaoTecnicaNaObra.GarantirAsync(_db, item.ObraId, request.UsuarioId, request.ExigirPerfilNaObra, ct);
         item.Status = request.Aprovar ? StatusCursoObrigatorio.Aprovado : StatusCursoObrigatorio.Recusado;
         item.JustificativaRecusa = request.Aprovar ? null : request.Justificativa!.Trim();
         item.DecididoPorUsuarioId = request.UsuarioId;
@@ -58,7 +61,8 @@ public class DecidirCursoObrigatorioCommandHandler : IRequestHandler<DecidirCurs
 }
 
 // "Aprovar todas as sugestões" da obra. Devolve quantas foram aprovadas.
-public record AprovarSugestoesCursosObrigatoriosCommand(Guid ObraId, Guid? UsuarioId, string? NomeUsuario) : IRequest<int>;
+public record AprovarSugestoesCursosObrigatoriosCommand(Guid ObraId, Guid? UsuarioId, string? NomeUsuario,
+    bool ExigirPerfilNaObra) : IRequest<int>;
 
 public class AprovarSugestoesCursosObrigatoriosCommandHandler : IRequestHandler<AprovarSugestoesCursosObrigatoriosCommand, int>
 {
@@ -69,6 +73,7 @@ public class AprovarSugestoesCursosObrigatoriosCommandHandler : IRequestHandler<
     {
         if (!_db.ObraNoEscopo(request.ObraId))
             throw new KeyNotFoundException($"Obra {request.ObraId} não encontrada.");
+        await DecisaoTecnicaNaObra.GarantirAsync(_db, request.ObraId, request.UsuarioId, request.ExigirPerfilNaObra, ct);
         var sugeridos = await _db.CursosObrigatoriosFuncaoObra
             .Where(c => c.ObraId == request.ObraId && c.Status == StatusCursoObrigatorio.Sugerido).ToListAsync(ct);
         var nome = await SerializacaoGeracao.NomeUsuarioAsync(_db, request.UsuarioId, request.NomeUsuario, ct);
@@ -87,7 +92,8 @@ public class AprovarSugestoesCursosObrigatoriosCommandHandler : IRequestHandler<
 
 // "+ Adicionar curso manualmente": entra já aprovado por quem adicionou. Se o par já existia
 // (sugerido ou recusado), passa a aprovado em vez de duplicar.
-public record AdicionarCursoObrigatorioCommand(Guid ObraId, Guid FuncaoId, Guid CursoTreinamentoId, Guid? UsuarioId, string? NomeUsuario) : IRequest<Guid>;
+public record AdicionarCursoObrigatorioCommand(Guid ObraId, Guid FuncaoId, Guid CursoTreinamentoId, Guid? UsuarioId, string? NomeUsuario,
+    bool ExigirPerfilNaObra) : IRequest<Guid>;
 
 public class AdicionarCursoObrigatorioCommandHandler : IRequestHandler<AdicionarCursoObrigatorioCommand, Guid>
 {
@@ -98,6 +104,7 @@ public class AdicionarCursoObrigatorioCommandHandler : IRequestHandler<Adicionar
     {
         if (!_db.ObraNoEscopo(request.ObraId) || !await _db.Obras.AnyAsync(o => o.Id == request.ObraId, ct))
             throw new KeyNotFoundException($"Obra {request.ObraId} não encontrada.");
+        await DecisaoTecnicaNaObra.GarantirAsync(_db, request.ObraId, request.UsuarioId, request.ExigirPerfilNaObra, ct);
         if (!await _db.Funcoes.AnyAsync(f => f.Id == request.FuncaoId, ct))
             throw new KeyNotFoundException($"Função {request.FuncaoId} não encontrada.");
         if (!await _db.CursosTreinamento.AnyAsync(c => c.Id == request.CursoTreinamentoId, ct))
