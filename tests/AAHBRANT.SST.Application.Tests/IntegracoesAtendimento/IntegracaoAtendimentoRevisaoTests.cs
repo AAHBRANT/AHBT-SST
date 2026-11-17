@@ -112,27 +112,57 @@ public class IntegracaoAtendimentoRevisaoTests
     // ---------- M2: carga real, ao menos um período ----------
 
     [Fact]
-    public async Task M2_Avancar_ExigeAoMenosUmPeriodo_MesmoComMinimoZero()
+    public async Task M2_Avancar_SemCargaPrevista_RegistraPeriodoAutomaticoDaAberturaAteAgora()
     {
         var c = await CenarioIntegracao.CriarAsync();
         var id = await c.IniciarAsync(c.A);
         await c.CompletarEtapaAtualAsync(id, 1, comPeriodo: false); // NR-06: mínimo 0
+        var etapa = await c.EtapaAsync(id, 1);
+        Assert.Empty(await c.Db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapa.Id).ToListAsync());
 
-        var ex = await Assert.ThrowsAsync<IntegracaoBloqueadaException>(() => c.AvancarAsync(id));
+        // O avaliador não pede mais "lance um período" para carga 0: o período nasce no avanço.
+        await c.AvancarAsync(id);
 
-        Assert.Single(ex.Faltas);
-        Assert.Contains("Carga horária", ex.Faltas[0]);
+        var periodos = await c.Db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapa.Id).ToListAsync();
+        Assert.NotEmpty(periodos);
+        Assert.All(periodos, p => Assert.True(p.Automatico));
+        Assert.True(periodos.Sum(p => p.Minutos) >= 1);
     }
 
     [Fact]
-    public async Task M2_Certificado_GravaACargaLancada_NuncaAPadraoDoCurso()
+    public async Task M2_CargaZero_AvancarRecusado_NaoGravaPeriodo_EOkDepoisGravaAteAgora()
+    {
+        var c = await CenarioIntegracao.CriarAsync();
+        var id = await c.IniciarAsync(c.A);
+        await c.CompletarEtapaAtualAsync(id, 1, comPeriodo: false, comInstrutor: false); // sem assinatura do instrutor: recusa
+        var etapa = await c.Db.IntegracaoEtapas.SingleAsync(e => e.IntegracaoAtendimentoId == id && e.Ordem == 1);
+        etapa.IniciadaEmUtc = DateTime.UtcNow.AddMinutes(-20);
+        c.Db.PeriodosEtapaIntegracao.RemoveRange(await c.Db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapa.Id).ToListAsync());
+        await c.Db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<IntegracaoBloqueadaException>(() => c.AvancarAsync(id));
+        Assert.Empty(await c.Db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapa.Id).ToListAsync());
+
+        // Duas horas e quarenta depois (aberta há 3 h): o Avançar que conclui grava abertura -> agora.
+        etapa.IniciadaEmUtc = DateTime.UtcNow.AddHours(-3);
+        await c.Db.SaveChangesAsync();
+        await c.AssinarInstrutorAsync(etapa.SessaoTreinamentoId!.Value);
+        var dto = await c.AvancarAsync(id);
+
+        Assert.Equal(180, dto.Etapas[0].CargaLancadaMinutos);
+        Assert.Equal(3, (await c.Db.Treinamentos.SingleAsync(t => t.TrabalhadorId == c.A.Id)).CargaHorariaRealizada);
+    }
+
+    [Fact]
+    public async Task M2_Certificado_GravaACargaContada_NuncaAPadraoDoCurso()
     {
         var c = await CenarioIntegracao.CriarAsync();
         var id = await c.IniciarAsync(c.A);
         await c.CompletarEtapaAtualAsync(id, 1, comPeriodo: false);
-        var etapa = await c.EtapaAsync(id, 1);
-        await new RegistrarPeriodoEtapaIntegracaoCommandHandler(c.Db).Handle(new RegistrarPeriodoEtapaIntegracaoCommand(
-            id, etapa.Id, CenarioIntegracao.DataDaEtapa(1), "08:00", "10:30"), default); // 2 h 30 min
+        var etapa = await c.Db.IntegracaoEtapas.SingleAsync(e => e.IntegracaoAtendimentoId == id && e.Ordem == 1);
+        etapa.IniciadaEmUtc = DateTime.UtcNow.AddMinutes(-150); // aberta há 2 h 30 min
+        c.Db.PeriodosEtapaIntegracao.RemoveRange(await c.Db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapa.Id).ToListAsync());
+        await c.Db.SaveChangesAsync();
 
         var dto = await c.AvancarAsync(id);
 
@@ -142,51 +172,38 @@ public class IntegracaoAtendimentoRevisaoTests
     }
 
 
-    // ---------- A2: períodos ----------
+    // ---------- A2: períodos (17/11/2026: só automáticos) ----------
 
     [Fact]
-    public async Task A2_Periodo_RecusaDataAntesDaEtapa_FimNoFuturo_ESobreposicaoNaMesmaEtapa()
+    public async Task A2_PeriodoManual_EBloqueado()
     {
         var c = await CenarioIntegracao.CriarAsync();
         var id = await c.IniciarAsync(c.A);
         var etapa = await c.EtapaAsync(id, 1);
         var dia = await c.RecuarEtapaAsync(etapa.Id);
-        var h = new RegistrarPeriodoEtapaIntegracaoCommandHandler(c.Db);
-        var hoje = ExigenciasEtapasIntegracao.HojeBrasilia();
 
-        await h.Handle(new RegistrarPeriodoEtapaIntegracaoCommand(id, etapa.Id, dia, "08:00", "10:00"), default);
-
-        var antes = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            h.Handle(new RegistrarPeriodoEtapaIntegracaoCommand(id, etapa.Id, hoje.AddDays(-11).ToString("yyyy-MM-dd"), "08:00", "10:00"), default));
-        Assert.Contains("anterior ao início", antes.Message);
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            h.Handle(new RegistrarPeriodoEtapaIntegracaoCommand(id, etapa.Id, hoje.ToString("yyyy-MM-dd"), "23:58", "23:59"), default));
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            h.Handle(new RegistrarPeriodoEtapaIntegracaoCommand(id, etapa.Id, dia, "09:00", "11:00"), default));
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            h.Handle(new RegistrarPeriodoEtapaIntegracaoCommand(id, etapa.Id, dia, "12:00", "11:00"), default));
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            h.Handle(new RegistrarPeriodoEtapaIntegracaoCommand(id, etapa.Id, "2099-01-01", "08:00", "10:00"), default));
-        Assert.Equal(120, (await c.ObterAsync(id)).Etapas[0].CargaLancadaMinutos);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => new RegistrarPeriodoEtapaIntegracaoCommandHandler(c.Db)
+            .Handle(new RegistrarPeriodoEtapaIntegracaoCommand(id, etapa.Id, dia, "08:00", "10:00"), default));
+        Assert.Equal("A carga horária é contada automaticamente desde a abertura da etapa; não há lançamento manual.", ex.Message);
+        Assert.Empty(await c.Db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapa.Id).ToListAsync());
     }
 
     [Fact]
-    public async Task A2_MesmaHoraNaoContaParaDoisCursos()
+    public async Task A2_PeriodoAutomatico_NaoQuebraQuandoChocaComOutraEtapa()
     {
         var c = await CenarioIntegracao.CriarAsync();
         var id = await c.IniciarAsync(c.A);
         await c.CompletarEtapaAtualAsync(id, 1);
         await c.AvancarAsync(id);
-        var etapa2 = await c.EtapaAsync(id, 2);
-        await c.RecuarEtapaAsync(etapa2.Id);
-        var h = new RegistrarPeriodoEtapaIntegracaoCommandHandler(c.Db);
-        var diaDaEtapa1 = CenarioIntegracao.DataDaEtapa(1);
+        var etapa2 = await c.Db.IntegracaoEtapas.SingleAsync(e => e.IntegracaoAtendimentoId == id && e.Ordem == 2);
+        // A etapa 2 "abriu" no mesmo horário da 1: o automático é registrado mesmo assim (o tempo real é o da abertura).
+        etapa2.IniciadaEmUtc = (await c.EtapaAsync(id, 1)).IniciadaEmUtc;
+        await c.Db.SaveChangesAsync();
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            h.Handle(new RegistrarPeriodoEtapaIntegracaoCommand(id, etapa2.Id, diaDaEtapa1, "08:30", "09:30"), default));
-        Assert.Contains("outra etapa", ex.Message);
+        var dto = await c.ObterAsync(id);
 
-        await h.Handle(new RegistrarPeriodoEtapaIntegracaoCommand(id, etapa2.Id, diaDaEtapa1, "09:00", "10:00"), default);
+        Assert.NotEmpty(dto.Etapas[1].Periodos);
+        Assert.All(dto.Etapas[1].Periodos, p => Assert.True(p.Automatico));
     }
 
     // ---------- M1: conclusão ----------

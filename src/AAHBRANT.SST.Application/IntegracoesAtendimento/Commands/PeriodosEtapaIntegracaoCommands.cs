@@ -33,12 +33,17 @@ public class RegistrarPeriodoEtapaIntegracaoCommandValidator : AbstractValidator
 
 public class RegistrarPeriodoEtapaIntegracaoCommandHandler : IRequestHandler<RegistrarPeriodoEtapaIntegracaoCommand, Guid>
 {
+    internal const string MensagemBloqueio = "A carga horária é contada automaticamente desde a abertura da etapa; não há lançamento manual.";
+
     private readonly IAppDbContext _db;
 
     public RegistrarPeriodoEtapaIntegracaoCommandHandler(IAppDbContext db) => _db = db;
 
     public async Task<Guid> Handle(RegistrarPeriodoEtapaIntegracaoCommand request, CancellationToken ct)
     {
+        // 17/11/2026: a carga é contada automaticamente; nenhum lançamento manual. (Regra antiga abaixo fica sem efeito.)
+        throw new InvalidOperationException(RegistrarPeriodoEtapaIntegracaoCommandHandler.MensagemBloqueio);
+#pragma warning disable CS0162
         var (at, _) = await AutorizacaoIntegracaoAtendimento.CarregarAsync(_db, request.IntegracaoId, request.AzureAdObjectId, request.AutenticacaoHabilitada, ct);
         var etapa = await EtapaDeCursoEmAndamentoAsync(_db, at, request.EtapaId, ct);
 
@@ -99,6 +104,9 @@ public class RemoverPeriodoEtapaIntegracaoCommandHandler : IRequestHandler<Remov
 
     public async Task Handle(RemoverPeriodoEtapaIntegracaoCommand request, CancellationToken ct)
     {
+        // 17/11/2026: a carga é contada automaticamente; nenhum lançamento manual. (Regra antiga abaixo fica sem efeito.)
+        throw new InvalidOperationException(RegistrarPeriodoEtapaIntegracaoCommandHandler.MensagemBloqueio);
+#pragma warning disable CS0162
         var (at, _) = await AutorizacaoIntegracaoAtendimento.CarregarAsync(_db, request.IntegracaoId, request.AzureAdObjectId, request.AutenticacaoHabilitada, ct);
         var etapa = await RegistrarPeriodoEtapaIntegracaoCommandHandler.EtapaDeCursoEmAndamentoAsync(_db, at, request.EtapaId, ct);
         var periodo = await _db.PeriodosEtapaIntegracao.FirstOrDefaultAsync(p => p.Id == request.PeriodoId && p.IntegracaoEtapaId == etapa.Id, ct)
@@ -175,6 +183,9 @@ public class AjustarPeriodosEtapaIntegracaoCommandHandler : IRequestHandler<Ajus
 
     public async Task Handle(AjustarPeriodosEtapaIntegracaoCommand request, CancellationToken ct)
     {
+        // 17/11/2026: a carga é contada automaticamente; nenhum lançamento manual. (Regra antiga abaixo fica sem efeito.)
+        throw new InvalidOperationException(RegistrarPeriodoEtapaIntegracaoCommandHandler.MensagemBloqueio);
+#pragma warning disable CS0162
         var (at, _) = await AutorizacaoIntegracaoAtendimento.CarregarAsync(_db, request.IntegracaoId, request.AzureAdObjectId, request.AutenticacaoHabilitada, ct);
         var etapa = await RegistrarPeriodoEtapaIntegracaoCommandHandler.EtapaDeCursoEmAndamentoAsync(_db, at, request.EtapaId, ct);
         if (request.Periodos is null || request.Periodos.Count == 0)

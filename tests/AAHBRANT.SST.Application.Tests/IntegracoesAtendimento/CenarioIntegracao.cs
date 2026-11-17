@@ -300,11 +300,12 @@ internal sealed class CenarioIntegracao
         for (var ordem = 1; ordem <= 3; ordem++)
             await FotoAsync(sessaoId, ordem, Bytes(semente * 10 + ordem));
 
-        if (comPeriodo)
+        // 17/11/2026: a carga é automática. Com carga prevista, o período automático (desde a abertura, 10 dias atrás) é recriado
+        // sozinho na leitura/avanço; sem carga prevista nasce no avanço. Aqui só garantimos que ele existe quando pedido.
+        if (comPeriodo && etapa.CargaMinimaHoras > 0)
         {
-            var fim = TimeSpan.FromHours(8 + Math.Max(1, etapa.CargaMinimaHoras));
-            await new RegistrarPeriodoEtapaIntegracaoCommandHandler(Db).Handle(new RegistrarPeriodoEtapaIntegracaoCommand(
-                atendimentoId, etapa.Id, dataEtapa, "08:00", fim.ToString(@"hh\:mm")), default);
+            await PeriodosAutomaticosEtapa.GarantirAsync(Db, at, etapa, default);
+            await Db.SaveChangesAsync();
         }
     }
 
