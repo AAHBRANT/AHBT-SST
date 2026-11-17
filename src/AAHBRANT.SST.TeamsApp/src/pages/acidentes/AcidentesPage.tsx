@@ -27,6 +27,7 @@ import { AddCircle24Regular } from '@fluentui/react-icons';
 import {
   api,
   GravidadeAcidente,
+  MAXIMO_PESSOAS_EXTERNAS,
   gravidadeAcidenteLabel,
   StatusAcidente,
   statusAcidenteLabel,
@@ -36,13 +37,21 @@ import {
   type Atividade,
   type NovoAcidente,
   type Obra,
+  type PessoaExternaSugerida,
   type RelatoOcorrenciaSugestao,
   type RespostaPerguntaRelato,
   type Usuario,
   type Trabalhador,
 } from '../../lib/api';
 import { HhtMensalTab } from './HhtMensalTab';
-import { RelatoOcorrenciaIa } from './RelatoOcorrenciaIa';
+import { CartaoPessoaExternaSugerida, RelatoOcorrenciaIa } from './RelatoOcorrenciaIa';
+import { BlocoPessoasExternas } from './BlocoPessoasExternas';
+import {
+  pendenciasPessoaExterna,
+  pessoaDaSugestao,
+  pessoaParaPayload,
+  type PessoaExternaEmEdicao,
+} from './pessoaExterna';
 import { payloadAcaoOcorrencia, pendenciaResolucao, resolucaoDoVinculo } from './CampoComoSeResolve';
 import { MapaCorporal } from '../../components/mapaCorporal/MapaCorporal';
 import {
@@ -78,6 +87,7 @@ function novaInicial(): NovoAcidente {
     tipo: 1,
     obraId: '',
     trabalhadoresIds: [],
+    testemunhas: [],
     atividadeId: '',
     local: '',
     data: '',
@@ -101,7 +111,13 @@ const tomPorStatusAcidente: Record<number, Tom> = {
   [StatusAcidente.Registrado]: 'neutro',
   [StatusAcidente.EmInvestigacao]: 'atencao',
   [StatusAcidente.Concluido]: 'ok',
+  [StatusAcidente.AguardandoLaudo]: 'info',
 };
+
+const ehPessoaExterna = (tipo: number) => tipo === TipoOcorrencia.PessoaExterna;
+
+const normalizarNome = (nome: string) =>
+  nome.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 
 // Onda 2 Task 20 (camada ui/): lista + formulário de registro de acidentes/incidentes/quase-acidentes,
 // sempre aninhada como aba de OcorrenciasPage (nunca teve PageHeader próprio). Abas internas
@@ -128,6 +144,14 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
   const [camposIa, setCamposIa] = useState<Set<CampoIa>>(new Set());
   const [editados, setEditados] = useState<Set<CampoIa>>(new Set());
   const [avisosIa, setAvisosIa] = useState<string[]>([]);
+  // Pessoas que não são funcionárias: as do formulário e as que a IA sugeriu (nada entra sem o técnico aceitar).
+  const [pessoasExternas, setPessoasExternas] = useState<PessoaExternaEmEdicao[]>([]);
+  const [pessoasSugeridas, setPessoasSugeridas] = useState<PessoaExternaSugerida[]>([]);
+  const [sugestoesIgnoradas, setSugestoesIgnoradas] = useState<Set<string>>(new Set());
+  const [avisoTipo, setAvisoTipo] = useState<string | null>(null);
+  // Funcionários que foram para Testemunhas só porque o tipo é "com pessoa externa": voltam a Envolvidos se o tipo mudar.
+  const [testemunhasAutomaticas, setTestemunhasAutomaticas] = useState<string[]>([]);
+  const AVISO_TESTEMUNHAS = 'Funcionários citados foram marcados como testemunhas; ajuste se algum deles se feriu.';
   // Etapa 2 do registro por relato: análise de causas + plano de ação sugeridos pela IA.
   const [versaoRelato, setVersaoRelato] = useState(0);
   const [metodologia, setMetodologia] = useState<number | null>(null);
@@ -149,6 +173,71 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
     });
     setEditados((atual) => new Set(atual).add(campo));
   }
+
+  // "Ocorrência com pessoa externa" não tem funcionário envolvido (quem estava presente é testemunha) nem
+  // afastamento/CAT/dias: ao escolher esse tipo, os funcionários marcados passam a testemunhas e os campos
+  // de afastamento voltam ao padrão. Só existe na criação.
+  function mudarTipo(tipo: number) {
+    if (!ehPessoaExterna(tipo)) {
+      if (ehPessoaExterna(nova.tipo) && testemunhasAutomaticas.length > 0) {
+        const voltam = testemunhasAutomaticas;
+        alterar('tipo', {
+          tipo,
+          trabalhadoresIds: [...new Set([...(nova.trabalhadoresIds ?? []), ...voltam])],
+          testemunhas: (nova.testemunhas ?? []).filter((id) => !voltam.includes(id)),
+        });
+        setTestemunhasAutomaticas([]);
+        setAvisoTipo(null);
+      } else {
+        alterar('tipo', { tipo });
+      }
+      return;
+    }
+    const envolvidos = nova.trabalhadoresIds ?? [];
+    alterar('tipo', {
+      tipo,
+      trabalhadoresIds: [],
+      testemunhas: [...new Set([...(nova.testemunhas ?? []), ...envolvidos])],
+      houveAfastamento: false,
+      diasAfastamento: undefined,
+      numeroCat: '',
+      gravidade: GravidadeAcidente.SemAfastamento,
+      diasDebitadosInformados: undefined,
+    });
+    if (envolvidos.length > 0) {
+      setTestemunhasAutomaticas((atual) => [...new Set([...atual, ...envolvidos])]);
+      setAvisoTipo(AVISO_TESTEMUNHAS);
+    }
+  }
+
+  function adicionarPessoaSugerida(s: PessoaExternaSugerida) {
+    if (pessoasExternas.length >= MAXIMO_PESSOAS_EXTERNAS) {
+      setErro(`Limite de ${MAXIMO_PESSOAS_EXTERNAS} pessoas externas por ocorrência.`);
+      return;
+    }
+    setPessoasExternas((atuais) => [...atuais, pessoaDaSugestao(s)]);
+  }
+
+  function ignorarPessoaSugerida(s: PessoaExternaSugerida) {
+    setSugestoesIgnoradas((atual) => new Set(atual).add(normalizarNome(s.nome)));
+  }
+
+  // A pessoa citada é funcionário: se o tipo é "com pessoa externa" ele não serve mais (funcionário seria
+  // envolvido), então volta para Acidente; depois rola até a lista de funcionários.
+  function sugestaoEhFuncionario(s: PessoaExternaSugerida) {
+    ignorarPessoaSugerida(s);
+    if (ehPessoaExterna(nova.tipo)) {
+      mudarTipo(TipoOcorrencia.Acidente);
+      setAvisoTipo('O tipo voltou para Acidente porque há funcionário envolvido. Confira o tipo e marque o funcionário na lista.');
+    }
+    window.setTimeout(() => document.getElementById('oco-campo-funcionarios')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  }
+
+  const sugestoesVisiveis = pessoasSugeridas.filter(
+    (s) =>
+      !sugestoesIgnoradas.has(normalizarNome(s.nome)) &&
+      !pessoasExternas.some((p) => normalizarNome(p.nome) === normalizarNome(s.nome)),
+  );
 
   // O que o técnico preencheu à mão vai para a IA junto das respostas, para ela não perguntar de novo.
   // Tipo, gravidade e descrição ficam de fora: não viram perguntas.
@@ -206,6 +295,15 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
           proxima.trabalhadoresIds = s.trabalhadoresIds;
           if (s.trabalhadoresIds.length > 0) preenchidos.add('trabalhadoresIds');
         }
+        // Tipo "com pessoa externa" não aceita funcionário envolvido: quem a IA achou entre os funcionários
+        // vira testemunha (o técnico revisa) e os campos de afastamento voltam ao padrão.
+        if (ehPessoaExterna(proxima.tipo)) {
+          proxima.testemunhas = [...new Set([...(proxima.testemunhas ?? []), ...(proxima.trabalhadoresIds ?? [])])];
+          proxima.trabalhadoresIds = [];
+          proxima.houveAfastamento = false;
+          proxima.diasAfastamento = undefined;
+          proxima.gravidade = GravidadeAcidente.SemAfastamento;
+        }
         return proxima;
       });
       setCamposIa((atual) => {
@@ -213,7 +311,18 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
         preenchidos.forEach((c) => base.add(c));
         return base;
       });
-      if (primeiraRodada) setEditados(new Set());
+      if (primeiraRodada) {
+        setEditados(new Set());
+        setSugestoesIgnoradas(new Set());
+        setAvisoTipo(null);
+        setTestemunhasAutomaticas([]);
+      }
+      // Servidor sem o campo: lista vazia. As sugestões só viram cartão se o técnico aceitar.
+      setPessoasSugeridas(s.pessoasExternasSugeridas ?? []);
+      if (!protegidos.has('tipo') && ehPessoaExterna(s.tipo) && s.trabalhadoresIds.length > 0) {
+        setTestemunhasAutomaticas((atual) => [...new Set([...atual, ...s.trabalhadoresIds])]);
+        setAvisoTipo(AVISO_TESTEMUNHAS);
+      }
       setAvisosIa(s.avisos);
       setErro(null);
       setVersaoRelato((v) => v + 1);
@@ -304,6 +413,9 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
   }
 
   const estiloCampo = (campo: CampoIa) => (camposIa.has(campo) ? destaqueIa : undefined);
+  const nomesTestemunhas = trabalhadores
+    .filter((t) => nova.testemunhas?.includes(t.id))
+    .map((t) => (t.matricula ? `${t.nome} (${t.matricula})` : t.nome));
   const nomesSelecionados = trabalhadores
     .filter((t) => nova.trabalhadoresIds?.includes(t.id))
     .map((t) => (t.matricula ? `${t.nome} (${t.matricula})` : t.nome));
@@ -351,6 +463,15 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
         { nome: 'Local', dica: 'Onde aconteceu', ok: !!nova.local.trim(), alvo: 'oco-campo-local' },
         { nome: 'Data', dica: 'Quando aconteceu', ok: !!nova.data, alvo: 'oco-campo-data' },
         { nome: 'Descrição', dica: 'Conte o que aconteceu', ok: !!nova.descricao.trim(), alvo: 'oco-campo-descricao' },
+        {
+          nome: 'Pessoa externa',
+          dica: 'Este tipo precisa de ao menos uma pessoa que não é funcionária',
+          ok: !ehPessoaExterna(nova.tipo) || pessoasExternas.length > 0,
+          alvo: 'oco-campo-pessoas-externas',
+        },
+        ...pessoasExternas.flatMap((p, i) =>
+          pendenciasPessoaExterna(p, i).map((item) => ({ nome: item.nome, dica: item.dica, ok: false, alvo: item.alvo })),
+        ),
       ])
     ) {
       return;
@@ -380,17 +501,24 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
     try {
       setCarregando(true);
       setErro(null);
+      const tipoExterno = ehPessoaExterna(nova.tipo);
       await api.acidentes.criar({
         ...nova,
-        trabalhadoresIds: nova.trabalhadoresIds ?? [],
+        // Tipo "com pessoa externa": sem funcionário envolvido, sem afastamento/CAT/dias (o servidor também fixa isso).
+        trabalhadoresIds: tipoExterno ? [] : nova.trabalhadoresIds ?? [],
+        testemunhas: (nova.testemunhas ?? []).filter((id) => !(nova.trabalhadoresIds ?? []).includes(id)),
+        pessoasExternas: pessoasExternas.map(pessoaParaPayload),
+        gravidade: tipoExterno ? GravidadeAcidente.SemAfastamento : nova.gravidade,
+        diasDebitadosInformados: tipoExterno ? undefined : nova.diasDebitadosInformados,
+        houveAfastamento: tipoExterno ? false : nova.houveAfastamento,
         atividadeId: nova.atividadeId || null,
         // input type="time" retorna "HH:mm"; TimeSpan? no backend exige segundos ("HH:mm:ss").
         hora: nova.hora ? `${nova.hora}:00` : null,
         lesao: nova.lesao || null,
         consequencia: nova.consequencia || null,
         atendimento: nova.atendimento || null,
-        diasAfastamento: nova.houveAfastamento ? nova.diasAfastamento ?? null : null,
-        numeroCat: nova.numeroCat || null,
+        diasAfastamento: !tipoExterno && nova.houveAfastamento ? nova.diasAfastamento ?? null : null,
+        numeroCat: tipoExterno ? null : nova.numeroCat || null,
         causas: versaoRelato > 0 ? causas.trim() || null : nova.causas || null,
         metodologiaInvestigacao: versaoRelato > 0 ? metodologia : nova.metodologiaInvestigacao ?? null,
         acoesPlano: acoesPlano
@@ -418,6 +546,11 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
       setCamposIa(new Set());
       setEditados(new Set());
       setAvisosIa([]);
+      setPessoasExternas([]);
+      setPessoasSugeridas([]);
+      setSugestoesIgnoradas(new Set());
+      setAvisoTipo(null);
+      setTestemunhasAutomaticas([]);
       setVersaoRelato(0);
       setMetodologia(null);
       setCausas('');
@@ -435,8 +568,10 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
   const colunas: Coluna<Acidente>[] = [
     { chave: 'tipo', rotulo: 'Tipo', render: (a) => tipoOcorrenciaLabel[a.tipo] },
     { chave: 'obra', rotulo: 'Obra', render: (a) => a.obraNome ?? '—' },
-    { chave: 'funcionario', rotulo: 'Funcionário', render: (a) => {
-        const nomes = a.envolvidos.map((e) => e.nome);
+    { chave: 'funcionario', rotulo: 'Funcionário / pessoa', render: (a) => {
+        const nomes = ehPessoaExterna(a.tipo)
+          ? (a.pessoasExternas ?? []).map((p) => p.nome)
+          : a.envolvidos.map((e) => e.nome);
         if (nomes.length === 0) return '—';
         return nomes.length === 1 ? nomes[0] : `${nomes[0]} +${nomes.length - 1}`;
       },
@@ -448,7 +583,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
       rotulo: 'Status',
       render: (a) => <StatusChip tom={tomPorStatusAcidente[a.status] ?? 'neutro'}>{statusAcidenteLabel[a.status]}</StatusChip>,
     },
-    { chave: 'gravidade', rotulo: 'Gravidade', render: (a) => gravidadeAcidenteLabel[a.gravidade] },
+    { chave: 'gravidade', rotulo: 'Gravidade', render: (a) => (ehPessoaExterna(a.tipo) ? '—' : gravidadeAcidenteLabel[a.gravidade]) },
   ];
 
   return (
@@ -474,7 +609,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12, marginBottom: 16 }}>
               <div id="oco-campo-obra" style={{ maxWidth: 420 }}>
                 <Field label="Obra" required>
-                  <Select value={nova.obraId} onChange={(_, d) => setNova({ ...nova, obraId: d.value, trabalhadoresIds: [] })}>
+                  <Select value={nova.obraId} onChange={(_, d) => { setNova({ ...nova, obraId: d.value, trabalhadoresIds: [], testemunhas: [] }); setTestemunhasAutomaticas([]); }}>
                     <option value="">Selecione</option>
                     {obras.map((obra) => (
                       <option key={obra.id} value={obra.id}>
@@ -498,6 +633,20 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                   e afastamento alimentam os indicadores da NBR 14280.
                 </FeedbackInline>
               )}
+              {sugestoesVisiveis.map((s, i) => (
+                <CartaoPessoaExternaSugerida
+                  key={`${normalizarNome(s.nome)}-${i}`}
+                  sugestao={s}
+                  aoAdicionar={() => adicionarPessoaSugerida(s)}
+                  aoEscolherFuncionario={() => sugestaoEhFuncionario(s)}
+                  aoIgnorar={() => ignorarPessoaSugerida(s)}
+                />
+              ))}
+              {avisoTipo && (
+                <FeedbackInline tom="info" aoFechar={() => setAvisoTipo(null)}>
+                  {avisoTipo}
+                </FeedbackInline>
+              )}
               {avisosIa.length > 0 && (
                 <FeedbackInline tom="aviso" aoFechar={() => setAvisosIa([])}>
                   {avisosIa.map((a) => (
@@ -510,7 +659,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
               <FormGrid>
                 <Campo span={2}>
                   <Field label={rotulo('Tipo', 'tipo')} required>
-                    <Select select={{ style: estiloCampo('tipo') }} value={String(nova.tipo)} onChange={(_, d) => alterar('tipo', { tipo: Number(d.value) })}>
+                    <Select select={{ style: estiloCampo('tipo') }} value={String(nova.tipo)} onChange={(_, d) => mudarTipo(Number(d.value))}>
                       {Object.entries(tipoOcorrenciaLabel).map(([valor, rotulo]) => (
                         <option key={valor} value={valor}>
                           {rotulo}
@@ -550,7 +699,8 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                     <Input style={estiloCampo('hora')} type="time" value={nova.hora ?? ''} onChange={(_, d) => alterar('hora', { hora: d.value })} />
                   </Field>
                 </Campo>
-                <Campo span={12}>
+                {!ehPessoaExterna(nova.tipo) && (
+                <Campo span={12} id="oco-campo-funcionarios">
                   <Field
                     label={rotulo(`Funcionários envolvidos${(nova.trabalhadoresIds?.length ?? 0) > 0 ? ` (${nova.trabalhadoresIds?.length})` : ''}`, 'trabalhadoresIds')}
                     hint={
@@ -565,9 +715,47 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                     {nova.obraId ? (
                       <ListaSelecaoMultipla
                         aria-label="Funcionários envolvidos"
-                        opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.matricula ? `${t.nome} (${t.matricula})` : t.nome }))}
+                        opcoes={trabalhadores
+                          .filter((t) => !(nova.testemunhas ?? []).includes(t.id))
+                          .map((t) => ({ id: t.id, rotulo: t.matricula ? `${t.nome} (${t.matricula})` : t.nome }))}
                         selecionados={nova.trabalhadoresIds ?? []}
                         aoMudar={(atualizar) => alterar('trabalhadoresIds', { trabalhadoresIds: atualizar(nova.trabalhadoresIds ?? []) })}
+                      />
+                    ) : (
+                      <Text>Selecione a obra primeiro.</Text>
+                    )}
+                  </Field>
+                </Campo>
+                )}
+                <Campo span={12} id="oco-campo-pessoas-externas">
+                  <BlocoPessoasExternas
+                    pessoas={pessoasExternas}
+                    aoMudarLista={setPessoasExternas}
+                    tipoPessoaExterna={ehPessoaExterna(nova.tipo)}
+                  />
+                </Campo>
+                <Campo span={12}>
+                  <Field
+                    label={`Testemunhas (funcionários que presenciaram)${(nova.testemunhas?.length ?? 0) > 0 ? ` (${nova.testemunhas?.length})` : ''}`}
+                    hint={
+                      !nova.obraId
+                        ? undefined
+                        : nomesTestemunhas.length > 0
+                          ? `Selecionadas: ${nomesTestemunhas.join(', ')}`
+                          : 'Quem viu a ocorrência mas não se envolveu. Testemunha não vai para o G-RH nem para a taxa de gravidade.'
+                    }
+                  >
+                    {nova.obraId ? (
+                      <ListaSelecaoMultipla
+                        aria-label="Testemunhas"
+                        opcoes={trabalhadores
+                          .filter((t) => !(nova.trabalhadoresIds ?? []).includes(t.id))
+                          .map((t) => ({ id: t.id, rotulo: t.matricula ? `${t.nome} (${t.matricula})` : t.nome }))}
+                        selecionados={nova.testemunhas ?? []}
+                        aoMudar={(atualizar) => {
+                          setNova((atual) => ({ ...atual, testemunhas: atualizar(atual.testemunhas ?? []) }));
+                          setTestemunhasAutomaticas([]);
+                        }}
                       />
                     ) : (
                       <Text>Selecione a obra primeiro.</Text>
@@ -600,7 +788,8 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                   </Field>
                 </Campo>
                 {/* Mapa corporal: só quando há lesão (acidente, doença ocupacional ou lesão informada). */}
-                {(nova.tipo === TipoOcorrencia.Acidente || nova.tipo === TipoOcorrencia.DoencaOcupacional || Boolean(nova.lesao?.trim())) && (
+                {(nova.tipo === TipoOcorrencia.Acidente || nova.tipo === TipoOcorrencia.DoencaOcupacional || Boolean(nova.lesao?.trim()) ||
+                  (ehPessoaExterna(nova.tipo) && pessoasExternas.some((p) => p.resultado !== 1))) && (
                   <Campo span={12}>
                     <Field label="Partes do corpo atingidas">
                       <MapaCorporal
@@ -610,6 +799,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                     </Field>
                   </Campo>
                 )}
+                {!ehPessoaExterna(nova.tipo) && (<>
                 <Campo span={3}>
                   <Field label={rotulo('Houve afastamento?', 'houveAfastamento')}>
                     <Select
@@ -683,6 +873,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                     <Input value={nova.numeroCat ?? ''} onChange={(_, d) => setNova({ ...nova, numeroCat: d.value })} />
                   </Field>
                 </Campo>
+                </>)}
               </FormGrid>
             </FormSection>
 

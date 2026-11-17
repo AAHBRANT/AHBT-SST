@@ -4119,6 +4119,9 @@ export const TipoOcorrencia = {
   CondicaoInsegura: 4,
   AtoInseguro: 5,
   DoencaOcupacional: 6,
+  // Vítima que não é funcionária (terceiro, visitante, transeunte). Só existe na criação: não entra no
+  // CAT nem nos indicadores de frequência/gravidade da NBR 14280.
+  PessoaExterna: 7,
 } as const;
 
 export const tipoOcorrenciaLabel: Record<number, string> = {
@@ -4128,7 +4131,22 @@ export const tipoOcorrenciaLabel: Record<number, string> = {
   4: 'Condição insegura',
   5: 'Ato inseguro',
   6: 'Doença ocupacional',
+  7: 'Ocorrência com pessoa externa',
 };
+
+// Vínculo da pessoa externa com a obra, resultado para ela e papel do funcionário na ocorrência.
+export const VinculoPessoaExterna = { Terceiro: 1, Visitante: 2, Transeunte: 3, Outro: 4 } as const;
+export const vinculoPessoaExternaLabel: Record<number, string> = {
+  1: 'Terceiro / prestador',
+  2: 'Visitante',
+  3: 'Transeunte / público externo',
+  4: 'Outro',
+};
+export const ResultadoPessoaExterna = { SemLesao: 1, Lesao: 2, Obito: 3 } as const;
+export const resultadoPessoaExternaLabel: Record<number, string> = { 1: 'Sem lesão', 2: 'Lesão', 3: 'Óbito' };
+export const PapelEnvolvido = { Envolvido: 1, Testemunha: 2 } as const;
+
+export const MAXIMO_PESSOAS_EXTERNAS = 20;
 
 // Seção 28 da Base de Conhecimento — vocabulário literal de metodologias de investigação.
 export const MetodologiaInvestigacao = {
@@ -4153,12 +4171,15 @@ export const StatusAcidente = {
   Registrado: 1,
   EmInvestigacao: 2,
   Concluido: 3,
+  // Investigação pausada à espera do laudo oficial (ex.: óbito). Volta para "Em investigação" ao retomar.
+  AguardandoLaudo: 4,
 } as const;
 
 export const statusAcidenteLabel: Record<number, string> = {
   1: 'Registrado',
   2: 'Em investigação',
   3: 'Concluído',
+  4: 'Aguardando laudo',
 };
 
 // Classificação de gravidade do acidente, usada para calcular Dias Debitados na Taxa de
@@ -4180,6 +4201,56 @@ export const gravidadeAcidenteLabel: Record<number, string> = {
   5: 'Óbito',
 };
 
+// CPF e telefone chegam sempre mascarados; o valor em claro só por api.acidentes.obterDadosPessoaisPessoaExterna.
+export interface PessoaExternaAcidente {
+  id: string;
+  nome: string;
+  vinculo: number;
+  empresa?: string | null;
+  cpfMascarado?: string | null;
+  telefoneMascarado?: string | null;
+  idade?: number | null;
+  lesao?: string | null;
+  atendimento?: string | null;
+  resultado: number;
+}
+
+export interface FuncionarioNaOcorrencia {
+  trabalhadorId: string;
+  nome: string;
+  papel?: number;
+}
+
+export interface ProvidenciaObito {
+  codigo: string;
+  descricao: string;
+  concluida: boolean;
+  concluidaEm?: string | null;
+  observacao?: string | null;
+}
+
+// Pessoa externa enviada no registro/atualização. `id` preenchido atualiza a linha; vazio cria. cpf/telefone:
+// ausente ou valor mascarado = mantém o gravado; "" = apaga; dígitos novos = substitui.
+export interface PessoaExternaPayload {
+  id?: string | null;
+  nome: string;
+  vinculo: number;
+  empresa?: string | null;
+  cpf?: string | null;
+  telefone?: string | null;
+  idade?: number | null;
+  lesao?: string | null;
+  atendimento?: string | null;
+  resultado: number;
+}
+
+export interface DadosPessoaisPessoaExterna {
+  id: string;
+  nome: string;
+  cpf?: string | null;
+  telefone?: string | null;
+}
+
 export interface Acidente {
   id: string;
   tipo: number;
@@ -4187,7 +4258,17 @@ export interface Acidente {
   obraNome?: string | null;
   trabalhadorId?: string | null;
   trabalhadorNome?: string | null;
-  envolvidos: { trabalhadorId: string; nome: string }[];
+  // Só funcionários com papel Envolvido; quem presenciou vem em `testemunhas`.
+  envolvidos: FuncionarioNaOcorrencia[];
+  testemunhas?: FuncionarioNaOcorrencia[];
+  pessoasExternas?: PessoaExternaAcidente[];
+  // Só no detalhe.
+  providenciasObito?: ProvidenciaObito[];
+  conclusaoInvestigacao?: string | null;
+  laudoObservacao?: string | null;
+  aguardandoLaudoDesde?: string | null;
+  // Calculado no servidor com a regra real das 3 fotos. Ausente = false (fotos opcionais).
+  exigeTresFotos?: boolean;
   atividadeId?: string | null;
   atividadeNome?: string | null;
   local: string;
@@ -4237,6 +4318,14 @@ export interface RelatoOcorrenciaSugestao {
   trabalhadoresIds: string[];
   perguntas: PerguntaRelatoOcorrencia[];
   avisos: string[];
+  // Pessoas citadas no relato que não são funcionárias. Ausente em servidor antigo: tratar como lista vazia.
+  pessoasExternasSugeridas?: PessoaExternaSugerida[];
+}
+
+export interface PessoaExternaSugerida {
+  nome: string;
+  vinculo: number;
+  trecho?: string | null;
 }
 
 export interface RelatoOcorrenciaResposta {
@@ -4349,6 +4438,10 @@ export interface NovoAcidente {
   trabalhadorId?: string | null;
   // Funcionários envolvidos; o primeiro vira o principal (trabalhadorId) no backend.
   trabalhadoresIds?: string[];
+  // Pessoas que não são funcionárias. Na atualização, omitir mantém as gravadas; lista (mesmo vazia) substitui.
+  pessoasExternas?: PessoaExternaPayload[];
+  // Funcionários que presenciaram (papel Testemunha). Omitir mantém as gravadas.
+  testemunhas?: string[];
   atividadeId?: string | null;
   local: string;
   data: string;
@@ -4517,6 +4610,8 @@ export const tipoAlertaLabel: Record<number, string> = {
   34: 'EPI abaixo do mínimo',
   35: 'Documento de terceirizado vencendo',
   36: 'Documento de terceirizado vencido',
+  38: 'Óbito: providências pendentes',
+  39: 'Ocorrência aguardando laudo',
 };
 
 export const SeveridadeAlerta = {
@@ -4559,6 +4654,8 @@ export const categoriaAlertaLabel: Record<string, string> = {
   AtivoSst: 'Ativos (Extintores/Equipamentos)',
   NaoConformidade: 'Ocorrências de inspeção',
   AcaoPlano: 'Ações do plano',
+  AcidenteObito: 'Ocorrências (óbito)',
+  AcidenteLaudo: 'Ocorrências (laudo)',
 };
 
 export function categoriaAlertaRotulo(entidadeOrigemTipo: string): string {
@@ -4731,6 +4828,8 @@ export const TipoModuloAlerta = {
   Pcmso: 15,
   // Documentos da empresa terceirizada (DocumentoEmpresaTerceirizadaAlertaProvider).
   DocumentoTerceirizado: 16,
+  // Ocorrências: providências de óbito e laudo em espera (AcidenteAlertaProvider).
+  Acidente: 17,
 } as const;
 
 export const moduloAlertaLabel: Record<number, string> = {
@@ -4750,6 +4849,7 @@ export const moduloAlertaLabel: Record<number, string> = {
   14: 'Cadastro facial',
   15: 'PCMSO',
   16: 'Documentos de terceirizados',
+  17: 'Ocorrências',
 };
 
 export interface RegraAlerta {
@@ -4809,6 +4909,8 @@ export interface OcorrenciaPerfil {
   houveAfastamento: boolean;
   diasAfastamento?: number | null;
   status: number;
+  // 2 = Testemunha. Ausente (servidor antigo) = envolvido.
+  papel?: number;
 }
 
 export interface AssinaturaPerfil {
@@ -7984,7 +8086,23 @@ export const api = {
     atualizar: (id: string, acidente: AtualizarAcidentePayload) =>
       request<void>(`/api/acidentes/${id}`, { method: 'PUT', body: JSON.stringify(acidente) }),
     excluir: (id: string) => request<void>(`/api/acidentes/${id}`, { method: 'DELETE' }),
-    avancarStatus: (id: string) => request<void>(`/api/acidentes/${id}/avancar-status`, { method: 'POST' }),
+    // conclusaoInvestigacao: obrigatória ao concluir uma ocorrência sem ação do plano (o servidor decide).
+    avancarStatus: (id: string, conclusaoInvestigacao?: string | null) =>
+      request<void>(`/api/acidentes/${id}/avancar-status`, {
+        method: 'POST',
+        body: JSON.stringify({ conclusaoInvestigacao: conclusaoInvestigacao?.trim() || null }),
+      }),
+    aguardarLaudo: (id: string, observacao?: string | null) =>
+      request<void>(`/api/acidentes/${id}/aguardar-laudo`, {
+        method: 'POST',
+        body: JSON.stringify({ observacao: observacao?.trim() || null }),
+      }),
+    retomarInvestigacao: (id: string) => request<void>(`/api/acidentes/${id}/retomar-investigacao`, { method: 'POST' }),
+    atualizarProvidenciasObito: (id: string, itens: { codigo: string; concluida: boolean; observacao?: string | null }[]) =>
+      request<void>(`/api/acidentes/${id}/providencias-obito`, { method: 'PUT', body: JSON.stringify({ itens }) }),
+    // CPF/telefone em claro: exige acidente:ver_dados_pessoais e cada consulta fica auditada no servidor.
+    obterDadosPessoaisPessoaExterna: (id: string, pessoaId: string) =>
+      request<DadosPessoaisPessoaExterna>(`/api/acidentes/${id}/pessoas-externas/${pessoaId}/dados-pessoais`),
     // Ações do plano da ocorrência: concluir com descrição (quem conclui vem do login) e reabrir.
     concluirAcao: (acaoId: string, descricaoConclusao: string) =>
       request<void>(`/api/acidentes/acoes-plano/${acaoId}/concluir`, { method: 'POST', body: JSON.stringify({ descricaoConclusao }) }),

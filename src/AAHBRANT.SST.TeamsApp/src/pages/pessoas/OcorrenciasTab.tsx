@@ -1,5 +1,6 @@
 import { Card, DataTable, StatusChip, type Coluna, type Tom } from '@ui';
 import {
+  PapelEnvolvido,
   gravidadeAcidenteLabel,
   statusAcidenteLabel,
   tipoOcorrenciaLabel,
@@ -21,17 +22,31 @@ const tomPorGravidade: Record<number, Tom> = {
 // perfil carregado pela página-mãe), por isso nenhuma conversão de FeedbackInline aqui.
 export function OcorrenciasTab({ ocorrencias }: { ocorrencias: OcorrenciaPerfil[] }) {
   const colunas: Coluna<OcorrenciaPerfil>[] = [
-    { chave: 'tipo', rotulo: 'Tipo', render: (o) => tipoOcorrenciaLabel[o.tipo] },
+    {
+      chave: 'tipo',
+      rotulo: 'Tipo',
+      render: (o) =>
+        o.papel === PapelEnvolvido.Testemunha ? (
+          <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {tipoOcorrenciaLabel[o.tipo]} <StatusChip tom="info">Testemunha</StatusChip>
+          </span>
+        ) : (
+          tipoOcorrenciaLabel[o.tipo]
+        ),
+    },
     { chave: 'data', rotulo: 'Data', render: (o) => o.data?.slice(0, 10) ?? '' },
     { chave: 'local', rotulo: 'Local' },
     {
       chave: 'gravidade',
       rotulo: 'Gravidade',
-      render: (o) => (
+      render: (o) =>
+        o.papel === PapelEnvolvido.Testemunha ? (
+          '—'
+        ) : (
         <StatusChip tom={tomPorGravidade[o.gravidade] ?? 'neutro'}>{gravidadeAcidenteLabel[o.gravidade]}</StatusChip>
-      ),
+        ),
     },
-    { chave: 'diasAfastado', rotulo: 'Dias afastado', render: (o) => (o.houveAfastamento ? o.diasAfastamento ?? 0 : '—') },
+    { chave: 'diasAfastado', rotulo: 'Dias afastado', render: (o) => (o.papel !== PapelEnvolvido.Testemunha && o.houveAfastamento ? o.diasAfastamento ?? 0 : '—') },
     { chave: 'status', rotulo: 'Status', render: (o) => statusAcidenteLabel[o.status] },
   ];
 

@@ -2973,6 +2973,25 @@ public static class NovidadesSeeder
                     null,
                     "O técnico de segurança também pode publicar uma nova versão da matriz de risco, junto do engenheiro. Aprovar ou devolver o PGR continua só com o engenheiro."),
             }),
+        new(
+            Versao: "5.171.0",
+            Titulo: "Registre pessoas externas e testemunhas nas ocorrências",
+            DataPublicacao: new DateTime(2026, 11, 17, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Pessoas que não são funcionárias podem ser registradas na ocorrência",
+                    "A ocorrência só registrava funcionários.",
+                    "Terceiros, visitantes e outras pessoas envolvidas entram na ocorrência com vínculo, lesão, atendimento e resultado. Os dados pessoais ficam protegidos e só aparecem para quem tem permissão."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Testemunhas e o status Aguardando laudo",
+                    null,
+                    "Funcionários podem ser registrados como testemunhas, sem entrar na taxa de gravidade. Quando a investigação depende de um laudo, use o status Aguardando laudo e retome de onde parou quando ele chegar. Em caso de óbito, a ocorrência traz um checklist de providências e o sistema avisa o que estiver em aberto."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Conclusão com justificativa e 3 fotos nas ocorrências novas",
+                    null,
+                    "Ao concluir a investigação sem ação no plano, informe a justificativa. Toda ocorrência nova passa a ter 3 fotos obrigatórias, de qualquer tipo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

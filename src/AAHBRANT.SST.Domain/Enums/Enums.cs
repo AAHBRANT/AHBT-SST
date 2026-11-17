@@ -155,7 +155,10 @@ public enum TipoAlerta
     DocumentoTerceirizadoVencido = 36,
     // ASO desativado porque sumiu do G-RH (aviso ao Técnico de Segurança da obra, 26/10/2026). Criado no ato pela
     // sincronização, não pelo Motor Central de Alertas periódico.
-    AsoDesativadoGrh = 37
+    AsoDesativadoGrh = 37,
+    // Ocorrência com óbito e providências em aberto / ocorrência aguardando laudo (AcidenteAlertaProvider).
+    ObitoProvidenciasPendentes = 38,
+    OcorrenciaAguardandoLaudo = 39
 }
 
 public enum SeveridadeAlerta
@@ -192,7 +195,9 @@ public enum TipoModuloAlerta
     // Validade do PCMSO (PcmsoAlertaProvider), 16/10/2026.
     Pcmso = 15,
     // Documentos da empresa terceirizada (DocumentoEmpresaTerceirizadaAlertaProvider), 21/10/2026.
-    DocumentoTerceirizado = 16
+    DocumentoTerceirizado = 16,
+    // Ocorrências (acidentes): providências de óbito e laudo em espera (AcidenteAlertaProvider).
+    Acidente = 17
 }
 
 public enum StatusAlerta

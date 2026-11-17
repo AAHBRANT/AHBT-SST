@@ -36,9 +36,13 @@ public class AvancarStatusAcidenteCommandHandler : IRequestHandler<AvancarStatus
     // meia-noite de Brasília (2026-11-18 00:00 America/Sao_Paulo, UTC-3 = 03:00 UTC), comparada com CreatedAtUtc.
     public static readonly DateTime ExigeTresFotosParaTodosOsTiposApartirDe = new(2026, 11, 18, 3, 0, 0, DateTimeKind.Utc);
 
+    // Regra única, usada pelo comando e pelas queries (AcidenteDto.ExigeTresFotos).
+    public static bool ExigeTresFotos(TipoOcorrencia tipo, DateTime createdAtUtc) =>
+        tipo == TipoOcorrencia.Acidente
+        || createdAtUtc >= ExigeTresFotosParaTodosOsTiposApartirDe;
+
     public static bool ExigeTresFotos(Acidente acidente) =>
-        acidente.Tipo == TipoOcorrencia.Acidente
-        || acidente.CreatedAtUtc >= ExigeTresFotosParaTodosOsTiposApartirDe;
+        ExigeTresFotos(acidente.Tipo, acidente.CreatedAtUtc);
 
     private readonly IAppDbContext _db;
     private readonly IPublicadorAcidenteGrh _publicadorGrh;
