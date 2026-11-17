@@ -58,12 +58,22 @@ public class ListarAcidentesQueryHandler : IRequestHandler<ListarAcidentesQuery,
                 Causas = a.Causas,
                 Status = a.Status,
                 DataConclusaoInvestigacao = a.DataConclusaoInvestigacao,
+                ConclusaoInvestigacao = a.ConclusaoInvestigacao,
+                LaudoObservacao = a.LaudoObservacao,
+                AguardandoLaudoDesde = a.AguardandoLaudoDesde,
             })
             .ToListAsync(ct);
 
         var envolvidos = await AcidenteEnvolvidosSync.CarregarAsync(_db, lista.Select(a => a.Id).ToList(), ct);
+        var ids = lista.Select(a => a.Id).ToList();
+        var testemunhas = await AcidenteEnvolvidosSync.CarregarTestemunhasAsync(_db, ids, ct);
+        var pessoasExternas = await AcidentePessoasExternasSync.CarregarAsync(_db, ids, ct);
         foreach (var a in lista)
+        {
             a.Envolvidos = envolvidos.GetValueOrDefault(a.Id) ?? new();
+            a.Testemunhas = testemunhas.GetValueOrDefault(a.Id) ?? new();
+            a.PessoasExternas = pessoasExternas.GetValueOrDefault(a.Id) ?? new();
+        }
         return lista;
     }
 }

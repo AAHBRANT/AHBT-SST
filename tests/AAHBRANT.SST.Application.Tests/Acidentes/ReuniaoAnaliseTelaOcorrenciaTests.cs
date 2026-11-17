@@ -84,6 +84,8 @@ public class ReuniaoAnaliseTelaOcorrenciaTests
     {
         var (db, acidente, tecnico, _) = await CenarioAsync(TipoOcorrencia.QuaseAcidente);
         acidente.Status = StatusAcidente.EmInvestigacao;
+        // Registro anterior ao corte das 3 fotos (18/11/2026): o teste não depende da data de hoje.
+        acidente.CreatedAtUtc = new DateTime(2026, 10, 21, 12, 0, 0, DateTimeKind.Utc);
         await db.SaveChangesAsync();
         await new AgendarReuniaoAnaliseCommandHandler(db, new TeamsFalso()).Handle(
             new AgendarReuniaoAnaliseCommand(acidente.Id, Inicio, 60, new List<Guid>(), tecnico.Id), default);
@@ -101,7 +103,9 @@ public class ReuniaoAnaliseTelaOcorrenciaTests
         Assert.Equal("Causas confirmadas.", reuniao.Ata);
         Assert.Equal(StatusControleRisco.Concluido, (await db.AcoesPlano.SingleAsync(a => a.Id == reuniao.AcaoPlanoId)).Status);
 
-        await avancar.Handle(new AvancarStatusAcidenteCommand(acidente.Id), default);
+        // Só a ação da própria reunião existe: não conta como ação do plano, então a justificativa é exigida.
+        await Assert.ThrowsAsync<InvalidOperationException>(() => avancar.Handle(new AvancarStatusAcidenteCommand(acidente.Id), default));
+        await avancar.Handle(new AvancarStatusAcidenteCommand(acidente.Id, "Sem ações adicionais."), default);
         Assert.Equal(StatusAcidente.Concluido, (await db.Acidentes.SingleAsync()).Status);
     }
 

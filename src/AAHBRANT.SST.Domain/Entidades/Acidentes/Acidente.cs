@@ -52,4 +52,15 @@ public class Acidente : AuditableEntity
 
     public StatusAcidente Status { get; set; } = StatusAcidente.Registrado;
     public DateTime? DataConclusaoInvestigacao { get; set; }
+
+    // Justificativa da conclusão; obrigatória quando a investigação termina sem ação do plano vinculada.
+    public string? ConclusaoInvestigacao { get; set; }
+
+    // Pausa "Aguardando laudo": observação e data em que a investigação foi pausada.
+    public string? LaudoObservacao { get; set; }
+    public DateTime? AguardandoLaudoDesde { get; set; }
+
+    // Checklist de providências em caso de óbito (JSON genérico, sem prazos legais; ver
+    // ProvidenciasObitoAcidente). Ler/gravar só por essa classe.
+    public string? ProvidenciasObitoJson { get; set; }
 }

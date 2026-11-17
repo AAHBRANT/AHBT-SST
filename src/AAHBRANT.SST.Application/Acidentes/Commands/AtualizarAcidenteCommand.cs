@@ -31,7 +31,11 @@ public record AtualizarAcidenteCommand(
     List<Guid>? TrabalhadoresIds = null,
     // null = mantém as partes do corpo já gravadas (telas que salvam outros dados não mandam o mapa);
     // lista vazia = limpa.
-    List<string>? RegioesCorpo = null) : IRequest;
+    List<string>? RegioesCorpo = null,
+    // null = mantém as pessoas externas já gravadas; lista (mesmo vazia) substitui o conjunto.
+    List<PessoaExternaEntrada>? PessoasExternas = null,
+    // null = mantém as testemunhas já gravadas; lista (mesmo vazia) substitui.
+    List<Guid>? Testemunhas = null) : IRequest;
 
 public class AtualizarAcidenteCommandValidator : AbstractValidator<AtualizarAcidenteCommand>
 {
@@ -54,6 +58,9 @@ public class AtualizarAcidenteCommandValidator : AbstractValidator<AtualizarAcid
         RuleFor(x => x.RegioesCorpo!.Count).LessThanOrEqualTo(RegioesCorpoAcidente.MaximoRegioes)
             .When(x => x.RegioesCorpo is not null);
         RuleForEach(x => x.RegioesCorpo).Must(RegioesCorpoAcidente.CodigoValido).WithMessage("Parte do corpo inválida: {PropertyValue}.");
+        RuleFor(x => x.PessoasExternas!.Count).LessThanOrEqualTo(AcidentePessoasExternasSync.MaximoPessoas)
+            .When(x => x.PessoasExternas is not null);
+        RuleForEach(x => x.PessoasExternas).SetValidator(new PessoaExternaEntradaValidator());
     }
 }
 
@@ -77,15 +84,27 @@ public class AtualizarAcidenteCommandHandler : IRequestHandler<AtualizarAcidente
             throw new KeyNotFoundException($"Obra {request.ObraId} não encontrada.");
 
         var envolvidos = AcidenteEnvolvidosSync.Resolver(request.TrabalhadoresIds, request.TrabalhadorId);
-        await AcidenteEnvolvidosSync.ValidarAsync(_db, envolvidos, ct);
+        var testemunhas = AcidenteEnvolvidosSync.ResolverTestemunhas(request.Testemunhas);
+        AcidenteEnvolvidosSync.ValidarSemSobreposicao(envolvidos, testemunhas);
+        await AcidenteEnvolvidosSync.ValidarAsync(_db, envolvidos.Concat(testemunhas ?? new()).ToList(), ct);
 
         if (request.AtividadeId.HasValue &&
             !await _db.Atividades.AnyAsync(a => a.Id == request.AtividadeId, ct))
             throw new KeyNotFoundException($"Atividade {request.AtividadeId} não encontrada.");
 
+        // Decisão provisória: o tipo "com pessoa externa" só se define na criação. Trocar de/para ele deixaria
+        // o funcionário como vítima no G-RH (ou o tipo 7 sem pessoa externa); revisar com o G-RH.
+        if (acidente.Tipo != request.Tipo
+            && (acidente.Tipo == TipoOcorrencia.OcorrenciaComPessoaExterna || request.Tipo == TipoOcorrencia.OcorrenciaComPessoaExterna))
+            throw new InvalidOperationException(
+                "O tipo \"Ocorrência com pessoa externa\" só pode ser escolhido ao registrar a ocorrência; não é possível trocar para ele nem a partir dele. Registre uma nova ocorrência.");
+
         acidente.Tipo = request.Tipo;
         acidente.ObraId = request.ObraId;
-        await AcidenteEnvolvidosSync.SincronizarAsync(_db, acidente, envolvidos, ct);
+        await AcidenteEnvolvidosSync.SincronizarAsync(_db, acidente, envolvidos, ct, testemunhas);
+        var totalPessoasExternas = await AcidentePessoasExternasSync.SincronizarAsync(
+            _db, acidente, request.PessoasExternas is null ? null : AcidentePessoasExternasSync.Resolver(request.PessoasExternas), ct);
+        AcidentePessoasExternasSync.ValidarRegraDoTipo(request.Tipo, totalPessoasExternas, envolvidos.Count);
         acidente.AtividadeId = request.AtividadeId;
         acidente.Local = request.Local;
         acidente.Data = request.Data;
@@ -103,8 +122,9 @@ public class AtualizarAcidenteCommandHandler : IRequestHandler<AtualizarAcidente
         acidente.Causas = request.Causas;
         acidente.Gravidade = request.Gravidade;
         acidente.DiasDebitados = TabelaDiasDebitados.Calcular(request.Gravidade, request.DiasDebitadosInformados);
+        AcidentePessoasExternasSync.AplicarPadraoDoTipo(acidente);
 
         await _db.SaveChangesAsync(ct);
-        await _publicadorGrh.PublicarAsync(await AcidenteGrhEventoFactory.CriarAsync(_db, acidente, ct), ct);
+        await AcidenteGrhEventoFactory.PublicarAsync(_db, _publicadorGrh, acidente, ct);
     }
 }

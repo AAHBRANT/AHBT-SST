@@ -40,7 +40,12 @@ public record CriarAcidenteCommand(
     // Acidente/Doença ocupacional por relato: reunião de análise obrigatória no Teams.
     ReuniaoAnaliseNovaOcorrencia? Reuniao = null,
     // Partes do corpo atingidas, marcadas no mapa corporal (ver RegioesCorpoAcidente).
-    List<string>? RegioesCorpo = null) : IRequest<Guid>;
+    List<string>? RegioesCorpo = null,
+    // Pessoas que não são funcionárias (terceiro, visitante...). Obrigatório ao menos uma no tipo
+    // OcorrenciaComPessoaExterna.
+    List<PessoaExternaEntrada>? PessoasExternas = null,
+    // Funcionários que presenciaram (papel Testemunha): não vão ao G-RH.
+    List<Guid>? Testemunhas = null) : IRequest<Guid>;
 
 public record TemaDdsNovaOcorrencia(string Nome, string Roteiro);
 
@@ -80,6 +85,9 @@ public class CriarAcidenteCommandValidator : AbstractValidator<CriarAcidenteComm
         RuleFor(x => x.RegioesCorpo!.Count).LessThanOrEqualTo(RegioesCorpoAcidente.MaximoRegioes)
             .When(x => x.RegioesCorpo is not null);
         RuleForEach(x => x.RegioesCorpo).Must(RegioesCorpoAcidente.CodigoValido).WithMessage("Parte do corpo inválida: {PropertyValue}.");
+        RuleFor(x => x.PessoasExternas!.Count).LessThanOrEqualTo(AcidentePessoasExternasSync.MaximoPessoas)
+            .When(x => x.PessoasExternas is not null);
+        RuleForEach(x => x.PessoasExternas).SetValidator(new PessoaExternaEntradaValidator());
         // Registro por relato (veio plano de ação): o tema do DDS do dia seguinte é obrigatório.
         RuleFor(x => x.TemaDds)
             .NotNull().WithMessage("Informe o tema do DDS do dia seguinte.")
@@ -119,7 +127,11 @@ public class CriarAcidenteCommandHandler : IRequestHandler<CriarAcidenteCommand,
             throw new KeyNotFoundException($"Obra {request.ObraId} não encontrada.");
 
         var envolvidos = AcidenteEnvolvidosSync.Resolver(request.TrabalhadoresIds, request.TrabalhadorId);
-        await AcidenteEnvolvidosSync.ValidarAsync(_db, envolvidos, ct);
+        var testemunhas = AcidenteEnvolvidosSync.ResolverTestemunhas(request.Testemunhas);
+        AcidenteEnvolvidosSync.ValidarSemSobreposicao(envolvidos, testemunhas);
+        await AcidenteEnvolvidosSync.ValidarAsync(_db, envolvidos.Concat(testemunhas ?? new()).ToList(), ct);
+        var pessoasExternas = AcidentePessoasExternasSync.Resolver(request.PessoasExternas);
+        AcidentePessoasExternasSync.ValidarRegraDoTipo(request.Tipo, pessoasExternas.Count, envolvidos.Count);
 
         if (request.AtividadeId.HasValue &&
             !await _db.Atividades.AnyAsync(a => a.Id == request.AtividadeId, ct))
@@ -147,8 +159,11 @@ public class CriarAcidenteCommandHandler : IRequestHandler<CriarAcidenteCommand,
             DiasDebitados = TabelaDiasDebitados.Calcular(request.Gravidade, request.DiasDebitadosInformados),
         };
 
+        AcidentePessoasExternasSync.AplicarPadraoDoTipo(acidente);
+
         _db.Acidentes.Add(acidente);
-        await AcidenteEnvolvidosSync.SincronizarAsync(_db, acidente, envolvidos, ct);
+        await AcidenteEnvolvidosSync.SincronizarAsync(_db, acidente, envolvidos, ct, testemunhas);
+        await AcidentePessoasExternasSync.SincronizarAsync(_db, acidente, pessoasExternas, ct);
 
         foreach (var acao in request.AcoesPlano ?? new List<AcaoPlanoNovaOcorrencia>())
         {
@@ -178,7 +193,7 @@ public class CriarAcidenteCommandHandler : IRequestHandler<CriarAcidenteCommand,
             : await ReuniaoAnaliseOcorrenciaServico.RegistrarAsync(_db, acidente, request.Reuniao.Inicio,
                 request.Reuniao.DuracaoMinutos, request.Reuniao.ParticipantesUsuarioIds, request.UsuarioAtualId, ct);
         await _db.SaveChangesAsync(ct);
-        await _publicadorGrh.PublicarAsync(await AcidenteGrhEventoFactory.CriarAsync(_db, acidente, ct), ct);
+        await AcidenteGrhEventoFactory.PublicarAsync(_db, _publicadorGrh, acidente, ct);
         if (reuniao is not null)
             await ReuniaoAnaliseOcorrenciaServico.MarcarNoTeamsAsync(_db, _reuniaoTeams, acidente, reuniao.Value.Entidade, reuniao.Value.Emails, ct);
         return acidente.Id;

@@ -685,7 +685,34 @@ public enum TipoOcorrencia
     QuaseAcidente = 3,
     CondicaoInsegura = 4,
     AtoInseguro = 5,
-    DoencaOcupacional = 6
+    DoencaOcupacional = 6,
+    // Ocorrência cuja(s) vítima(s) não são funcionários (terceiro, visitante, transeunte...). Exige
+    // pelo menos uma pessoa externa (AcidentePessoaExterna) e nenhum funcionário com papel Envolvido.
+    OcorrenciaComPessoaExterna = 7
+}
+
+// Vínculo da pessoa externa com a obra/empresa.
+public enum VinculoPessoaExterna
+{
+    Terceiro = 1,
+    Visitante = 2,
+    Transeunte = 3,
+    Outro = 4
+}
+
+// Desfecho da ocorrência para a pessoa externa.
+public enum ResultadoPessoaExterna
+{
+    SemLesao = 1,
+    Lesao = 2,
+    Obito = 3
+}
+
+// Papel do funcionário na ocorrência. Testemunha não entra no G-RH nem na taxa de gravidade.
+public enum PapelEnvolvido
+{
+    Envolvido = 1,
+    Testemunha = 2
 }
 
 // Seção 28 da Base de Conhecimento (linhas 702-708) — vocabulário literal de metodologias de
@@ -707,7 +734,9 @@ public enum StatusAcidente
 {
     Registrado = 1,
     EmInvestigacao = 2,
-    Concluido = 3
+    Concluido = 3,
+    // Investigação pausada à espera de laudo (ex.: óbito). Anexado ao fim: não renumerar.
+    AguardandoLaudo = 4
 }
 
 // Classificação de gravidade do acidente, usada para calcular Dias Debitados na Taxa de
