@@ -166,6 +166,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Acidente> Acidentes => Set<Acidente>();
     public DbSet<AcidenteFoto> AcidentesFotos => Set<AcidenteFoto>();
     public DbSet<AcidenteEnvolvido> AcidentesEnvolvidos => Set<AcidenteEnvolvido>();
+    public DbSet<AcidentePessoaExterna> AcidentesPessoasExternas => Set<AcidentePessoaExterna>();
     public DbSet<RegistroHhtMensal> RegistrosHhtMensais => Set<RegistroHhtMensal>();
 
     public DbSet<AtivoSst> AtivosSst => Set<AtivoSst>();
@@ -283,6 +284,8 @@ public class SstDbContext : DbContext, IAppDbContext
         modelBuilder.Entity<AcidenteFoto>().HasQueryFilter(f =>
             f.Ativo && f.Acidente!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(f.Acidente.ObraId)));
         modelBuilder.Entity<AcidenteEnvolvido>().HasQueryFilter(e =>
+            e.Ativo && e.Acidente!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.Acidente.ObraId)));
+        modelBuilder.Entity<AcidentePessoaExterna>().HasQueryFilter(e =>
             e.Ativo && e.Acidente!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.Acidente.ObraId)));
         modelBuilder.Entity<Acidente>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));

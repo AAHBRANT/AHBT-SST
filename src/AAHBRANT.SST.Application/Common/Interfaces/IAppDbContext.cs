@@ -156,6 +156,7 @@ public interface IAppDbContext
     DbSet<Acidente> Acidentes { get; }
     DbSet<AcidenteFoto> AcidentesFotos { get; }
     DbSet<AcidenteEnvolvido> AcidentesEnvolvidos { get; }
+    DbSet<AcidentePessoaExterna> AcidentesPessoasExternas { get; }
     DbSet<RegistroHhtMensal> RegistrosHhtMensais { get; }
 
     DbSet<AtivoSst> AtivosSst { get; }

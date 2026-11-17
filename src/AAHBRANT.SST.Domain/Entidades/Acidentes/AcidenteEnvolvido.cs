@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Domain.Common;
+using AAHBRANT.SST.Domain.Enums;
 
 namespace AAHBRANT.SST.Domain.Entidades;
 
@@ -10,4 +11,6 @@ public class AcidenteEnvolvido : AuditableEntity
     public Acidente? Acidente { get; set; }
     public Guid TrabalhadorId { get; set; }
     public Trabalhador? Trabalhador { get; set; }
+    // Envolvido (vítima/participante, vai ao G-RH) ou Testemunha. Registros anteriores são Envolvido.
+    public PapelEnvolvido Papel { get; set; } = PapelEnvolvido.Envolvido;
 }
