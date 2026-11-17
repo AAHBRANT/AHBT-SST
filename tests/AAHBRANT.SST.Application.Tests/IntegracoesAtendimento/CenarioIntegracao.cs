@@ -40,6 +40,41 @@ internal sealed class ClienteIntegracaoFalso : IClienteIpProvider
     public string? ObterUserAgent() => "Teste";
 }
 
+// Leitor de digital falso: devolve como identificado o trabalhador informado (ou o que a função escolher).
+internal sealed class LeitorDigitalFalso(Func<Guid, Guid>? quemELido = null) : IAutenticacaoBiometriaLocalService
+{
+    public bool PermitiuOutraObra { get; private set; }
+
+    public Task<ResultadoAutenticacaoAssinatura> AutenticarPorMatchLocalAsync(
+        Guid dispositivoId, string segredoDispositivo, Guid trabalhadorId, double score, LeituraBiometricaAssinada? leitura, CancellationToken ct,
+        bool permitirInstrutorDeOutraObra = false)
+    {
+        PermitiuOutraObra = permitirInstrutorDeOutraObra;
+        return Task.FromResult(new ResultadoAutenticacaoAssinatura(
+            quemELido?.Invoke(trabalhadorId) ?? trabalhadorId, MetodoAutenticacaoAssinatura.Biometria, dispositivoId, Confianca: score));
+    }
+}
+
+// Reconhecimento facial falso: identifica a pessoa configurada e guarda em qual obra (grupo) a busca foi feita.
+internal sealed class FacialIntegracaoFalso(Func<Guid>? quem = null, MotivoRejeicaoFacial? rejeitar = null) : IAutenticacaoFacialService
+{
+    public Guid? ObraConsultada { get; private set; }
+
+    public Task<ResultadoIdentificacaoFacial> IdentificarAsync(Guid obraId, byte[] fotoJpeg, CancellationToken ct, bool exigirMargemSobreSegundoColocado = true)
+    {
+        ObraConsultada = obraId;
+        if (rejeitar is { } motivo) return Task.FromResult(new ResultadoIdentificacaoFacial(false, null, motivo, null));
+        return Task.FromResult(new ResultadoIdentificacaoFacial(true,
+            new ResultadoAutenticacaoAssinatura(quem!(), MetodoAutenticacaoAssinatura.ReconhecimentoFacial, null, "recognition_04", "grupo-obra", "req-1", 91), null, 91));
+    }
+
+    public Task<DiagnosticoVinculosFacialDto> DiagnosticarVinculosAsync(Guid obraId, CancellationToken ct) => throw new NotSupportedException();
+    public Task CadastrarAsync(Guid trabalhadorId, byte[] fotoJpeg, CancellationToken ct) => throw new NotSupportedException();
+    public Task RemoverCadastroAsync(Guid trabalhadorId, CancellationToken ct) => throw new NotSupportedException();
+    public Task RealocarCadastroAsync(Guid trabalhadorId, Guid obraAnteriorId, CancellationToken ct) => throw new NotSupportedException();
+    public Task<ResultadoMigracaoModeloFacial?> MigrarModeloReconhecimentoAsync(Guid obraId, CancellationToken ct) => throw new NotSupportedException();
+}
+
 // IMediator controlado pelo teste, com os dois formatos de Send (com e sem resposta).
 internal sealed class RoteadorMediator(Func<object, CancellationToken, Task<object?>> responder) : IMediator
 {
@@ -81,6 +116,20 @@ internal sealed class CenarioIntegracao
     public NumerosFalsos Numeros { get; } = new();
     public Func<object, CancellationToken, Task<object?>>? RespostasExtras { get; set; }
 
+    // Assinatura biométrica do instrutor guardada na turma (o que as rotas instrutor/assinar/* gravam).
+    public async Task AssinarInstrutorAsync(Guid sessaoId, MetodoAutenticacaoAssinatura metodo = MetodoAutenticacaoAssinatura.Biometria)
+    {
+        Db.AssinaturasInstrutorSessaoTreinamento.Add(new AssinaturaInstrutorSessaoTreinamento
+        {
+            ObraId = Obra.Id, SessaoTreinamentoId = sessaoId, InstrutorTrabalhadorId = Instrutor.Id, Metodo = metodo,
+            AssinadoEmUtc = DateTime.UtcNow, ScoreConfianca = 88, EvidenciaConteudo = [9, 8, 7], EvidenciaContentType = "image/png",
+            EvidenciaHash = "HASH-INSTRUTOR", IpAddress = "10.0.0.5", UserAgent = "Tablet da obra",
+            LocalizacaoStatus = StatusLocalizacaoAssinatura.Capturada, Latitude = -7.1, Longitude = -34.8, PrecisaoMetros = 12,
+            DispositivoAgenteId = Guid.NewGuid(),
+        });
+        await Db.SaveChangesAsync();
+    }
+
     public static async Task<CenarioIntegracao> CriarAsync()
     {
         ChavesCpfDeTeste.Configurar();
@@ -108,6 +157,8 @@ internal sealed class CenarioIntegracao
         var b = Pessoa(obra, ajudante, "Beto Ajudante", "33333333333");
         db.Trabalhadores.AddRange(instrutor, a, b);
         db.PerfisInstrutor.Add(new PerfilInstrutor { TrabalhadorId = instrutor.Id });
+        // O instrutor precisa de digital (ou facial) cadastrada para assinar e para a integração iniciar (16/11/2026).
+        db.TemplatesBiometricoFutronic.Add(new TemplateBiometricoFutronic { TrabalhadorId = instrutor.Id, TemplateCriptografado = "x", CapturadoEm = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
         return new CenarioIntegracao
@@ -165,6 +216,12 @@ internal sealed class CenarioIntegracao
         throw new NotSupportedException(req.GetType().Name);
     });
 
+    public AssinarInstrutorEtapaPorDigitalCommandHandler AssinarDigitalHandler(Func<Guid, Guid>? quemELido = null) =>
+        new(Db, new LeitorDigitalFalso(quemELido), new ClienteIntegracaoFalso());
+
+    public AssinarInstrutorEtapaPorFacialCommandHandler AssinarFacialHandler(FacialIntegracaoFalso facial) =>
+        new(Db, facial, new ClienteIntegracaoFalso());
+
     public EncerrarSessaoTreinamentoCommandHandler EncerrarHandler() => new(
         Db, Mediator, new RegistradorAssinaturaService(Db, new AuditoriaIntegracaoFalsa(), new ClienteIntegracaoFalso()),
         NullLogger<EncerrarSessaoTreinamentoCommandHandler>.Instance, Numeros);
@@ -210,6 +267,8 @@ internal sealed class CenarioIntegracao
     {
         var etapa = await Db.IntegracaoEtapas.SingleAsync(e => e.Id == etapaId);
         etapa.IniciadaEmUtc = DateTime.UtcNow.AddDays(-dias);
+        // O período automático (lançado na abertura) sai: o técnico "ajusta o horário" removendo e lançando à mão.
+        Db.PeriodosEtapaIntegracao.RemoveRange(await Db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapaId && p.Automatico).ToListAsync());
         await Db.SaveChangesAsync();
         return DataDaEtapa(etapa.Ordem);
     }
@@ -220,7 +279,7 @@ internal sealed class CenarioIntegracao
     public static byte[] Bytes(int semente) => [(byte)(semente % 250 + 1), (byte)(semente / 250 + 1), 7, 9, 11];
 
     // Deixa a etapa atual pronta para avançar: presença de todos, 3 fotos próprias e a carga mínima lançada.
-    public async Task CompletarEtapaAtualAsync(Guid atendimentoId, int semente, bool comPeriodo = true)
+    public async Task CompletarEtapaAtualAsync(Guid atendimentoId, int semente, bool comPeriodo = true, bool comInstrutor = true)
     {
         var at = await Db.IntegracoesAtendimento.SingleAsync(a => a.Id == atendimentoId);
         var etapa = await Db.IntegracaoEtapas.SingleAsync(e => e.IntegracaoAtendimentoId == atendimentoId && e.Ordem == at.EtapaAtualOrdem);
@@ -235,6 +294,8 @@ internal sealed class CenarioIntegracao
             p.EvidenciaContentType = "image/png";
         }
         await Db.SaveChangesAsync();
+        if (comInstrutor && !await Db.AssinaturasInstrutorSessaoTreinamento.AnyAsync(a => a.SessaoTreinamentoId == sessaoId))
+            await AssinarInstrutorAsync(sessaoId);
 
         for (var ordem = 1; ordem <= 3; ordem++)
             await FotoAsync(sessaoId, ordem, Bytes(semente * 10 + ordem));

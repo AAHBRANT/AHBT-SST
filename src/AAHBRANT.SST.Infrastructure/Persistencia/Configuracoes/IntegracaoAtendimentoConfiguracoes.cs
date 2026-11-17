@@ -118,3 +118,23 @@ public class TokenCapturaFotoConfiguracao : IEntityTypeConfiguration<TokenCaptur
         b.HasOne<SessaoTreinamento>().WithMany().HasForeignKey(x => x.SessaoTreinamentoId).OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+// Assinatura biométrica do instrutor na turma (uma por turma ativa), colhida antes do encerramento.
+public class AssinaturaInstrutorSessaoTreinamentoConfiguracao : IEntityTypeConfiguration<AssinaturaInstrutorSessaoTreinamento>
+{
+    public void Configure(EntityTypeBuilder<AssinaturaInstrutorSessaoTreinamento> b)
+    {
+        b.ToTable("AssinaturasInstrutorSessaoTreinamento");
+        b.Property(x => x.EvidenciaContentType).HasMaxLength(100);
+        b.Property(x => x.EvidenciaHash).HasMaxLength(64);
+        b.Property(x => x.IpAddress).HasMaxLength(64);
+        b.Property(x => x.UserAgent).HasMaxLength(300);
+        b.Property(x => x.ValidacaoModelo).HasMaxLength(60);
+        b.Property(x => x.ValidacaoGrupoId).HasMaxLength(80);
+        b.Property(x => x.ValidacaoRequisicaoId).HasMaxLength(80);
+        b.HasIndex(x => x.SessaoTreinamentoId).IsUnique().HasFilter("[Ativo] = 1");
+        b.HasIndex(x => x.InstrutorTrabalhadorId);
+        b.HasOne<SessaoTreinamento>().WithMany().HasForeignKey(x => x.SessaoTreinamentoId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Trabalhador>().WithMany().HasForeignKey(x => x.InstrutorTrabalhadorId).OnDelete(DeleteBehavior.Restrict);
+    }
+}

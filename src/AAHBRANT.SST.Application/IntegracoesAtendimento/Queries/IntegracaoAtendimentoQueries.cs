@@ -77,12 +77,14 @@ public class ObterEntradaIntegracaoQueryHandler : IRequestHandler<ObterEntradaIn
         var instrutoresTrab = await _db.Trabalhadores.IgnoreQueryFilters()
             .Where(t => idsInstr.Contains(t.Id) && t.Ativo && t.Situacao == SituacaoTrabalhador.Ativo)
             .Select(t => new { t.Id, t.Nome, t.ObraId }).ToListAsync(ct);
+        var (instrComDigital, instrComFacial) = await BiometriaInstrutor.CarregarAsync(_db, idsInstr, ct);
         var instrutores = (from p in perfis
                            join t in instrutoresTrab on p.TrabalhadorId equals t.Id
                            where t.ObraId == request.ObraId || (p.PodeAssinarEmOutrasObras && p.AutorizadoOutrasObrasEm != null)
                            orderby t.Nome
                            select new InstrutorIntegracaoDto(t.Id, t.Nome,
-                               AAHBRANT.SST.Application.Instrutores.DescricaoInstrutor.Registro(p.Conselho, p.NumeroRegistro, p.UfRegistro)))
+                               AAHBRANT.SST.Application.Instrutores.DescricaoInstrutor.Registro(p.Conselho, p.NumeroRegistro, p.UfRegistro),
+                               instrComDigital.Contains(t.Id), instrComFacial.Contains(t.Id)))
             .ToList();
         if (instrutores.Count == 0)
             bloqueios.Add(new("InstrutorNaoCadastrado", "Cadastre o perfil de instrutor de quem vai conduzir a integração.", "/pessoas"));
@@ -95,8 +97,29 @@ public class ObterEntradaIntegracaoQueryHandler : IRequestHandler<ObterEntradaIn
                     $"O curso {CalculadoraEtapasIntegracao.NormaDoTipo(tipo)} não está cadastrado no catálogo de cursos.", "/gestao-sst?secao=treinamentos"));
 
         var podeIniciar = bloqueios.Count == 0 && emAndamento is null && candidatos.Any(c => !c.JaParticipa);
-        return new EntradaIntegracaoDto(habilitada, request.ObraId, obraNome, emAndamento, podeIniciar, bloqueios, candidatos, instrutores);
+        return new EntradaIntegracaoDto(habilitada, request.ObraId, obraNome, emAndamento, podeIniciar, bloqueios, candidatos, instrutores,
+            ConfiguracaoIntegracao.FotosAutomaticas(_opcoes.Value));
     }
+}
+
+// Configuração da tela (sem obra): chave de habilitação e tempos das fotos automáticas.
+public record ObterConfiguracaoIntegracaoQuery : IRequest<ConfiguracaoIntegracaoDto>;
+
+public class ObterConfiguracaoIntegracaoQueryHandler(IOptions<OpcoesIntegracao> opcoes) : IRequestHandler<ObterConfiguracaoIntegracaoQuery, ConfiguracaoIntegracaoDto>
+{
+    public Task<ConfiguracaoIntegracaoDto> Handle(ObterConfiguracaoIntegracaoQuery request, CancellationToken ct) =>
+        Task.FromResult(new ConfiguracaoIntegracaoDto(opcoes.Value.AtendimentoHabilitado, ConfiguracaoIntegracao.FotosAutomaticas(opcoes.Value)));
+}
+
+public static class ConfiguracaoIntegracao
+{
+    // Valores fora de 5 s a 1 h (ou não positivos) voltam ao padrão: configuração errada não pode travar a captura.
+    public static FotosAutomaticasIntegracaoDto FotosAutomaticas(OpcoesIntegracao opcoes) => new(
+        Valido(opcoes.FotosAutomaticas.PrimeiraAposSegundos, 60),
+        Valido(opcoes.FotosAutomaticas.SegundaAposSegundos, 300),
+        Valido(opcoes.FotosAutomaticas.TerceiraAposSegundos, 300));
+
+    private static int Valido(int valor, int padrao) => valor is >= 5 and <= 3600 ? valor : padrao;
 }
 
 public record ObterIntegracaoQuery(Guid IntegracaoId, string? AzureAdObjectId = null, bool AutenticacaoHabilitada = false)

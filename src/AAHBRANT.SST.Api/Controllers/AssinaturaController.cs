@@ -123,6 +123,51 @@ public class AssinaturaController : ControllerBase
         }
     }
 
+    // Assinatura do técnico na Ordem de Serviço (16/11/2026): só biometria, em rotas próprias. O papel é fixo no
+    // servidor (o corpo não aceita "papel") e quem pode assinar vem da regra da OS (instrutor da integração, ou técnico/
+    // engenheiro de segurança da obra da OS). Mesmo corpo da biometria local comum.
+    [Authorize(Policy = "assinatura:assinar")]
+    [HttpPost("{id:guid}/tecnico-os/biometria-local")]
+    public async Task<ActionResult<DocumentoSignatarioDto>> AutenticarTecnicoOsBiometriaLocal(Guid id, AutenticarBiometriaLocalRequestBody body, CancellationToken ct)
+    {
+        var resultado = await _mediator.Send(
+            new RegistrarAssinaturaTecnicoOsBiometriaLocalCommand(id, body.DispositivoId, body.SegredoDispositivo ?? string.Empty, body.TrabalhadorId, body.Score, ObterIpCliente(), body.ImagemDigital,
+                body.Localizacao?.ParaDominio(), body.Desafio, body.AssinaturaLeitura), ct);
+        return Ok(resultado);
+    }
+
+    // Facial: a obra do grupo de rostos é a da OS (não vem do corpo), por isso não há "obraId" aqui.
+    public class AutenticarTecnicoOsFacialRequestBody
+    {
+        public IFormFile Foto { get; set; } = null!;
+        public StatusLocalizacaoAssinatura? LocalizacaoStatus { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public double? PrecisaoMetros { get; set; }
+        public DateTime? CapturadaEm { get; set; }
+    }
+
+    [Authorize(Policy = "assinatura:assinar")]
+    [HttpPost("{id:guid}/tecnico-os/facial")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<ActionResult<DocumentoSignatarioDto>> AutenticarTecnicoOsFacial(Guid id, [FromForm] AutenticarTecnicoOsFacialRequestBody body, CancellationToken ct)
+    {
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+        try
+        {
+            var resultado = await _mediator.Send(
+                new RegistrarAssinaturaTecnicoOsFacialCommand(id, stream.ToArray(), body.Foto.ContentType, ObterIpCliente(),
+                    body.LocalizacaoStatus is { } status ? new LocalizacaoAssinatura(status, body.Latitude, body.Longitude, body.PrecisaoMetros) : null,
+                    body.CapturadaEm), ct);
+            return Ok(resultado);
+        }
+        catch (RejeicaoFacialException ex)
+        {
+            return BadRequest(new { erro = ex.Message, motivo = ex.Motivo.ToString() });
+        }
+    }
+
     // IP para o audit trail jurídico do Cofre de Assinaturas — nunca aceito do corpo da requisição
     // (evidência não pode ser controlada pelo cliente). Não lê X-Forwarded-For na mão: o primeiro
     // valor do cabeçalho é controlado pelo cliente. O UseForwardedHeaders (Program.cs) já aplica o

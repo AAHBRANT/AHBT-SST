@@ -12,17 +12,27 @@ public record CandidatoIntegracaoDto(
     // Prévia das 5 etapas desta pessoa (mesma calculadora do Iniciar): nestaIntegracao | valido | naoExigido.
     IReadOnlyList<EtapaCandidatoDto> Etapas);
 
-public record InstrutorIntegracaoDto(Guid TrabalhadorId, string Nome, string? Registro);
+// TemDigital/TemFacial: a tela avisa na escolha se o instrutor não tem biometria (sem ela ele não assina e a integração não inicia).
+public record InstrutorIntegracaoDto(Guid TrabalhadorId, string Nome, string? Registro, bool TemDigital = false, bool TemFacial = false);
+
+// Segundos de espera de cada foto automática: a 1ª depois da abertura da etapa; a 2ª depois da 1ª; a 3ª depois da 2ª.
+public record FotosAutomaticasIntegracaoDto(int PrimeiraAposSegundos, int SegundaAposSegundos, int TerceiraAposSegundos);
+
+public record ConfiguracaoIntegracaoDto(bool Habilitada, FotosAutomaticasIntegracaoDto FotosAutomaticas);
 
 public record EntradaIntegracaoDto(
     bool Habilitada, Guid ObraId, string ObraNome, AtendimentoEmAndamentoResumoDto? AtendimentoEmAndamento, bool PodeIniciar,
     IReadOnlyList<BloqueioIntegracaoDto> Bloqueios, IReadOnlyList<CandidatoIntegracaoDto> Candidatos,
-    IReadOnlyList<InstrutorIntegracaoDto> Instrutores);
+    IReadOnlyList<InstrutorIntegracaoDto> Instrutores,
+    FotosAutomaticasIntegracaoDto? FotosAutomaticas = null);
 
 public record ParticipanteIntegracaoDto(
     Guid TrabalhadorId, string Nome, Guid FuncaoId, string Funcao, Guid? PlanoIntegracaoId, Guid? OrdemServicoId);
 
-public record PeriodoEtapaIntegracaoDto(Guid Id, string Data, string Inicio, string Fim, int Minutos);
+public record PeriodoEtapaIntegracaoDto(Guid Id, string Data, string Inicio, string Fim, int Minutos, bool Automatico = false);
+
+// Pendência estruturada (codigo estável) para a tela tornar a linha clicável.
+public record PendenciaEtapaIntegracaoDto(string Codigo, string Texto);
 
 public record ParticipanteEtapaIntegracaoDto(
     Guid TrabalhadorId, string Nome, bool PresencaConfirmada, DateTime? PresencaEmUtc, string? Metodo, bool TemDigital, bool TemFacial,
@@ -37,7 +47,13 @@ public record EtapaIntegracaoDto(
     // Só na etapa em andamento: o que ainda impede o botão "Avançar".
     IReadOnlyList<string> Faltas,
     // Conteúdo programático do curso e para quem vale (null na OS).
-    string? Conteudo = null, string? Aplicabilidade = null);
+    string? Conteudo = null, string? Aplicabilidade = null,
+    // Mesma lista de Faltas, com código estável: instrutor_nao_definido, sem_participantes, carga, carga_aguardando_fim, fotos,
+    // assinaturas_colaboradores, instrutor_assinatura, instrutor_sem_biometria.
+    IReadOnlyList<PendenciaEtapaIntegracaoDto>? Pendencias = null,
+    // Assinatura biométrica do instrutor nesta etapa (uma por turma). Método: "biometria" (digital) ou "reconhecimentoFacial".
+    bool InstrutorAssinou = false, DateTime? InstrutorAssinadoEmUtc = null, string? InstrutorMetodo = null,
+    bool InstrutorTemDigital = false, bool InstrutorTemFacial = false);
 
 public record EtapaCandidatoDto(string Tipo, int Ordem, string Situacao);
 

@@ -33,11 +33,15 @@ public static class MontadorIntegracaoAtendimento
             .Select(f => f.SessaoTreinamentoId)
             .ToListAsync(ct);
 
+        // Assinatura biométrica do instrutor por turma (sem carregar a imagem de evidência).
+        var assinaturasInstrutor = (await db.AssinaturasInstrutorSessaoTreinamento
+            .Where(a => sessaoIds.Contains(a.SessaoTreinamentoId))
+            .Select(a => new { a.SessaoTreinamentoId, a.AssinadoEmUtc, a.Metodo })
+            .ToListAsync(ct)).ToDictionary(a => a.SessaoTreinamentoId);
+
         var idsPessoas = participantes.Select(p => p.TrabalhadorId).ToList();
-        var comDigital = (await db.TemplatesBiometricoFutronic.Where(b => idsPessoas.Contains(b.TrabalhadorId))
-            .Select(b => b.TrabalhadorId).Distinct().ToListAsync(ct)).ToHashSet();
-        var comFacial = (await db.FotosCadastroFacial.Where(f => idsPessoas.Contains(f.TrabalhadorId))
-            .Select(f => f.TrabalhadorId).Distinct().ToListAsync(ct)).ToHashSet();
+        var idsBiometria = idsPessoas.Append(at.InstrutorTrabalhadorId).Distinct().ToList();
+        var (comDigital, comFacial) = await BiometriaInstrutor.CarregarAsync(db, idsBiometria, ct);
 
         var obraNome = await db.Obras.Where(o => o.Id == at.ObraId).Select(o => o.Nome).FirstOrDefaultAsync(ct) ?? string.Empty;
         var instrutorNome = await db.Trabalhadores.IgnoreQueryFilters()
@@ -76,12 +80,17 @@ public static class MontadorIntegracaoAtendimento
                 comDigital.Contains(n.TrabalhadorId), comFacial.Contains(n.TrabalhadorId), true, n.Motivo)));
             partDto = partDto.OrderBy(p => p.Nome).ToList();
 
+            var assinaturaInstrutor = sessao is not null && assinaturasInstrutor.TryGetValue(sessao.Id, out var ai) ? ai : null;
+            var periodosEtapa = periodos.Where(p => p.IntegracaoEtapaId == e.Id).ToList();
             var faltas = new List<string>();
+            var pendencias = new List<PendenciaEtapa>();
             if (sessao is not null && e.Status == StatusEtapaIntegracao.EmAndamento && !(partsEtapa.Count == 0 && marcadosEtapa.Count > 0))
             {
                 var entidades = partsEtapa.Select(p => new ParticipanteSessaoTreinamento
                     { TrabalhadorId = p.TrabalhadorId, PresencaConfirmadaEm = p.PresencaConfirmadaEm }).ToList();
-                faltas = AvaliadorEtapaIntegracao.Faltas(e, sessao, entidades, nomes, minutos, nFotos);
+                pendencias = AvaliadorEtapaIntegracao.Pendencias(e, sessao, entidades, nomes, periodosEtapa, nFotos,
+                    new SituacaoInstrutorEtapa(assinaturaInstrutor is not null, comDigital.Contains(at.InstrutorTrabalhadorId), comFacial.Contains(at.InstrutorTrabalhadorId)));
+                faltas = pendencias.Select(p => p.Texto).ToList();
             }
 
             etapasDto.Add(new EtapaIntegracaoDto(
@@ -91,11 +100,16 @@ public static class MontadorIntegracaoAtendimento
                 sessao is null ? 0 : AvaliadorEtapaIntegracao.FotosNecessarias,
                 partDto,
                 periodos.Where(p => p.IntegracaoEtapaId == e.Id)
-                    .Select(p => new PeriodoEtapaIntegracaoDto(p.Id, p.Data.ToString("yyyy-MM-dd"), p.Inicio.ToString(@"hh\:mm"), p.Fim.ToString(@"hh\:mm"), p.Minutos))
+                    .Select(p => new PeriodoEtapaIntegracaoDto(p.Id, p.Data.ToString("yyyy-MM-dd"), p.Inicio.ToString(@"hh\:mm"), p.Fim.ToString(@"hh\:mm"), p.Minutos, p.Automatico))
                     .ToList(),
                 faltas,
                 ConteudoDe(e, cursosEtapas, obraNome),
-                AplicabilidadeDe(e, funcoesObra.Select(f => (f.Id, f.Nome)).ToList(), exigencias, at.ObraId)));
+                AplicabilidadeDe(e, funcoesObra.Select(f => (f.Id, f.Nome)).ToList(), exigencias, at.ObraId),
+                pendencias.Select(p => new PendenciaEtapaIntegracaoDto(p.Codigo, p.Texto)).ToList(),
+                assinaturaInstrutor is not null, assinaturaInstrutor?.AssinadoEmUtc,
+                assinaturaInstrutor is null ? null : TextoDto.Camel(assinaturaInstrutor.Metodo.ToString()),
+                comDigital.Contains(at.InstrutorTrabalhadorId),
+                comFacial.Contains(at.InstrutorTrabalhadorId)));
         }
 
         // Q5: entrar/sair enquanto a primeira etapa de curso não tiver nenhuma assinatura.

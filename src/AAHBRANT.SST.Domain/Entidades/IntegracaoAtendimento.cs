@@ -85,6 +85,10 @@ public class PeriodoEtapaIntegracao : AuditableEntity
     public TimeSpan Inicio { get; set; }
     public TimeSpan Fim { get; set; }
     public int Minutos { get; set; }
+    // Lançado sozinho ao abrir a etapa (início = hora da abertura, fim = início + carga prevista; o fim pode estar no futuro e
+    // trava o Avançar até chegar). Se cruza a meia-noite, vira um período por dia: o primeiro termina às 23:59 mas conta os
+    // minutos até a meia-noite (Minutos é a duração real). Ajustar = remover e lançar manual (Automatico = false).
+    public bool Automatico { get; set; }
 }
 
 // "Integração realizada": registro isolado no perfil, sem certificado (decisão do usuário, 11/11/2026).

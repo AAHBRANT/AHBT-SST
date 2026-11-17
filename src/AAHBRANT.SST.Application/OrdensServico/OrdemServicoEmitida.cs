@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace AAHBRANT.SST.Application.OrdensServico;
 
 // Situação da OS emitida, tirada das assinaturas do Motor: o funcionário assina primeiro (digital ou
-// facial) e o técnico de segurança depois (sessão logada). Só com as duas a OS é "Valida".
+// facial) e o técnico depois (biometria, papel TecnicoSegurancaOs; antes de 16/11 era a sessão logada). Só com as duas a OS é "Valida".
 public static class SituacaoOrdemServico
 {
     public const string AguardandoFuncionario = "AguardandoFuncionario";
@@ -48,7 +48,7 @@ internal static class AssinaturasOrdemServico
         var signatarios = await db.DocumentoSignatarios
             .Where(s => idsDocumentos.Contains(s.DocumentoAssinaturaId))
             .Join(db.Trabalhadores.IgnoreQueryFilters(), s => s.TrabalhadorId, t => t.Id,
-                (s, t) => new { s.DocumentoAssinaturaId, s.TrabalhadorId, t.Nome, t.FuncaoId, s.AssinadoEm, s.MetodoAutenticacao })
+                (s, t) => new { s.DocumentoAssinaturaId, s.TrabalhadorId, t.Nome, t.FuncaoId, s.AssinadoEm, s.MetodoAutenticacao, s.Papel })
             .ToListAsync(ct);
         var idsFuncoes = signatarios.Select(s => s.FuncaoId).Distinct().ToList();
         var funcoes = await db.Funcoes.IgnoreQueryFilters()
@@ -63,8 +63,9 @@ internal static class AssinaturasOrdemServico
                 ? new()
                 : signatarios.Where(s => s.DocumentoAssinaturaId == documento.Id).OrderBy(s => s.AssinadoEm).ToList();
             var funcionario = doDocumento.FirstOrDefault(s =>
-                s.TrabalhadorId == os.TrabalhadorId && s.MetodoAutenticacao != MetodoAutenticacaoAssinatura.SessaoLogada);
-            var tecnico = doDocumento.FirstOrDefault(s => s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada);
+                s.TrabalhadorId == os.TrabalhadorId && s.Papel != PapelAssinatura.TecnicoSegurancaOs && s.MetodoAutenticacao != MetodoAutenticacaoAssinatura.SessaoLogada);
+            // Técnico: papel TecnicoSegurancaOs (biometria, desde 16/11) ou a assinatura antiga por login (OS já válidas de antes continuam válidas).
+            var tecnico = doDocumento.FirstOrDefault(s => s.Papel == PapelAssinatura.TecnicoSegurancaOs || s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada);
             resultado[os.Id] = (
                 documento?.Id,
                 funcionario is null ? null : new AssinaturaOsDto(funcionario.Nome, funcoes.GetValueOrDefault(funcionario.FuncaoId), funcionario.AssinadoEm, funcionario.MetodoAutenticacao),

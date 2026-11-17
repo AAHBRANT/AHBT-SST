@@ -844,6 +844,9 @@ public enum PapelAssinatura
     // APR por biometria (05/11): elaboração e supervisão; envolvido assina sem papel.
     AprElaboracao = 6,
     AprSupervisao = 7,
+    // Ordem de Serviço (16/11): o técnico (ou, na integração, o instrutor) assina só por biometria (digital ou
+    // facial). Não é o dono do documento; a identidade é conferida contra a obra da OS ou o instrutor da integração.
+    TecnicoSegurancaOs = 8,
 }
 
 // Formação do instrutor de treinamento; sai impressa no certificado.

@@ -63,6 +63,7 @@ public class IniciarIntegracaoCommandHandler : IRequestHandler<IniciarIntegracao
             ?? await InstrutorDoUsuarioAsync(request, ct)
             ?? throw new InvalidOperationException("Escolha o instrutor da integração.");
         await GarantirInstrutorAsync(instrutorId, request.ObraId, ct);
+        await GarantirBiometriaDoInstrutorAsync(instrutorId, ct);
 
         var obraNome = await _db.Obras.Where(o => o.Id == request.ObraId).Select(o => o.Nome).FirstOrDefaultAsync(ct);
         var cursos = await ExigenciasEtapasIntegracao.CarregarCursosAsync(_db, obraNome, ct);
@@ -149,6 +150,16 @@ public class IniciarIntegracaoCommandHandler : IRequestHandler<IniciarIntegracao
         var trabalhadorId = await _db.Usuarios.Where(u => u.AzureAdObjectId == request.AzureAdObjectId)
             .Select(u => u.TrabalhadorId).FirstOrDefaultAsync(ct);
         return trabalhadorId is { } id && await _db.PerfisInstrutor.AnyAsync(p => p.TrabalhadorId == id, ct) ? id : null;
+    }
+
+    // O instrutor assina com digital ou facial em cada etapa (16/11/2026): sem nenhuma das duas cadastrada a integração não inicia.
+    private async Task GarantirBiometriaDoInstrutorAsync(Guid instrutorId, CancellationToken ct)
+    {
+        var (comDigital, comFacial) = await BiometriaInstrutor.CarregarAsync(_db, [instrutorId], ct);
+        if (comDigital.Contains(instrutorId) || comFacial.Contains(instrutorId)) return;
+        var nome = await _db.Trabalhadores.IgnoreQueryFilters().Where(t => t.Id == instrutorId).Select(t => t.Nome).FirstOrDefaultAsync(ct) ?? "O instrutor";
+        throw new InvalidOperationException(
+            $"{nome} não tem digital nem facial cadastrada e não conseguirá assinar. Cadastre a biometria no perfil dele ou escolha outro instrutor.");
     }
 
     // Instrutor = pessoa com perfil de instrutor, ativa; de outra obra só com a autorização que o cadastro já guarda.

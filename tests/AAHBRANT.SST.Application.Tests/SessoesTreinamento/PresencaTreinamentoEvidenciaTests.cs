@@ -74,6 +74,16 @@ public class PresencaTreinamentoEvidenciaTests
     public async Task Encerramento_AssinaComMetodoEEvidenciaDaPresenca_EApagaAImagemDoParticipante()
     {
         var (db, sessao, trabalhador) = await PrepararAsync();
+        // 16/11/2026: o encerramento exige a assinatura biométrica do instrutor, colhida antes.
+        var instrutor = new Trabalhador { Nome = "Gilton", Cpf = "99988877766", Funcao = new Funcao { Nome = "Técnico de Segurança" } };
+        db.Trabalhadores.Add(instrutor);
+        db.PerfisInstrutor.Add(new PerfilInstrutor { TrabalhadorId = instrutor.Id });
+        (await db.SessoesTreinamento.SingleAsync()).InstrutorTrabalhadorId = instrutor.Id;
+        db.AssinaturasInstrutorSessaoTreinamento.Add(new AssinaturaInstrutorSessaoTreinamento
+        {
+            ObraId = sessao.ObraId, SessaoTreinamentoId = sessao.Id, InstrutorTrabalhadorId = instrutor.Id,
+            Metodo = MetodoAutenticacaoAssinatura.ReconhecimentoFacial, AssinadoEmUtc = DateTime.UtcNow.AddMinutes(-10),
+        });
         var participante = await db.ParticipantesSessaoTreinamento.SingleAsync();
         participante.PresencaConfirmadaEm = DateTime.UtcNow.AddMinutes(-30);
         participante.MetodoPresenca = MetodoAutenticacaoAssinatura.ReconhecimentoFacial;
@@ -106,7 +116,7 @@ public class PresencaTreinamentoEvidenciaTests
 
         await handler.Handle(new EncerrarSessaoTreinamentoCommand(sessao.Id), CancellationToken.None);
 
-        var assinatura = await db.DocumentoSignatarios.SingleAsync(s => s.TrabalhadorId == trabalhador.Id);
+        var assinatura = await db.DocumentoSignatarios.SingleAsync(s => s.TrabalhadorId == trabalhador.Id && s.Papel == null);
         Assert.Equal(MetodoAutenticacaoAssinatura.ReconhecimentoFacial, assinatura.MetodoAutenticacao);
         Assert.Equal(Imagem, assinatura.FotoEvidenciaConteudo);
         Assert.Equal("10.0.0.7", assinatura.IpAddress);
