@@ -13,7 +13,7 @@ public sealed record SituacaoInstrutorEtapa(bool Assinou, bool TemDigital, bool 
 
 // O que falta para uma etapa de curso poder avançar (decisões de 11/11 e 16/11/2026): todos com presença biométrica
 // confirmada (a presença é a assinatura do certificado), instrutor com assinatura biométrica guardada, carga lançada >=
-// mínimo (0 não trava) e, quando o período é automático, o horário de fim já ter chegado; 3 fotos próprias e instrutor.
+// mínimo (0 não trava; o período nasce sozinho ao avançar) e, quando o período é automático, o horário de fim já ter chegado; 3 fotos próprias e instrutor.
 public static class AvaliadorEtapaIntegracao
 {
     public const int FotosNecessarias = 3;
@@ -52,8 +52,12 @@ public static class AvaliadorEtapaIntegracao
             pendencias.Add(new(Codigos.InstrutorNaoDefinido, "Instrutor da turma não definido."));
 
         var minutosLancados = periodos.Sum(p => p.Minutos);
+        // Sem carga prevista (0), o período nasce sozinho ao avançar (abertura até agora): sem período ainda não é pendência.
         if (minutosLancados <= 0)
-            pendencias.Add(new(Codigos.Carga, "Carga horária: lance ao menos um período (o certificado leva a carga real da etapa)."));
+        {
+            if (etapa.CargaMinimaHoras > 0)
+                pendencias.Add(new(Codigos.Carga, "Carga horária ainda não registrada: ela é contada automaticamente desde a abertura da etapa."));
+        }
         else if (etapa.CargaMinimaHoras > 0 && minutosLancados < etapa.CargaMinimaHoras * 60)
             pendencias.Add(new(Codigos.Carga, $"Carga horária lançada ({Formatar(minutosLancados)}) abaixo do mínimo de {etapa.CargaMinimaHoras} h."));
 

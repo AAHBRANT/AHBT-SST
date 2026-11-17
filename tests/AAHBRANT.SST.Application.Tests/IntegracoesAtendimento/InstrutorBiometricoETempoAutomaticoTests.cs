@@ -211,21 +211,51 @@ public class InstrutorBiometricoETempoAutomaticoTests
     }
 
     [Fact]
-    public async Task Avancar_AjustarHorario_RemoverOAutomaticoELancarManualTiraAEspera()
+    public async Task Avancar_PeriodoManualAntigo_EhSubstituidoPeloAutomatico_ENaoTiraAEspera()
     {
         var c = await NovoCenarioAsync();
         var (id, etapa) = await EtapaEmAndamentoAsync(c);
         await ProntoSemAjustarHorarioAsync(c, etapa);
 
-        var dtoAntes = await c.ObterAsync(id);
-        foreach (var p in dtoAntes.Etapas[0].Periodos)
-            await new RemoverPeriodoEtapaIntegracaoCommandHandler(c.Db).Handle(new RemoverPeriodoEtapaIntegracaoCommand(id, etapa.Id, p.Id), default);
-        var dataEtapa = await c.RecuarEtapaAsync(etapa.Id);
-        await new RegistrarPeriodoEtapaIntegracaoCommandHandler(c.Db).Handle(new RegistrarPeriodoEtapaIntegracaoCommand(
-            id, etapa.Id, dataEtapa, "08:00", TimeSpan.FromHours(8 + Math.Max(1, etapa.CargaMinimaHoras)).ToString(@"hh\:mm")), default);
+        // Etapa ajustada à mão antes da regra nova: um manual de 1 h 30 min (abaixo das 2 h) no lugar do automático.
+        c.Db.PeriodosEtapaIntegracao.RemoveRange(await c.Db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapa.Id).ToListAsync());
+        var hoje = ExigenciasEtapasIntegracao.HojeBrasilia();
+        c.Db.PeriodosEtapaIntegracao.Add(new PeriodoEtapaIntegracao
+        {
+            ObraId = c.Obra.Id, IntegracaoEtapaId = etapa.Id, Data = hoje, Inicio = TimeSpan.Zero, Fim = new TimeSpan(1, 30, 0), Minutos = 90, Automatico = false,
+        });
+        await c.Db.SaveChangesAsync();
 
-        var dto = await c.AvancarAsync(id);
-        Assert.Equal("concluida", dto.Etapas[0].Status);
+        // A leitura da tela se autocorrige: volta o automático (2 h, início = abertura).
+        var dto = await c.ObterAsync(id);
+        Assert.All(dto.Etapas[0].Periodos, p => Assert.True(p.Automatico));
+        Assert.Equal(120, dto.Etapas[0].CargaLancadaMinutos);
+
+        // E o Avançar segue esperando o fim do automático (não é o manual que decide).
+        var ex = await Assert.ThrowsAsync<IntegracaoBloqueadaException>(() => c.AvancarAsync(id));
+        Assert.StartsWith("Carga horária fecha às", Assert.Single(ex.Faltas));
+    }
+
+    [Fact]
+    public async Task Garantir_EIdempotente_ENaoMexeEmEtapaSemCargaPrevista()
+    {
+        var c = await NovoCenarioAsync();
+        var (id, etapa) = await EtapaEmAndamentoAsync(c);
+        var at = await c.Db.IntegracoesAtendimento.SingleAsync(a => a.Id == id);
+
+        Assert.False(await PeriodosAutomaticosEtapa.GarantirAsync(c.Db, at, etapa, default));
+
+        c.Db.PeriodosEtapaIntegracao.RemoveRange(await c.Db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapa.Id).ToListAsync());
+        await c.Db.SaveChangesAsync();
+        Assert.True(await PeriodosAutomaticosEtapa.GarantirAsync(c.Db, at, etapa, default));
+        await c.Db.SaveChangesAsync();
+        Assert.False(await PeriodosAutomaticosEtapa.GarantirAsync(c.Db, at, etapa, default));
+        Assert.Equal(120, await c.Db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapa.Id).SumAsync(p => p.Minutos));
+
+        etapa.CargaMinimaHoras = 0;
+        c.Db.PeriodosEtapaIntegracao.RemoveRange(await c.Db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapa.Id).ToListAsync());
+        await c.Db.SaveChangesAsync();
+        Assert.False(await PeriodosAutomaticosEtapa.GarantirAsync(c.Db, at, etapa, default));
     }
 
     // Presença de todos, 3 fotos e assinatura do instrutor, mantendo o período automático da abertura.
