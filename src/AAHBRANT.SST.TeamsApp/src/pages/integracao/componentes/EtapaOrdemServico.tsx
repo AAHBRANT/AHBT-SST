@@ -15,13 +15,15 @@ interface Props {
   somenteLeitura: boolean;
   recarregarOs: () => Promise<void>;
   aoErro: (mensagem: string | null) => void;
+  /** Instrutor da integração: assina a vez 2 da OS (por digital ou facial). */
+  instrutorNome?: string | null;
 }
 
 // Etapa 5 — Ordem de Serviço (NR-01), mockup v4. Cada pessoa lê a própria OS (só a função dela) e assina à
 // parte, por digital ou facial, depois o técnico. Reaproveita a emissão, o PDF e o diálogo de assinatura
 // da aba "Ordem de Serviço" do perfil. Pendências que impedem emitir (ex.: sem ASO, de responsabilidade do
 // RH) ficam agrupadas por motivo e não seguram as demais pessoas.
-export function EtapaOrdemServico({ ordem, os, somenteLeitura, recarregarOs, aoErro }: Props) {
+export function EtapaOrdemServico({ ordem, os, somenteLeitura, recarregarOs, aoErro, instrutorNome }: Props) {
   const e = useEstilosIntegracao();
   const navigate = useNavigate();
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
@@ -172,6 +174,7 @@ export function EtapaOrdemServico({ ordem, os, somenteLeitura, recarregarOs, aoE
           ordemServico={assinando.os}
           trabalhadorId={assinando.trabalhadorId}
           trabalhadorNome={assinando.nome}
+          instrutorNome={instrutorNome}
         />
       )}
       {dialogoVisualizador}

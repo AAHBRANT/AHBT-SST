@@ -8,6 +8,8 @@ import { designTokens, tokensUi } from '@ui';
 const LARGO = '@media (min-width: 1180px)';
 const MEDIO = '@media (min-width: 760px)';
 const ESTREITO = '@media (max-width: 560px)';
+/** Sombra escura leve atrás de texto branco sobre o vidro esmeralda (cabeçalho e etapas concluídas). */
+const TEXTO_SOBRE_VIDRO = '0 1px 2px rgba(0, 40, 28, 0.55)';
 
 export const useEstilosIntegracao = makeStyles({
   pagina: { display: 'flex', flexDirection: 'column', gap: tokensUi.espaco.lg, minWidth: 0, paddingBottom: '8px' },
@@ -23,16 +25,19 @@ export const useEstilosIntegracao = makeStyles({
   lateral: { display: 'none', [LARGO]: { display: 'block', position: 'sticky', top: '16px' } },
   rodapePrincipal: { display: 'block', [LARGO]: { display: 'none' } },
 
-  // Cabeçalho (cartão vinho)
+  // Cabeçalho: vidro esmeralda do KpiCard `destaque` (16/11/2026, useEstilosEsmeralda.vidro aplicado na página).
+  // O fundo de superfície fica por baixo do degradê translúcido, igual ao do KpiCard.
   cab: {
-    background: 'linear-gradient(135deg, var(--sst-color-primary), color-mix(in srgb, var(--sst-color-primary) 55%, #000))',
-    color: '#ffffff',
+    backgroundColor: designTokens.colorSurface,
     borderRadius: tokensUi.raio.lg,
     padding: '18px',
   },
   cabLinha: { display: 'flex', gap: '12px', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' },
-  cabEyebrow: { fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.75 },
-  cabTitulo: { fontSize: '20px', lineHeight: '26px', fontWeight: 700, margin: 0 },
+  // Contraste (16/11/2026): o branco sobre os trechos claros do degradê (canto superior esquerdo, reflexo) fica entre
+  // ~2:1 e ~3,2:1. Sem mexer no vidro nem no token compartilhado, o texto do cabeçalho vai a 100% de opacidade, peso 700
+  // e leve sombra escura (TEXTO_SOBRE_VIDRO), que separa as letras do fundo claro.
+  cabEyebrow: { fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700, textShadow: TEXTO_SOBRE_VIDRO },
+  cabTitulo: { fontSize: '20px', lineHeight: '26px', fontWeight: 700, margin: 0, textShadow: TEXTO_SOBRE_VIDRO },
   cabMeta: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
@@ -40,8 +45,8 @@ export const useEstilosIntegracao = makeStyles({
     marginTop: '14px',
     [MEDIO]: { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' },
   },
-  cabMetaRotulo: { display: 'block', fontSize: '11px', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: 0.75 },
-  cabMetaValor: { fontWeight: 600, overflowWrap: 'anywhere' },
+  cabMetaRotulo: { display: 'block', fontSize: '11px', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 700, textShadow: TEXTO_SOBRE_VIDRO },
+  cabMetaValor: { fontWeight: 700, overflowWrap: 'anywhere', textShadow: TEXTO_SOBRE_VIDRO },
   cabChip: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -49,11 +54,10 @@ export const useEstilosIntegracao = makeStyles({
     borderRadius: tokensUi.raio.full,
     fontSize: '12px',
     fontWeight: 700,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    color: '#ffffff',
     whiteSpace: 'nowrap',
+    textShadow: TEXTO_SOBRE_VIDRO,
   },
-  cabChipFinal: { backgroundColor: tokensUi.status.ok.fundo, color: tokensUi.status.ok.tinta },
+  // Faixa de aviso dentro do cabeçalho (vidro branco, texto branco; a cor vem de vidroChip).
   cabAviso: {
     marginTop: '14px',
     display: 'flex',
@@ -62,7 +66,7 @@ export const useEstilosIntegracao = makeStyles({
     borderRadius: '8px',
     fontSize: '13px',
     lineHeight: '19px',
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    textShadow: TEXTO_SOBRE_VIDRO,
   },
 
   // Trilha das 5 etapas
@@ -100,12 +104,11 @@ export const useEstilosIntegracao = makeStyles({
   etapaTexto: { display: 'none', minWidth: 0, [MEDIO]: { display: 'block' } },
   etapaNome: { display: 'block', fontSize: '13px', lineHeight: '17px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   etapaSub: { display: 'block', fontSize: '11px', lineHeight: '14px', color: designTokens.colorNeutralMedium, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  etapaFeita: {
-    ...shorthands.borderColor(tokensUi.status.ok.tinta),
-    backgroundColor: tokensUi.status.ok.fundo,
-    color: tokensUi.status.ok.tinta,
-  },
-  etapaFeitaTexto: { color: tokensUi.status.ok.tinta },
+  // Etapa concluída: vidro esmeralda do KpiCard `destaque` (useEstilosEsmeralda.vidro, aplicado depois no mergeClasses).
+  etapaFeita: { color: '#ffffff' },
+  etapaFeitaTexto: { color: '#ffffff', textShadow: TEXTO_SOBRE_VIDRO },
+  // Subtítulo da etapa concluída (11px): branco pleno e peso 700, aplicado depois de vidroTextoSuave (que o deixaria a 90%).
+  etapaFeitaSub: { color: '#ffffff', fontWeight: 700, textShadow: TEXTO_SOBRE_VIDRO },
   etapaAtual: {
     backgroundColor: designTokens.colorPrimary,
     ...shorthands.borderColor(designTokens.colorPrimary),
@@ -431,6 +434,166 @@ export const useEstilosIntegracao = makeStyles({
     [ESTREITO]: { gridTemplateColumns: '36px minmax(0, 1fr)' },
   },
   selo: { display: 'flex', gap: '8px', alignItems: 'flex-start', marginTop: '14px', fontSize: '12px', lineHeight: '17px', color: designTokens.colorNeutralMedium },
+
+  // ---- Instrutor com biometria, carga automática, fotos automáticas e pendências clicáveis (16/11/2026, mockup v3) ----
+  // Carga automática
+  periodoAuto: {
+    display: 'flex',
+    gap: '10px',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    padding: '12px 14px',
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    borderRadius: '10px',
+    backgroundColor: designTokens.colorSurface,
+  },
+  barraTrilho: { height: '10px', borderRadius: '99px', backgroundColor: tokensUi.status.neutro.fundo, overflow: 'hidden', marginTop: '8px' },
+  // O preenchimento recebe useEstilosEsmeralda.vidro (mesmo estilo do KpiCard `destaque`).
+  barraPreench: { height: '100%', borderRadius: '99px', transitionProperty: 'width', transitionDuration: tokensUi.duracao.normal },
+  avisoAjuste: {
+    display: 'flex',
+    gap: '10px',
+    alignItems: 'flex-start',
+    padding: '12px 14px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    lineHeight: '19px',
+    backgroundColor: tokensUi.status.atencao.fundo,
+    color: tokensUi.status.atencao.tinta,
+  },
+  ajusteGrade: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', margin: '12px 0' },
+  acoesLivres: { display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px' },
+  // Seção para onde uma pendência leva (rola até ela, foca e destaca por um instante).
+  secaoAlvo: { outline: 'none', scrollMarginTop: '72px', borderRadius: tokensUi.raio.lg },
+
+  // Pendências clicáveis
+  faltaBotoes: { listStyleType: 'none', margin: '8px 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: '6px' },
+  faltaBotao: {
+    display: 'flex',
+    width: '100%',
+    alignItems: 'center',
+    gap: '8px',
+    minHeight: '48px',
+    padding: '6px 12px',
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    borderRadius: '8px',
+    backgroundColor: designTokens.colorNeutralLight,
+    textAlign: 'left',
+    fontSize: '13px',
+    color: 'inherit',
+    font: 'inherit',
+    cursor: 'pointer',
+    ':hover': { backgroundColor: designTokens.colorSurface },
+    ':focus-visible': { outline: `2px solid ${tokens.colorBrandStroke1}`, outlineOffset: '2px' },
+  },
+  faltaBotaoSemAcao: { cursor: 'default', ':hover': { backgroundColor: designTokens.colorNeutralLight } },
+  faltaIr: { marginLeft: 'auto', color: tokens.colorBrandForeground2, fontWeight: 700, display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' },
+  // Destaque breve da seção para onde a pendência leva (some sozinho; sem animação com "reduzir movimento").
+  destaqueBreve: {
+    animationName: { '0%': { boxShadow: '0 0 0 3px var(--sst-color-primary)' }, '70%': { boxShadow: '0 0 0 3px var(--sst-color-primary)' }, '100%': { boxShadow: '0 0 0 0 transparent' } },
+    animationDuration: '1.6s',
+    '@media (prefers-reduced-motion: reduce)': { animationName: 'none', outline: '3px solid var(--sst-color-primary)', outlineOffset: '2px' },
+  },
+
+  // Fila única de assinaturas
+  vez: {
+    border: `2px solid ${designTokens.colorPrimary}`,
+    borderRadius: '12px',
+    padding: '14px',
+    backgroundColor: 'color-mix(in srgb, var(--sst-color-primary) 12%, var(--sst-color-surface))',
+    marginBottom: '12px',
+  },
+  vezTopo: { display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' },
+  vezQuem: { fontSize: '16px', fontWeight: 700, lineHeight: '22px', overflowWrap: 'anywhere' },
+  okCaixa: {
+    display: 'flex',
+    gap: '14px',
+    alignItems: 'center',
+    padding: '14px',
+    borderRadius: '12px',
+    marginBottom: '12px',
+    backgroundColor: tokensUi.status.ok.fundo,
+    color: tokensUi.status.ok.tinta,
+  },
+  okCaixaIcone: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '50%',
+    backgroundColor: tokensUi.status.ok.tinta,
+    color: tokensUi.status.ok.fundo,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+
+  // Fotos automáticas
+  cam: {
+    aspectRatio: '16 / 9',
+    borderRadius: '12px',
+    backgroundImage: 'linear-gradient(160deg, #2a2f4a, #0b0d18)',
+    position: 'relative',
+    overflow: 'hidden',
+    color: '#ffffff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  camVideo: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' },
+  // O <video> fica no DOM mesmo sem mostrar a câmera, para a "foto agora" poder usá-lo.
+  camVideoOculto: { position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' },
+  camSelo: {
+    position: 'absolute',
+    top: '10px',
+    left: '10px',
+    zIndex: 2,
+    display: 'inline-flex',
+    gap: '6px',
+    alignItems: 'center',
+    backgroundColor: '#b3261e',
+    color: '#ffffff',
+    borderRadius: '99px',
+    padding: '5px 12px',
+    fontSize: '12px',
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+  },
+  camPonto: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    backgroundColor: '#ffffff',
+    flexShrink: 0,
+    animationName: { '50%': { opacity: 0.25 } },
+    animationDuration: '1.2s',
+    animationIterationCount: 'infinite',
+    '@media (prefers-reduced-motion: reduce)': { animationName: 'none' },
+  },
+  camContagem: { position: 'relative', zIndex: 1, textAlign: 'center', padding: '6px 16px', borderRadius: '10px', backgroundColor: 'rgba(0,0,0,0.5)' },
+  camNumero: { fontSize: '44px', lineHeight: '48px', fontWeight: 700, fontVariantNumeric: 'tabular-nums' },
+  camFlash: { position: 'absolute', inset: 0, backgroundColor: '#ffffff', opacity: 0.8, zIndex: 3 },
+  regraTela: {
+    display: 'flex',
+    gap: '10px',
+    alignItems: 'flex-start',
+    padding: '12px 14px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    lineHeight: '19px',
+    backgroundColor: tokensUi.status.atencao.fundo,
+    color: tokensUi.status.atencao.tinta,
+  },
+  lgpd: {
+    fontSize: '12px',
+    lineHeight: '17px',
+    backgroundColor: designTokens.colorNeutralLight,
+    border: `1px solid ${designTokens.colorCardBorder}`,
+    borderRadius: '8px',
+    padding: '10px 12px',
+    marginTop: '12px',
+  },
+  apenasLeitorTela: { position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' },
 });
 
 // pages/ não importa o Fluent direto (spec 2026-09-07 §2.2): quem precisa de mergeClasses pega daqui.

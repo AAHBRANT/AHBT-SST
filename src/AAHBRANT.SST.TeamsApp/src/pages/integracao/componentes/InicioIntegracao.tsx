@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Clock16Regular } from '@fluentui/react-icons';
+import { Clock16Regular, Fingerprint24Regular } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
-import { Card, Checkbox, FeedbackInline, Select, StatusChip, type Tom } from '@ui';
+import { Button, Card, Checkbox, FeedbackInline, Select, StatusChip, type Tom } from '@ui';
+import { CadastroBiometriaDialog } from './CadastroBiometriaDialog';
 import type { CandidatoIntegracao, EntradaIntegracao, Obra, SituacaoPessoaEtapaIntegracao, TipoEtapaIntegracao } from '../../../lib/api';
 import { AvatarIniciais, TituloSecao } from './pecas';
 import { corDoPonto, mergeClasses, useEstilosIntegracao } from './estilos';
+import { situacaoBiometriaInstrutor } from './helpersInstrutor';
 import { TIPOS_EM_ORDEM, elegiveisDaObra, estadoSelecionarTodos, pessoaForaDaIntegracao, primeiroNome, rotuloEtapa, tituloSelecao } from './helpers';
 
 interface Props {
@@ -18,6 +20,8 @@ interface Props {
   aoAlternarTodos: () => void;
   instrutorId: string;
   aoMudarInstrutor: (id: string) => void;
+  /** Depois de cadastrar a biometria do instrutor: busca a obra de novo (sem perder quem está marcado). */
+  aoAtualizarInstrutores: () => void;
 }
 
 type SituacaoEtapa = SituacaoPessoaEtapaIntegracao;
@@ -36,15 +40,18 @@ const rotuloDa: Record<SituacaoEtapa, string> = { nestaIntegracao: 'Nesta integr
 // Tela de início (mockup v4): escolher a obra e conferir, por pessoa, em quais etapas ela entra. Todos
 // os admitidos da obra com plano aberto entram; o combo por pessoa mostra Válido, Não exigido ou Nesta
 // integração. O instrutor da integração é escolhido aqui (o servidor exige um perfil de instrutor).
-export function InicioIntegracao({ obras, obraId, aoMudarObra, entrada, marcados, aoAlternarPessoa, aoAlternarTodos, instrutorId, aoMudarInstrutor }: Props) {
+export function InicioIntegracao({ obras, obraId, aoMudarObra, entrada, marcados, aoAlternarPessoa, aoAlternarTodos, instrutorId, aoMudarInstrutor, aoAtualizarInstrutores }: Props) {
   const e = useEstilosIntegracao();
   const navigate = useNavigate();
+  const [cadastrandoInstrutor, setCadastrandoInstrutor] = useState(false);
   // Detalhe aberto à direita: independe da seleção (marcar não muda o detalhe; abrir o detalhe não marca).
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const candidatos = entrada?.candidatos ?? [];
   const elegiveis = elegiveisDaObra(candidatos);
   const nMarcados = elegiveis.filter((c) => marcados.has(c.trabalhadorId)).length;
   const instrutores = entrada?.instrutores ?? [];
+  const instrutorEscolhido = instrutores.find((i) => i.trabalhadorId === instrutorId) ?? null;
+  const verificacaoInstrutor = situacaoBiometriaInstrutor(instrutorEscolhido);
   const selecionado = candidatos.find((c) => c.trabalhadorId === selecionadoId) ?? candidatos[0] ?? null;
   const foraDaIntegracao = !!selecionado && pessoaForaDaIntegracao(selecionado, marcados);
 
@@ -76,6 +83,34 @@ export function InicioIntegracao({ obras, obraId, aoMudarObra, entrada, marcados
               </option>
             ))}
           </Select>
+        </div>
+      )}
+
+      {/* Pré-checagem (decisão 2, 16/11): na hora em que o instrutor é escolhido. Só a biometria dele; o ASO só barra na OS. */}
+      {entrada && instrutorEscolhido && verificacaoInstrutor !== 'desconhecida' && (
+        <div className={e.campo} role="status" aria-live="polite">
+          <span className={e.campoRotulo}>Antes de iniciar</span>
+          {verificacaoInstrutor === 'sem_biometria' ? (
+            <>
+              <FeedbackInline tom="erro">
+                <b>{instrutorEscolhido.nome} não tem digital nem facial cadastrada.</b> Ele precisa assinar cada etapa por biometria. Sem isso, nenhuma etapa avança.
+              </FeedbackInline>
+              <div>
+                <Button appearance="primary" size="large" className={e.btnGrande} icon={<Fingerprint24Regular />} onClick={() => setCadastrandoInstrutor(true)}>
+                  Cadastrar biometria do instrutor
+                </Button>
+              </div>
+            </>
+          ) : (
+            <FeedbackInline tom="sucesso">
+              <b>Instrutor com biometria cadastrada.</b>{' '}
+              {instrutorEscolhido.temDigital && instrutorEscolhido.temFacial
+                ? `Digital e facial de ${instrutorEscolhido.nome} prontas para assinar.`
+                : instrutorEscolhido.temDigital
+                  ? `Digital de ${instrutorEscolhido.nome} pronta para assinar (sem facial cadastrada).`
+                  : `Facial de ${instrutorEscolhido.nome} pronta para assinar (sem digital cadastrada).`}
+            </FeedbackInline>
+          )}
         </div>
       )}
 
@@ -223,6 +258,15 @@ export function InicioIntegracao({ obras, obraId, aoMudarObra, entrada, marcados
             </FeedbackInline>
           </div>
         </>
+      )}
+
+      {cadastrandoInstrutor && instrutorEscolhido && (
+        <CadastroBiometriaDialog
+          trabalhadorId={instrutorEscolhido.trabalhadorId}
+          trabalhadorNome={instrutorEscolhido.nome}
+          aoFechar={() => setCadastrandoInstrutor(false)}
+          aoAlterar={aoAtualizarInstrutores}
+        />
       )}
     </Card>
   );

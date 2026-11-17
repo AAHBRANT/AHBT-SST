@@ -188,6 +188,9 @@ export function SessaoTreinamentoDetalhePage() {
   const totalFotosEvidencia = detalhe.fotosEvidencia.length;
   const faltamFotosEvidencia = Math.max(0, TOTAL_FOTOS_EVIDENCIA_OBRIGATORIAS - totalFotosEvidencia);
 
+  const pendenciasInstrutor =
+    !detalhe.instrutor ? ['Instrutor da turma não definido.'] : detalhe.instrutor.assinouAntesDeEncerrar ? [] : ['Assinatura biométrica do instrutor pendente.'];
+
   // Só a transição de estado real (encerrar) entra em WorkflowActions — baixar ata é ação
   // utilitária sempre disponível, não muda o status, fica no cabeçalho.
   const acoesWorkflow: AcaoWorkflow[] = [];
@@ -196,8 +199,9 @@ export function SessaoTreinamentoDetalhePage() {
       chave: 'encerrar',
       rotulo: 'Finalizar treinamento e gerar certificados',
       finalizacao: true,
-      pendencias: pendenciasGrade(detalhe.fotosEvidencia),
-      descricao: faltamFotosEvidencia > 0 ? `Faltam ${faltamFotosEvidencia} foto(s) de evidência.` : undefined,
+      // 16/11/2026: o encerramento exige a assinatura biométrica do instrutor, colhida antes (digital ou facial).
+      pendencias: [...pendenciasGrade(detalhe.fotosEvidencia), ...pendenciasInstrutor],
+      descricao: pendenciasInstrutor.length > 0 ? pendenciasInstrutor[0] : faltamFotosEvidencia > 0 ? `Faltam ${faltamFotosEvidencia} foto(s) de evidência.` : undefined,
       tom: 'primario',
       habilitada: true,
       aoExecutar: encerrar,

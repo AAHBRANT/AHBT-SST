@@ -1,4 +1,5 @@
 import { Checkmark16Regular, LockClosed16Regular } from '@fluentui/react-icons';
+import { useEstilosEsmeralda } from '@ui';
 import type { EtapaIntegracao } from '../../../lib/api';
 import { mergeClasses, useEstilosIntegracao } from './estilos';
 import { TIPOS_EM_ORDEM, TOTAL_ETAPAS, rotuloEtapa } from './helpers';
@@ -19,6 +20,7 @@ const ETAPAS_PREVIA: Pick<EtapaIntegracao, 'ordem' | 'tipo'>[] = TIPOS_EM_ORDEM.
 // celular fica compacta: círculos, e só a etapa atual mostra o nome.
 export function StepperEtapas({ etapas, etapaAtualOrdem, concluida = false, previa = false }: Props) {
   const e = useEstilosIntegracao();
+  const esm = useEstilosEsmeralda();
   const lista: Array<Pick<EtapaIntegracao, 'ordem' | 'tipo'> & Partial<EtapaIntegracao>> = previa
     ? ETAPAS_PREVIA
     : [...etapas].sort((a, b) => a.ordem - b.ordem);
@@ -57,7 +59,9 @@ export function StepperEtapas({ etapas, etapaAtualOrdem, concluida = false, prev
               aria-current={atual || atualPulada ? 'step' : undefined}
               className={mergeClasses(
                 e.etapa,
+                // Etapa concluída: vidro esmeralda do KpiCard `destaque` (aplicado por último para vencer o fundo e a borda base).
                 feita && e.etapaFeita,
+                feita && esm.vidro,
                 atual && e.etapaAtual,
                 atualPulada && e.etapaAtual,
                 !feita && !atual && !pulada && e.etapaTravada,
@@ -68,6 +72,7 @@ export function StepperEtapas({ etapas, etapaAtualOrdem, concluida = false, prev
                 className={mergeClasses(
                   e.numero,
                   feita && e.numeroFeito,
+                  feita && esm.vidroNumero,
                   (atual || atualPulada) && e.numeroNaTrilhaAtual,
                 )}
                 aria-hidden="true"
@@ -76,7 +81,7 @@ export function StepperEtapas({ etapas, etapaAtualOrdem, concluida = false, prev
               </span>
               <span className={mergeClasses(e.etapaTexto, mostrarTexto && e.etapaAtualTexto)}>
                 <span className={mergeClasses(e.etapaNome, feita && e.etapaFeitaTexto)}>{rotulo.curto}</span>
-                <span className={mergeClasses(e.etapaSub, feita && e.etapaFeitaTexto, mostrarTexto && e.etapaAtualSub)}>{sub}</span>
+                <span className={mergeClasses(e.etapaSub, feita && e.etapaFeitaTexto, feita && esm.vidroTextoSuave, feita && e.etapaFeitaSub, mostrarTexto && e.etapaAtualSub)}>{sub}</span>
               </span>
             </li>
           );

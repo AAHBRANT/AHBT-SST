@@ -3,6 +3,7 @@ export * from './tokens/tokens';
 export * from './tokens/tons';
 export * from './tokens/tipografia';
 export * from './tokens/movimento';
+export * from './tokens/esmeralda';
 
 // Primitivos Fluent que não ganham wrapper (spec §2.2) — re-exportados para a página não precisar
 // importar @fluentui/react-components.
