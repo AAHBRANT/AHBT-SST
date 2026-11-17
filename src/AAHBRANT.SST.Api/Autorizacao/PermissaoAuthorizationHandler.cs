@@ -151,6 +151,33 @@ public class PermissaoAuthorizationHandler : AuthorizationHandler<PermissaoRequi
             return;
         }
 
+        if (requirement.Codigo == PoliticasAutorizacao.TecnicoOuEngenheiroSeguranca)
+        {
+            var podeDecidir = await _db.Usuarios
+                .Where(u => u.AzureAdObjectId == azureAdObjectId && u.Status == StatusUsuario.Ativo)
+                .SelectMany(u => u.PerfisPorObra)
+                .AnyAsync(vinculo => vinculo.PerfilAcesso != null
+                    && (vinculo.PerfilAcesso.Tipo == TipoPerfilAcesso.EngenheiroSeguranca
+                        || vinculo.PerfilAcesso.Tipo == TipoPerfilAcesso.TecnicoSeguranca));
+
+            if (podeDecidir) context.Succeed(requirement);
+            return;
+        }
+
+        if (requirement.Codigo == PoliticasAutorizacao.DecisorDeSugestoes)
+        {
+            var decisor = await _db.Usuarios
+                .Where(u => u.AzureAdObjectId == azureAdObjectId && u.Status == StatusUsuario.Ativo)
+                .SelectMany(u => u.PerfisPorObra)
+                .AnyAsync(vinculo => vinculo.PerfilAcesso != null
+                    && (vinculo.PerfilAcesso.Tipo == TipoPerfilAcesso.EngenheiroSeguranca
+                        || vinculo.PerfilAcesso.Tipo == TipoPerfilAcesso.TecnicoSeguranca
+                        || vinculo.PerfilAcesso.Tipo == TipoPerfilAcesso.Administrador));
+
+            if (decisor) context.Succeed(requirement);
+            return;
+        }
+
         // Pop-up de novidades da versão (requisito do usuário, 18/09): ver e cadastrar são liberados
         // para qualquer usuário autenticado, sem checagem de RBAC — decisão explícita do usuário ao
         // aprovar o design, já que hoje só ele mesmo usa a tela de cadastro.

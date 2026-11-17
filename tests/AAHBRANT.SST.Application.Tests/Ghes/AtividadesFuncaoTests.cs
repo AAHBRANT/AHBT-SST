@@ -401,7 +401,7 @@ public class AtividadesFuncaoTests
         Assert.True(antigo.AtividadesDaFuncaoConfirmadas);
     }
 
-    // ---- Engenheiro na obra da rota ----
+    // ---- Técnico ou engenheiro na obra da rota (17/11/2026) ----
 
     private static async Task<Guid> VincularAsync(Cenario c, TipoPerfilAcesso tipo, params Guid?[] obras)
     {
@@ -422,45 +422,95 @@ public class AtividadesFuncaoTests
     private static Task<int> DecidirComo(Cenario c, Guid? usuario, Guid obra, Atividade a)
         => Decisor(c.Global).Handle(new DecidirAtividadesFuncaoCommand(obra, new() { new(a.Id, c.Armador.Id, true) }, usuario, "Eng", true), default);
 
+    private static async Task VincularAsync(Cenario c, Guid usuario, TipoPerfilAcesso tipo, Guid? obra)
+    {
+        var perfil = new PerfilAcesso { Tipo = tipo, Nome = tipo.ToString(), EhSistema = true };
+        c.Global.PerfisAcesso.Add(perfil);
+        await c.Global.SaveChangesAsync();
+        c.Global.UsuariosPerfilObra.Add(new UsuarioPerfilObra { UsuarioId = usuario, ObraId = obra, PerfilAcessoId = perfil.Id });
+        await c.Global.SaveChangesAsync();
+    }
+
     [Fact]
-    public async Task Decidir_EngenheiroNaObraANaoDecideNaObraBOndeETecnico()
+    public async Task Decidir_EngenheiroNaObraAEhTecnicoNaB_DecideNasDuas_EGravaONomeDeQuemDecidiu()
     {
         var c = await CriarAsync();
         var usuario = await VincularAsync(c, TipoPerfilAcesso.EngenheiroSeguranca, ObraA);
-        var tecnico = new PerfilAcesso { Tipo = TipoPerfilAcesso.TecnicoSeguranca, Nome = "Técnico", EhSistema = true };
-        c.Global.PerfisAcesso.Add(tecnico);
-        await c.Global.SaveChangesAsync();
-        c.Global.UsuariosPerfilObra.Add(new UsuarioPerfilObra { UsuarioId = usuario, ObraId = ObraB, PerfilAcessoId = tecnico.Id });
-        await c.Global.SaveChangesAsync();
+        await VincularAsync(c, usuario, TipoPerfilAcesso.TecnicoSeguranca, ObraB);
 
-        var erro = await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() => DecidirComo(c, usuario, ObraB, c.DeOutraObra));
-
-        Assert.Contains("Engenheiro de Segurança desta obra", erro.Message);
-        Assert.Empty(await c.Global.AtividadesFuncoes.ToListAsync());
-        // Na obra A, onde é engenheiro, decide normalmente.
+        Assert.Equal(1, await DecidirComo(c, usuario, ObraB, c.DeOutraObra));
         Assert.Equal(1, await DecidirComo(c, usuario, ObraA, c.Corte));
+        // Nome gravado e o do cadastro do usuario (o tecnico), nao o texto vindo do token.
+        Assert.All(await c.Global.AtividadesFuncoes.ToListAsync(), x => Assert.Equal("Fulano", x.ValidadoPorNome));
     }
 
     [Fact]
-    public async Task Decidir_EngenheiroDaObraBDecideNaB_EGlobalDecideEmQualquer()
+    public async Task Decidir_TecnicoDaObraDecideNaPropriaObra_NaoNaOutra()
     {
         var c = await CriarAsync();
-        var daB = await VincularAsync(c, TipoPerfilAcesso.EngenheiroSeguranca, ObraB);
-        var global = await VincularAsync(c, TipoPerfilAcesso.EngenheiroSeguranca, (Guid?)null);
+        var tecnicoA = await VincularAsync(c, TipoPerfilAcesso.TecnicoSeguranca, ObraA);
 
-        Assert.Equal(1, await DecidirComo(c, daB, ObraB, c.DeOutraObra));
-        Assert.Equal(1, await DecidirComo(c, global, ObraA, c.Corte));
-        await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() => DecidirComo(c, daB, ObraA, c.Desforma));
+        Assert.Equal(1, await DecidirComo(c, tecnicoA, ObraA, c.Corte));
+        // Escopo global do teste: obra existe e esta no escopo, mas ele nao tem perfil la -> 403.
+        var erro = await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() => DecidirComo(c, tecnicoA, ObraB, c.DeOutraObra));
+        Assert.Contains("técnico, o engenheiro de segurança ou o administrador desta obra", erro.Message);
+        Assert.Single(await c.Global.AtividadesFuncoes.ToListAsync());
     }
 
     [Fact]
-    public async Task Decidir_SemUsuarioOuAdministrador_NegadoQuandoExigeEngenheiro()
+    public async Task Decidir_TecnicoComEscopoRestritoAObraA_RecebeNaoEncontradoNaObraB()
     {
         var c = await CriarAsync();
-        var admin = await VincularAsync(c, TipoPerfilAcesso.Administrador, (Guid?)null);
+        var tecnicoA = await VincularAsync(c, TipoPerfilAcesso.TecnicoSeguranca, ObraA);
+
+        // Mesmo com perfil de tecnico, fora do escopo de obras do usuario = 404 (como EscopoObra).
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => Decisor(c.RestritoObraA).Handle(
+            new DecidirAtividadesFuncaoCommand(ObraB, new() { new(c.DeOutraObra.Id, c.Armador.Id, true) }, tecnicoA, "x", true), default));
+        Assert.Empty(await c.Global.AtividadesFuncoes.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Decidir_TecnicoGlobalEEngenheiroGlobalDecidemEmQualquerObra()
+    {
+        var c = await CriarAsync();
+        var tecnicoGlobal = await VincularAsync(c, TipoPerfilAcesso.TecnicoSeguranca, (Guid?)null);
+        var engGlobal = await VincularAsync(c, TipoPerfilAcesso.EngenheiroSeguranca, (Guid?)null);
+
+        Assert.Equal(1, await DecidirComo(c, tecnicoGlobal, ObraB, c.DeOutraObra));
+        Assert.Equal(1, await DecidirComo(c, engGlobal, ObraA, c.Corte));
+    }
+
+    [Fact]
+    public async Task Decidir_SemUsuarioOuOutroPerfil_NegadoQuandoExigePerfil()
+    {
+        var c = await CriarAsync();
+        var gestor = await VincularAsync(c, TipoPerfilAcesso.GestorDeObra, ObraA);
 
         await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() => DecidirComo(c, null, ObraA, c.Corte));
-        await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() => DecidirComo(c, admin, ObraA, c.Corte));
+        await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() => DecidirComo(c, gestor, ObraA, c.Corte));
+    }
+
+    [Fact]
+    public async Task Decidir_AdministradorDecideNaObraDele_ForaDelaNegado_ForaDoEscopoNaoEncontrado()
+    {
+        var c = await CriarAsync();
+        var adminA = await VincularAsync(c, TipoPerfilAcesso.Administrador, ObraA);
+        var adminGlobal = await VincularAsync(c, TipoPerfilAcesso.Administrador, (Guid?)null);
+
+        Assert.Equal(1, await DecidirComo(c, adminA, ObraA, c.Corte));
+        await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() => DecidirComo(c, adminA, ObraB, c.DeOutraObra));
+        Assert.Equal(1, await DecidirComo(c, adminGlobal, ObraB, c.DeOutraObra));
+        // Escopo de obras restrito a A: obra B nunca e liberada, mesmo para administrador global de vinculo.
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => Decisor(c.RestritoObraA).Handle(
+            new DecidirAtividadesFuncaoCommand(ObraB, new() { new(c.DeOutraObra.Id, c.Armador.Id, true) }, adminGlobal, "x", true), default));
+    }
+
+    [Fact]
+    public async Task Decidir_SemExigirPerfil_ComportamentoDeDevNaoChecaNada()
+    {
+        var c = await CriarAsync();
+        Assert.Equal(1, await Decisor(c.Global).Handle(
+            new DecidirAtividadesFuncaoCommand(ObraA, new() { new(c.Corte.Id, c.Armador.Id, true) }, null, null, false), default));
     }
 
     // ---- Casos da OS ----

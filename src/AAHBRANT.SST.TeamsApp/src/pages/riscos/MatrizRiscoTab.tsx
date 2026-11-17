@@ -49,7 +49,7 @@ const chave = (p: number, s: number) => `${p}-${s}`;
 // Matriz de risco versionada (25/10/2026). A vigente é a única usada para classificar riscos e aparece só para
 // consulta (grade colorida, sem campo editável). Mudar a matriz é criar uma NOVA VERSÃO (revisão): a nova substitui
 // a vigente, a anterior vai para o histórico e os riscos já avaliados mantêm o nível que receberam na época.
-// Só o Engenheiro de Segurança publica versão; o servidor recusa os demais.
+// Só o técnico ou o engenheiro de segurança publica versão (administrador não); o servidor recusa os demais.
 
 // Grade Probabilidade × Severidade. Em consulta mostra o nível escrito dentro de cada célula; em edição, um Select.
 function GradeMatriz({ numP, numS, nivelDe, editavel, aoMudar }: {

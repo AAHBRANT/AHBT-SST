@@ -2958,6 +2958,21 @@ public static class NovidadesSeeder
                     null,
                     "O cabeçalho da integração, as etapas concluídas e a barra de carga horária ganharam o destaque em verde-esmeralda, no mesmo padrão dos indicadores da tela Início."),
             }),
+        new(
+            Versao: "5.169.0",
+            Titulo: "Técnico e administrador aprovam cursos e atividades por função",
+            DataPublicacao: new DateTime(2026, 11, 17, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "O técnico de segurança já pode aprovar os cursos obrigatórios por função",
+                    "Só o engenheiro de segurança podia aprovar ou recusar as sugestões de cursos.",
+                    "O técnico, o engenheiro de segurança e o administrador da obra aprovam, recusam e adicionam cursos obrigatórios por função, e decidem as atividades por função da ordem de serviço. Vale só nas obras em que a pessoa tem esse perfil; quem não tem vê o aviso no lugar dos botões."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Nova versão da matriz de risco pelo técnico",
+                    null,
+                    "O técnico de segurança também pode publicar uma nova versão da matriz de risco, junto do engenheiro. Aprovar ou devolver o PGR continua só com o engenheiro."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
