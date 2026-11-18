@@ -436,14 +436,14 @@ export function ImprimirAdesivoDialog({
                         </dl>
                       </div>
                       <div className={s.adQr}>
-                        <div className={s.adQrCaixa} aria-hidden="true">QR</div>
+                        <div className={s.adQrCaixa} aria-hidden="true">QR Code</div>
                         <span className={s.adQrLegenda}>Confira a situação atual</span>
                       </div>
                     </div>
                     <div className={s.adRod}>
                       <span>
                         <b style={{ color: ADESIVO_MARCA }}>Inspeção interna de SST.</b>{' '}
-                        {/extintor/i.test(adesivo.tema) ? 'Não substitui etiqueta de manutenção de extintor.' : 'Leia o QR para conferir a situação atual.'}
+                        {/extintor/i.test(adesivo.tema) ? 'Não substitui etiqueta de manutenção de extintor.' : 'Leia o QR Code para conferir a situação atual.'}
                       </span>
                     </div>
                   </div>
@@ -463,7 +463,7 @@ export function ImprimirAdesivoDialog({
               <div className={mergeClasses(s.aviso, s.avisoInfo)}>
                 <span className={s.avisoIcone}><Info24Regular /></span>
                 <span className={s.avisoTexto}>
-                  Adesivo de inspeção interna de SST. O QR sempre mostra a situação atual do objeto.
+                  Adesivo de inspeção interna de SST. O QR Code sempre mostra a situação atual do objeto.
                 </span>
               </div>
             )}

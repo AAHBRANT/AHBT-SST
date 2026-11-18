@@ -222,7 +222,7 @@ public class AdesivoInspecaoPdfService : IAdesivoInspecaoPdfService
                     // O aviso da etiqueta de manutenção só faz sentido para extintor.
                     t.Span(EhExtintor(m.Tema)
                         ? " Não substitui etiqueta de manutenção de extintor."
-                        : " Leia o QR para conferir a situação atual.");
+                        : " Leia o QR Code para conferir a situação atual.");
                 });
         });
     }

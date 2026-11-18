@@ -144,7 +144,7 @@ public class AdesivoInspecaoPdfServiceTests
         Assert.Contains("Carlos Eduardo Menezes", texto);
         Assert.Contains("INSP-2026-001234", texto);
         Assert.Contains("Confira a situação atual", texto);
-        Assert.Contains("Inspeção interna de SST. Leia o QR para conferir a situação atual.", texto);
+        Assert.Contains("Inspeção interna de SST. Leia o QR Code para conferir a situação atual.", texto);
         Assert.DoesNotContain("vencid", texto, StringComparison.OrdinalIgnoreCase);
     }
 
