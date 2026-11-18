@@ -31,7 +31,7 @@ import {
 } from '../../lib/api';
 import { useCameras, useObras, useOcorrenciasEpi, useTrabalhadores } from '../../lib/consultas';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { lerLembrada } from '../../hooks/useObraLembrada';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
 import { IconeCapacete } from '../../components/CorCapacete';
 import { TIPOS_OCORRENCIA_EPI, descreverAvisoCorCapacete, normalizarCorCapacete } from '../../lib/corCapacete';
 import { rotuloAlertaTelegram } from './aoVivoRegras';
@@ -156,7 +156,7 @@ export function AlertasEpiTab() {
   const { confirmar, dialogElement } = useConfirmar();
   const { lista: obras } = useObras();
 
-  const [obraEscolhida, setObraEscolhida] = useState<string | null>(null);
+  const [obraFiltro, setObraFiltro] = useFiltroObra();
   const [cameraEscolhida, setCameraEscolhida] = useState('');
   const [periodo, setPeriodo] = useState<Periodo>('7dias');
   const [situacao, setSituacao] = useState(0);
@@ -166,9 +166,7 @@ export function AlertasEpiTab() {
   const [vinculando, setVinculando] = useState<OcorrenciaEpi | null>(null);
   const [ocupada, setOcupada] = useState<string | null>(null);
 
-  // Enquanto o usuário não escolheu, vale a obra lembrada (se ainda existir) ou "Todas as obras".
-  const lembrada = lerLembrada();
-  const obraId = obraEscolhida ?? (obras.some((o) => o.id === lembrada) ? lembrada : '');
+  const obraId = obras.some((o) => o.id === obraFiltro) ? obraFiltro : '';
 
   const cameras = useCameras(obraId || undefined);
   const listaCameras = cameras.data;
@@ -463,7 +461,7 @@ export function AlertasEpiTab() {
             <Select
               value={obraId}
               onChange={(_, d) => {
-                setObraEscolhida(d.value);
+                setObraFiltro(d.value);
                 setCameraEscolhida('');
               }}
             >

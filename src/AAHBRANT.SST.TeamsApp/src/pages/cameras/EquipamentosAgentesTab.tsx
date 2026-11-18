@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Carregando, FeedbackInline } from '@ui';
 import { useAgentesCamera, useCameras, useEquipamentosCamera, useObras } from '../../lib/consultas';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
 import type { EquipamentoCamera } from '../../lib/api';
 import { SecaoAgentes } from './SecaoAgentes';
 import { SecaoEquipamentos } from './SecaoEquipamentos';
@@ -10,9 +11,10 @@ import { SecaoEquipamentos } from './SecaoEquipamentos';
 export function EquipamentosAgentesTab() {
   const navigate = useNavigate();
   const souAdministrador = useSouAdministrador();
-  const agentes = useAgentesCamera();
-  const equipamentos = useEquipamentosCamera();
-  const cameras = useCameras();
+  const [obraId] = useFiltroObra();
+  const agentes = useAgentesCamera(obraId || undefined);
+  const equipamentos = useEquipamentosCamera(obraId || undefined);
+  const cameras = useCameras(obraId || undefined);
   const { lista: obras } = useObras();
 
   const carregando = agentes.isLoading || equipamentos.isLoading;

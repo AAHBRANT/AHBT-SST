@@ -26,6 +26,7 @@ import {
 } from '../../lib/api';
 import { EsteiraSuporteIa } from './EsteiraSuporteIa';
 import { etapaAtivaPorStatus } from './statusEtapaSuporteIa';
+import { lerInstanteUtc } from '../../components/assinatura/assinaturaDigital';
 
 const tomStatus: Record<number, Tom> = {
   [StatusSolicitacaoSuporteIa.Recebida]: 'neutro',
@@ -40,7 +41,8 @@ const tomStatus: Record<number, Tom> = {
 
 function formatarData(valor?: string | null) {
   if (!valor) return null;
-  return new Date(valor).toLocaleString('pt-BR', {
+  return lerInstanteUtc(valor).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
