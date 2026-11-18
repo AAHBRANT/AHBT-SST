@@ -1,7 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { Card, DataTable, StatusChip, type Coluna, type Tom } from '@ui';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { BotaoAbrirDetalhe } from '../../components/BotaoAbrirDetalhe';
 import {
+  api,
   PapelEnvolvido,
+  StatusAcidente,
   gravidadeAcidenteLabel,
   statusAcidenteLabel,
   tipoOcorrenciaLabel,
@@ -24,6 +28,7 @@ const tomPorGravidade: Record<number, Tom> = {
 // perfil carregado pela página-mãe), por isso nenhuma conversão de FeedbackInline aqui.
 export function OcorrenciasTab({ ocorrencias }: { ocorrencias: OcorrenciaPerfil[] }) {
   const navigate = useNavigate();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const colunas: Coluna<OcorrenciaPerfil>[] = [
     {
       chave: 'tipo',
@@ -60,9 +65,20 @@ export function OcorrenciasTab({ ocorrencias }: { ocorrencias: OcorrenciaPerfil[
         colunas={colunas}
         linhas={ocorrencias}
         chaveLinha={(o) => o.id}
-        aoClicarLinha={(o) => navigate(`/acidentes/${o.id}`)}
+        // 18/11/2026: ocorrência concluída abre o relatório em PDF; o detalhe fica no botão "Abrir".
+        aoClicarLinha={(o) =>
+          o.status === StatusAcidente.Concluido
+            ? void visualizar({
+                titulo: 'Relatório de investigação',
+                nomeArquivo: `relatorio-investigacao-${o.id}.pdf`,
+                obter: () => api.acidentes.baixarPdf(o.id),
+              })
+            : navigate(`/acidentes/${o.id}`)
+        }
+        acoesLinha={(o) => <BotaoAbrirDetalhe aoAbrir={() => navigate(`/acidentes/${o.id}`)} />}
         vazio={{ titulo: 'Nenhuma ocorrência registrada para este funcionário.' }}
       />
+      {dialogoVisualizador}
     </Card>
   );
 }

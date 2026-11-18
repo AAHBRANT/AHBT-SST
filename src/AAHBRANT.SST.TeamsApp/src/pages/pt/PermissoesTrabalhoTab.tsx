@@ -21,8 +21,11 @@ import {
   type Tom,
 } from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { BotaoAbrirDetalhe } from '../../components/BotaoAbrirDetalhe';
 import {
   api,
+  StatusPt,
   statusPtLabel,
   type Atividade,
   type Equipe,
@@ -67,6 +70,7 @@ const tomPorStatusPt: Record<number, Tom> = {
 export function PermissoesTrabalhoTab() {
   const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [permissoes, setPermissoes] = useState<PermissaoTrabalho[]>([]);
   // Finalizados não podem ser excluídos (o servidor recusa): o botão some deles.
   const travados = useRegistrosTravados('PermissaoTrabalho', permissoes.map((pt) => pt.id));
@@ -315,9 +319,16 @@ export function PermissoesTrabalhoTab() {
           chaveLinha={(pt) => pt.id}
           carregando={carregandoLista}
           vazio={{ titulo: 'Nenhuma Permissão de Trabalho cadastrada ainda.' }}
-          aoClicarLinha={(pt) => navigate(`/operacao/pt/${pt.id}`)}
+          // 18/11/2026: PT já autorizada (ou suspensa/encerrada) abre o PDF; em elaboração segue para o
+          // preenchimento. Assinatura da equipe e demais ações ficam no detalhe, pelo "Abrir".
+          aoClicarLinha={(pt) =>
+            pt.status !== StatusPt.EmElaboracao
+              ? void visualizar({ titulo: 'PDF da Permissão de Trabalho', nomeArquivo: `pt-${pt.id}.pdf`, obter: () => api.permissoesTrabalho.exportarPdf(pt.id) })
+              : navigate(`/operacao/pt/${pt.id}`)
+          }
           acoesLinha={(pt) => (
             <>
+              <BotaoAbrirDetalhe aoAbrir={() => navigate(`/operacao/pt/${pt.id}`)} />
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
               {souAdministrador && !travados.has(pt.id) && (
                 <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(pt.id)} aria-label="Excluir" />
@@ -327,6 +338,7 @@ export function PermissoesTrabalhoTab() {
         />
       </Card>
       {dialogElement}
+      {dialogoVisualizador}
     </>
   );
 }
