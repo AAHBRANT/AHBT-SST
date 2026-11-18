@@ -185,7 +185,7 @@ export function EstoqueUniformeTab() {
   async function ampliar(item: CatalogoUniforme) {
     const referencia = referenciaUniforme(item.referenciaVisual);
     if (referencia) {
-      setFotoAmpliada({ item, url: referencia.frente, revogar: false });
+      setFotoAmpliada({ item, url: referencia.arquivo, revogar: false });
       return;
     }
     if (!item.temFoto) return;

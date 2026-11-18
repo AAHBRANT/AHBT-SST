@@ -181,7 +181,7 @@ export function CatalogoUniformeTab() {
   // Peça com modelo visual AAHBRANT amplia a foto de referência; peça com foto própria baixa o original.
   async function ampliar(item: CatalogoUniforme) {
     const referencia = referenciaUniforme(item.referenciaVisual);
-    if (referencia) { setFotoAmpliada({ item, url: referencia.frente, revogar: false }); return; }
+    if (referencia) { setFotoAmpliada({ item, url: referencia.arquivo, revogar: false }); return; }
     if (!item.temFoto) return;
     try {
       const blob = await api.catalogosUniforme.baixarFoto(item.id);

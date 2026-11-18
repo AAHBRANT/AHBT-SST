@@ -3227,6 +3227,21 @@ public static class NovidadesSeeder
                     "O técnico precisava repetir CNAE, Grau de Risco, CEP e CREA no card complementar do PGR, e a OS e o Escopo do PCMSO não traziam esse enquadramento.",
                     "O passo 4 do PGR ficou mais enxuto (usando o CREA de Quem assina), a OS e o Escopo do PCMSO exibem CNAE, Grau de Risco e CEP da obra, e o dimensionamento da CIPA já abre pré-preenchido."),
             }),
+        new(
+            Versao: "5.185.0",
+            Titulo: "Fardamento Auxiliar de Serviços no catálogo de uniformes",
+            DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Fardamento Auxiliar de Serviços Manga Longa disponível como modelo visual, nas cores Marsala e Cinza claro",
+                    "O fardamento das equipes de limpeza e apoio não tinha um modelo visual AAHBRANT no catálogo de uniformes.",
+                    "Ao cadastrar a peça, escolha o modelo Fardamento Auxiliar de Serviços (Marsala ou Cinza claro) e a foto da frente aparece automaticamente."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Ampliar a foto de um uniforme agora mostra a ficha original completa",
+                    "Ao clicar em Ampliar, aparecia apenas o recorte da frente da peça.",
+                    "Ao clicar em Ampliar, a ficha original do modelo abre inteira, sem cortes, com frente, costas e detalhes."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

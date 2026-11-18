@@ -1,0 +1,56 @@
+<title>Catálogo de Uniforme AAHBRANT</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: grade de cards como no Catálogo de Uniforme do SST; clique abre diálogo com a ficha original */
+:root{--bg:#faf9f8;--card:#ffffff;--borda:#e3e1df;--fundo-foto:#f4f3f2;--fg:#242424;--sub:#6b6b6b;--marsala:#670000;--bege:#ebe9ad;--ov:rgba(0,0,0,.45);--btn:#ffffff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#1b1a1a;--card:#262424;--borda:#3a3636;--fundo-foto:#e9e8e7;--fg:#f1efee;--sub:#b3adab;--marsala:#b8423f;--bege:#ebe9ad;--ov:rgba(0,0,0,.65);--btn:#2f2c2c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1b1a1a;--card:#262424;--borda:#3a3636;--fundo-foto:#e9e8e7;--fg:#f1efee;--sub:#b3adab;--marsala:#b8423f;--bege:#ebe9ad;--ov:rgba(0,0,0,.65);--btn:#2f2c2c;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:"Segoe UI",system-ui,sans-serif}
+.wrap{padding-block:20px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1280px;margin:0 auto}
+h1{margin:0;font-size:20px;text-wrap:balance}
+.top p{margin:4px 0 16px;color:var(--sub);font-size:13px;max-width:70ch}
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.peca{border:1px solid var(--borda);border-radius:12px;overflow:hidden;background:var(--card);display:flex;flex-direction:column;min-width:0}
+.peca.nova{border:2px solid var(--marsala)}
+.foto{position:relative;display:block;width:100%;padding:8px;border:0;border-bottom:1px solid var(--borda);background:var(--fundo-foto);cursor:zoom-in}
+.foto:focus-visible{outline:3px solid var(--marsala);outline-offset:-3px}
+.foto img{display:block;width:100%;max-width:100%;aspect-ratio:5/4;object-fit:contain;border-radius:8px}
+.amp{position:absolute;right:14px;bottom:14px;font-size:11px;font-weight:600;color:#fff;background:rgba(103,0,0,.9);padding:3px 8px;border-radius:6px}
+.selo{position:absolute;left:14px;bottom:14px;font-size:10px;font-weight:700;letter-spacing:.04em;color:#670000;background:var(--bege);padding:3px 7px;border-radius:6px}
+.corpo{padding:12px 14px 14px;min-width:0}.corpo strong{display:block;font-size:14px;margin-bottom:2px}
+.sub{font-size:12px;color:var(--sub)}.cor{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);margin-top:4px}
+.cor i{width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15)}
+.ov{position:fixed;inset:0;background:var(--ov);display:flex;align-items:center;justify-content:center;padding:16px}
+.dlg{background:var(--card);border-radius:10px;width:min(1000px,100%);max-height:94vh;display:flex;flex-direction:column;padding:20px 24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.dlg h2{margin:0 0 12px;font-size:17px}.dlg img{width:100%;max-height:72vh;object-fit:contain}
+.acoes{display:flex;justify-content:flex-end;margin-top:12px}
+.acoes button{padding:6px 18px;border:1px solid var(--borda);border-radius:6px;background:var(--btn);color:var(--fg);font:inherit;cursor:pointer}
+</style>
+<div class="wrap">
+  <div class="top"><h1>Catálogo de Uniforme</h1><p>Mockup. O card mostra só a frente da peça. Clique em qualquer foto (botão <b>Ampliar</b>) para abrir a ficha original completa, sem corte.</p></div>
+  <div class="grade" id="g"></div>
+</div>
+<div class="ov" id="ov" hidden><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="t"><h2 id="t"></h2><img id="i" alt=""><div class="acoes"><button id="fechar" type="button">Fechar</button></div></div></div>
+<script>
+const HEX={'Laranja':'#f26a1b','Azul royal':'#1f4fd1','Marsala':'#670000','Cinza claro':'#bdbdbd'};
+const itens=[
+ ['fardamento-auxiliar-marsala','FARDAMENTO AUXILIAR DE SERVIÇOS MANGA LONGA','Conjuntos','Marsala','Tricoline',1],
+ ['fardamento-auxiliar-cinza','FARDAMENTO AUXILIAR DE SERVIÇOS MANGA LONGA','Conjuntos','Cinza claro','Tricoline',1],
+ ['camisa-brim-marsala','CAMISA BRIM MANGA LONGA','Camisas','Marsala','Brim'],
+ ['calca-brim-cinza','CALÇA BRIM','Calças','Cinza claro','Brim'],
+ ['camisa-feminina-marsala','CAMISA FEMININA','Camisas','Marsala','Tricoline'],
+ ['agasalho-laranja','AGASALHO IMPERMEÁVEL','Agasalhos','Laranja','Impermeável'],
+];
+const g=document.getElementById('g'),ov=document.getElementById('ov');
+g.innerHTML=itens.map(([k,n,c,cor,t,novo],ix)=>`
+<div class="peca${novo?' nova':''}"><button class="foto" type="button" data-ix="${ix}" aria-label="Ampliar ${n} ${cor}"><img src="uniformes/${k}-frente.jpg" alt="Frente ${n} ${cor}">
+${novo?'<span class="selo">NOVO</span>':''}<span class="amp">Ampliar</span></button>
+<div class="corpo"><strong>${n}</strong><span class="sub">${c}</span><span class="cor"><i style="background:${HEX[cor]}"></i>${cor} · ${t}</span></div></div>`).join('');
+g.addEventListener('click',e=>{const b=e.target.closest('.foto');if(!b)return;const [k,n,,cor]=itens[+b.dataset.ix];
+ document.getElementById('t').textContent=`${n} · ${cor}`;const im=document.getElementById('i');im.src=`uniformes/${k}.jpeg`;im.alt=`Ficha original ${n} ${cor}`;ov.hidden=false;document.getElementById('fechar').focus()});
+const fechar=()=>{ov.hidden=true};
+document.getElementById('fechar').addEventListener('click',fechar);
+ov.addEventListener('click',e=>{if(e.target===ov)fechar()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')fechar()});
+</script>

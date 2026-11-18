@@ -6,7 +6,8 @@ public static class ReferenciasUniforme
     public static readonly string[] Chaves = [
         "camisa-brim-laranja", "camisa-brim-azul", "camisa-brim-marsala",
         "camisa-feminina-marsala", "camisa-feminina-cinza", "calca-brim-laranja",
-        "calca-brim-azul", "calca-brim-marsala", "calca-brim-cinza", "agasalho-laranja"
+        "calca-brim-azul", "calca-brim-marsala", "calca-brim-cinza", "agasalho-laranja",
+        "fardamento-auxiliar-marsala", "fardamento-auxiliar-cinza"
     ];
     public static bool Valida(string? chave) => chave is null || Chaves.Contains(chave);
 

@@ -54,8 +54,10 @@ function PecaUniforme({ peca, grade, tamanhoSugerido, item, habilitado, aoAdicio
             onClick={() => aoAdicionar({ catalogoUniformeId: peca.id, quantidade: qtd, tamanho })}>Adicionar</Button>
         </div>}
     </div>
-    <Dialog open={ampliada} onOpenChange={(_, d) => setAmpliada(d.open)}><DialogSurface style={{ maxWidth: 560 }}><DialogBody><DialogTitle>{peca.nome}{referencia ? ` · ${referencia.cor}` : ''}</DialogTitle><DialogContent>
-      <div className="uniforme-foto-grande"><FotoCatalogoUniforme catalogoUniformeId={peca.id} temFoto={peca.temFoto} referenciaVisual={peca.referenciaVisual} destaque /></div>
+    <Dialog open={ampliada} onOpenChange={(_, d) => setAmpliada(d.open)}><DialogSurface style={{ maxWidth: referencia ? 1000 : 560 }}><DialogBody><DialogTitle>{peca.nome}{referencia ? ` · ${referencia.cor}` : ''}</DialogTitle><DialogContent>
+      <div className="uniforme-foto-grande">{referencia
+        ? <img src={referencia.arquivo} alt={`Ficha original · ${peca.nome} · ${referencia.cor}`} style={{ width: '100%', maxHeight: '75vh', objectFit: 'contain' }} />
+        : <FotoCatalogoUniforme catalogoUniformeId={peca.id} temFoto={peca.temFoto} referenciaVisual={peca.referenciaVisual} destaque />}</div>
     </DialogContent><DialogActions><Button onClick={() => setAmpliada(false)}>Fechar</Button></DialogActions></DialogBody></DialogSurface></Dialog>
   </article>;
 }
