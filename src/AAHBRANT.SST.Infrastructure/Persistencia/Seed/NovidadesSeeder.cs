@@ -3212,6 +3212,21 @@ public static class NovidadesSeeder
                     "Botões de exclusão em Obras, Controle de Acesso, Tags, Leitores de Digital, Destinatários e Novidades apareciam sem checagem de perfil no frontend, e o Crachá Público exibia datas em AAAA-MM-DD.",
                     "Apenas Administradores visualizam botões de exclusão/revogação e o Crachá Público exibe datas em DD/MM/AAAA com linguagem positiva."),
             }),
+        new(
+            Versao: "5.183.0",
+            Titulo: "Enquadramento e endereço da obra centralizados no cadastro",
+            DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novo,
+                    "CEP, CNAE e Grau de Risco (NR-04) centralizados em Administração › Obras e edição de CNPJ liberada",
+                    "CEP, CNAE e Grau de Risco ficavam restritos ao passo 4 do PGR, o CNPJ não podia ser editado depois da criação da obra e o campo Cliente aparecia sem necessidade.",
+                    "O cadastro e a edição da obra concentram CNPJ, CEP, CNAE e Grau de Risco (sem Cliente), migrando automaticamente os dados já informados em PGRs e dimensionamentos de CIPA."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "PGR, Ordem de Serviço, Escopo do PCMSO e CIPA puxam os dados direto da Obra",
+                    "O técnico precisava repetir CNAE, Grau de Risco, CEP e CREA no card complementar do PGR, e a OS e o Escopo do PCMSO não traziam esse enquadramento.",
+                    "O passo 4 do PGR ficou mais enxuto (usando o CREA de Quem assina), a OS e o Escopo do PCMSO exibem CNAE, Grau de Risco e CEP da obra, e o dimensionamento da CIPA já abre pré-preenchido."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

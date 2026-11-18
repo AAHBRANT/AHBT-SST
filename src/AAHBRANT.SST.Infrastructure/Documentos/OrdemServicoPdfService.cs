@@ -56,9 +56,22 @@ public class OrdemServicoPdfService : IOrdemServicoPdfService
 
                     Secao(col, 1, "Identificação da empresa e da obra");
                     Linha(col, "Obra / Contrato", c.Obra.Nome);
-                    Linha(col, "Cliente", c.Obra.Cliente);
                     Linha(col, "CNPJ", c.Obra.Cnpj);
-                    Linha(col, "Endereço da obra", c.Obra.Endereco);
+                    if (!string.IsNullOrWhiteSpace(c.Obra.Cnae) || c.Obra.GrauRisco is not null)
+                    {
+                        var enquadramento = string.Join("  •  ", new[]
+                        {
+                            c.Obra.Cnae,
+                            c.Obra.GrauRisco is { } gr ? $"Grau de risco {gr} (NR-04)" : null,
+                        }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                        Linha(col, "CNAE / Grau de risco", enquadramento);
+                    }
+                    var enderecoObra = string.Join("  •  ", new[]
+                    {
+                        c.Obra.Endereco,
+                        string.IsNullOrWhiteSpace(c.Obra.Cep) ? null : $"CEP {c.Obra.Cep}",
+                    }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                    Linha(col, "Endereço da obra", enderecoObra);
 
                     Secao(col, 2, "Identificação do trabalhador");
                     Linha(col, "Nome", c.Trabalhador.Nome);

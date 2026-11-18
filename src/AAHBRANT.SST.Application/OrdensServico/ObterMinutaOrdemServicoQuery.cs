@@ -49,6 +49,9 @@ public class ObterMinutaOrdemServicoQueryHandler : IRequestHandler<ObterMinutaOr
                 Cliente = obra?.Cliente,
                 Cnpj = obra?.Cnpj,
                 Endereco = string.Join(" — ", new[] { obra?.Endereco, obra?.Cidade, obra?.Uf }.Where(s => !string.IsNullOrWhiteSpace(s))),
+                Cep = obra?.Cep,
+                Cnae = obra?.Cnae,
+                GrauRisco = obra?.GrauRisco,
             },
             Trabalhador = new TrabalhadorOsDto
             {

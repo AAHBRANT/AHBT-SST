@@ -8,7 +8,6 @@ import {
   type GheGerado, type ItemEapGerado, type Obra, type RiscoGerado, type Usuario,
 } from '../../lib/api';
 import { rotuloStatusGeracao } from './GeracoesPgrEapCard';
-import { DadosComplementaresPgr } from './DadosComplementaresPgr';
 import { QuemAssinaPgr } from './QuemAssinaPgr';
 import { ExposicaoRiscoEditor, SeletorEpi } from './ExposicaoRiscoEditor';
 import { InventarioPorPerigo } from './InventarioPorPerigo';
@@ -536,6 +535,7 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
   sugerirAcompanhamento: () => void;
   sugerirMelhorias: () => void;
 }) {
+  const navigate = useNavigate();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   const [modo, setModo] = useState<'perigo' | 'atividade'>('perigo');
@@ -673,7 +673,14 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
         </Text>
       </Card>
 
-      <DadosComplementaresPgr e={e} editavel={editavel} alterar={alterar} />
+      {(g.faltandoCadastroObra ?? []).length > 0 && (
+        <FeedbackInline
+          tom="aviso"
+          acao={{ rotulo: 'Abrir cadastro da obra', aoClicar: () => navigate('/administracao?aba=obras') }}
+        >
+          <b>Dados pendentes no cadastro da obra:</b> {(g.faltandoCadastroObra ?? []).join(', ')}. Complete em Administração › Obras para sair no PGR e nos demais documentos.
+        </FeedbackInline>
+      )}
 
       <QuemAssinaPgr geracaoId={g.id} e={e} editavel={editavel} alterar={alterar} />
 

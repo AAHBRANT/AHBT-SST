@@ -81,7 +81,7 @@ import { AvisoErroModal } from '../components/avisos/AvisoErroModal';
 const LARGURA_RAIL_COLAPSADO = '64px';
 const LARGURA_RAIL_EXPANDIDO = '240px';
 const CHAVE_RAIL_EXPANDIDO = 'sst.railExpandido';
-const VERSAO_APP = '5.182.0';
+const VERSAO_APP = '5.183.0';
 const TAMANHO_MAXIMO_FOTO_PERFIL_BYTES = 8 * 1024 * 1024;
 const DIMENSAO_MAXIMA_FOTO_PERFIL = 256;
 

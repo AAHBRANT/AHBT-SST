@@ -21,6 +21,12 @@ public class Obra : AuditableEntity
     public string? Endereco { get; set; }
     public string? Cidade { get; set; }
     public string? Uf { get; set; }
+    public string? Cep { get; set; }
+
+    // Enquadramento da obra (NR-01 / NR-04 / NR-05): centralizado no cadastro da obra para alimentar PGR, OS,
+    // Escopo do PCMSO e pré-preenchimento do dimensionamento da CIPA sem redigitar em cada documento.
+    public string? Cnae { get; set; }
+    public int? GrauRisco { get; set; }
 
     // Ficha de EPI reformulada (docs/superpowers/specs/2026-08-27-ficha-epi-reformulada-design.md) —
     // CNPJ e logo da obra aparecem no cabeçalho da ficha consolidada; logo é opcional, com fallback
