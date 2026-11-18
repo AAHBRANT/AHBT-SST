@@ -788,8 +788,8 @@ export function DashboardPage() {
           className={`${dashEstilos.cardAcionavel} ${dashEstilos.coluna4Larga}`}
           role="button"
           tabIndex={0}
-          onClick={() => navigate('/operacao/saude-ocupacional?aba=aso')}
-          onKeyDown={(evento) => abrirComTeclado(evento, '/operacao/saude-ocupacional?aba=aso')}
+          onClick={() => navigate('/gestao-sst?secao=pcmso&aba=aso')}
+          onKeyDown={(evento) => abrirComTeclado(evento, '/gestao-sst?secao=pcmso&aba=aso')}
           aria-label="Abrir os ASOs"
         >
           <AsoRoscaCard fatias={fatiasAso} ordemNaRosca={ordemAsoNaRosca} />

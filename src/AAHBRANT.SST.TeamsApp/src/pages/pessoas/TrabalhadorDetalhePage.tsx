@@ -1,19 +1,15 @@
 import { useEffect, useState, type CSSProperties, type ReactElement } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import {
-  Button,
-  Card,
   Abas,
   FeedbackInline,
   Carregando,
-  Text,
   designTokens,
   tokensUi,
   useTipografia,
   type AbaItem,
 } from '@ui';
 import {
-  ArrowLeft16Regular,
   Building24Regular,
   Flag24Regular,
   HatGraduation24Regular,
@@ -27,7 +23,6 @@ import { api, TipoVinculo, type PerfilCompletoTrabalhador } from '../../lib/api'
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { PerfilGeralTab } from './PerfilGeralTab';
 import { TamanhosUniformeSecao } from './TamanhosUniformeSecao';
-import { FichaEpiBotoes } from './FichaEpiBotoes';
 import { ParticipacoesDdsCard } from './ParticipacoesDdsCard';
 import { TreinamentosTab } from './TreinamentosTab';
 import { OrdemServicoTab } from './OrdemServicoTab';
@@ -40,7 +35,6 @@ import { TermoCompromissoEpiCartao } from './TermoCompromissoEpiCartao';
 import { FichaTrabalhadorLateral } from './FichaTrabalhadorLateral';
 import { BiometriaDigitalCartao } from './BiometriaDigitalCartao';
 import { EpiPerfilSecao } from './EpiPerfilSecao';
-import { AnelProgresso } from './AnelProgresso';
 
 type AbaPerfil = 'geral' | 'epi' | 'treinamentos' | 'riscos' | 'ordem-servico' | 'ocorrencias' | 'cofre' | 'terceirizado';
 
@@ -77,7 +71,6 @@ export function TrabalhadorDetalhePage() {
   const [baixandoRelatorio, setBaixandoRelatorio] = useState(false);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
-  const navigate = useNavigate();
   const tipo = useTipografia();
   const [telaEstreita, setTelaEstreita] = useState(() => window.matchMedia(CONSULTA_TELA_ESTREITA).matches);
 
@@ -172,16 +165,6 @@ export function TrabalhadorDetalhePage() {
 
   return (
     <div>
-      <Button
-        appearance="subtle"
-        size="small"
-        icon={<ArrowLeft16Regular />}
-        style={{ marginBottom: tokensUi.espaco.md, color: designTokens.colorNeutralMedium }}
-        onClick={() => navigate('/operacao/pessoas')}
-      >
-        Pessoas
-      </Button>
-
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
       {dialogoVisualizador}
 
@@ -227,7 +210,7 @@ export function TrabalhadorDetalhePage() {
 
             {aba === 'geral' && (
               <div style={estiloPilha}>
-                <PerfilGeralTab perfil={perfil} />
+                <PerfilGeralTab perfil={perfil} aoIrParaAba={setAba} />
                 <ExamesDaFuncaoCard obraId={perfil.obraId} funcaoId={perfil.funcaoId} />
                 <TamanhosUniformeSecao trabalhadorId={id!} />
               </div>
@@ -235,38 +218,13 @@ export function TrabalhadorDetalhePage() {
             {aba === 'epi' && (
               <div style={estiloPilha}>
                 <TermoCompromissoEpiCartao trabalhadorId={id} trabalhadorNome={perfil.nome} />
-                <FichaEpiBotoes trabalhadorId={perfil.id} />
                 <EpiPerfilSecao perfil={perfil} />
               </div>
             )}
             {aba === 'treinamentos' && (
               <div style={estiloPilha}>
                 <TreinamentosTab trabalhadorId={id} obraId={perfil.obraId} />
-                <Card>
-                  {perfil.assiduidadeDds.totalRealizados === 0 ? (
-                    <Text>Nenhum DDS realizado na obra desde a admissão.</Text>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: tokensUi.espaco.xl, flexWrap: 'wrap' }}>
-                      <AnelProgresso
-                        fracao={perfil.assiduidadeDds.totalParticipados / perfil.assiduidadeDds.totalRealizados}
-                        tom="ok"
-                        centro={`${Math.round((perfil.assiduidadeDds.totalParticipados / perfil.assiduidadeDds.totalRealizados) * 100)}%`}
-                        legenda="presença"
-                        aria-label="Presença em DDS"
-                      />
-                      <div>
-                        <div className={tipo.micro} style={{ color: designTokens.colorNeutralMedium }}>
-                          Assiduidade em DDS
-                        </div>
-                        <div className={tipo.titulo}>
-                          {perfil.assiduidadeDds.totalParticipados} de {perfil.assiduidadeDds.totalRealizados} DDS
-                        </div>
-                        <Text style={{ color: designTokens.colorNeutralMedium }}>Desde a admissão na obra</Text>
-                      </div>
-                    </div>
-                  )}
-                </Card>
-                {perfil.assiduidadeDds.totalRealizados > 0 && <ParticipacoesDdsCard trabalhadorId={perfil.id} />}
+                <ParticipacoesDdsCard trabalhadorId={perfil.id} />
               </div>
             )}
             {aba === 'riscos' && (
@@ -277,7 +235,7 @@ export function TrabalhadorDetalhePage() {
             )}
             {aba === 'ordem-servico' && <OrdemServicoTab trabalhadorId={id!} aoIrParaAba={setAba} />}
             {aba === 'ocorrencias' && <OcorrenciasTab ocorrencias={perfil.ocorrencias} />}
-            {aba === 'cofre' && <CofreAssinaturasTab trabalhadorId={id} assinaturas={perfil.assinaturas} />}
+            {aba === 'cofre' && <CofreAssinaturasTab assinaturas={perfil.assinaturas} />}
             {aba === 'terceirizado' && <TerceirizadoTab trabalhadorId={id} perfil={perfil} />}
           </div>
         </div>

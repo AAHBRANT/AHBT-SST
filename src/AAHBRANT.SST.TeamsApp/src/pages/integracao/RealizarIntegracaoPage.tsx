@@ -653,13 +653,6 @@ export function RealizarIntegracaoPage() {
             <EtapaOrdemServico key={atual.id} ordem={atual.ordem} os={os} somenteLeitura={false} recarregarOs={recarregarOs} aoErro={setErro} instrutorNome={integracao.instrutorNome} />
           )}
 
-          {!concluida && (
-            <div className={e.rodapePrincipal}>
-              <Card titulo="Para avançar" densidade="compacta">
-                {botaoAcao}
-              </Card>
-            </div>
-          )}
           {concluida && (
             <div className={e.rodapePrincipal}>
               <Button appearance="primary" size="large" className={mergeClasses(e.btnGrande, e.btnCheio)} onClick={voltar}>

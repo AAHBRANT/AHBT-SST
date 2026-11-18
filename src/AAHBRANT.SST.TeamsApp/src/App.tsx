@@ -51,7 +51,6 @@ const DdsDetalhePage = lazy(() => import('./pages/dds/DdsDetalhePage').then((m) 
 const AssinarDdsPage = lazy(() => import('./pages/dds/AssinarDdsPage').then((m) => ({ default: m.AssinarDdsPage })));
 const AssinarEntregaEpiPage = lazy(() => import('./pages/epi/AssinarEntregaEpiPage').then((m) => ({ default: m.AssinarEntregaEpiPage })));
 const AssinarTermoEpiPage = lazy(() => import('./pages/epi/AssinarTermoEpiPage').then((m) => ({ default: m.AssinarTermoEpiPage })));
-const SaudeOcupacionalPage = lazy(() => import('./pages/saude-ocupacional/SaudeOcupacionalPage').then((m) => ({ default: m.SaudeOcupacionalPage })));
 const PcmsoDetalhePage = lazy(() => import('./pages/saude-ocupacional/PcmsoDetalhePage').then((m) => ({ default: m.PcmsoDetalhePage })));
 const ProcessoEleitoralCipaDetalhePage = lazy(() => import('./pages/cipa/ProcessoEleitoralCipaDetalhePage').then((m) => ({ default: m.ProcessoEleitoralCipaDetalhePage })));
 const UrnaCipaPage = lazy(() => import('./pages/cipa/urna/UrnaCipaPage').then((m) => ({ default: m.UrnaCipaPage })));
@@ -206,7 +205,7 @@ function AppRoteado() {
                   ver ONBOARDING.md) — redireciona pro módulo Saúde Ocupacional atual. Rota
                   /operacao/saude-ocupacional continua existindo sem o wrapper de pilar (link direto,
                   não tem mais item próprio na sidebar). */}
-              <Route path="/prevencao/pcmso" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
+              <Route path="/prevencao/pcmso" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="pcmso" />} />
               <Route path="/prevencao/pcmso/:id" element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />} />
               <Route path="/treinamentos" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="treinamentos" />} />
               <Route path="/treinamentos/turma/:id" element={<SessaoTreinamentoDetalhePage />} />
@@ -232,7 +231,10 @@ function AppRoteado() {
                 path="/operacao/identificacao"
                 element={<RedirecionarParaPilar pilar="/operacao" secao="identificacao" />}
               />
-              <Route path="/operacao/saude-ocupacional" element={<SaudeOcupacionalPage />} />
+              <Route
+                path="/operacao/saude-ocupacional"
+                element={<RedirecionarParaPilar pilar="/gestao-sst" secao="pcmso" />}
+              />
               <Route path="/operacao/saude-ocupacional/pcmso/:id" element={<PcmsoDetalhePage />} />
               <Route path="/operacao/cipa" element={<RedirecionarParaPilar pilar="/operacao" secao="cipa" />} />
               <Route path="/operacao/cipa/eleicao/:id" element={<ProcessoEleitoralCipaDetalhePage />} />
@@ -286,7 +288,7 @@ function AppRoteado() {
               <Route path="/riscos" element={<Navigate to="/gestao-sst?secao=pgr&aba=riscos" replace />} />
               <Route path="/pgr" element={<Navigate to="/gestao-sst?secao=pgr" replace />} />
               <Route path="/pgr/:id" element={<RedirecionarComId para={(id) => `/prevencao/pgr/${id}`} />} />
-              <Route path="/pcmso" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
+              <Route path="/pcmso" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="pcmso" />} />
               <Route path="/pcmso/:id" element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />} />
               <Route path="/inspecoes" element={<Navigate to="/operacao?secao=inspecoes" replace />} />
               <Route
@@ -309,7 +311,7 @@ function AppRoteado() {
               <Route path="/identificacao" element={<Navigate to="/operacao?secao=identificacao" replace />} />
               {/* Legado: Saúde Ocupacional era item de 1º nível na sidebar (até 28/08), virou aba
                   de Operação. */}
-              <Route path="/saude-ocupacional" element={<Navigate to="/operacao/saude-ocupacional" replace />} />
+              <Route path="/saude-ocupacional" element={<RedirecionarParaPilar pilar="/gestao-sst" secao="pcmso" />} />
               <Route
                 path="/saude-ocupacional/pcmso/:id"
                 element={<RedirecionarComId para={(id) => `/operacao/saude-ocupacional/pcmso/${id}`} />}
