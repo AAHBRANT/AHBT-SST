@@ -52,6 +52,36 @@ public class AvaliadorPendenciasOsTests
         Assert.All(p, x => Assert.Equal("SST", x.QuemResolve));
     }
 
+    [Fact]
+    public void PendenciasPorAtividade_SaoAgrupadasPorTipo_ComOsIdsDasAtividades()
+    {
+        var atividades = Enumerable.Range(1, 6).Select(i => AtividadeComTudoPendente($"Etapa {i}")).ToList();
+
+        var p = AvaliadorPendenciasOs.Avaliar(EntradaOk() with { Atividades = atividades });
+
+        foreach (var tipo in TiposPorAtividade)
+        {
+            var grupo = Assert.Single(p, x => x.Tipo == tipo);
+            Assert.Equal(atividades.Select(a => a.Id), grupo.AtividadeIds);
+        }
+        var semProc = Assert.Single(p, x => x.Tipo == "SemProcedimento");
+        Assert.Equal("6 atividade(s) sem procedimento vinculado: Etapa 1, Etapa 2, Etapa 3, Etapa 4 e mais 2", semProc.Titulo);
+        Assert.StartsWith("6 sugestão(ões)", Assert.Single(p, x => x.Tipo == "SugestoesPendentes").Titulo);
+    }
+
+    [Fact]
+    public void SoAsAtividadesAfetadas_EntramNoGrupo()
+    {
+        var ok = AtividadeOk("Armação");
+        var semProc = AtividadeOk("Corte") with { Procedimentos = 0 };
+
+        var p = AvaliadorPendenciasOs.Avaliar(EntradaOk() with { Atividades = new() { ok, semProc } });
+
+        var item = Assert.Single(p);
+        Assert.Equal(new[] { semProc.Id }, item.AtividadeIds);
+        Assert.Equal("1 atividade(s) sem procedimento vinculado: Corte", item.Titulo);
+    }
+
     [Theory]
     [InlineData("Vencido")]
     [InlineData("NaoRealizado")]

@@ -79,28 +79,36 @@ public static class AvaliadorPendenciasOs
                 "SST", "pgr", pgr));
 
         // Na transição não há pendência por atividade: a atividade da obra inteira ainda não é da função.
-        foreach (var a in e.SemNenhumaDecisao ? new List<AtividadeAvaliada>() : e.Atividades)
-        {
-            // Agrupado por atividade: um PGR tem dezenas de riscos, e uma linha por risco afogava o pop-up.
-            var semAvaliacao = a.Riscos.Where(r => !r.Avaliado).Select(r => r.Perigo).ToList();
-            if (semAvaliacao.Count > 0)
-                p.Add(new("RiscoSemAvaliacao", $"{semAvaliacao.Count} risco(s) sem avaliação em {a.Nome}: {string.Join(", ", semAvaliacao)}",
-                    "Sem avaliação não dá para informar o nível do risco nem as medidas obrigatórias.", "SST", "pgr", pgr));
+        // Agrupado por TIPO (17/11/2026): uma linha por atividade repetia a mesma pendência 5, 10 vezes e
+        // afogava o pop-up. Cada grupo leva os ids das atividades para o front resolver em lote.
+        var atividades = e.SemNenhumaDecisao ? new List<AtividadeAvaliada>() : e.Atividades;
 
-            var naoSeparadas = a.Riscos.Where(r => r.MedidasValidadas == 0 && r.MedidasPendentes == 0).Select(r => r.Perigo).ToList();
-            if (naoSeparadas.Count > 0)
-                p.Add(new("MedidasNaoSeparadas", $"{naoSeparadas.Count} risco(s) com medidas não separadas por fase em {a.Nome}: {string.Join(", ", naoSeparadas)}",
-                    "A OS informa as medidas antes, durante e após o trabalho para cada risco. Use \"Separar medidas com IA\" no Inventário de riscos.", "SST", "pgr", pgr));
+        var semAvaliacao = atividades.Where(a => a.Riscos.Any(r => !r.Avaliado)).ToList();
+        if (semAvaliacao.Count > 0)
+            p.Add(new("RiscoSemAvaliacao",
+                $"{semAvaliacao.Sum(a => a.Riscos.Count(r => !r.Avaliado))} risco(s) sem avaliação em {Atividades(semAvaliacao)}",
+                "Sem avaliação não dá para informar o nível do risco nem as medidas obrigatórias.", "SST", "pgr", pgr, Ids(semAvaliacao)));
 
-            var pendentes = a.Riscos.Sum(r => r.MedidasPendentes) + a.ItensPendentes;
-            if (pendentes > 0)
-                p.Add(new("SugestoesPendentes", $"{pendentes} sugestão(ões) da IA aguardando validação ({a.Nome})",
-                    "Sugestão não é controle implantado. Só entra na OS depois que a SST aceitar, editar ou descartar.", "SST", "pgr", pgr));
+        bool NaoSeparada(RiscoAvaliado r) => r.MedidasValidadas == 0 && r.MedidasPendentes == 0;
+        var naoSeparadas = atividades.Where(a => a.Riscos.Any(NaoSeparada)).ToList();
+        if (naoSeparadas.Count > 0)
+            p.Add(new("MedidasNaoSeparadas",
+                $"{naoSeparadas.Sum(a => a.Riscos.Count(NaoSeparada))} risco(s) com medidas não separadas por fase em {Atividades(naoSeparadas)}",
+                "A OS informa as medidas antes, durante e após o trabalho para cada risco. Use \"Separar medidas com IA\" no Inventário de riscos.",
+                "SST", "pgr", pgr, Ids(naoSeparadas)));
 
-            if (a.Procedimentos == 0)
-                p.Add(new("SemProcedimento", $"Atividade sem procedimento vinculado: {a.Nome}",
-                    "A OS precisa indicar o procedimento a seguir em cada atividade.", "SST", "pgr", pgr));
-        }
+        int Pendentes(AtividadeAvaliada a) => a.Riscos.Sum(r => r.MedidasPendentes) + a.ItensPendentes;
+        var comSugestao = atividades.Where(a => Pendentes(a) > 0).ToList();
+        if (comSugestao.Count > 0)
+            p.Add(new("SugestoesPendentes",
+                $"{comSugestao.Sum(Pendentes)} sugestão(ões) da IA aguardando validação em {Atividades(comSugestao)}",
+                "Sugestão não é controle implantado. Só entra na OS depois que a SST aceitar, editar ou descartar.", "SST", "pgr", pgr, Ids(comSugestao)));
+
+        var semProcedimento = atividades.Where(a => a.Procedimentos == 0).ToList();
+        if (semProcedimento.Count > 0)
+            p.Add(new("SemProcedimento",
+                $"{semProcedimento.Count} atividade(s) sem procedimento vinculado: {Nomes(semProcedimento)}",
+                "A OS precisa indicar o procedimento a seguir em cada atividade.", "SST", "pgr", pgr, Ids(semProcedimento)));
 
         foreach (var t in e.Treinamentos.Where(t => t.Situacao != "Valido"))
             p.Add(new("TreinamentoPendente",
@@ -115,4 +123,18 @@ public static class AvaliadorPendenciasOs
 
         return p;
     }
+
+    private const int NomesNoTitulo = 4;
+
+    private static List<Guid> Ids(List<AtividadeAvaliada> l) => l.Select(a => a.Id).ToList();
+
+    // "Corte, Armação, Concretagem, Desforma e mais 3": o título continua legível com muitas atividades.
+    private static string Nomes(List<AtividadeAvaliada> l)
+    {
+        var nomes = string.Join(", ", l.Take(NomesNoTitulo).Select(a => a.Nome));
+        return l.Count > NomesNoTitulo ? $"{nomes} e mais {l.Count - NomesNoTitulo}" : nomes;
+    }
+
+    private static string Atividades(List<AtividadeAvaliada> l) =>
+        l.Count == 1 ? l[0].Nome : $"{l.Count} atividades: {Nomes(l)}";
 }
