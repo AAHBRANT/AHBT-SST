@@ -346,6 +346,7 @@ export function DashboardPage() {
       { chave: 'condicaoInsegura', tipo: TipoOcorrencia.CondicaoInsegura, rotulo: 'Condições inseguras', cor: paleta.info },
       { chave: 'atoInseguro', tipo: TipoOcorrencia.AtoInseguro, rotulo: 'Atos inseguros', cor: paleta.ok },
       { chave: 'doencaOcupacional', tipo: TipoOcorrencia.DoencaOcupacional, rotulo: 'Doenças ocupacionais', cor: paleta.neutro },
+      { chave: 'pessoaExterna', tipo: TipoOcorrencia.PessoaExterna, rotulo: 'Pessoas externas', cor: paleta.pessoaExterna },
     ],
     [paleta],
   );
@@ -523,7 +524,7 @@ export function DashboardPage() {
     TipoOcorrencia.AtoInseguro,
     TipoOcorrencia.CondicaoInsegura,
   ].map(nivel);
-  const foraDaPiramide: NivelPiramide[] = [nivel(TipoOcorrencia.DoencaOcupacional)];
+  const foraDaPiramide: NivelPiramide[] = [nivel(TipoOcorrencia.DoencaOcupacional), nivel(TipoOcorrencia.PessoaExterna)];
 
   // ---------- Agenda de renovações (alertas em aberto, antes "Próximos vencimentos") ----------
 
@@ -542,6 +543,9 @@ export function DashboardPage() {
     switch (alerta.entidadeOrigemTipo) {
       case 'NaoConformidade':
         return `/nao-conformidades/${id}`;
+      case 'AcidenteObito':
+      case 'AcidenteLaudo':
+        return `/acidentes/${id}`;
       case 'Pcmso':
         return `/operacao/saude-ocupacional/pcmso/${id}`;
       case 'PgrRevisao':

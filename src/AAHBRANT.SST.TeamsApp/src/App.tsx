@@ -42,6 +42,7 @@ const AlertasPage = lazy(() => import('./pages/alertas/AlertasPage').then((m) =>
 const RelatoriosPage = lazy(() => import('./pages/relatorios/RelatoriosPage').then((m) => ({ default: m.RelatoriosPage })));
 const CalendarioPage = lazy(() => import('./pages/calendario/CalendarioPage').then((m) => ({ default: m.CalendarioPage })));
 const CamerasPage = lazy(() => import('./pages/cameras/CamerasPage').then((m) => ({ default: m.CamerasPage })));
+const CameraAoVivoPage = lazy(() => import('./pages/cameras/CameraAoVivoPage').then((m) => ({ default: m.CameraAoVivoPage })));
 const MonitorarCameraPage = lazy(() => import('./pages/cameras/MonitorarCameraPage').then((m) => ({ default: m.MonitorarCameraPage })));
 const AcidenteDetalhePage = lazy(() => import('./pages/acidentes/AcidenteDetalhePage').then((m) => ({ default: m.AcidenteDetalhePage })));
 const AssinarAcidentePage = lazy(() => import('./pages/acidentes/AssinarAcidentePage').then((m) => ({ default: m.AssinarAcidentePage })));
@@ -53,6 +54,7 @@ const AssinarTermoEpiPage = lazy(() => import('./pages/epi/AssinarTermoEpiPage')
 const SaudeOcupacionalPage = lazy(() => import('./pages/saude-ocupacional/SaudeOcupacionalPage').then((m) => ({ default: m.SaudeOcupacionalPage })));
 const PcmsoDetalhePage = lazy(() => import('./pages/saude-ocupacional/PcmsoDetalhePage').then((m) => ({ default: m.PcmsoDetalhePage })));
 const ProcessoEleitoralCipaDetalhePage = lazy(() => import('./pages/cipa/ProcessoEleitoralCipaDetalhePage').then((m) => ({ default: m.ProcessoEleitoralCipaDetalhePage })));
+const UrnaCipaPage = lazy(() => import('./pages/cipa/urna/UrnaCipaPage').then((m) => ({ default: m.UrnaCipaPage })));
 const MembroCipaDetalhePage = lazy(() => import('./pages/cipa/MembroCipaDetalhePage').then((m) => ({ default: m.MembroCipaDetalhePage })));
 const ReuniaoCipaDetalhePage = lazy(() => import('./pages/cipa/ReuniaoCipaDetalhePage').then((m) => ({ default: m.ReuniaoCipaDetalhePage })));
 const EventoSipatDetalhePage = lazy(() => import('./pages/cipa/EventoSipatDetalhePage').then((m) => ({ default: m.EventoSipatDetalhePage })));
@@ -234,6 +236,7 @@ function AppRoteado() {
               <Route path="/operacao/saude-ocupacional/pcmso/:id" element={<PcmsoDetalhePage />} />
               <Route path="/operacao/cipa" element={<RedirecionarParaPilar pilar="/operacao" secao="cipa" />} />
               <Route path="/operacao/cipa/eleicao/:id" element={<ProcessoEleitoralCipaDetalhePage />} />
+              <Route path="/operacao/cipa/eleicao/:id/urna" element={<UrnaCipaPage />} />
               <Route path="/operacao/cipa/membro/:id" element={<MembroCipaDetalhePage />} />
               <Route path="/operacao/cipa/reuniao/:id" element={<ReuniaoCipaDetalhePage />} />
               <Route path="/operacao/cipa/sipat/:id" element={<EventoSipatDetalhePage />} />
@@ -244,6 +247,7 @@ function AppRoteado() {
               <Route path="/cameras" element={<RotasDoPilotoCameras />}>
                 <Route index element={<CamerasPage />} />
                 <Route path=":id/monitorar" element={<MonitorarCameraPage />} />
+                <Route path=":id/ao-vivo" element={<CameraAoVivoPage />} />
               </Route>
               <Route path="/suporte-ia" element={<SuporteIaPage />} />
               <Route path="/suporte-ia/:id" element={<SuporteIaDetalhePage />} />

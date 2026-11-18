@@ -126,6 +126,11 @@ internal static class ExclusaoSessaoTreinamento
         var documentosSemAssinatura = await db.DocumentosAssinatura.IgnoreQueryFilters()
             .Where(d => d.EntidadeTipo == TipoDocumentoAta && d.EntidadeId == sessaoId).ToListAsync(ct);
 
+        // Assinatura biométrica do instrutor (imagem da digital/rosto no próprio banco) sai junto com a turma: a FK é Restrict e
+        // a imagem é dado biométrico (LGPD), que não pode sobrar sem a turma que a justifica.
+        var assinaturasInstrutor = await db.AssinaturasInstrutorSessaoTreinamento.IgnoreQueryFilters()
+            .Where(a => a.SessaoTreinamentoId == sessaoId).ToListAsync(ct);
+
         var ativos = participantes.Where(p => p.Ativo).ToList();
         var retrato = new
         {
@@ -139,6 +144,7 @@ internal static class ExclusaoSessaoTreinamento
             Presencas = ativos.Count(p => p.PresencaConfirmadaEm is not null),
             FotosEvidencia = fotos.Count(f => f.Ativo),
             DocumentosRastreioRemovidos = documentosSemAssinatura.Count,
+            AssinaturasInstrutorRemovidas = assinaturasInstrutor.Count,
             ParticipantesTrabalhadorIds = participantes.Select(p => p.TrabalhadorId).ToList(),
         };
 
@@ -149,6 +155,7 @@ internal static class ExclusaoSessaoTreinamento
             foreach (var p in participantes) db.MarcarExclusaoFisica(p);
             foreach (var f in fotos) db.MarcarExclusaoFisica(f);
             foreach (var d in documentosSemAssinatura) db.MarcarExclusaoFisica(d);
+            foreach (var a in assinaturasInstrutor) db.MarcarExclusaoFisica(a);
             db.MarcarExclusaoFisica(sessao);
 
             await db.SaveChangesAsync(ct);

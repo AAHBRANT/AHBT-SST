@@ -17,6 +17,14 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
 {
     private const string CorMarca = "#670000";
 
+    // Linha do bloco "Ocorrências". Testemunha aparece com o rótulo e sem gravidade/afastamento: ela não
+    // sofreu a ocorrência, então esses dados (da ocorrência em si) não são dela.
+    public static string LinhaOcorrencia(OcorrenciaDto o) =>
+        o.Papel == PapelEnvolvido.Testemunha
+            ? $"• {o.Data:dd/MM/yyyy} — {o.Tipo} (Testemunha)"
+            : $"• {o.Data:dd/MM/yyyy} — {o.Tipo}, gravidade {o.Gravidade}"
+                + (o.HouveAfastamento ? $", {o.DiasAfastamento ?? 0} dia(s) de afastamento" : "");
+
     public byte[] Gerar(PerfilCompletoTrabalhadorDto perfil, IdentificacaoRelatorioFiscalizacao? identificacao = null)
     {
         var semHash = CriarDocumento(perfil, identificacao, hashConteudo: null).GeneratePdf();
@@ -89,7 +97,7 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
                         coluna.Item().Text("Nenhuma ocorrência registrada.").Italic();
                     else
                         foreach (var ocorrencia in perfil.Ocorrencias)
-                            coluna.Item().Text($"• {ocorrencia.Data:dd/MM/yyyy} — {ocorrencia.Tipo}, gravidade {ocorrencia.Gravidade}" + (ocorrencia.HouveAfastamento ? $", {ocorrencia.DiasAfastamento ?? 0} dia(s) de afastamento" : ""));
+                            coluna.Item().Text(LinhaOcorrencia(ocorrencia));
 
                     coluna.Item().PaddingTop(6).EnsureSpace(80).Text("Cofre de assinaturas").FontSize(13).Bold().FontColor(CorMarca);
                     // Faixa de sigilo (29/10): a seção traz biometria, IP e hash de quem assinou.

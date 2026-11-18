@@ -59,8 +59,16 @@ public class ObterSessaoTreinamentoDetalheQueryHandler : IRequestHandler<ObterSe
             var nomeInstrutor = await _db.Trabalhadores.IgnoreQueryFilters()
                 .Where(t => t.Id == instrutorId).Select(t => t.Nome).FirstOrDefaultAsync(ct);
             var perfil = await _db.PerfisInstrutor.FirstOrDefaultAsync(pf => pf.TrabalhadorId == instrutorId, ct);
+            var assinaturaPrevia = await _db.AssinaturasInstrutorSessaoTreinamento
+                .Where(a => a.SessaoTreinamentoId == sessao.Id).Select(a => new { a.AssinadoEmUtc, a.Metodo }).FirstOrDefaultAsync(ct);
+            var (comDigital, comFacial) = await AAHBRANT.SST.Application.IntegracoesAtendimento.BiometriaInstrutor.CarregarAsync(_db, [instrutorId], ct);
             instrutor = new InstrutorSessaoTreinamentoDto
             {
+                AssinouAntesDeEncerrar = assinaturaPrevia is not null,
+                AssinadoEmUtc = assinaturaPrevia?.AssinadoEmUtc,
+                MetodoAssinatura = assinaturaPrevia is null ? null : AssinaturaInstrutorTurma.TextoMetodo(assinaturaPrevia.Metodo),
+                TemDigital = comDigital.Contains(instrutorId),
+                TemFacial = comFacial.Contains(instrutorId),
                 TrabalhadorId = instrutorId,
                 Nome = nomeInstrutor ?? sessao.InstituicaoInstrutor ?? string.Empty,
                 FormacaoDescricao = DescricaoInstrutor.Formacao(perfil?.Formacao ?? FormacaoInstrutor.TecnicoSegurancaTrabalho),

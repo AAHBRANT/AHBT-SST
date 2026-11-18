@@ -14,6 +14,7 @@ public interface IAppDbContext
     DbSet<RegistroIntegracao> RegistrosIntegracao { get; }
     DbSet<NaoAssinouEtapaIntegracao> NaoAssinouEtapasIntegracao { get; }
     DbSet<TokenCapturaFoto> TokensCapturaFoto { get; }
+    DbSet<AssinaturaInstrutorSessaoTreinamento> AssinaturasInstrutorSessaoTreinamento { get; }
     DbSet<Obra> Obras { get; }
     DbSet<Setor> Setores { get; }
     DbSet<Equipe> Equipes { get; }
@@ -124,6 +125,10 @@ public interface IAppDbContext
     DbSet<Veiculo> Veiculos { get; }
     DbSet<Camera> Cameras { get; }
     DbSet<OcorrenciaEpiCamera> OcorrenciasEpiCamera { get; }
+    DbSet<AgenteCamera> AgentesCamera { get; }
+    DbSet<EquipamentoCamera> EquipamentosCamera { get; }
+    DbSet<TesteConexaoCamera> TestesConexaoCamera { get; }
+    DbSet<SessaoAoVivoCamera> SessoesAoVivoCamera { get; }
     DbSet<OrdemServico> OrdensServico { get; }
     DbSet<TemaInspecao> TemasInspecao { get; }
     DbSet<ItemInspecionavel> ItensInspecionaveis { get; }
@@ -151,6 +156,7 @@ public interface IAppDbContext
     DbSet<Acidente> Acidentes { get; }
     DbSet<AcidenteFoto> AcidentesFotos { get; }
     DbSet<AcidenteEnvolvido> AcidentesEnvolvidos { get; }
+    DbSet<AcidentePessoaExterna> AcidentesPessoasExternas { get; }
     DbSet<RegistroHhtMensal> RegistrosHhtMensais { get; }
 
     DbSet<AtivoSst> AtivosSst { get; }
@@ -177,6 +183,8 @@ public interface IAppDbContext
 
     DbSet<DimensionamentoCipa> DimensionamentosCipa { get; }
     DbSet<ProcessoEleitoralCipa> ProcessosEleitoraisCipa { get; }
+    DbSet<EleitorCipa> EleitoresCipa { get; }
+    DbSet<VotoCipa> VotosCipa { get; }
     DbSet<CandidatoCipa> CandidatosCipa { get; }
     DbSet<MembroCipa> MembrosCipa { get; }
     DbSet<TreinamentoCipa> TreinamentosCipa { get; }

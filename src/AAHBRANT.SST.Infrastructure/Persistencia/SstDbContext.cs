@@ -25,6 +25,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<RegistroIntegracao> RegistrosIntegracao => Set<RegistroIntegracao>();
     public DbSet<NaoAssinouEtapaIntegracao> NaoAssinouEtapasIntegracao => Set<NaoAssinouEtapaIntegracao>();
     public DbSet<TokenCapturaFoto> TokensCapturaFoto => Set<TokenCapturaFoto>();
+    public DbSet<AssinaturaInstrutorSessaoTreinamento> AssinaturasInstrutorSessaoTreinamento => Set<AssinaturaInstrutorSessaoTreinamento>();
     public DbSet<Setor> Setores => Set<Setor>();
     public DbSet<Equipe> Equipes => Set<Equipe>();
     public DbSet<Funcao> Funcoes => Set<Funcao>();
@@ -137,6 +138,10 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Veiculo> Veiculos => Set<Veiculo>();
     public DbSet<Camera> Cameras => Set<Camera>();
     public DbSet<OcorrenciaEpiCamera> OcorrenciasEpiCamera => Set<OcorrenciaEpiCamera>();
+    public DbSet<AgenteCamera> AgentesCamera => Set<AgenteCamera>();
+    public DbSet<EquipamentoCamera> EquipamentosCamera => Set<EquipamentoCamera>();
+    public DbSet<TesteConexaoCamera> TestesConexaoCamera => Set<TesteConexaoCamera>();
+    public DbSet<SessaoAoVivoCamera> SessoesAoVivoCamera => Set<SessaoAoVivoCamera>();
     public DbSet<OrdemServico> OrdensServico => Set<OrdemServico>();
     public DbSet<TemaInspecao> TemasInspecao => Set<TemaInspecao>();
     public DbSet<ItemInspecionavel> ItensInspecionaveis => Set<ItemInspecionavel>();
@@ -161,6 +166,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<Acidente> Acidentes => Set<Acidente>();
     public DbSet<AcidenteFoto> AcidentesFotos => Set<AcidenteFoto>();
     public DbSet<AcidenteEnvolvido> AcidentesEnvolvidos => Set<AcidenteEnvolvido>();
+    public DbSet<AcidentePessoaExterna> AcidentesPessoasExternas => Set<AcidentePessoaExterna>();
     public DbSet<RegistroHhtMensal> RegistrosHhtMensais => Set<RegistroHhtMensal>();
 
     public DbSet<AtivoSst> AtivosSst => Set<AtivoSst>();
@@ -188,6 +194,8 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<DimensionamentoCipa> DimensionamentosCipa => Set<DimensionamentoCipa>();
     public DbSet<ProcessoEleitoralCipa> ProcessosEleitoraisCipa => Set<ProcessoEleitoralCipa>();
     public DbSet<CandidatoCipa> CandidatosCipa => Set<CandidatoCipa>();
+    public DbSet<EleitorCipa> EleitoresCipa => Set<EleitorCipa>();
+    public DbSet<VotoCipa> VotosCipa => Set<VotoCipa>();
     public DbSet<MembroCipa> MembrosCipa => Set<MembroCipa>();
     public DbSet<TreinamentoCipa> TreinamentosCipa => Set<TreinamentoCipa>();
     public DbSet<ReuniaoCipa> ReunioesCipa => Set<ReuniaoCipa>();
@@ -219,6 +227,7 @@ public class SstDbContext : DbContext, IAppDbContext
         modelBuilder.Entity<RegistroIntegracao>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
         modelBuilder.Entity<NaoAssinouEtapaIntegracao>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
         modelBuilder.Entity<TokenCapturaFoto>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
+        modelBuilder.Entity<AssinaturaInstrutorSessaoTreinamento>().HasQueryFilter(x => x.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(x.ObraId)));
 
         // Sincronização offline: RowVersion (já existente em AuditableEntity para todas as
         // entidades, mas até aqui nunca configurado) passa a ser o token de concorrência otimista.
@@ -275,6 +284,8 @@ public class SstDbContext : DbContext, IAppDbContext
         modelBuilder.Entity<AcidenteFoto>().HasQueryFilter(f =>
             f.Ativo && f.Acidente!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(f.Acidente.ObraId)));
         modelBuilder.Entity<AcidenteEnvolvido>().HasQueryFilter(e =>
+            e.Ativo && e.Acidente!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.Acidente.ObraId)));
+        modelBuilder.Entity<AcidentePessoaExterna>().HasQueryFilter(e =>
             e.Ativo && e.Acidente!.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.Acidente.ObraId)));
         modelBuilder.Entity<Acidente>().HasQueryFilter(a =>
             a.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId)));
@@ -334,6 +345,16 @@ public class SstDbContext : DbContext, IAppDbContext
             v.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(v.ObraId)));
         modelBuilder.Entity<Camera>().HasQueryFilter(c =>
             c.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(c.ObraId)));
+        // Só o escopo por obra, SEM filtrar Ativo: o agente revogado precisa continuar na listagem de gestão
+        // (com ativo=false). Quem autentica o agente (rota anônima) usa IgnoreQueryFilters e confere Ativo.
+        modelBuilder.Entity<AgenteCamera>().HasQueryFilter(a =>
+            _usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(a.ObraId));
+        modelBuilder.Entity<EquipamentoCamera>().HasQueryFilter(e =>
+            e.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(e.ObraId)));
+        modelBuilder.Entity<TesteConexaoCamera>().HasQueryFilter(t =>
+            t.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(t.ObraId)));
+        modelBuilder.Entity<SessaoAoVivoCamera>().HasQueryFilter(s =>
+            s.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(s.ObraId)));
         modelBuilder.Entity<OcorrenciaEpiCamera>().HasQueryFilter(o =>
             o.Ativo && (_usuarioAtual.TemAcessoGlobal || _usuarioAtual.ObrasPermitidas.Contains(o.ObraId)));
         modelBuilder.Entity<OrdemServico>().HasQueryFilter(o =>

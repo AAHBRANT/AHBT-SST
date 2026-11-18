@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   BotaoAcao,
@@ -28,13 +28,25 @@ import {
   VideoOff24Regular,
 } from '@fluentui/react-icons';
 import { api, tipoCameraLabel, type CameraResumo } from '../../lib/api';
-import { useCameras, useObras } from '../../lib/consultas';
+import { useAgentesCamera, useCameras, useEquipamentosCamera, useObras } from '../../lib/consultas';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { escolherObraInicial } from '../../hooks/useObraLembrada';
-import { estadoDaCamera, formatarDataHora, formatarHora } from './rotulos';
+import {
+  ehCameraIp,
+  estadoDaCamera,
+  estadoExibido,
+  formatarDataHora,
+  formatarHora,
+  situacaoDaCameraIp,
+  situacaoDoAgente,
+} from './rotulos';
+import { bloqueioAoVivo, type BloqueioAoVivo } from './aoVivoRegras';
+import { BotaoVerAoVivo, NotaBloqueioAoVivo } from './BotaoVerAoVivo';
 import { mergeClasses, useEstilosMosaico } from './estilosMosaico';
 import { FormularioCamera } from './FormularioCamera';
+import { useEstilosCameraIp } from './estilosCameraIp';
+import { MarcaEstado, SeloSemTelegram } from './PecasCameraIp';
 
 type Visao = 'mosaico' | 'lista';
 const CHAVE_VISAO = 'sst:camerasVisao';
@@ -62,13 +74,18 @@ const rotuloIntervalo = (minutos: number) => (minutos === 0 ? 'Sem limite' : `${
 interface PainelAberto {
   chave: number;
   camera?: CameraResumo;
+  // Cadastro aberto pela aba "Equipamentos e agentes" (lente livre): obra e equipamento já escolhidos.
+  obraInicial?: string;
+  ipInicial?: { equipamentoId: string; canal: number };
 }
 
 // Aba "Câmeras": mosaico (blocos agrupados por obra) ou lista, com cadastro inline. Nesta fase os blocos
 // não mostram vídeo — a imagem ao vivo só existe na tela Monitorar, do dispositivo que filma.
 export function MosaicoCamerasTab() {
   const estilos = useEstilosMosaico();
+  const ip = useEstilosCameraIp();
   const tipo = useTipografia();
+  const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const souAdministrador = useSouAdministrador();
@@ -90,6 +107,23 @@ export function MosaicoCamerasTab() {
   const lista = cameras.data;
   const todas = useMemo(() => lista ?? [], [lista]);
 
+  // "Ver ao vivo" fica apagado (com o motivo escrito) quando o agente está sem contato, falta a senha do equipamento ou o
+  // serviço da obra precisa ser atualizado. Só consulta agentes e equipamentos se houver câmera IP.
+  const temCameraIp = todas.some(ehCameraIp);
+  const agentes = useAgentesCamera(undefined, temCameraIp);
+  const equipamentos = useEquipamentosCamera(undefined, temCameraIp);
+  const bloqueioDaCamera = (c: CameraResumo): BloqueioAoVivo | null => {
+    const equipamento = equipamentos.data?.find((q) => q.id === c.equipamentoCameraId);
+    const agente = equipamento ? agentes.data?.find((a) => a.id === equipamento.agenteCameraId) : undefined;
+    return bloqueioAoVivo({
+      equipamentoSemSenha: !!equipamento && !equipamento.senhaDefinida,
+      agenteSemContato:
+        (c.habilitada && situacaoDaCameraIp(c).chave === 'semAgente') ||
+        (!!agente && agente.ativo && !!agente.ultimoContatoEmUtc && situacaoDoAgente(agente).rotulo === 'Sem contato'),
+      versaoDoAgente: agente?.versao,
+    });
+  };
+
   useEffect(() => {
     const aoMudar = () => {
       setTelaCheia(document.fullscreenElement === raizRef.current);
@@ -108,6 +142,28 @@ export function MosaicoCamerasTab() {
       }
     }
   }, [painelAberto, painel?.chave]);
+
+  // Link da lente livre (aba Equipamentos e agentes): abre o cadastro de câmera IP já apontando para o equipamento e limpa a URL.
+  useEffect(() => {
+    if (params.get('nova') !== '1') return;
+    const equipamentoId = params.get('equipamento');
+    const canal = Number(params.get('lente'));
+    const obra = params.get('obra') ?? undefined;
+    setPainel({
+      chave: Date.now(),
+      obraInicial: obra,
+      ipInicial: equipamentoId && (canal === 1 || canal === 2) ? { equipamentoId, canal } : undefined,
+    });
+    setPainelAberto(true);
+    setParams(
+      (atual) => {
+        const novo = new URLSearchParams(atual);
+        ['nova', 'obra', 'equipamento', 'lente'].forEach((k) => novo.delete(k));
+        return novo;
+      },
+      { replace: true },
+    );
+  }, [params, setParams]);
 
   const obrasComCamera = useMemo(() => {
     const mapa = new Map<string, { id: string; nome: string; total: number }>();
@@ -207,6 +263,10 @@ export function MosaicoCamerasTab() {
   }
 
   function EstadoMarca({ camera }: { camera: CameraResumo }) {
+    if (ehCameraIp(camera)) {
+      const situacao = situacaoDaCameraIp(camera);
+      return <MarcaEstado tom={situacao.tom}>{situacao.rotulo}</MarcaEstado>;
+    }
     const estado = estadoDaCamera(camera);
     const forma = { ok: estilos.formaOk, atencao: estilos.formaAtencao, neutro: estilos.formaNeutro }[
       estado.tom as 'ok' | 'atencao' | 'neutro'
@@ -228,8 +288,16 @@ export function MosaicoCamerasTab() {
       rotulo: 'Câmera',
       render: (c) => (
         <div className={estilos.celulaDupla}>
-          <strong>{c.nome}</strong>
+          <div className={ip.nomeComSelo}>
+            <strong>{c.nome}</strong>
+            {c.avisarTelegram === false && <SeloSemTelegram />}
+          </div>
           <span className={mergeClasses(tipo.legenda, estilos.apoio)}>{c.obraNome}</span>
+          {ehCameraIp(c) && (
+            <span className={mergeClasses(tipo.legenda, estilos.apoio)}>
+              Câmera IP · {c.equipamentoNome ?? 'equipamento'} · lente {c.canal ?? '—'}
+            </span>
+          )}
         </div>
       ),
     },
@@ -239,8 +307,16 @@ export function MosaicoCamerasTab() {
       chave: 'estado',
       rotulo: 'Monitoramento',
       render: (c) => {
-        const estado = estadoDaCamera(c);
-        return <StatusChip tom={estado.tom}>{estado.rotulo}</StatusChip>;
+        const estado = estadoExibido(c);
+        if (!ehCameraIp(c) || !c.habilitada) return <StatusChip tom={estado.tom}>{estado.rotulo}</StatusChip>;
+        return (
+          <div className={ip.celulaSituacao}>
+            <StatusChip tom={estado.tom}>{estado.rotulo}</StatusChip>
+            <span className={mergeClasses(tipo.legenda, estilos.apoio)}>
+              {c.ultimoQuadroRecebidoEmUtc ? `Última foto ${formatarHora(c.ultimoQuadroRecebidoEmUtc)}` : 'Ainda sem fotos'}
+            </span>
+          </div>
+        );
       },
     },
     { chave: 'intervalo', rotulo: 'Intervalo entre alertas', render: (c) => rotuloIntervalo(c.intervaloMinimoAlertasMinutos) },
@@ -255,7 +331,16 @@ export function MosaicoCamerasTab() {
 
   const botoesAcao = (c: CameraResumo, aoMonitorar: boolean) => (
     <div className={estilos.botoesAcao}>
-      {aoMonitorar && (
+      {aoMonitorar && ehCameraIp(c) && (
+        <BotaoVerAoVivo
+          variante="icone"
+          nomeCamera={c.nome}
+          bloqueio={bloqueioDaCamera(c)}
+          className={estilos.botaoToque}
+          aoAbrir={() => navigate(`/cameras/${c.id}/ao-vivo`)}
+        />
+      )}
+      {aoMonitorar && !ehCameraIp(c) && (
         <BotaoAcao
           tom="ver"
           icon={<Eye24Regular />}
@@ -286,34 +371,66 @@ export function MosaicoCamerasTab() {
   function bloco(c: CameraResumo) {
     const desligada = !c.habilitada;
     const estado = estadoDaCamera(c);
+    const camIp = ehCameraIp(c);
+    const situacaoIp = camIp ? situacaoDaCameraIp(c) : null;
+    const ultimaFoto = c.ultimoQuadroRecebidoEmUtc ? formatarHora(c.ultimoQuadroRecebidoEmUtc) : null;
+    const bloqueio = camIp ? bloqueioDaCamera(c) : null;
+    const selo = c.ocorrenciasHoje > 0 && (
+      <span className={mergeClasses(estilos.selo, tipo.legenda)}>
+        {plural(c.ocorrenciasHoje, 'ocorrência', 'ocorrências')} em 24 h
+      </span>
+    );
     return (
       <div key={c.id} className={estilos.bloco}>
-        <Link
-          to={`/cameras/${c.id}/monitorar`}
-          aria-label={`Abrir monitoramento da câmera ${c.nome}`}
-          className={mergeClasses(estilos.area, tipo.corpo)}
-        >
-          {desligada ? <VideoOff24Regular /> : <Camera24Regular />}
-          <span>{desligada ? 'Monitoramento desligado' : estado.rotulo}</span>
-          {c.ocorrenciasHoje > 0 && (
-            <span className={mergeClasses(estilos.selo, tipo.legenda)}>
-              {plural(c.ocorrenciasHoje, 'ocorrência', 'ocorrências')} em 24 h
-            </span>
-          )}
-        </Link>
+        {camIp && situacaoIp ? (
+          // Câmera IP: o bloco não leva para Monitorar (a imagem vem do agente, não do aparelho). Mostra a situação e a hora
+          // da última foto; a listagem ainda não devolve a imagem, então o lugar da foto é um bloco neutro.
+          <div className={mergeClasses(ip.areaIp, tipo.corpo)}>
+            {desligada ? <VideoOff24Regular /> : <Camera24Regular />}
+            <span>{desligada ? 'Monitoramento desligado' : situacaoIp.rotulo}</span>
+            {!desligada && situacaoIp.apoio && <span className={tipo.legenda}>{situacaoIp.apoio}</span>}
+            {!desligada && ultimaFoto && <span className={tipo.legenda}>Última foto às {ultimaFoto}</span>}
+            {selo}
+          </div>
+        ) : (
+          <Link
+            to={`/cameras/${c.id}/monitorar`}
+            aria-label={`Abrir monitoramento da câmera ${c.nome}`}
+            className={mergeClasses(estilos.area, tipo.corpo)}
+          >
+            {desligada ? <VideoOff24Regular /> : <Camera24Regular />}
+            <span>{desligada ? 'Monitoramento desligado' : estado.rotulo}</span>
+            {selo}
+          </Link>
+        )}
         <div className={estilos.rodape}>
           <div className={estilos.textos}>
-            <div className={mergeClasses(tipo.subtitulo, estilos.nome)} title={c.nome}>
-              {c.nome}
+            <div className={ip.nomeComSelo}>
+              <div className={mergeClasses(tipo.subtitulo, estilos.nome)} title={c.nome}>
+                {c.nome}
+              </div>
+              {c.avisarTelegram === false && <SeloSemTelegram />}
             </div>
             <div className={mergeClasses(tipo.legenda, estilos.apoio)}>
-              {tipoCameraLabel[c.tipo] ?? ''} ·{' '}
-              {c.ultimaAnaliseEmUtc ? `última análise ${formatarHora(c.ultimaAnaliseEmUtc)}` : 'ainda sem análise'}
+              {camIp
+                ? `${tipoCameraLabel[c.tipo] ?? ''} · Câmera IP · lente ${c.canal ?? '—'} · ${ultimaFoto ? `última foto ${ultimaFoto}` : 'sem fotos ainda'}`
+                : `${tipoCameraLabel[c.tipo] ?? ''} · ${c.ultimaAnaliseEmUtc ? `última análise ${formatarHora(c.ultimaAnaliseEmUtc)}` : 'ainda sem análise'}`}
             </div>
           </div>
           <EstadoMarca camera={c} />
         </div>
-        <div className={estilos.acoes}>{botoesAcao(c, false)}</div>
+        <div className={estilos.acoes}>
+          {botoesAcao(c, false)}
+          {camIp && (
+            <BotaoVerAoVivo
+              variante="texto"
+              nomeCamera={c.nome}
+              bloqueio={bloqueio}
+              aoAbrir={() => navigate(`/cameras/${c.id}/ao-vivo`)}
+            />
+          )}
+        </div>
+        {bloqueio && <NotaBloqueioAoVivo bloqueio={bloqueio} />}
       </div>
     );
   }
@@ -378,7 +495,8 @@ export function MosaicoCamerasTab() {
               key={painel.chave}
               camera={painel.camera}
               obras={obras}
-              obraInicial={obraInicialForm}
+              obraInicial={painel.obraInicial ?? obraInicialForm}
+              ipInicial={painel.ipInicial}
               aoSalvar={(obraDaCamera) => void aoSalvar(obraDaCamera)}
               aoCancelar={fecharPainel}
             />
@@ -461,6 +579,9 @@ export function MosaicoCamerasTab() {
       <FeedbackInline tom="info">
         Nesta fase só o dispositivo que está monitorando mostra a imagem ao vivo, da própria câmera. O mosaico com
         várias imagens ao vivo depende das câmeras fixas da obra.
+        <br />
+        <strong>Câmeras IP:</strong> o bloco mostra a situação da conexão e a hora da última foto recebida. As fotos seguem
+        quando há movimento na cena; não é vídeo ao vivo. Para ver a imagem quase ao vivo, use Ver ao vivo.
       </FeedbackInline>
     </div>
   );

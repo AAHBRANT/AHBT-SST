@@ -210,8 +210,8 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
                 return p ? { rotulo: 'Confirmar atividades da função', aoClicar: () => irPara(p) } : undefined;
               })()}
             >
-              <b>Prévia.</b> O engenheiro de segurança ainda não confirmou {pendenciasPorAtividadeOcultas ? '' : 'todas '}as atividades desta
-              função. A lista abaixo ainda pode mudar
+              <b>Prévia.</b> A confirmação {pendenciasPorAtividadeOcultas ? 'das' : 'de parte das'} atividades desta função ainda está
+              pendente. A lista abaixo ainda pode mudar
               {pendenciasPorAtividadeOcultas ? ' e as pendências de procedimento aparecem depois da confirmação' : ''}.
             </FeedbackInline>
           </div>

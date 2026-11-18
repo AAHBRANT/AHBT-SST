@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using AAHBRANT.SST.Api.Autorizacao;
+using AAHBRANT.SST.Application.Assinatura.Commands;
 using AAHBRANT.SST.Application.IntegracoesAtendimento;
 using AAHBRANT.SST.Application.IntegracoesAtendimento.Commands;
 using AAHBRANT.SST.Application.IntegracoesAtendimento.Queries;
+using AAHBRANT.SST.Application.SessoesTreinamento;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -35,6 +37,12 @@ public class IntegracoesAtendimentoController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] Guid? obraId, [FromQuery] string? status, CancellationToken ct)
         => Ok(await _mediator.Send(new ListarIntegracoesQuery(obraId, status, AzureAdObjectId, AutenticacaoHabilitada), ct));
+
+    // Configuração da tela (sem obra): chave de habilitação e tempos das fotos automáticas (Integracao:FotosAutomaticas).
+    [Authorize(Policy = "treinamento:ver")]
+    [HttpGet("configuracao")]
+    public async Task<IActionResult> Configuracao(CancellationToken ct)
+        => Ok(await _mediator.Send(new ObterConfiguracaoIntegracaoQuery(), ct));
 
     [Authorize(Policy = "treinamento:ver")]
     [HttpGet("entrada")]
@@ -94,21 +102,46 @@ public class IntegracoesAtendimentoController : ControllerBase
     public async Task<IActionResult> DesfazerNaoAssinou(Guid id, Guid etapaId, Guid trabalhadorId, CancellationToken ct)
         => Ok(await _mediator.Send(new DesfazerNaoAssinouEtapaIntegracaoCommand(id, etapaId, trabalhadorId, AzureAdObjectId, AutenticacaoHabilitada), ct));
 
+    // O instrutor assina, por digital ou facial, uma vez em cada etapa de curso em andamento (16/11/2026). Sem biometria não assina.
+    // 404 sem acesso à integração; 400 se a pessoa lida não é o instrutor ou a etapa não está em andamento; 409 se já assinou.
     [Authorize(Policy = "treinamento:criar")]
-    [HttpPost("{id:guid}/etapas/{etapaId:guid}/periodos")]
-    public async Task<IActionResult> RegistrarPeriodo(Guid id, Guid etapaId, PeriodoEtapaRequestBody body, CancellationToken ct)
+    [HttpPost("{id:guid}/etapas/{etapaId:guid}/instrutor/assinar/digital")]
+    public async Task<IActionResult> AssinarInstrutorDigital(Guid id, Guid etapaId, AssinaturaController.AutenticarBiometriaLocalRequestBody body, CancellationToken ct)
     {
-        await _mediator.Send(new RegistrarPeriodoEtapaIntegracaoCommand(
-            id, etapaId, body.Data ?? string.Empty, body.Inicio ?? string.Empty, body.Fim ?? string.Empty, AzureAdObjectId, AutenticacaoHabilitada), ct);
-        return Ok(await _mediator.Send(new ObterIntegracaoQuery(id, AzureAdObjectId, AutenticacaoHabilitada), ct));
+        try
+        {
+            return Ok(await _mediator.Send(new AssinarInstrutorEtapaPorDigitalCommand(id, etapaId,
+                new DadosAssinaturaInstrutorDigital(body.DispositivoId, body.SegredoDispositivo ?? string.Empty, body.TrabalhadorId, body.Score,
+                    body.Desafio, body.AssinaturaLeitura, body.ImagemDigital, body.Localizacao?.ParaDominio()),
+                AzureAdObjectId, AutenticacaoHabilitada), ct));
+        }
+        catch (AssinaturaInstrutorJaRegistradaException ex)
+        {
+            return Conflict(new { erro = ex.Message });
+        }
     }
 
     [Authorize(Policy = "treinamento:criar")]
-    [HttpDelete("{id:guid}/etapas/{etapaId:guid}/periodos/{periodoId:guid}")]
-    public async Task<IActionResult> RemoverPeriodo(Guid id, Guid etapaId, Guid periodoId, CancellationToken ct)
+    [HttpPost("{id:guid}/etapas/{etapaId:guid}/instrutor/assinar/facial")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> AssinarInstrutorFacial(Guid id, Guid etapaId, [FromForm] AssinarInstrutorFacialRequestBody body, CancellationToken ct)
     {
-        await _mediator.Send(new RemoverPeriodoEtapaIntegracaoCommand(id, etapaId, periodoId, AzureAdObjectId, AutenticacaoHabilitada), ct);
-        return Ok(await _mediator.Send(new ObterIntegracaoQuery(id, AzureAdObjectId, AutenticacaoHabilitada), ct));
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+        try
+        {
+            return Ok(await _mediator.Send(new AssinarInstrutorEtapaPorFacialCommand(id, etapaId,
+                new DadosAssinaturaInstrutorFacial(stream.ToArray(), body.Foto.ContentType, body.ParaLocalizacao()),
+                AzureAdObjectId, AutenticacaoHabilitada), ct));
+        }
+        catch (AssinaturaInstrutorJaRegistradaException ex)
+        {
+            return Conflict(new { erro = ex.Message });
+        }
+        catch (RejeicaoFacialException ex)
+        {
+            return BadRequest(new { erro = ex.Message, motivo = ex.Motivo.ToString() });
+        }
     }
 
     // 409 com a lista do que falta (instrutor, carga, fotos, assinaturas) quando a etapa ainda não pode avançar.
@@ -160,6 +193,5 @@ public class IntegracoesAtendimentoController : ControllerBase
 
 public record IniciarIntegracaoRequestBody(Guid ObraId, List<Guid>? TrabalhadoresIds, Guid? InstrutorTrabalhadorId);
 public record ParticipantesIntegracaoRequestBody(List<Guid>? TrabalhadoresIds);
-public record PeriodoEtapaRequestBody(string? Data, string? Inicio, string? Fim);
 public record AvancarEtapaRequestBody(int? EtapaOrdem);
 public record NaoAssinouRequestBody(string? Motivo);

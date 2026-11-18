@@ -43,7 +43,24 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
 
                     coluna.Item().AlignCenter().Text(LinhaResumo(modelo)).FontSize(8).SemiBold().FontColor(CorRotulo);
 
-                    coluna.Item().Element(c => Secao(c, "1. Identificação", corpo => Grade(corpo, new[]
+                    // Títulos numerados calculados antes (a ordem do layout pode medir os itens mais de uma vez).
+                    var n = 1;
+                    var tituloIdentificacao = $"{n++}. Identificação";
+                    var temTestemunhas = modelo.Testemunhas is { Count: > 0 };
+                    var tituloTestemunhas = temTestemunhas ? $"{n++}. Testemunhas" : null;
+                    var temPessoasExternas = modelo.PessoasExternas is { Count: > 0 };
+                    var tituloPessoasExternas = temPessoasExternas ? $"{n++}. Pessoas externas" : null;
+                    var tituloDescricao = $"{n++}. Descrição da ocorrência";
+                    var tituloConsequencias = $"{n++}. Consequências";
+                    var tituloAnalise = $"{n++}. Análise e causas";
+                    var temConclusao = !string.IsNullOrWhiteSpace(modelo.ConclusaoInvestigacao);
+                    var tituloConclusao = temConclusao ? $"{n++}. Conclusão da investigação" : null;
+                    var tituloPlano = $"{n++}. Plano de ação";
+                    var tituloReuniao = modelo.Reuniao is not null ? $"{n++}. Reunião de análise" : null;
+                    var tituloFotos = modelo.Fotos.Count > 0 ? $"{n++}. Registro fotográfico" : null;
+                    var tituloResponsaveis = $"{n}. Responsáveis pela investigação";
+
+                    coluna.Item().Element(c => Secao(c, tituloIdentificacao, corpo => Grade(corpo, new[]
                     {
                         ("Tipo", modelo.Tipo, 1),
                         ("Data / hora", DataHora(modelo.Data, modelo.Hora), 1),
@@ -53,9 +70,15 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
                             modelo.Envolvidos.Count > 0 ? string.Join("; ", modelo.Envolvidos) : "Não informado", 2),
                     })));
 
-                    coluna.Item().Element(c => Secao(c, "2. Descrição da ocorrência", corpo => Texto(corpo, modelo.Descricao)));
+                    if (temTestemunhas)
+                        coluna.Item().Element(c => Secao(c, tituloTestemunhas!, corpo => Texto(corpo, string.Join("; ", modelo.Testemunhas!))));
 
-                    coluna.Item().Element(c => Secao(c, "3. Consequências", corpo => corpo.Column(consequencias =>
+                    if (temPessoasExternas)
+                        coluna.Item().Element(c => Secao(c, tituloPessoasExternas!, corpo => PessoasExternas(corpo, modelo.PessoasExternas!)));
+
+                    coluna.Item().Element(c => Secao(c, tituloDescricao, corpo => Texto(corpo, modelo.Descricao)));
+
+                    coluna.Item().Element(c => Secao(c, tituloConsequencias, corpo => corpo.Column(consequencias =>
                     {
                         consequencias.Item().Element(g => Grade(g, new[]
                         {
@@ -72,25 +95,26 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
                             consequencias.Item().PaddingTop(6).ShowEntire().Element(m => MapaCorporal(m, modelo.RegioesCorpo));
                     })));
 
-                    coluna.Item().Element(c => Secao(c, "4. Análise e causas", corpo => corpo.Column(analise =>
+                    coluna.Item().Element(c => Secao(c, tituloAnalise, corpo => corpo.Column(analise =>
                     {
                         analise.Item().Element(g => Grade(g, new[] { ("Metodologia", Valor(modelo.Metodologia, "Não definida"), 4) }));
                         analise.Item().Element(t => Texto(t, Valor(modelo.Causas, "Causas ainda não registradas.")));
                     })));
 
-                    coluna.Item().Element(c => Secao(c, "5. Plano de ação", corpo => PlanoAcao(corpo, modelo.Acoes)));
+                    if (temConclusao)
+                        coluna.Item().Element(c => Secao(c, tituloConclusao!, corpo => Texto(corpo, modelo.ConclusaoInvestigacao!)));
 
+                    coluna.Item().Element(c => Secao(c, tituloPlano, corpo => PlanoAcao(corpo, modelo.Acoes)));
+
+                    // Numeração segue sem buraco quando não houve reunião, fotos ou os blocos opcionais.
                     if (modelo.Reuniao is not null)
-                        coluna.Item().Element(c => Secao(c, "6. Reunião de análise", corpo => Reuniao(corpo, modelo.Reuniao)));
-
-                    // Numeração segue sem buraco quando não houve reunião.
-                    var n = modelo.Reuniao is null ? 6 : 7;
+                        coluna.Item().Element(c => Secao(c, tituloReuniao!, corpo => Reuniao(corpo, modelo.Reuniao)));
 
                     // EnsureSpace: o título da seção não fica sozinho no pé da página, longe da 1ª linha de fotos.
                     if (modelo.Fotos.Count > 0)
-                        coluna.Item().EnsureSpace(190).Element(c => Secao(c, $"{n++}. Registro fotográfico", corpo => Fotos(corpo, modelo.Fotos)));
+                        coluna.Item().EnsureSpace(190).Element(c => Secao(c, tituloFotos!, corpo => Fotos(corpo, modelo.Fotos)));
 
-                    coluna.Item().ShowEntire().Element(c => Secao(c, $"{n}. Responsáveis pela investigação", Assinaturas));
+                    coluna.Item().ShowEntire().Element(c => Secao(c, tituloResponsaveis, Assinaturas));
                 });
 
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
@@ -179,6 +203,27 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
             }
         });
     }
+
+    // Cada pessoa vira um bloco em grade: o CPF sai mascarado e o telefone não entra no relatório.
+    private static void PessoasExternas(IContainer container, IReadOnlyList<InvestigacaoOcorrenciaPdfPessoaExternaModelo> pessoas) =>
+        container.Column(coluna =>
+        {
+            coluna.Spacing(6);
+            foreach (var p in pessoas)
+            {
+                coluna.Item().ShowEntire().Element(g => Grade(g, new[]
+                {
+                    ("Nome", Valor(p.Nome), 2),
+                    ("Vínculo", p.Vinculo, 1),
+                    ("Empresa", Valor(p.Empresa, "—"), 1),
+                    ("CPF", Valor(p.CpfMascarado, "Não informado"), 1),
+                    ("Idade", p.Idade is { } i ? $"{i} anos" : "—", 1),
+                    ("Resultado", p.Resultado, 1),
+                    ("Lesão", Valor(p.Lesao, "Não houve"), 2),
+                    ("Atendimento", Valor(p.Atendimento, "Não houve"), 2),
+                }));
+            }
+        });
 
     private static void Texto(IContainer container, string texto)
     {

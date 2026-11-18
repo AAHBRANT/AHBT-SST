@@ -307,9 +307,21 @@ export interface Funcao {
   nome: string;
   cboCodigo?: string | null;
   descricao?: string | null;
+  // Cor do capacete esperada para a função (0 = sem padrão ... 6 = laranja; ver lib/corCapacete).
+  // Ausente em respostas antigas = 0.
+  corCapacete?: number;
 }
 
 export type NovaFuncao = Omit<Funcao, 'id'>;
+
+// Sugestão do padrão AAHBRANT por função (corSugerida 0 = o padrão não cobre a função).
+export interface SugestaoCorCapaceteApi {
+  funcaoId: string;
+  nome: string;
+  corAtual?: number;
+  corSugerida?: number;
+  grupo?: string | null;
+}
 
 export interface FuncaoDuplicada {
   id: string;
@@ -591,10 +603,15 @@ export interface UsuarioLogado {
   // Administrador é o único que pode excluir registro operacional (regra fixa no servidor, não
   // configurável pela matriz de permissões — ver PoliticasAutorizacao no backend).
   ehAdministrador: boolean;
-  // Só o Engenheiro de Segurança confirma atividades por função: global ou nas obras da lista.
+  // Perfil de Engenheiro de Segurança (aprovar/devolver o PGR continua só dele): global ou nas obras da lista.
   ehEngenheiroSeguranca?: boolean;
   engenheiroSegurancaGlobal?: boolean;
   obrasEngenheiroSeguranca?: string[];
+  // Técnico, Engenheiro de Segurança OU Administrador aprovam cursos obrigatórios e atividades por função (17/11/2026):
+  // global ou nas obras da lista. Ausente = servidor antigo (a tela cai na regra do engenheiro).
+  podeDecidirSugestoes?: boolean;
+  podeDecidirSugestoesGlobal?: boolean;
+  obrasPodeDecidirSugestoes?: string[];
   permissoes: string[];
   // Onde cada permissão vale (Responsável x Supervisão, 06/11/2026). global = todas as obras;
   // obras = obras atribuídas. Ausente = servidor antigo ou acesso total.
@@ -637,7 +654,7 @@ export interface PadraoNr {
 // Trabalhadores ativos que precisam do curso (pela matriz de função) e a situação de cada um.
 // "Apto" = treinamento válido hoje = emDia + vencemEm30Dias.
 // Cursos obrigatórios por função a partir do PGR (21/10): por obra, sugeridos pelas regras e
-// aprovados/recusados pelo Engenheiro de Segurança. Só Aprovado conta para a aptidão.
+// aprovados/recusados pelo técnico, engenheiro de segurança ou administrador da obra. Só Aprovado conta para a aptidão.
 export const StatusCursoObrigatorio = { Sugerido: 1, Aprovado: 2, Recusado: 3 } as const;
 export const OrigemCursoObrigatorio = { Pgr: 1, Manual: 2 } as const;
 
@@ -926,7 +943,29 @@ export interface InstrutorSessaoTreinamento {
   podeAssinarEmOutrasObras: boolean;
   totalCertificados: number;
   certificadosAssinados: number;
+  // 16/11/2026: o instrutor assina por digital ou facial ANTES de encerrar a turma (o encerramento exige).
+  assinouAntesDeEncerrar?: boolean;
+  assinadoEmUtc?: string | null;
+  /** 'biometria' (digital) | 'reconhecimentoFacial' */
+  metodoAssinatura?: 'biometria' | 'reconhecimentoFacial' | null;
+  temDigital?: boolean;
+  temFacial?: boolean;
 }
+
+/** Resposta de POST sessoes-treinamento/{id}/instrutor/assinatura/(digital|facial). */
+export interface AssinaturaInstrutorTurma {
+  sessaoTreinamentoId: string;
+  instrutorTrabalhadorId: string;
+  metodo: 'biometria' | 'reconhecimentoFacial';
+  assinadoEmUtc: string;
+}
+
+/** Dados da leitura de digital enviados junto da credencial do leitor (corpo da biometria local). */
+export type CorpoDigitalInstrutor = {
+  trabalhadorId: string;
+  score: number;
+  imagemDigital?: string | null;
+};
 
 export const FormacaoInstrutor = { TecnicoSegurancaTrabalho: 1, EngenheiroSegurancaTrabalho: 2 } as const;
 export const ConselhoInstrutor = { Mte: 1, Crea: 2 } as const;
@@ -1517,7 +1556,7 @@ export interface Ghe {
   riscos: GheRisco[];
 }
 
-// Atividades por função na OS (Entrega 4, 10/11/2026): a IA sugere, o Engenheiro de Segurança confirma.
+// Atividades por função na OS (Entrega 4, 10/11/2026): a IA sugere, o técnico, o engenheiro de segurança ou o administrador da obra confirma.
 export type EstadoAtividadeFuncao = 'SemDecisao' | 'Pendente' | 'Validada' | 'Descartada';
 export interface FuncaoMatrizAtividades {
   funcaoId: string; nome: string; descricaoNoPgr?: string | null;
@@ -2807,7 +2846,35 @@ export interface CameraResumo {
   diaDoConsumo: string | null;
   analisesNoDia: number;
   custoNoDiaUsd: number;
+  // Câmera IP (fonte Rtsp), lida pelo agente da obra. situacaoConexao vem calculada no servidor e é nula para
+  // câmera de navegador ou desligada. Campos opcionais: respostas antigas (cache do service worker) não os trazem.
+  fonte?: number;
+  equipamentoCameraId?: string | null;
+  equipamentoNome?: string | null;
+  canal?: number | null;
+  stream?: number | null;
+  intervaloEnvioSegundos?: number;
+  situacaoConexao?: string | null;
+  ultimoQuadroRecebidoEmUtc?: string | null;
+  mensagemConexao?: string | null;
+  // Respostas antigas (cache do service worker) não trazem estes dois: sem o campo vale 0 (imagem inteira) e true.
+  parteImagem?: number;
+  avisarTelegram?: boolean;
+  // Regras de alerta (Fase 2). Respostas antigas não trazem: sem o campo valem 3 s, 3 s, 3 s, 300 s e modo sombra desligado.
+  persistenciaCapaceteSegundos?: number;
+  persistenciaColeteSegundos?: number;
+  persistenciaOculosSegundos?: number;
+  naoRepetirSegundos?: number;
+  modoSombra?: boolean;
 }
+
+// De onde vem a imagem da câmera. A API serializa enums como número.
+export const FonteCamera = { Navegador: 0, Rtsp: 1 } as const;
+// Qualidade da imagem da câmera IP: stream 0 = principal, 1 = secundária (mais leve, recomendada).
+export const StreamCamera = { Principal: 0, Secundaria: 1 } as const;
+// Parte da imagem usada pela câmera IP: a câmera de duas lentes entrega as duas vistas empilhadas numa imagem só.
+export const ParteImagemCamera = { Inteira: 0, MetadeSuperior: 1, MetadeInferior: 2 } as const;
+export type ParteImagemCameraValor = (typeof ParteImagemCamera)[keyof typeof ParteImagemCamera];
 
 export interface DadosCamera {
   obraId: string;
@@ -2816,6 +2883,118 @@ export interface DadosCamera {
   tipo: number;
   habilitada: boolean;
   intervaloMinimoAlertasMinutos: number;
+  // Origem da imagem. Fonte omitida na edição = o servidor não mexe na origem (câmera de tablet segue como está).
+  fonte?: number;
+  equipamentoCameraId?: string | null;
+  canal?: number | null;
+  stream?: number | null;
+  // Ausentes = o servidor assume 0 (imagem inteira) e true. parteImagem só vale para câmera IP.
+  parteImagem?: number;
+  avisarTelegram?: boolean;
+  // Ausentes na edição = o servidor não muda. Na criação, o servidor assume 3, 3, 3, 300 e modo sombra ligado.
+  persistenciaCapaceteSegundos?: number;
+  persistenciaColeteSegundos?: number;
+  persistenciaOculosSegundos?: number;
+  naoRepetirSegundos?: number;
+  modoSombra?: boolean;
+}
+
+// Agente de câmeras: programa instalado no PC da obra que lê as câmeras pela rede local. Nunca traz o segredo.
+export interface AgenteCamera {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  nome: string;
+  ativo: boolean;
+  versao: string | null;
+  ultimoContatoEmUtc: string | null;
+}
+
+// O segredo só existe nesta resposta (no banco fica o hash): a tela mostra uma única vez.
+export interface RegistroAgenteCamera {
+  id: string;
+  segredo: string;
+}
+
+// Equipamento = a câmera física (pode ter duas lentes, cada uma é uma câmera). Nunca traz a senha, só se ela existe.
+export interface EquipamentoCamera {
+  id: string;
+  obraId: string;
+  obraNome: string;
+  agenteCameraId: string;
+  agenteNome: string;
+  nome: string;
+  host: string;
+  portaRtsp: number;
+  portaOnvif: number;
+  enderecoMac: string | null;
+  usuario: string | null;
+  senhaDefinida: boolean;
+  fabricante: string | null;
+  modelo: string | null;
+  ultimoIpDescobertoEmUtc: string | null;
+  quantidadeCameras: number;
+}
+
+export interface DadosEquipamentoCamera {
+  agenteCameraId: string;
+  nome: string;
+  host: string;
+  portaRtsp: number;
+  portaOnvif: number;
+  enderecoMac: string | null;
+  usuario: string | null;
+  fabricante: string | null;
+  modelo: string | null;
+}
+
+export type SituacaoTesteConexaoCamera = 'Pendente' | 'Concluido' | 'Expirado';
+
+export interface TesteConexaoCamera {
+  id: string;
+  situacao: SituacaoTesteConexaoCamera;
+  sucesso: boolean | null;
+  motivo: string | null;
+  // Motivo estável da falha (senha_recusada, camera_nao_encontrada, sem_resposta...); nulo no sucesso, no pendente e no expirado.
+  codigo: string | null;
+  detalhe: string | null;
+  // JPEG em base64, entregue uma única vez (na primeira consulta depois da resposta do agente).
+  miniaturaBase64: string | null;
+  solicitadoEmUtc: string;
+  concluidoEmUtc: string | null;
+}
+
+// "Ver ao vivo" (câmera IP, imagem JPEG em sequência, nada gravado). As recusas e os encerramentos são tratados
+// SEMPRE pelo código estável que o servidor envia, nunca pelo texto.
+export interface SessaoAoVivoCamera {
+  sessaoId: string;
+  situacao: 'Aguardando' | 'AoVivo';
+  fps: number;
+  encerraEmSegundos: number;
+}
+
+export type ResultadoIniciarAoVivo =
+  | { ok: true; sessao: SessaoAoVivoCamera }
+  // status 404 = câmera fora do escopo; 409/429 trazem o código (nao_e_camera_ip, camera_desabilitada, agente_revogado,
+  // agente_sem_contato, agente_desatualizado, limite_sessoes).
+  | { ok: false; status: number; codigo: string | null };
+
+export type ResultadoQuadroAoVivo =
+  | { tipo: 'quadro'; imagem: Blob; sequencia: number | null; capturadoEm: string | null }
+  | { tipo: 'semNovo' }
+  | { tipo: 'aguardando' }
+  // motivo: inatividade, tempo_maximo, encerrada, agente_sem_resposta ou falha:<codigo>.
+  | { tipo: 'encerrada'; motivo: string | null }
+  | { tipo: 'erro'; status: number };
+
+async function lerCampoJson(response: Response, campo: 'codigo' | 'motivo'): Promise<string | null> {
+  try {
+    const json = (await response.json()) as Record<string, unknown>;
+    const valor = json[campo];
+    return typeof valor === 'string' ? valor : null;
+  } catch {
+    return null;
+  }
 }
 
 export type SituacaoQuadro = 'ignorado' | 'limpo' | 'ocorrencia' | 'falha';
@@ -2832,6 +3011,15 @@ export interface ResultadoQuadro {
   trabalhadorNome?: string | null;
   // true = nenhuma ocorrência nova: a irregularidade foi somada a uma ocorrência já aberta.
   repetida?: boolean;
+  // Pessoas cujo capacete/colete não foi avaliado porque a parte do corpo não aparece na imagem.
+  // Não entram em semCapacete/semColete e nunca geram ocorrência sozinhos. Ausentes em respostas antigas.
+  capaceteNaoAvaliavel?: number;
+  coleteNaoAvaliavel?: number;
+  // Óculos de proteção: não conforme e não avaliável (longe, de costas). Ausentes = 0.
+  semOculos?: number;
+  oculosNaoAvaliavel?: number;
+  // true = só a cor do capacete foge da função (aviso de padrão, sem Telegram). Ausente = false.
+  avisoCorCapacete?: boolean;
 }
 
 export interface OcorrenciaEpi {
@@ -2857,6 +3045,23 @@ export interface OcorrenciaEpi {
   // Repetições da mesma irregularidade somadas nesta ocorrência (1 = vista uma única vez) e a última vez.
   vezesVista: number;
   ultimaVezEmUtc: string | null;
+  // Campos de óculos e de cor do capacete. Ausentes em respostas antigas = 0 / false / null.
+  semOculos?: number;
+  // true = ocorrência só de cor (aviso de padrão, gravidade menor, sem Telegram).
+  avisoCorCapacete?: boolean;
+  corCapaceteVista?: number | null;
+  corCapaceteEsperada?: number | null;
+  // Função do trabalhador identificado (base do "esperado amarelo (Pedreiro)").
+  funcaoNome?: string | null;
+  // Pessoas não conferidas (cabeça ou tronco fora da imagem, longe, de costas). Ausentes = 0.
+  capaceteNaoAvaliavel?: number;
+  coleteNaoAvaliavel?: number;
+  oculosNaoAvaliavel?: number;
+  // Confirmação e modo sombra (Fase 2). Ausentes em respostas antigas: confirmada = true, sombra = false.
+  confirmada?: boolean;
+  sombra?: boolean;
+  // Segundos em que a irregularidade ficou à vista até confirmar (ou até expirar, se não confirmou).
+  segundosObservados?: number | null;
 }
 
 export interface FiltroOcorrenciasEpi {
@@ -2865,6 +3070,11 @@ export interface FiltroOcorrenciasEpi {
   de?: string;
   ate?: string;
   situacao?: number;
+  // Só ocorrências que tenham este item: capacete, colete, oculos ou cor (cor do capacete).
+  tipo?: 'capacete' | 'colete' | 'oculos' | 'cor';
+  // sombra = só as registradas em modo sombra; aviso = só as de câmera com aviso; naoConfirmadas = só as que não se
+  // confirmaram. Ausente = todas (o servidor esconde as não confirmadas de câmera fora do modo sombra).
+  registro?: 'sombra' | 'aviso' | 'naoConfirmadas';
 }
 
 export const StatusItemChecklist = {
@@ -3929,6 +4139,9 @@ export const TipoOcorrencia = {
   CondicaoInsegura: 4,
   AtoInseguro: 5,
   DoencaOcupacional: 6,
+  // Vítima que não é funcionária (terceiro, visitante, transeunte). Só existe na criação: não entra no
+  // CAT nem nos indicadores de frequência/gravidade da NBR 14280.
+  PessoaExterna: 7,
 } as const;
 
 export const tipoOcorrenciaLabel: Record<number, string> = {
@@ -3938,7 +4151,22 @@ export const tipoOcorrenciaLabel: Record<number, string> = {
   4: 'Condição insegura',
   5: 'Ato inseguro',
   6: 'Doença ocupacional',
+  7: 'Ocorrência com pessoa externa',
 };
+
+// Vínculo da pessoa externa com a obra, resultado para ela e papel do funcionário na ocorrência.
+export const VinculoPessoaExterna = { Terceiro: 1, Visitante: 2, Transeunte: 3, Outro: 4 } as const;
+export const vinculoPessoaExternaLabel: Record<number, string> = {
+  1: 'Terceiro / prestador',
+  2: 'Visitante',
+  3: 'Transeunte / público externo',
+  4: 'Outro',
+};
+export const ResultadoPessoaExterna = { SemLesao: 1, Lesao: 2, Obito: 3 } as const;
+export const resultadoPessoaExternaLabel: Record<number, string> = { 1: 'Sem lesão', 2: 'Lesão', 3: 'Óbito' };
+export const PapelEnvolvido = { Envolvido: 1, Testemunha: 2 } as const;
+
+export const MAXIMO_PESSOAS_EXTERNAS = 20;
 
 // Seção 28 da Base de Conhecimento — vocabulário literal de metodologias de investigação.
 export const MetodologiaInvestigacao = {
@@ -3963,12 +4191,15 @@ export const StatusAcidente = {
   Registrado: 1,
   EmInvestigacao: 2,
   Concluido: 3,
+  // Investigação pausada à espera do laudo oficial (ex.: óbito). Volta para "Em investigação" ao retomar.
+  AguardandoLaudo: 4,
 } as const;
 
 export const statusAcidenteLabel: Record<number, string> = {
   1: 'Registrado',
   2: 'Em investigação',
   3: 'Concluído',
+  4: 'Aguardando laudo',
 };
 
 // Classificação de gravidade do acidente, usada para calcular Dias Debitados na Taxa de
@@ -3990,6 +4221,56 @@ export const gravidadeAcidenteLabel: Record<number, string> = {
   5: 'Óbito',
 };
 
+// CPF e telefone chegam sempre mascarados; o valor em claro só por api.acidentes.obterDadosPessoaisPessoaExterna.
+export interface PessoaExternaAcidente {
+  id: string;
+  nome: string;
+  vinculo: number;
+  empresa?: string | null;
+  cpfMascarado?: string | null;
+  telefoneMascarado?: string | null;
+  idade?: number | null;
+  lesao?: string | null;
+  atendimento?: string | null;
+  resultado: number;
+}
+
+export interface FuncionarioNaOcorrencia {
+  trabalhadorId: string;
+  nome: string;
+  papel?: number;
+}
+
+export interface ProvidenciaObito {
+  codigo: string;
+  descricao: string;
+  concluida: boolean;
+  concluidaEm?: string | null;
+  observacao?: string | null;
+}
+
+// Pessoa externa enviada no registro/atualização. `id` preenchido atualiza a linha; vazio cria. cpf/telefone:
+// ausente ou valor mascarado = mantém o gravado; "" = apaga; dígitos novos = substitui.
+export interface PessoaExternaPayload {
+  id?: string | null;
+  nome: string;
+  vinculo: number;
+  empresa?: string | null;
+  cpf?: string | null;
+  telefone?: string | null;
+  idade?: number | null;
+  lesao?: string | null;
+  atendimento?: string | null;
+  resultado: number;
+}
+
+export interface DadosPessoaisPessoaExterna {
+  id: string;
+  nome: string;
+  cpf?: string | null;
+  telefone?: string | null;
+}
+
 export interface Acidente {
   id: string;
   tipo: number;
@@ -3997,7 +4278,17 @@ export interface Acidente {
   obraNome?: string | null;
   trabalhadorId?: string | null;
   trabalhadorNome?: string | null;
-  envolvidos: { trabalhadorId: string; nome: string }[];
+  // Só funcionários com papel Envolvido; quem presenciou vem em `testemunhas`.
+  envolvidos: FuncionarioNaOcorrencia[];
+  testemunhas?: FuncionarioNaOcorrencia[];
+  pessoasExternas?: PessoaExternaAcidente[];
+  // Só no detalhe.
+  providenciasObito?: ProvidenciaObito[];
+  conclusaoInvestigacao?: string | null;
+  laudoObservacao?: string | null;
+  aguardandoLaudoDesde?: string | null;
+  // Calculado no servidor com a regra real das 3 fotos. Ausente = false (fotos opcionais).
+  exigeTresFotos?: boolean;
   atividadeId?: string | null;
   atividadeNome?: string | null;
   local: string;
@@ -4047,6 +4338,14 @@ export interface RelatoOcorrenciaSugestao {
   trabalhadoresIds: string[];
   perguntas: PerguntaRelatoOcorrencia[];
   avisos: string[];
+  // Pessoas citadas no relato que não são funcionárias. Ausente em servidor antigo: tratar como lista vazia.
+  pessoasExternasSugeridas?: PessoaExternaSugerida[];
+}
+
+export interface PessoaExternaSugerida {
+  nome: string;
+  vinculo: number;
+  trecho?: string | null;
 }
 
 export interface RelatoOcorrenciaResposta {
@@ -4159,6 +4458,10 @@ export interface NovoAcidente {
   trabalhadorId?: string | null;
   // Funcionários envolvidos; o primeiro vira o principal (trabalhadorId) no backend.
   trabalhadoresIds?: string[];
+  // Pessoas que não são funcionárias. Na atualização, omitir mantém as gravadas; lista (mesmo vazia) substitui.
+  pessoasExternas?: PessoaExternaPayload[];
+  // Funcionários que presenciaram (papel Testemunha). Omitir mantém as gravadas.
+  testemunhas?: string[];
   atividadeId?: string | null;
   local: string;
   data: string;
@@ -4327,6 +4630,8 @@ export const tipoAlertaLabel: Record<number, string> = {
   34: 'EPI abaixo do mínimo',
   35: 'Documento de terceirizado vencendo',
   36: 'Documento de terceirizado vencido',
+  38: 'Óbito: providências pendentes',
+  39: 'Ocorrência aguardando laudo',
 };
 
 export const SeveridadeAlerta = {
@@ -4369,6 +4674,8 @@ export const categoriaAlertaLabel: Record<string, string> = {
   AtivoSst: 'Ativos (Extintores/Equipamentos)',
   NaoConformidade: 'Ocorrências de inspeção',
   AcaoPlano: 'Ações do plano',
+  AcidenteObito: 'Ocorrências (óbito)',
+  AcidenteLaudo: 'Ocorrências (laudo)',
 };
 
 export function categoriaAlertaRotulo(entidadeOrigemTipo: string): string {
@@ -4541,6 +4848,8 @@ export const TipoModuloAlerta = {
   Pcmso: 15,
   // Documentos da empresa terceirizada (DocumentoEmpresaTerceirizadaAlertaProvider).
   DocumentoTerceirizado: 16,
+  // Ocorrências: providências de óbito e laudo em espera (AcidenteAlertaProvider).
+  Acidente: 17,
 } as const;
 
 export const moduloAlertaLabel: Record<number, string> = {
@@ -4560,6 +4869,7 @@ export const moduloAlertaLabel: Record<number, string> = {
   14: 'Cadastro facial',
   15: 'PCMSO',
   16: 'Documentos de terceirizados',
+  17: 'Ocorrências',
 };
 
 export interface RegraAlerta {
@@ -4619,6 +4929,8 @@ export interface OcorrenciaPerfil {
   houveAfastamento: boolean;
   diasAfastamento?: number | null;
   status: number;
+  // 2 = Testemunha. Ausente (servidor antigo) = envolvido.
+  papel?: number;
 }
 
 export interface AssinaturaPerfil {
@@ -4814,6 +5126,27 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return parsearJsonSeguro<T>(texto, response);
 }
 
+// Assinatura facial do instrutor/técnico (16/11/2026): multipart SEM fila offline — a resposta (aceita ou
+// recusada) precisa chegar na hora, porque a tela decide o próximo passo da fila por ela. O servidor busca o
+// grupo de rostos pela obra do instrutor/da OS, por isso não vai obraId. Erros: 400 {erro, motivo}, 409, 404.
+async function enviarFotoAssinaturaFacial<T>(caminho: string, foto: File, enviarCapturadaEm = false): Promise<T> {
+  const formData = new FormData();
+  formData.append('foto', foto);
+  anexarDadosFoto(formData, foto);
+  if (enviarCapturadaEm) formData.append('capturadaEm', new Date().toISOString());
+  const localizacao = await obterLocalizacaoAssinatura();
+  formData.append('localizacaoStatus', String(localizacao.status));
+  if (localizacao.latitude != null) formData.append('latitude', String(localizacao.latitude));
+  if (localizacao.longitude != null) formData.append('longitude', String(localizacao.longitude));
+  if (localizacao.precisaoMetros != null) formData.append('precisaoMetros', String(localizacao.precisaoMetros));
+  const response = await fetch(`${API_BASE_URL}${caminho}`, { method: 'POST', headers: await montarHeadersAuth(), body: formData });
+  if (!response.ok) {
+    const corpo = await response.text().catch(() => '');
+    throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+  }
+  return parsearJsonSeguro<T>(await response.text(), response);
+}
+
 async function requestPublico<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -4847,6 +5180,7 @@ export const StatusProcessoEleitoralCipa = {
   VotacaoRealizada: 4,
   Apurado: 5,
   Encerrado: 6,
+  VotacaoAberta: 7,
 } as const;
 
 export const statusProcessoEleitoralCipaLabel: Record<number, string> = {
@@ -4856,7 +5190,41 @@ export const statusProcessoEleitoralCipaLabel: Record<number, string> = {
   4: 'Votação realizada',
   5: 'Apurado',
   6: 'Encerrado',
+  7: 'Votação aberta',
 };
+
+// Urna biométrica da CIPA (16/11/2026) — ver UrnaCipaCommands.cs. Sem fila offline: voto só com rede.
+export interface CandidatoUrnaCipa {
+  candidatoId: string;
+  trabalhadorId: string;
+  nome: string;
+  funcao: string;
+  temFoto: boolean;
+}
+export interface UrnaCipa {
+  processoEleitoralId: string;
+  obraId: string;
+  obraNome: string;
+  numeroDocumento: string | null;
+  status: number;
+  votacaoAbertaEmUtc: string | null;
+  votacaoEncerradaEmUtc: string | null;
+  totalEleitoresAptos: number;
+  totalVotantes: number;
+  candidatos: CandidatoUrnaCipa[];
+}
+export interface CedulaCipa {
+  cedulaId: string;
+  eleitorNome: string;
+  eleitorFuncao: string;
+  expiraEmUtc: string;
+}
+export interface ResultadoEncerramentoCipa {
+  apurado: boolean;
+  votantes: number;
+  aptos: number;
+  mensagem: string;
+}
 
 export const StatusCandidatoCipa = {
   Inscrito: 1,
@@ -4923,6 +5291,48 @@ export const statusReuniaoCipaLabel: Record<number, string> = {
   2: 'Realizada',
   3: 'Ata registrada',
 };
+
+// Situação da CIPA por obra — ver ObterSituacaoCipaPorObraQuery (backend). Empregados = CLT ativos
+// contados do cadastro; terceirizados aparecem só como informação.
+export const SituacaoCipaObraTipo = {
+  PrecisaDeCipa: 1,
+  ConvocarEleicao: 2,
+  NomearRepresentante: 3,
+  EleicaoEmAndamento: 4,
+  RepresentanteNomeado: 5,
+  CipaAtiva: 6,
+} as const;
+export type SituacaoCipaObraTipo = (typeof SituacaoCipaObraTipo)[keyof typeof SituacaoCipaObraTipo];
+
+export const situacaoCipaObraLabel: Record<number, string> = {
+  1: 'Precisa de CIPA',
+  2: 'Convocar eleição',
+  3: 'Nomear representante',
+  4: 'Eleição em andamento',
+  5: 'Representante nomeado',
+  6: 'CIPA ativa',
+};
+
+export interface SituacaoCipaObra {
+  obraId: string;
+  obraNome: string;
+  obraCodigo: string;
+  empregadosAtivos: number;
+  terceirizadosAtivos: number;
+  terceirosExigemRepresentante: boolean;
+  situacao: SituacaoCipaObraTipo;
+  membrosComMandatoVigente: number;
+  fimMandatoVigente: string | null;
+  processoEleitoralId: string | null;
+  statusProcessoEleitoral: number | null;
+  dataVotacao: string | null;
+  ultimoDimensionamentoData: string | null;
+  ultimoDimensionamentoFuncionarios: number | null;
+  ultimoDimensionamentoGrauRisco: number | null;
+  titularesDimensionados: number | null;
+  suplentesDimensionados: number | null;
+  dimensionamentoDesatualizado: boolean;
+}
 
 export interface DimensionamentoCipa {
   id: string;
@@ -5397,6 +5807,21 @@ export interface InstrutorIntegracao {
   trabalhadorId: string;
   nome: string;
   registro?: string | null;
+  /** 16/11/2026: o instrutor precisa de digital ou facial cadastrada para assinar cada etapa. Ausente em servidor antigo. */
+  temDigital?: boolean;
+  temFacial?: boolean;
+}
+
+/** Segundos de espera das fotos automáticas: 1ª depois da abertura da etapa, 2ª depois da 1ª, 3ª depois da 2ª. */
+export interface FotosAutomaticasIntegracao {
+  primeiraAposSegundos: number;
+  segundaAposSegundos: number;
+  terceiraAposSegundos: number;
+}
+
+export interface ConfiguracaoIntegracao {
+  habilitada: boolean;
+  fotosAutomaticas: FotosAutomaticasIntegracao;
 }
 
 export interface EntradaIntegracao {
@@ -5408,6 +5833,7 @@ export interface EntradaIntegracao {
   bloqueios: BloqueioIntegracao[];
   candidatos: CandidatoIntegracao[];
   instrutores: InstrutorIntegracao[];
+  fotosAutomaticas?: FotosAutomaticasIntegracao;
 }
 
 export interface ParticipanteIntegracaoAtendimento {
@@ -5428,6 +5854,8 @@ export interface PeriodoEtapaIntegracao {
   /** HH:mm */
   fim: string;
   minutos: number;
+  /** Lançado pelo sistema ao abrir a etapa (16/11/2026). Ajustar = remover este e lançar um manual. */
+  automatico?: boolean;
 }
 
 export interface ParticipanteEtapaIntegracao {
@@ -5470,6 +5898,19 @@ export interface EtapaIntegracao {
   periodos: PeriodoEtapaIntegracao[];
   /** Só na etapa em andamento: o que ainda impede o "Avançar" (texto do servidor). */
   faltas: string[];
+  /** Mesma lista de `faltas`, na mesma ordem, com código estável (ver CODIGOS_PENDENCIA em helpers). */
+  pendencias?: PendenciaEtapaIntegracao[];
+  /** O instrutor assina cada etapa de curso por digital ou facial (16/11/2026). 'biometria' = digital. */
+  instrutorAssinou?: boolean;
+  instrutorAssinadoEmUtc?: string | null;
+  instrutorMetodo?: 'biometria' | 'reconhecimentoFacial' | null;
+  instrutorTemDigital?: boolean;
+  instrutorTemFacial?: boolean;
+}
+
+export interface PendenciaEtapaIntegracao {
+  codigo: string;
+  texto: string;
 }
 
 export interface IntegracaoAtendimentoDetalhe {
@@ -5801,6 +6242,23 @@ export const api = {
       request<FuncaoInativaComTrabalhador[]>('/api/funcoes/inativas-com-trabalhador'),
     reativar: (id: string) => request<void>(`/api/funcoes/${id}/reativar`, { method: 'POST' }),
     listarSemTrabalhador: () => request<FuncaoSemTrabalhador[]>('/api/funcoes/sem-trabalhador'),
+    // Sugestão do padrão AAHBRANT de cor do capacete por função; nada é salvo aqui.
+    // Altera os dados da função; corCapacete é opcional no servidor (ausente = não muda).
+    atualizarCorCapacete: (funcao: Funcao, cor: number) =>
+      request<void>(`/api/funcoes/${funcao.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          id: funcao.id,
+          nome: funcao.nome,
+          cboCodigo: funcao.cboCodigo ?? null,
+          descricao: funcao.descricao ?? null,
+          corCapacete: cor,
+        }),
+      }),
+    listarSugestoesCorCapacete: () => request<SugestaoCorCapaceteApi[]>('/api/funcoes/cor-capacete/sugestoes'),
+    // Grava a cor escolhida nas funções informadas (204).
+    aplicarCorCapacete: (itens: { funcaoId: string; cor: number }[]) =>
+      request<void>('/api/funcoes/cor-capacete/aplicar', { method: 'POST', body: JSON.stringify(itens) }),
     // Com obraId: a matriz que vale para a obra (a dela, ou a antiga enquanto ela não tiver a própria).
     listarEpis: (funcaoId: string, obraId?: string) =>
       request<CatalogoEpi[]>(`/api/funcoes/${funcaoId}/epis${obraId ? `?obraId=${encodeURIComponent(obraId)}` : ''}`),
@@ -6089,6 +6547,16 @@ export const api = {
         { method: 'POST', body: JSON.stringify({ ...credencial, trabalhadorId, score, imagemDigital: imagemDigital ?? null, localizacao }) },
       );
     },
+    // Turma comum (16/11/2026): o instrutor assina por digital ou facial ANTES de encerrar a turma.
+    assinarInstrutorDigital: async (sessaoId: string, credencial: CredencialLeitura, corpo: CorpoDigitalInstrutor) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<AssinaturaInstrutorTurma>(`/api/sessoestreinamento/${sessaoId}/instrutor/assinatura/digital`, {
+        method: 'POST',
+        body: JSON.stringify({ ...credencial, trabalhadorId: corpo.trabalhadorId, score: corpo.score, imagemDigital: corpo.imagemDigital ?? null, localizacao }),
+      });
+    },
+    assinarInstrutorFacial: (sessaoId: string, foto: File) =>
+      enviarFotoAssinaturaFacial<AssinaturaInstrutorTurma>(`/api/sessoestreinamento/${sessaoId}/instrutor/assinatura/facial`, foto),
     listar: (obraId?: string) => request<SessaoTreinamento[]>(`/api/sessoestreinamento${obraId ? `?obraId=${obraId}` : ''}`),
     obterDetalhe: (id: string) => request<SessaoTreinamentoDetalhe>(`/api/sessoestreinamento/${id}`),
     padrao: (cursoTreinamentoId: string, obraId?: string) =>
@@ -6406,7 +6874,7 @@ export const api = {
     listar: () => request<MatrizRiscoConfig[]>('/api/matrizrisco'),
     // A matriz que classifica os riscos hoje; undefined enquanto a empresa não cadastrou a primeira.
     vigente: () => request<MatrizRiscoConfig | undefined>('/api/matrizrisco/vigente'),
-    // Cria a primeira matriz ou uma nova versão que substitui a vigente (só o Engenheiro de Segurança).
+    // Cria a primeira matriz ou uma nova versão que substitui a vigente (técnico ou engenheiro de segurança; o servidor recusa os demais, inclusive o administrador).
     novaVersao: (matriz: NovaVersaoMatrizRisco) =>
       request<{ id: string }>('/api/matrizrisco', { method: 'POST', body: JSON.stringify(matriz) }),
   },
@@ -7060,6 +7528,111 @@ export const api = {
       request<void>(`/api/cameras/${id}`, { method: 'PUT', body: JSON.stringify({ id, ...dados }) }),
     excluir: (id: string) => request<void>(`/api/cameras/${id}`, { method: 'DELETE' }),
 
+    // Agentes do PC da obra. O segredo sai uma vez, na resposta de criarAgente.
+    listarAgentes: (obraId?: string) =>
+      request<AgenteCamera[]>(`/api/cameras/agentes${obraId ? `?obraId=${obraId}` : ''}`),
+    criarAgente: (obraId: string, nome: string) =>
+      request<RegistroAgenteCamera>('/api/cameras/agentes', { method: 'POST', body: JSON.stringify({ obraId, nome }) }),
+    revogarAgente: (id: string) => request<void>(`/api/cameras/agentes/${id}`, { method: 'DELETE' }),
+
+    // Equipamentos (câmera física). A senha só entra por criar ou definirSenhaEquipamento e nunca volta.
+    listarEquipamentos: (obraId?: string) =>
+      request<EquipamentoCamera[]>(`/api/cameras/equipamentos${obraId ? `?obraId=${obraId}` : ''}`),
+    criarEquipamento: (dados: DadosEquipamentoCamera & { obraId: string; senha?: string | null }) =>
+      request<{ id: string }>('/api/cameras/equipamentos', { method: 'POST', body: JSON.stringify(dados) }),
+    // Trocando o endereço (host) a senha precisa ir junto; sem trocar o endereço ela é opcional e só grava, nunca volta.
+    atualizarEquipamento: (id: string, dados: DadosEquipamentoCamera & { senha?: string | null }) =>
+      request<void>(`/api/cameras/equipamentos/${id}`, { method: 'PUT', body: JSON.stringify({ id, ...dados }) }),
+    definirSenhaEquipamento: (id: string, senha: string) =>
+      request<void>(`/api/cameras/equipamentos/${id}/senha`, { method: 'PUT', body: JSON.stringify({ senha }) }),
+
+    // "Testar conexão": só cria o pedido (202 com o id); o agente executa e a tela consulta o resultado.
+    testarConexaoDaCamera: (cameraId: string) =>
+      request<{ id: string }>(`/api/cameras/${cameraId}/teste-conexao`, { method: 'POST' }),
+    // parteImagem vai junto para a miniatura do teste sair recortada mesmo antes de salvar.
+    testarConexaoDoEquipamento: (equipamentoId: string, canal: number, stream: number, parteImagem = 0) =>
+      request<{ id: string }>(`/api/cameras/equipamentos/${equipamentoId}/teste-conexao`, {
+        method: 'POST',
+        body: JSON.stringify({ canal, stream, parteImagem }),
+      }),
+
+    // "Ver ao vivo": fetch direto (e não request) porque o quadro é imagem e os códigos de recusa precisam chegar à tela.
+    // Nenhuma URL carrega token; a autenticação vai só no cabeçalho.
+    aoVivo: {
+      iniciar: async (
+        cameraId: string,
+        signal?: AbortSignal,
+        aoAutenticar?: (headers: Record<string, string>) => void,
+      ): Promise<ResultadoIniciarAoVivo> => {
+        const headers = await montarHeadersAuth();
+        aoAutenticar?.(headers);
+        const response = await fetch(`${API_BASE_URL}/api/cameras/${cameraId}/ao-vivo`, {
+          method: 'POST',
+          headers,
+          signal,
+        });
+        if (response.ok) return { ok: true, sessao: (await response.json()) as SessaoAoVivoCamera };
+        if (response.status === 404 || response.status === 409 || response.status === 429) {
+          return { ok: false, status: response.status, codigo: await lerCampoJson(response, 'codigo') };
+        }
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      },
+      quadro: async (
+        sessaoId: string,
+        apos: number | null,
+        signal?: AbortSignal,
+        aoAutenticar?: (headers: Record<string, string>) => void,
+      ): Promise<ResultadoQuadroAoVivo> => {
+        const qs = apos === null ? '' : `?apos=${apos}`;
+        let response: Response;
+        try {
+          const headers = await montarHeadersAuth();
+          aoAutenticar?.(headers);
+          response = await fetch(`${API_BASE_URL}/api/cameras/ao-vivo/${sessaoId}/quadro${qs}`, {
+            headers,
+            cache: 'no-store',
+            signal,
+          });
+        } catch (e) {
+          if (e instanceof DOMException && e.name === 'AbortError') throw e;
+          return { tipo: 'erro', status: 0 };
+        }
+        if (response.status === 200) {
+          const cabecalho = response.headers.get('X-Quadro-Sequencia');
+          const sequencia = cabecalho === null ? NaN : Number(cabecalho);
+          return {
+            tipo: 'quadro',
+            imagem: await response.blob(),
+            sequencia: Number.isFinite(sequencia) ? sequencia : null,
+            capturadoEm: response.headers.get('X-Capturado-Em'),
+          };
+        }
+        if (response.status === 204) return { tipo: 'semNovo' };
+        if (response.status === 202) return { tipo: 'aguardando' };
+        if (response.status === 410) return { tipo: 'encerrada', motivo: await lerCampoJson(response, 'motivo') };
+        // 404 (a sessão não existe mais) conta como encerrada; o resto é falha passageira (rede, 5xx, 429).
+        if (response.status === 404) return { tipo: 'encerrada', motivo: 'encerrada' };
+        return { tipo: 'erro', status: response.status };
+      },
+      // keepalive: a requisição termina mesmo se a página estiver fechando. Falha aqui é ignorada (o servidor encerra sozinho).
+      // Com cabecalhos (os do último pedido, guardados em memória) o fetch sai na hora, sem await antes: é o que funciona
+      // no pagehide. Sem eles, busca o token (pode não dar tempo se a página já estiver fechando).
+      encerrar: async (sessaoId: string, cabecalhos?: Record<string, string>): Promise<void> => {
+        try {
+          await fetch(`${API_BASE_URL}/api/cameras/ao-vivo/${sessaoId}/encerrar`, {
+            method: 'POST',
+            headers: cabecalhos ?? (await montarHeadersAuth()),
+            keepalive: true,
+          });
+        } catch {
+          // Sem rede ou página fechando: o servidor encerra por inatividade em 60 s.
+        }
+      },
+    },
+    // A miniatura vem só na primeira consulta depois da resposta do agente: quem chama guarda na memória.
+    obterTesteConexao: (id: string) => request<TesteConexaoCamera>(`/api/cameras/testes-conexao/${id}`),
+
     // multipart: campos "Foto" (JPEG) e "CapturadaEm" (ISO 8601). Sem Content-Type manual:
     // o navegador define o boundary.
     analisarQuadro: (id: string, foto: Blob, capturadaEm: Date, signal?: AbortSignal) => {
@@ -7076,6 +7649,8 @@ export const api = {
       if (filtro.de) qs.set('de', filtro.de);
       if (filtro.ate) qs.set('ate', filtro.ate);
       if (filtro.situacao) qs.set('situacao', String(filtro.situacao));
+      if (filtro.tipo) qs.set('tipo', filtro.tipo);
+      if (filtro.registro) qs.set('registro', filtro.registro);
       const s = qs.toString();
       return request<OcorrenciaEpi[]>(`/api/cameras/ocorrencias${s ? `?${s}` : ''}`);
     },
@@ -7377,6 +7952,17 @@ export const api = {
         body: JSON.stringify({ ...credencial, trabalhadorId, score, imagemDigital: imagemDigital ?? null, localizacao }),
       });
     },
+    // Técnico da Ordem de Serviço (16/11/2026): só digital ou facial, em rotas próprias (a assinatura pelo login saiu).
+    // Dentro de uma integração quem assina é o instrutor; fora, o técnico/engenheiro de segurança da obra da OS.
+    assinarTecnicoOsDigital: async (documentoId: string, credencial: CredencialLeitura, trabalhadorId: string, score: number, imagemDigital?: string | null) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<DocumentoSignatario>(`/api/documentos/${documentoId}/tecnico-os/biometria-local`, {
+        method: 'POST',
+        body: JSON.stringify({ ...credencial, trabalhadorId, score, imagemDigital: imagemDigital ?? null, localizacao }),
+      });
+    },
+    assinarTecnicoOsFacial: (documentoId: string, foto: File) =>
+      enviarFotoAssinaturaFacial<DocumentoSignatario>(`/api/documentos/${documentoId}/tecnico-os/facial`, foto, true),
     // Assinatura via reconhecimento facial (Azure Face API) — multipart e offline-aware, mesmo
     // padrão de anexarFotoEvidencia (DDS): syncMutateMultipart enfileira sozinho se faltar conexão.
     autenticarFacial: async (documentoAssinaturaId: string, obraId: string, foto: File) => {
@@ -7532,7 +8118,23 @@ export const api = {
     atualizar: (id: string, acidente: AtualizarAcidentePayload) =>
       request<void>(`/api/acidentes/${id}`, { method: 'PUT', body: JSON.stringify(acidente) }),
     excluir: (id: string) => request<void>(`/api/acidentes/${id}`, { method: 'DELETE' }),
-    avancarStatus: (id: string) => request<void>(`/api/acidentes/${id}/avancar-status`, { method: 'POST' }),
+    // conclusaoInvestigacao: obrigatória ao concluir uma ocorrência sem ação do plano (o servidor decide).
+    avancarStatus: (id: string, conclusaoInvestigacao?: string | null) =>
+      request<void>(`/api/acidentes/${id}/avancar-status`, {
+        method: 'POST',
+        body: JSON.stringify({ conclusaoInvestigacao: conclusaoInvestigacao?.trim() || null }),
+      }),
+    aguardarLaudo: (id: string, observacao?: string | null) =>
+      request<void>(`/api/acidentes/${id}/aguardar-laudo`, {
+        method: 'POST',
+        body: JSON.stringify({ observacao: observacao?.trim() || null }),
+      }),
+    retomarInvestigacao: (id: string) => request<void>(`/api/acidentes/${id}/retomar-investigacao`, { method: 'POST' }),
+    atualizarProvidenciasObito: (id: string, itens: { codigo: string; concluida: boolean; observacao?: string | null }[]) =>
+      request<void>(`/api/acidentes/${id}/providencias-obito`, { method: 'PUT', body: JSON.stringify({ itens }) }),
+    // CPF/telefone em claro: exige acidente:ver_dados_pessoais e cada consulta fica auditada no servidor.
+    obterDadosPessoaisPessoaExterna: (id: string, pessoaId: string) =>
+      request<DadosPessoaisPessoaExterna>(`/api/acidentes/${id}/pessoas-externas/${pessoaId}/dados-pessoais`),
     // Ações do plano da ocorrência: concluir com descrição (quem conclui vem do login) e reabrir.
     concluirAcao: (acaoId: string, descricaoConclusao: string) =>
       request<void>(`/api/acidentes/acoes-plano/${acaoId}/concluir`, { method: 'POST', body: JSON.stringify({ descricaoConclusao }) }),
@@ -7712,15 +8314,6 @@ export const api = {
       }),
     retirarParticipante: (id: string, trabalhadorId: string) =>
       request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/participantes/${trabalhadorId}`, { method: 'DELETE' }),
-    registrarPeriodo: (id: string, etapaId: string, periodo: { data: string; inicio: string; fim: string }) =>
-      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/periodos`, {
-        method: 'POST',
-        body: JSON.stringify(periodo),
-      }),
-    removerPeriodo: (id: string, etapaId: string, periodoId: string) =>
-      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/periodos/${periodoId}`, {
-        method: 'DELETE',
-      }),
     // 409 devolve { erro, faltas[] } (instrutor, carga, fotos, assinaturas). etapaOrdem torna o reenvio idempotente.
     avancar: (id: string, etapaOrdem: number) =>
       request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapa-atual/avancar`, {
@@ -7728,6 +8321,19 @@ export const api = {
         body: JSON.stringify({ etapaOrdem }),
       }),
     ordensServico: (id: string) => request<OsIntegracao>(`/api/integracoes-atendimento/${id}/ordens-servico`),
+    // Intervalos das fotos automáticas e chave da integração em etapas (16/11/2026).
+    configuracao: () => request<ConfiguracaoIntegracao>('/api/integracoes-atendimento/configuracao'),
+    // O instrutor assina a etapa por digital (corpo da biometria local) ou facial (multipart). Respondem o atendimento atualizado.
+    // 400: pessoa lida não é o instrutor / rosto rejeitado ({erro, motivo}); 409: já assinou; 404: sem acesso.
+    assinarInstrutorDigital: async (id: string, etapaId: string, credencial: CredencialLeitura, corpo: CorpoDigitalInstrutor) => {
+      const localizacao = localizacaoParaCorpo(await obterLocalizacaoAssinatura());
+      return request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/instrutor/assinar/digital`, {
+        method: 'POST',
+        body: JSON.stringify({ ...credencial, trabalhadorId: corpo.trabalhadorId, score: corpo.score, imagemDigital: corpo.imagemDigital ?? null, localizacao }),
+      });
+    },
+    assinarInstrutorFacial: (id: string, etapaId: string, foto: File) =>
+      enviarFotoAssinaturaFacial<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/instrutor/assinar/facial`, foto),
     concluir: (id: string) =>
       request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/concluir`, { method: 'POST' }),
     // Registro "Integração realizada" do perfil (sem certificado). Falhou (ex.: 404 fora da obra): o bloco some.
@@ -7778,9 +8384,38 @@ export const api = {
     dimensionamento: {
       listar: (obraId?: string) =>
         request<DimensionamentoCipa[]>(`/api/dimensionamentocipa${obraId ? `?obraId=${obraId}` : ''}`),
+      situacaoObras: () => request<SituacaoCipaObra[]>('/api/dimensionamentocipa/situacao-obras'),
       criar: (dados: NovoDimensionamentoCipa) =>
         request<{ id: string }>('/api/dimensionamentocipa', { method: 'POST', body: JSON.stringify(dados) }),
       excluir: (id: string) => request<void>(`/api/dimensionamentocipa/${id}`, { method: 'DELETE' }),
+    },
+    urna: {
+      obter: (id: string) => requestOnline<UrnaCipa>(`/api/processoseleitoraiscipa/${id}/urna`),
+      foto: (id: string, candidatoId: string) => baixarBlobOuNulo(`/api/processoseleitoraiscipa/${id}/urna/candidatos/${candidatoId}/foto`),
+      abrir: (id: string) =>
+        requestOnline<{ totalEleitoresAptos: number }>(`/api/processoseleitoraiscipa/${id}/urna/abrir`, { method: 'POST' }),
+      encerrar: (id: string) =>
+        requestOnline<ResultadoEncerramentoCipa>(`/api/processoseleitoraiscipa/${id}/urna/encerrar`, { method: 'POST' }),
+      identificarDigital: (id: string, trabalhadorId: string, credencial: CredencialLeitura, score: number) =>
+        requestOnline<CedulaCipa>(`/api/processoseleitoraiscipa/${id}/urna/identificar/digital`, {
+          method: 'POST',
+          body: JSON.stringify({ trabalhadorId, ...credencial, score }),
+        }),
+      identificarFacial: (id: string, foto: File) => {
+        const formData = new FormData();
+        formData.append('foto', foto);
+        return enviarFormulario<CedulaCipa>(`/api/processoseleitoraiscipa/${id}/urna/identificar/facial`, formData);
+      },
+      liberarMesario: (id: string, trabalhadorId: string) =>
+        requestOnline<CedulaCipa>(`/api/processoseleitoraiscipa/${id}/urna/identificar/mesario`, {
+          method: 'POST',
+          body: JSON.stringify({ trabalhadorId }),
+        }),
+      votar: (id: string, cedulaId: string, candidatoId: string) =>
+        requestOnline<{ totalVotantes: number }>(`/api/processoseleitoraiscipa/${id}/urna/votar`, {
+          method: 'POST',
+          body: JSON.stringify({ cedulaId, candidatoId }),
+        }),
     },
     processosEleitorais: {
       listar: (obraId?: string) =>

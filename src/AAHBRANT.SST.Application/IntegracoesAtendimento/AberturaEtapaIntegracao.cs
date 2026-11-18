@@ -78,6 +78,11 @@ public static class AberturaEtapaIntegracao
         }
         db.SessoesTreinamento.Add(sessao);
         etapa.SessaoTreinamentoId = sessao.Id;
+
+        // Carga horária automática (16/11/2026): o período da etapa já nasce lançado (início = abertura, fim = início + carga
+        // prevista); o Avançar espera pelo fim. Sem carga prevista (0), o período é registrado sozinho ao avançar.
+        foreach (var p in PeriodosAutomaticosEtapa.Calcular(etapa.IniciadaEmUtc!.Value, etapa.CargaMinimaHoras))
+            db.PeriodosEtapaIntegracao.Add(PeriodosAutomaticosEtapa.Novo(atendimento, etapa, p));
     }
 
     // Abre, a partir da ordem informada, a primeira etapa que tem gente (as de curso sem ninguém viram Puladas).

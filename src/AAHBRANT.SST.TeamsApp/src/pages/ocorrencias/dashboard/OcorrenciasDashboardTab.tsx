@@ -119,7 +119,8 @@ export function OcorrenciasDashboardTab() {
   const totalAcidentes = acidentesFiltrados.filter((a) => a.tipo === TipoOcorrencia.Acidente).length;
   const totalIncidentes = acidentesFiltrados.filter((a) => a.tipo === TipoOcorrencia.Incidente).length;
   const totalQuaseAcidentes = acidentesFiltrados.filter((a) => a.tipo === TipoOcorrencia.QuaseAcidente).length;
-  const comAfastamento = acidentesFiltrados.filter((a) => a.houveAfastamento).length;
+  // Pessoa externa não entra nos indicadores de afastamento (NBR 14280).
+  const comAfastamento = acidentesFiltrados.filter((a) => a.houveAfastamento && a.tipo !== TipoOcorrencia.PessoaExterna).length;
   const naoConformidadesAbertas = naoConformidadesFiltradas.filter(
     (nc) => nc.status !== StatusNaoConformidade.Encerrada,
   ).length;
@@ -132,6 +133,7 @@ export function OcorrenciasDashboardTab() {
       [TipoOcorrencia.CondicaoInsegura]: paleta.neutro,
       [TipoOcorrencia.AtoInseguro]: paleta.neutro,
       [TipoOcorrencia.DoencaOcupacional]: paleta.ok,
+      [TipoOcorrencia.PessoaExterna]: paleta.pessoaExterna,
     }),
     [paleta],
   );

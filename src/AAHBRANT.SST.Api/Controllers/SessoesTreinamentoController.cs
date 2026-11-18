@@ -184,7 +184,8 @@ public class SessoesTreinamentoController : ControllerBase
         return NoContent();
     }
 
-    // AzureAdObjectId (claim "oid") identifica o instrutor/responsável que está encerrando a turma —
+    // 16/11/2026: o encerramento exige a assinatura biométrica do instrutor guardada (rotas instrutor/assinatura/*); o login não assina mais.
+    // AzureAdObjectId (claim "oid") identifica quem está encerrando a turma — antes assinava o certificado em nome dele,
     // usado para assinar o certificado automaticamente em nome dele (mesmo padrão de
     // AssinaturaController.AssinarComSessaoLogada). Nulo em dev com Entra ID desligado: a assinatura
     // do instrutor fica pendente e continua disponível manualmente na tela de detalhe da turma.
@@ -207,11 +208,55 @@ public class SessoesTreinamentoController : ControllerBase
         return NoContent();
     }
 
-    // O instrutor lê a digital uma vez no leitor da obra e assina todos os certificados da turma.
+    // Assinatura biométrica do instrutor ANTES de encerrar (16/11/2026): digital ou facial, uma por turma. O encerramento fica
+    // bloqueado até ela existir. 409 se já assinou; 400 se a pessoa lida não é o instrutor da turma ou a turma está encerrada.
+    [Authorize(Policy = "treinamento:criar")]
+    [HttpPost("{id:guid}/instrutor/assinatura/digital")]
+    public async Task<IActionResult> AssinarInstrutorDigital(Guid id, AssinaturaController.AutenticarBiometriaLocalRequestBody body, CancellationToken ct)
+    {
+        await GarantirAcessoTurmaIntegracaoAsync(id, null, ct);
+        try
+        {
+            return Ok(await _mediator.Send(new AssinarInstrutorTurmaPorDigitalCommand(id,
+                new AAHBRANT.SST.Application.SessoesTreinamento.DadosAssinaturaInstrutorDigital(body.DispositivoId, body.SegredoDispositivo ?? string.Empty, body.TrabalhadorId, body.Score,
+                    body.Desafio, body.AssinaturaLeitura, body.ImagemDigital, body.Localizacao?.ParaDominio())), ct));
+        }
+        catch (AAHBRANT.SST.Application.SessoesTreinamento.AssinaturaInstrutorJaRegistradaException ex)
+        {
+            return Conflict(new { erro = ex.Message });
+        }
+    }
+
+    [Authorize(Policy = "treinamento:criar")]
+    [HttpPost("{id:guid}/instrutor/assinatura/facial")]
+    [RequestSizeLimit(6_000_000)]
+    public async Task<IActionResult> AssinarInstrutorFacial(Guid id, [FromForm] AssinarInstrutorFacialRequestBody body, CancellationToken ct)
+    {
+        await GarantirAcessoTurmaIntegracaoAsync(id, null, ct);
+        await using var stream = new MemoryStream();
+        await body.Foto.CopyToAsync(stream, ct);
+        try
+        {
+            return Ok(await _mediator.Send(new AssinarInstrutorTurmaPorFacialCommand(id,
+                new AAHBRANT.SST.Application.SessoesTreinamento.DadosAssinaturaInstrutorFacial(stream.ToArray(), body.Foto.ContentType, body.ParaLocalizacao())), ct));
+        }
+        catch (AAHBRANT.SST.Application.SessoesTreinamento.AssinaturaInstrutorJaRegistradaException ex)
+        {
+            return Conflict(new { erro = ex.Message });
+        }
+        catch (AAHBRANT.SST.Application.Assinatura.Commands.RejeicaoFacialException ex)
+        {
+            return BadRequest(new { erro = ex.Message, motivo = ex.Motivo.ToString() });
+        }
+    }
+
+    // Turmas ANTERIORES a 16/11/2026, já encerradas: o instrutor lê a digital uma vez no leitor da obra e assina os certificados
+    // que ainda não têm a assinatura dele. Turma nova assina antes de encerrar (rotas acima).
     [Authorize(Policy = "treinamento:editar")]
     [HttpPost("{id:guid}/instrutor/assinar/biometria-local")]
     public async Task<IActionResult> AssinarComoInstrutor(Guid id, AssinaturaController.AutenticarBiometriaLocalRequestBody body, CancellationToken ct)
     {
+        await GarantirAcessoTurmaIntegracaoAsync(id, null, ct);
         var resultado = await _mediator.Send(new AssinarTurmaComoInstrutorCommand(
             id, body.DispositivoId, body.SegredoDispositivo ?? string.Empty, body.TrabalhadorId, body.Score,
             body.Desafio, body.AssinaturaLeitura, HttpContext.Connection.RemoteIpAddress?.ToString(), body.ImagemDigital,
@@ -240,6 +285,19 @@ public class RegistrarPresencaSessaoTreinamentoRequestBody
     // 05/11: evidência da presença — imagem lida pelo leitor e localização do aparelho.
     public byte[]? ImagemDigital { get; set; }
     public AssinaturaController.LocalizacaoAssinaturaBody? Localizacao { get; set; }
+}
+
+// Assinatura facial do instrutor: só a foto (o servidor identifica no grupo da obra do instrutor) e a localização do aparelho.
+public class AssinarInstrutorFacialRequestBody
+{
+    public IFormFile Foto { get; set; } = null!;
+    public AAHBRANT.SST.Domain.Enums.StatusLocalizacaoAssinatura? LocalizacaoStatus { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public double? PrecisaoMetros { get; set; }
+
+    public AAHBRANT.SST.Application.Assinatura.LocalizacaoAssinatura? ParaLocalizacao() =>
+        LocalizacaoStatus is { } status ? new AAHBRANT.SST.Application.Assinatura.LocalizacaoAssinatura(status, Latitude, Longitude, PrecisaoMetros) : null;
 }
 
 public class RegistrarPresencaFacialSessaoTreinamentoRequestBody

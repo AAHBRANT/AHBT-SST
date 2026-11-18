@@ -54,7 +54,7 @@ public class AzureOpenAiAnalistaPlanoOcorrencia : IAnalistaPlanoOcorrencia
           medidas preventivas práticas. Não cite número de norma nem item.
         """;
 
-    private static readonly object Schema = new
+    internal static readonly object Schema = new
     {
         type = "object",
         additionalProperties = false,
@@ -88,7 +88,10 @@ public class AzureOpenAiAnalistaPlanoOcorrencia : IAnalistaPlanoOcorrencia
                         basePerigo = new { type = new[] { "string", "null" } },
                         baseControle = new { type = new[] { "string", "null" } },
                         baseReferencia = new { type = new[] { "string", "null" } },
-                        vinculoTipo = new { type = new[] { "string", "null" }, @enum = new object?[] { "Inspecao", "Treinamento", "EntregaEpi", null } },
+                        // Sem "enum": o Claude recusa o schema quando o enum mistura valores com null
+                        // ("Enum value 'Inspecao' does not match declared type"). Os valores válidos
+                        // ficam nas instruções e o Resolver do handler descarta qualquer outro (default).
+                        vinculoTipo = new { type = new[] { "string", "null" } },
                         vinculoAlvo = new { type = new[] { "string", "null" } },
                     },
                 },

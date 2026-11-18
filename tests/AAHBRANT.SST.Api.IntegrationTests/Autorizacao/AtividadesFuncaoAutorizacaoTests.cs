@@ -7,8 +7,8 @@ using Microsoft.AspNetCore.Mvc.Routing;
 
 namespace AAHBRANT.SST.Api.IntegrationTests.Autorizacao;
 
-// Atividades por função na OS (10/11/2026): só o Engenheiro de Segurança decide; técnico não chega ao
-// handler (a policy "perfil:engenheiro-seguranca" nega). Nenhum endpoint anônimo e sem DELETE.
+// Atividades por função na OS (10/11/2026; aberto ao Técnico em 17/11/2026): Técnico, Engenheiro de
+// Segurança ou Administrador decidem (policy "perfil:decisor-sugestoes"; o handler confere a obra). Nenhum endpoint anônimo e sem DELETE.
 public class AtividadesFuncaoAutorizacaoTests
 {
     private static IEnumerable<MethodInfo> Acoes() =>
@@ -18,8 +18,8 @@ public class AtividadesFuncaoAutorizacaoTests
         typeof(AtividadesFuncaoController).GetMethod(acao)!.GetCustomAttributes<AuthorizeAttribute>().Single().Policy!;
 
     [Fact]
-    public void DecidirExigeEngenheiroDeSeguranca()
-        => Assert.Equal(PoliticasAutorizacao.SomenteEngenheiroSeguranca, Politica(nameof(AtividadesFuncaoController.Decidir)));
+    public void DecidirExigeDecisorDeSugestoes()
+        => Assert.Equal(PoliticasAutorizacao.DecisorDeSugestoes, Politica(nameof(AtividadesFuncaoController.Decidir)));
 
     [Fact]
     public void MatrizExigeRiscoVer_ESugerirExigeRiscoEditar()

@@ -18,6 +18,13 @@ public class DimensionamentoCipaController : ControllerBase
     public async Task<IActionResult> Listar([FromQuery] Guid? obraId, CancellationToken ct)
         => Ok(await _mediator.Send(new ListarDimensionamentosCipaQuery(obraId), ct));
 
+    // Situação da CIPA por obra: empregados ativos contados do cadastro + último dimensionamento,
+    // mandato vigente e eleição em andamento. Ver ObterSituacaoCipaPorObraQuery.
+    [Authorize(Policy = "cipa:ver")]
+    [HttpGet("situacao-obras")]
+    public async Task<IActionResult> SituacaoPorObra(CancellationToken ct)
+        => Ok(await _mediator.Send(new ObterSituacaoCipaPorObraQuery(), ct));
+
     [Authorize(Policy = "cipa:gerenciar")]
     [HttpPost]
     public async Task<IActionResult> Criar(CriarDimensionamentoCipaCommand command, CancellationToken ct)

@@ -122,10 +122,22 @@ public class IntegracaoAtendimentoEtapasTests
         {
             var doc = documentos.Single(d => d.EntidadeId == t.Id);
             var assinaturas = await c.Db.DocumentoSignatarios.Where(s => s.DocumentoAssinaturaId == doc.Id).ToListAsync();
-            var assinatura = Assert.Single(assinaturas);
-            Assert.Equal(t.TrabalhadorId, assinatura.TrabalhadorId);
-            Assert.Equal(MetodoAutenticacaoAssinatura.Biometria, assinatura.MetodoAutenticacao);
+            // Duas assinaturas: a do participante e a do instrutor (biometria guardada, papel Instrutor). Nenhuma pelo login.
+            Assert.Equal(2, assinaturas.Count);
+            var doParticipante = Assert.Single(assinaturas, s => s.TrabalhadorId == t.TrabalhadorId);
+            Assert.Equal(MetodoAutenticacaoAssinatura.Biometria, doParticipante.MetodoAutenticacao);
+            var doInstrutor = Assert.Single(assinaturas, s => s.TrabalhadorId == c.Instrutor.Id);
+            Assert.Equal(PapelAssinatura.Instrutor, doInstrutor.Papel);
+            Assert.Equal(MetodoAutenticacaoAssinatura.Biometria, doInstrutor.MetodoAutenticacao);
+            Assert.Equal(new byte[] { 9, 8, 7 }, doInstrutor.FotoEvidenciaConteudo);
+            Assert.Equal("Tablet da obra", doInstrutor.UserAgent);
+            Assert.Equal(StatusLocalizacaoAssinatura.Capturada, doInstrutor.LocalizacaoStatus);
+            Assert.DoesNotContain(assinaturas, s => s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada);
         }
+        // Depois de copiada para os certificados, a imagem sai da assinatura guardada (o hash permanece).
+        var guardada = await c.Db.AssinaturasInstrutorSessaoTreinamento.AsNoTracking().SingleAsync(a => a.SessaoTreinamentoId == etapa.SessaoTreinamentoId);
+        Assert.Null(guardada.EvidenciaConteudo);
+        Assert.Equal("HASH-INSTRUTOR", guardada.EvidenciaHash);
     }
 
     [Fact]

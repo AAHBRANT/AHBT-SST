@@ -103,7 +103,12 @@ public class ExportarInvestigacaoOcorrenciaPdfQueryHandler : IRequestHandler<Exp
             rastreio.UrlValidacaoPublica,
             rastreio.QrCodePng,
             rastreio.TemAssinatura,
-            a.RegioesCorpo);
+            a.RegioesCorpo,
+            a.Testemunhas.Select(t => t.Nome).ToList(),
+            a.PessoasExternas.Select(p => new InvestigacaoOcorrenciaPdfPessoaExternaModelo(
+                p.Nome, DescreverVinculo(p.Vinculo), p.Empresa, p.CpfMascarado, p.Idade,
+                DescreverResultado(p.Resultado), p.Lesao, p.Atendimento)).ToList(),
+            a.ConclusaoInvestigacao);
 
         var pdf = _pdf.Gerar(modelo);
         await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);
@@ -116,7 +121,25 @@ public class ExportarInvestigacaoOcorrenciaPdfQueryHandler : IRequestHandler<Exp
         StatusAcidente.Registrado => "Registrada",
         StatusAcidente.EmInvestigacao => "Em investigação",
         StatusAcidente.Concluido => "Investigação concluída",
+        StatusAcidente.AguardandoLaudo => "Aguardando laudo",
         _ => status.ToString(),
+    };
+
+    private static string DescreverVinculo(VinculoPessoaExterna vinculo) => vinculo switch
+    {
+        VinculoPessoaExterna.Terceiro => "Terceiro",
+        VinculoPessoaExterna.Visitante => "Visitante",
+        VinculoPessoaExterna.Transeunte => "Transeunte",
+        VinculoPessoaExterna.Outro => "Outro",
+        _ => vinculo.ToString(),
+    };
+
+    private static string DescreverResultado(ResultadoPessoaExterna resultado) => resultado switch
+    {
+        ResultadoPessoaExterna.SemLesao => "Sem lesão",
+        ResultadoPessoaExterna.Lesao => "Com lesão",
+        ResultadoPessoaExterna.Obito => "Óbito",
+        _ => resultado.ToString(),
     };
 
     private static string DescreverGravidade(GravidadeAcidente gravidade) => gravidade switch

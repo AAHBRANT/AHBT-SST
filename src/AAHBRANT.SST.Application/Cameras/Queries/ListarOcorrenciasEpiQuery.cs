@@ -10,7 +10,31 @@ public record ListarOcorrenciasEpiQuery(
     Guid? CameraId,
     DateTime? DeUtc,
     DateTime? AteUtc,
-    SituacaoOcorrenciaEpi? Situacao) : IRequest<List<OcorrenciaEpiDto>>;
+    SituacaoOcorrenciaEpi? Situacao,
+    TipoOcorrenciaEpi? Tipo = null,
+    RegistroOcorrenciaEpi? Registro = null) : IRequest<List<OcorrenciaEpiDto>>;
+
+// Filtro "Registro" da aba de alertas. Todos (padrão) = confirmadas de qualquer câmera e, em modo sombra, também as não confirmadas
+// (para conferência); as não confirmadas de câmera que avisa ficam de fora. Sombra = gravadas por câmera em modo sombra (nunca foram
+// ao Telegram). Aviso = gravadas por câmera avisando e confirmadas (as anteriores à Fase 2 contam como confirmadas).
+// NaoConfirmadas = só as que não confirmaram, de qualquer câmera.
+public enum RegistroOcorrenciaEpi
+{
+    Todos = 0,
+    Sombra = 1,
+    Aviso = 2,
+    NaoConfirmadas = 3,
+}
+
+// Filtro "Tipo" da aba de alertas: o que motivou a ocorrência. Cor = aviso de capacete de cor diferente da função e
+// também ocorrência irregular em que a cor vista difere da esperada (as duas cores conhecidas).
+public enum TipoOcorrenciaEpi
+{
+    Capacete = 1,
+    Colete = 2,
+    Oculos = 3,
+    Cor = 4,
+}
 
 // Sem a foto: a lista não pode carregar os bytes de até 200 imagens. A foto vem por
 // ObterFotoOcorrenciaEpiQuery, uma por vez.
@@ -35,7 +59,24 @@ public record OcorrenciaEpiDto(
     double? ConfiancaIdentificacao = null,
     // Repetições da mesma irregularidade somadas nesta ocorrência (1 = vista uma única vez) e a última vez.
     int VezesVista = 1,
-    DateTime? UltimaVezEmUtc = null);
+    DateTime? UltimaVezEmUtc = null,
+    int SemOculos = 0,
+    // Cor vista pela câmera e a esperada para a função (nulo = não distinguida / sem identificação / função sem cor).
+    CorCapacete? CorCapaceteVista = null,
+    CorCapacete? CorCapaceteEsperada = null,
+    // true = ocorrência só de cor do capacete diferente da função (gravidade menor, sem Telegram).
+    bool AvisoCorCapacete = false,
+    // Função do trabalhador, quando identificado.
+    string? FuncaoNome = null,
+    // Pessoas da ocorrência cujo item não pôde ser julgado (informativo; 0 em ocorrências antigas).
+    int CapaceteNaoAvaliavel = 0,
+    int ColeteNaoAvaliavel = 0,
+    int OculosNaoAvaliavel = 0,
+    // Confirmação e modo sombra (Fase 2). Confirmada = a falta de EPI durou o tempo mínimo; SegundosObservados = quanto tempo ficou
+    // à vista até confirmar (ou até a última vista, se não confirmou); nulo nas ocorrências anteriores à Fase 2.
+    bool Confirmada = true,
+    bool Sombra = false,
+    int? SegundosObservados = null);
 
 public class ListarOcorrenciasEpiQueryHandler : IRequestHandler<ListarOcorrenciasEpiQuery, List<OcorrenciaEpiDto>>
 {
@@ -52,6 +93,23 @@ public class ListarOcorrenciasEpiQueryHandler : IRequestHandler<ListarOcorrencia
         if (request.DeUtc is { } de) query = query.Where(o => o.RecebidaEmUtc >= de);
         if (request.AteUtc is { } ate) query = query.Where(o => o.RecebidaEmUtc <= ate);
         if (request.Situacao is { } situacao) query = query.Where(o => o.Situacao == situacao);
+        query = request.Registro switch
+        {
+            RegistroOcorrenciaEpi.Sombra => query.Where(o => o.Sombra),
+            RegistroOcorrenciaEpi.Aviso => query.Where(o => !o.Sombra && o.Confirmada),
+            RegistroOcorrenciaEpi.NaoConfirmadas => query.Where(o => !o.Confirmada),
+            _ => query.Where(o => o.Confirmada || o.Sombra),
+        };
+        if (request.Tipo is { } tipo)
+            query = tipo switch
+            {
+                TipoOcorrenciaEpi.Capacete => query.Where(o => o.SemCapacete > 0),
+                TipoOcorrenciaEpi.Colete => query.Where(o => o.SemColete > 0),
+                TipoOcorrenciaEpi.Oculos => query.Where(o => o.SemOculos > 0),
+                TipoOcorrenciaEpi.Cor => query.Where(o => o.AvisoCorCapacete
+                    || (o.CorCapaceteVista != null && o.CorCapaceteEsperada != null && o.CorCapaceteVista != o.CorCapaceteEsperada)),
+                _ => query,
+            };
 
         // A foto não entra na projeção. O escopo por obra vem do filtro da própria ocorrência.
         var itens = await query
@@ -62,6 +120,9 @@ public class ListarOcorrenciasEpiQueryHandler : IRequestHandler<ListarOcorrencia
                 o.Id, o.CameraId, o.ObraId, o.CapturadaEmUtc, o.RecebidaEmUtc, o.PessoasNaCena,
                 o.SemCapacete, o.SemColete, o.Confianca, o.AlertaEnviado, o.TrabalhadorId, o.Situacao,
                 o.IdentificadoPorRosto, o.ConfiancaIdentificacao, o.VezesVista, o.UltimaVezEmUtc,
+                o.SemOculos, o.CorCapaceteVista, o.CorCapaceteEsperada, o.AvisoCorCapacete,
+                o.CapaceteNaoAvaliavel, o.ColeteNaoAvaliavel, o.OculosNaoAvaliavel,
+                o.Confirmada, o.Sombra, o.SegundosObservados,
             })
             .ToListAsync(ct);
 
@@ -76,7 +137,12 @@ public class ListarOcorrenciasEpiQueryHandler : IRequestHandler<ListarOcorrencia
         var obras = await _db.Obras.IgnoreQueryFilters().AsNoTracking()
             .Where(o => obraIds.Contains(o.Id)).Select(o => new { o.Id, o.Nome }).ToDictionaryAsync(o => o.Id, o => o.Nome, ct);
         var trabalhadores = await _db.Trabalhadores.IgnoreQueryFilters().AsNoTracking()
-            .Where(t => trabalhadorIds.Contains(t.Id)).Select(t => new { t.Id, t.Nome }).ToDictionaryAsync(t => t.Id, t => t.Nome, ct);
+            .Where(t => trabalhadorIds.Contains(t.Id)).Select(t => new { t.Id, t.Nome, t.FuncaoId }).ToListAsync(ct);
+        // Função em consulta própria (sem JOIN): função excluída continua aparecendo no histórico.
+        var funcaoIds = trabalhadores.Select(t => t.FuncaoId).Distinct().ToList();
+        var funcoes = await _db.Funcoes.IgnoreQueryFilters().AsNoTracking()
+            .Where(f => funcaoIds.Contains(f.Id)).Select(f => new { f.Id, f.Nome }).ToDictionaryAsync(f => f.Id, f => f.Nome, ct);
+        var trabalhadorPorId = trabalhadores.ToDictionary(t => t.Id);
 
         return itens.Select(o => new OcorrenciaEpiDto(
             o.Id,
@@ -92,11 +158,22 @@ public class ListarOcorrenciasEpiQueryHandler : IRequestHandler<ListarOcorrencia
             o.Confianca,
             o.AlertaEnviado,
             o.TrabalhadorId,
-            o.TrabalhadorId is { } tid ? trabalhadores.GetValueOrDefault(tid) : null,
+            o.TrabalhadorId is { } tid && trabalhadorPorId.TryGetValue(tid, out var trab) ? trab.Nome : null,
             o.Situacao,
             o.IdentificadoPorRosto,
             o.ConfiancaIdentificacao,
             o.VezesVista,
-            o.UltimaVezEmUtc)).ToList();
+            o.UltimaVezEmUtc,
+            o.SemOculos,
+            o.CorCapaceteVista,
+            o.CorCapaceteEsperada,
+            o.AvisoCorCapacete,
+            o.TrabalhadorId is { } fid && trabalhadorPorId.TryGetValue(fid, out var trabFunc) ? funcoes.GetValueOrDefault(trabFunc.FuncaoId) : null,
+            o.CapaceteNaoAvaliavel,
+            o.ColeteNaoAvaliavel,
+            o.OculosNaoAvaliavel,
+            o.Confirmada,
+            o.Sombra,
+            o.SegundosObservados)).ToList();
     }
 }

@@ -66,7 +66,7 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
             .Where(s => s.DocumentoAssinaturaId == documento.Id)
             .OrderBy(s => s.AssinadoEm)
             .Join(_db.Trabalhadores.IgnoreQueryFilters(), s => s.TrabalhadorId, t => t.Id,
-                (s, t) => new { t.Id, t.Nome, s.MetodoAutenticacao, s.AssinadoEm, s.IpAddress })
+                (s, t) => new { t.Id, t.Nome, s.MetodoAutenticacao, s.AssinadoEm, s.IpAddress, s.Papel })
             .ToListAsync(ct);
         var signatariosDto = signatarios
             .OrderBy(s => s.AssinadoEm)
@@ -75,9 +75,9 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
 
         if (signatarios.Count == 0)
             throw new InvalidOperationException("Documento sem nenhuma assinatura não pode ser finalizado.");
-        // A OS só fecha com as duas assinaturas; a do técnico (sessão logada) é sempre a segunda.
+        // A OS só fecha com as duas assinaturas; a do técnico (biometria, papel TecnicoSegurancaOs; OS antigas: sessão logada) é sempre a segunda.
         if (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura
-            && !signatarios.Any(s => s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada))
+            && !signatarios.Any(s => s.Papel == PapelAssinatura.TecnicoSegurancaOs || s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada))
             throw new InvalidOperationException("A Ordem de Serviço só é finalizada depois da assinatura do técnico de segurança.");
 
         var hash = HashConteudoDocumentoCalculador.Calcular(documento.EntidadeTipo, documento.EntidadeId, signatariosDto);

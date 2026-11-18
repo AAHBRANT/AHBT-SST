@@ -77,12 +77,14 @@ public class ObterEntradaIntegracaoQueryHandler : IRequestHandler<ObterEntradaIn
         var instrutoresTrab = await _db.Trabalhadores.IgnoreQueryFilters()
             .Where(t => idsInstr.Contains(t.Id) && t.Ativo && t.Situacao == SituacaoTrabalhador.Ativo)
             .Select(t => new { t.Id, t.Nome, t.ObraId }).ToListAsync(ct);
+        var (instrComDigital, instrComFacial) = await BiometriaInstrutor.CarregarAsync(_db, idsInstr, ct);
         var instrutores = (from p in perfis
                            join t in instrutoresTrab on p.TrabalhadorId equals t.Id
                            where t.ObraId == request.ObraId || (p.PodeAssinarEmOutrasObras && p.AutorizadoOutrasObrasEm != null)
                            orderby t.Nome
                            select new InstrutorIntegracaoDto(t.Id, t.Nome,
-                               AAHBRANT.SST.Application.Instrutores.DescricaoInstrutor.Registro(p.Conselho, p.NumeroRegistro, p.UfRegistro)))
+                               AAHBRANT.SST.Application.Instrutores.DescricaoInstrutor.Registro(p.Conselho, p.NumeroRegistro, p.UfRegistro),
+                               instrComDigital.Contains(t.Id), instrComFacial.Contains(t.Id)))
             .ToList();
         if (instrutores.Count == 0)
             bloqueios.Add(new("InstrutorNaoCadastrado", "Cadastre o perfil de instrutor de quem vai conduzir a integração.", "/pessoas"));
@@ -95,8 +97,29 @@ public class ObterEntradaIntegracaoQueryHandler : IRequestHandler<ObterEntradaIn
                     $"O curso {CalculadoraEtapasIntegracao.NormaDoTipo(tipo)} não está cadastrado no catálogo de cursos.", "/gestao-sst?secao=treinamentos"));
 
         var podeIniciar = bloqueios.Count == 0 && emAndamento is null && candidatos.Any(c => !c.JaParticipa);
-        return new EntradaIntegracaoDto(habilitada, request.ObraId, obraNome, emAndamento, podeIniciar, bloqueios, candidatos, instrutores);
+        return new EntradaIntegracaoDto(habilitada, request.ObraId, obraNome, emAndamento, podeIniciar, bloqueios, candidatos, instrutores,
+            ConfiguracaoIntegracao.FotosAutomaticas(_opcoes.Value));
     }
+}
+
+// Configuração da tela (sem obra): chave de habilitação e tempos das fotos automáticas.
+public record ObterConfiguracaoIntegracaoQuery : IRequest<ConfiguracaoIntegracaoDto>;
+
+public class ObterConfiguracaoIntegracaoQueryHandler(IOptions<OpcoesIntegracao> opcoes) : IRequestHandler<ObterConfiguracaoIntegracaoQuery, ConfiguracaoIntegracaoDto>
+{
+    public Task<ConfiguracaoIntegracaoDto> Handle(ObterConfiguracaoIntegracaoQuery request, CancellationToken ct) =>
+        Task.FromResult(new ConfiguracaoIntegracaoDto(opcoes.Value.AtendimentoHabilitado, ConfiguracaoIntegracao.FotosAutomaticas(opcoes.Value)));
+}
+
+public static class ConfiguracaoIntegracao
+{
+    // Valores fora de 5 s a 1 h (ou não positivos) voltam ao padrão: configuração errada não pode travar a captura.
+    public static FotosAutomaticasIntegracaoDto FotosAutomaticas(OpcoesIntegracao opcoes) => new(
+        Valido(opcoes.FotosAutomaticas.PrimeiraAposSegundos, 60),
+        Valido(opcoes.FotosAutomaticas.SegundaAposSegundos, 300),
+        Valido(opcoes.FotosAutomaticas.TerceiraAposSegundos, 300));
+
+    private static int Valido(int valor, int padrao) => valor is >= 5 and <= 3600 ? valor : padrao;
 }
 
 public record ObterIntegracaoQuery(Guid IntegracaoId, string? AzureAdObjectId = null, bool AutenticacaoHabilitada = false)
@@ -111,7 +134,25 @@ public class ObterIntegracaoQueryHandler : IRequestHandler<ObterIntegracaoQuery,
     public async Task<IntegracaoAtendimentoDto?> Handle(ObterIntegracaoQuery request, CancellationToken ct)
     {
         // Atendimento de outra obra fora do escopo do usuário (ou sem vínculo do técnico): 404.
-        await AutorizacaoIntegracaoAtendimento.CarregarAsync(_db, request.IntegracaoId, request.AzureAdObjectId, request.AutenticacaoHabilitada, ct);
+        var (at, _) = await AutorizacaoIntegracaoAtendimento.CarregarAsync(_db, request.IntegracaoId, request.AzureAdObjectId, request.AutenticacaoHabilitada, ct);
+        // Autocorreção idempotente (17/11/2026): a carga da etapa em andamento (aberta na regra nova) é sempre a automática, contada
+        // desde a abertura; na primeira leitura de uma etapa ajustada à mão ela volta ao automático, nas seguintes nada muda. Não mexe
+        // se a turma da etapa já foi concluída (igual ao Avançar). Concorrência: duas abas lendo ao mesmo tempo gravariam períodos
+        // em dobro; por isso a correção também incrementa at.Versao (token de concorrência) e a gravação perdedora falha com
+        // DbUpdateConcurrencyException, que é engolida aqui: a tela segue com o que a gravação vencedora deixou no banco.
+        if (at.Status == StatusIntegracaoAtendimento.EmAndamento)
+        {
+            var etapa = await _db.IntegracaoEtapas.FirstOrDefaultAsync(
+                e => e.IntegracaoAtendimentoId == at.Id && e.Ordem == at.EtapaAtualOrdem && e.Status == StatusEtapaIntegracao.EmAndamento, ct);
+            var turmaConcluida = etapa?.SessaoTreinamentoId is { } sessaoId
+                && await _db.SessoesTreinamento.AnyAsync(s => s.Id == sessaoId && s.Status == StatusSessaoTreinamento.Concluida, ct);
+            if (etapa is not null && !turmaConcluida && await PeriodosAutomaticosEtapa.GarantirAsync(_db, at, etapa, ct))
+            {
+                at.Versao++;
+                try { await _db.SaveChangesAsync(ct); }
+                catch (DbUpdateConcurrencyException) { /* outra leitura já corrigiu: a Montagem abaixo lê o estado gravado */ }
+            }
+        }
         return await MontadorIntegracaoAtendimento.MontarAsync(_db, request.IntegracaoId, ct);
     }
 }

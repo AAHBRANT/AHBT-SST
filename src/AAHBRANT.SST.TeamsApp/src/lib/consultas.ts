@@ -46,6 +46,8 @@ export const useAsos = () => useLista(chaves.asos, () => api.asos.listar());
 const chavesCameras = {
   cameras: (obraId?: string) => ['cameras', 'lista', obraId ?? 'todas'] as const,
   ocorrenciasEpi: (filtro: FiltroOcorrenciasEpi) => ['cameras', 'ocorrencias', filtro] as const,
+  agentes: (obraId?: string) => ['cameras', 'agentes', obraId ?? 'todas'] as const,
+  equipamentos: (obraId?: string) => ['cameras', 'equipamentos', obraId ?? 'todas'] as const,
 };
 
 export function useAcessoCamerasEstado(): { permitido: boolean; carregando: boolean } {
@@ -59,6 +61,22 @@ export function useAcessoCamerasEstado(): { permitido: boolean; carregando: bool
 }
 
 export const useAcessoCameras = (): boolean => useAcessoCamerasEstado().permitido;
+
+// Agentes e equipamentos da câmera IP. Os agentes recarregam sozinhos: o "último contato" é o que diz se o PC da obra está vivo.
+export const useAgentesCamera = (obraId?: string, habilitado = true) =>
+  useQuery({
+    queryKey: chavesCameras.agentes(obraId),
+    queryFn: () => api.cameras.listarAgentes(obraId),
+    enabled: habilitado,
+    refetchInterval: 30_000,
+  });
+export const useEquipamentosCamera = (obraId?: string, habilitado = true) =>
+  useQuery({
+    queryKey: chavesCameras.equipamentos(obraId),
+    queryFn: () => api.cameras.listarEquipamentos(obraId),
+    enabled: habilitado,
+    refetchInterval: 30_000,
+  });
 
 export const useCameras = (obraId?: string) =>
   useQuery({ queryKey: chavesCameras.cameras(obraId), queryFn: () => api.cameras.listar(obraId), refetchInterval: 30_000 });

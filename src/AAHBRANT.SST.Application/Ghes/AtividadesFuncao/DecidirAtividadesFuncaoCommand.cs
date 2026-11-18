@@ -12,14 +12,15 @@ namespace AAHBRANT.SST.Application.Ghes.AtividadesFuncao;
 
 public record DecisaoAtividadeFuncao(Guid AtividadeId, Guid FuncaoId, bool Executa);
 
-// Engenheiro de Segurança confirma (Executa = true → Validada) ou descarta (false → Descartada) os pares
+// Técnico, Engenheiro de Segurança ou Administrador (da obra) confirma (Executa = true → Validada) ou descarta (false → Descartada) os pares
 // atividade × função. Quem decidiu vem do token (preenchido pelo controller), nunca do corpo. Cria o
 // registro quando ainda não existe (Origem Manual); descartar não apaga nada.
-// ExigirEngenheiroNaObra: a decisão libera a OS, então só vale para quem é Engenheiro de Segurança NA obra
-// da rota (vínculo ativo com a obra ou global). A policy de perfil sozinha aceita engenheiro de qualquer
-// obra. O controller desliga a checagem só com o Entra ID desligado (dev, sem identidade real).
+// ExigirPerfilNaObra: a decisão libera a OS, então só vale para quem é Técnico, Engenheiro de Segurança ou Administrador NA
+// obra da rota (vínculo ativo com a obra ou global); abrir ao técnico e ao administrador foi decisão do usuário (17/11/2026) e
+// precisa de validação do QSMS/jurídico. A policy de perfil sozinha aceita o perfil em qualquer obra. O
+// controller desliga a checagem só com o Entra ID desligado (dev, sem identidade real).
 public record DecidirAtividadesFuncaoCommand(Guid ObraId, List<DecisaoAtividadeFuncao> Itens, Guid? UsuarioId, string? NomeUsuario,
-    bool ExigirEngenheiroNaObra) : IRequest<int>;
+    bool ExigirPerfilNaObra) : IRequest<int>;
 
 public class DecidirAtividadesFuncaoCommandValidator : AbstractValidator<DecidirAtividadesFuncaoCommand>
 {
@@ -48,8 +49,7 @@ public class DecidirAtividadesFuncaoCommandHandler : IRequestHandler<DecidirAtiv
 
     public async Task<int> Handle(DecidirAtividadesFuncaoCommand request, CancellationToken ct)
     {
-        if (request.ExigirEngenheiroNaObra && !await EhEngenheiroNaObraAsync(request, ct))
-            throw new AcessoNegadoException("Só o Engenheiro de Segurança desta obra pode confirmar as atividades da função.");
+        await DecisaoTecnicaNaObra.GarantirAsync(_db, request.ObraId, request.UsuarioId, request.ExigirPerfilNaObra, ct);
 
         // Mesmo par repetido no lote: vale o último.
         var itens = request.Itens.GroupBy(i => (i.AtividadeId, i.FuncaoId)).Select(g => g.Last()).ToList();
@@ -113,15 +113,6 @@ public class DecidirAtividadesFuncaoCommandHandler : IRequestHandler<DecidirAtiv
             await ConflitoAtividadesFuncao.SalvarAsync(_db, ct);
         }
         return alteradas.Count;
-    }
-
-    // Administrador não entra: a policy de perfil também não o aceita (PermissaoAuthorizationHandler).
-    private async Task<bool> EhEngenheiroNaObraAsync(DecidirAtividadesFuncaoCommand request, CancellationToken ct)
-    {
-        if (request.UsuarioId is not { } usuarioId) return false;
-        return await _db.UsuariosPerfilObra.AnyAsync(v => v.UsuarioId == usuarioId && v.Ativo
-            && (v.ObraId == null || v.ObraId == request.ObraId)
-            && v.PerfilAcesso != null && v.PerfilAcesso.Ativo && v.PerfilAcesso.Tipo == TipoPerfilAcesso.EngenheiroSeguranca, ct);
     }
 }
 

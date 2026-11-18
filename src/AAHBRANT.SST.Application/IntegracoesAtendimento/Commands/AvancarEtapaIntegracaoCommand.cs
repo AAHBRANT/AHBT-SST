@@ -8,8 +8,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AAHBRANT.SST.Application.IntegracoesAtendimento.Commands;
 
-// "Avançar" a etapa de curso em andamento (decisão de 11/11/2026). Exige instrutor, carga lançada >= mínimo (0 não
-// trava), 3 fotos e a assinatura biométrica de todos os participantes da etapa. Então grava a carga e a data (último dia)
+// "Avançar" a etapa de curso em andamento (decisão de 11/11/2026). Exige instrutor com assinatura biométrica guardada (16/11),
+// carga automática >= mínimo (contada desde a abertura; o Avançar só libera depois do fim do período; sem carga prevista o período
+// abertura->agora é calculado na avaliação e gravado só quando o Avançar conclui), 3 fotos e a assinatura biométrica de
+// todos os participantes da etapa. Então grava a carga e a data (último dia)
 // na turma, encerra a turma (um certificado por pessoa, cada um com o próprio documento de assinatura), marca a etapa
 // Concluída e abre a próxima que tem gente. Sem volta: etapa concluída é imutável.
 //
@@ -62,8 +64,19 @@ public class AvancarEtapaIntegracaoCommandHandler : IRequestHandler<AvancarEtapa
             ?? throw new InvalidOperationException("A turma desta etapa não foi encontrada.");
         var participantesTurma = await _db.ParticipantesSessaoTreinamento
             .Where(p => p.SessaoTreinamentoId == sessao.Id && p.Ativo).ToListAsync(ct);
-        var periodos = await _db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == atual.Id).ToListAsync(ct);
+        // Carga automática (17/11/2026): corrige períodos manuais (só de etapas abertas na regra nova) quando há carga prevista.
+        if (sessao.Status != StatusSessaoTreinamento.Concluida && await PeriodosAutomaticosEtapa.GarantirAsync(_db, at, atual, ct))
+            await _db.SaveChangesAsync(ct);
+        var periodosGravados = await _db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == atual.Id).ToListAsync(ct);
+        // Sem carga prevista (0): abertura -> agora, calculado em memória; só é gravado se este Avançar concluir (abaixo).
+        var periodosCargaZero = sessao.Status != StatusSessaoTreinamento.Concluida
+            ? PeriodosAutomaticosEtapa.PeriodosCargaZeroAteAgora(at, atual, periodosGravados)
+            : null;
+        IReadOnlyCollection<PeriodoEtapaIntegracao> periodos = periodosCargaZero ?? periodosGravados;
         var minutos = periodos.Sum(p => p.Minutos);
+        var jaAssinouInstrutor = await _db.AssinaturasInstrutorSessaoTreinamento.AnyAsync(a => a.SessaoTreinamentoId == sessao.Id, ct);
+        var (comDigital, comFacial) = await BiometriaInstrutor.CarregarAsync(_db, [at.InstrutorTrabalhadorId], ct);
+        var instrutor = new SituacaoInstrutorEtapa(jaAssinouInstrutor, comDigital.Contains(at.InstrutorTrabalhadorId), comFacial.Contains(at.InstrutorTrabalhadorId));
         var fotos = await _db.FotosEvidenciaSessaoTreinamento.CountAsync(f => f.SessaoTreinamentoId == sessao.Id && f.Ativo, ct);
         var nomes = await _db.ParticipantesIntegracao.Where(p => p.IntegracaoAtendimentoId == at.Id)
             .ToDictionaryAsync(p => p.TrabalhadorId, p => p.Nome, ct);
@@ -79,10 +92,17 @@ public class AvancarEtapaIntegracaoCommandHandler : IRequestHandler<AvancarEtapa
         }
         else if (!retomando)
         {
-            var faltas = AvaliadorEtapaIntegracao.Faltas(atual, sessao, participantesTurma, nomes, minutos, fotos);
+            var faltas = AvaliadorEtapaIntegracao.Faltas(atual, sessao, participantesTurma, nomes, periodos, fotos, instrutor);
             if (faltas.Count > 0)
                 throw new IntegracaoBloqueadaException(
                     $"A etapa {CalculadoraEtapasIntegracao.Titulo(atual.Tipo)} ainda não pode avançar: {faltas.Count} pendência(s).", faltas);
+
+            // Concluindo: só agora o período de carga 0 (abertura -> agora) vai para o banco (substitui um automático anterior).
+            if (periodosCargaZero is not null)
+            {
+                _db.PeriodosEtapaIntegracao.RemoveRange(periodosGravados);
+                foreach (var p in periodosCargaZero) _db.PeriodosEtapaIntegracao.Add(p);
+            }
 
             // Carga do certificado: a lançada de verdade, em horas inteiras (arredondada para baixo, mínimo 1 h, porque o campo do
             // certificado é inteiro); nunca a carga padrão do curso. A data de cada certificado é a da assinatura de cada pessoa (Q6).

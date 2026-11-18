@@ -29,6 +29,10 @@ import {
 import { capturarDigitalLocal, credencialLeitura, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { AssinaturaBiometricaBotoes } from '../../components/assinatura/AssinaturaBiometricaBotoes';
+import { CadastroBiometriaDialog } from '../integracao/componentes/CadastroBiometriaDialog';
+import { dataHoraBrasil } from '../integracao/componentes/helpers';
+import { rotuloMetodo } from '../integracao/componentes/helpersInstrutor';
 
 interface Props {
   detalhe: SessaoTreinamentoDetalhe;
@@ -38,9 +42,12 @@ interface Props {
 }
 
 // Instrutor da turma (28/10). O instrutor é escolhido entre os perfis cadastrados e assina todos os
-// certificados da turma com a digital dele, mesmo que seja de outra obra (a digital dele é sincronizada
-// no leitor desta obra quando o perfil autoriza). Antes a "assinatura de instrutor" era a de quem estava
-// logado ao encerrar a turma.
+// certificados da turma, mesmo que seja de outra obra (a digital dele é sincronizada no leitor desta obra
+// quando o perfil autoriza). Desde 16/11/2026 ele assina ANTES de encerrar, por digital ou facial (uma
+// leitura vale para os certificados de todos os participantes), e o encerramento fica bloqueado até assinar;
+// a assinatura automática pelo login saiu. Trocar o instrutor depois de assinado o servidor recusa (400) e a
+// mensagem aparece aqui. Turmas ANTIGAS já encerradas com certificados sem a assinatura dele continuam com o
+// botão da digital pós-encerramento (rota antiga), que some quando todos os certificados estão assinados.
 export function BlocoInstrutorTurma({ detalhe, agenteDisponivel, dispositivoLocal, aoAtualizar }: Props) {
   const souAdministrador = useSouAdministrador();
   const { sessao, instrutor } = detalhe;
@@ -63,8 +70,13 @@ export function BlocoInstrutorTurma({ detalhe, agenteDisponivel, dispositivoLoca
     void carregarPerfis();
   }, []);
 
-  const todosAssinaram = !!instrutor && instrutor.totalCertificados > 0 && instrutor.certificadosAssinados >= instrutor.totalCertificados;
-  const podeTrocar = !instrutor || instrutor.certificadosAssinados === 0;
+  const [cadastrandoBiometria, setCadastrandoBiometria] = useState(false);
+  const assinouAntes = !!instrutor?.assinouAntesDeEncerrar;
+  const todosAssinaram = !!instrutor && (assinouAntes || (instrutor.totalCertificados > 0 && instrutor.certificadosAssinados >= instrutor.totalCertificados));
+  // Depois de assinado (guardado ou em certificados) o servidor recusa a troca; a tela nem oferece.
+  const podeTrocar = !instrutor || (instrutor.certificadosAssinados === 0 && !assinouAntes);
+  const semBiometria = !!instrutor && instrutor.temDigital === false && instrutor.temFacial === false;
+  const metodoAssinatura = rotuloMetodo(instrutor?.metodoAssinatura);
 
   async function escolher() {
     if (!escolhido) return;
@@ -116,8 +128,14 @@ export function BlocoInstrutorTurma({ detalhe, agenteDisponivel, dispositivoLoca
                 {instrutor.registroDescricao ? ` · ${instrutor.registroDescricao}` : ''}
               </Legenda>
             </div>
-            <StatusChip tom={todosAssinaram ? 'ok' : 'atencao'}>
-              {todosAssinaram ? 'Instrutor assinou' : `Assinatura pendente (${instrutor.certificadosAssinados}/${instrutor.totalCertificados})`}
+            <StatusChip tom={todosAssinaram ? 'ok' : semBiometria && !concluida ? 'alerta' : 'atencao'}>
+              {todosAssinaram
+                ? 'Instrutor assinou'
+                : concluida
+                  ? `Assinatura pendente (${instrutor.certificadosAssinados}/${instrutor.totalCertificados})`
+                  : semBiometria
+                    ? 'Sem biometria'
+                    : 'Assinatura pendente'}
             </StatusChip>
           </div>
         ) : (
@@ -147,6 +165,52 @@ export function BlocoInstrutorTurma({ detalhe, agenteDisponivel, dispositivoLoca
           </div>
         )}
 
+        {/* Antes de encerrar: assinatura biométrica do instrutor (16/11/2026). */}
+        {instrutor && !concluida && assinouAntes && (
+          <FeedbackInline tom="sucesso">
+            <b>Instrutor assinou{metodoAssinatura ? ` por ${metodoAssinatura}` : ''}.</b> {instrutor.nome}
+            {instrutor.assinadoEmUtc ? ` · ${dataHoraBrasil(instrutor.assinadoEmUtc).replace(' ', ' às ')}` : ''} · vale para os certificados de todos os participantes da turma.
+          </FeedbackInline>
+        )}
+        {instrutor && !concluida && !assinouAntes && semBiometria && (
+          <>
+            <FeedbackInline tom="erro">
+              <b>O instrutor ainda não tem biometria cadastrada.</b> A turma só encerra com a assinatura biométrica dele.
+            </FeedbackInline>
+            <div>
+              <Button appearance="primary" size="large" icon={<Fingerprint24Regular />} onClick={() => setCadastrandoBiometria(true)}>
+                Cadastrar biometria do instrutor
+              </Button>
+            </div>
+          </>
+        )}
+        {instrutor && !concluida && !assinouAntes && !semBiometria && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <AssinaturaBiometricaBotoes
+              quem="turma"
+              agenteDisponivel={agenteDisponivel}
+              dispositivoLocal={dispositivoLocal}
+              temDigital={instrutor.temDigital}
+              temFacial={instrutor.temFacial}
+              aoJaAssinou={() => void aoAtualizar()}
+              aoDigital={async (captura, leitor) => {
+                await api.sessoesTreinamento.assinarInstrutorDigital(sessao.id, credencialLeitura(leitor, captura.leituras[0]), {
+                  trabalhadorId: captura.trabalhadorId,
+                  score: captura.score,
+                  imagemDigital: captura.imagemPng,
+                });
+                await aoAtualizar();
+              }}
+              aoFacial={async (foto) => {
+                await api.sessoesTreinamento.assinarInstrutorFacial(sessao.id, foto);
+                await aoAtualizar();
+              }}
+            />
+            <Legenda>Uma leitura assina os certificados de todos os participantes. Faça antes de encerrar a turma.</Legenda>
+          </div>
+        )}
+
+        {/* Só turmas antigas, já encerradas, com certificados ainda sem a assinatura do instrutor (rota antiga). */}
         {instrutor && concluida && !todosAssinaram && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div>
@@ -166,10 +230,18 @@ export function BlocoInstrutorTurma({ detalhe, agenteDisponivel, dispositivoLoca
             </Legenda>
           </div>
         )}
-        {instrutor && !concluida && <Legenda>A assinatura do instrutor fica disponível depois de encerrar a turma.</Legenda>}
 
         {mensagem && <FeedbackInline tom={mensagem.tom}>{mensagem.texto}</FeedbackInline>}
       </div>
+
+      {cadastrandoBiometria && instrutor && (
+        <CadastroBiometriaDialog
+          trabalhadorId={instrutor.trabalhadorId}
+          trabalhadorNome={instrutor.nome}
+          aoFechar={() => setCadastrandoBiometria(false)}
+          aoAlterar={() => void aoAtualizar()}
+        />
+      )}
 
       {cadastrando && (
         <CadastroInstrutorDialog

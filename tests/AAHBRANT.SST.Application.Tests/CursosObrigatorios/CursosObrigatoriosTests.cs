@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Application.CursosObrigatorios;
 using AAHBRANT.SST.Application.CursosTreinamento.Queries;
 using AAHBRANT.SST.Application.Tests.TestSupport;
@@ -67,7 +68,7 @@ public class CursosObrigatoriosTests
         await Gerar(c);
         var item = await c.Db.CursosObrigatoriosFuncaoObra.FirstAsync(i => i.FuncaoId == c.Servente.Id && i.CursoTreinamentoId == c.Nr35.Id);
         await new DecidirCursoObrigatorioCommandHandler(c.Db)
-            .Handle(new DecidirCursoObrigatorioCommand(item.Id, false, "Servente não sobe", null, "Eng. Teste"), default);
+            .Handle(new DecidirCursoObrigatorioCommand(item.Id, false, "Servente não sobe", null, "Eng. Teste", false), default);
 
         var resultado = await Gerar(c);
 
@@ -76,6 +77,129 @@ public class CursosObrigatoriosTests
         var recusado = await c.Db.CursosObrigatoriosFuncaoObra.SingleAsync(i => i.Id == item.Id);
         Assert.Equal(StatusCursoObrigatorio.Recusado, recusado.Status);
         Assert.Equal("Servente não sobe", recusado.JustificativaRecusa);
+    }
+
+    // ---- Quem pode decidir (17/11/2026): tecnico OU engenheiro, so nas obras em que tem o perfil ----
+
+    private static async Task<Guid> Vincular(Cenario c, TipoPerfilAcesso tipo, Guid? obra)
+    {
+        var usuario = new Usuario { Nome = "Tecnico Beltrano", Email = $"{Guid.NewGuid()}@x.com", Status = StatusUsuario.Ativo };
+        c.Db.Usuarios.Add(usuario);
+        var perfil = new PerfilAcesso { Tipo = tipo, Nome = tipo.ToString(), EhSistema = true };
+        c.Db.PerfisAcesso.Add(perfil);
+        await c.Db.SaveChangesAsync();
+        c.Db.UsuariosPerfilObra.Add(new UsuarioPerfilObra { UsuarioId = usuario.Id, PerfilAcessoId = perfil.Id, ObraId = obra });
+        await c.Db.SaveChangesAsync();
+        return usuario.Id;
+    }
+
+    private static Task<int> AprovarTodas(Cenario c, Guid? usuario, Guid obraId) =>
+        new AprovarSugestoesCursosObrigatoriosCommandHandler(c.Db)
+            .Handle(new AprovarSugestoesCursosObrigatoriosCommand(obraId, usuario, "token", ExigirPerfilNaObra: true), default);
+
+    [Theory]
+    [InlineData(TipoPerfilAcesso.TecnicoSeguranca)]
+    [InlineData(TipoPerfilAcesso.EngenheiroSeguranca)]
+    public async Task Decidir_TecnicoOuEngenheiroDaObra_AprovaEGravaOProprioNome(TipoPerfilAcesso tipo)
+    {
+        var c = await Preparar();
+        await Gerar(c);
+        var usuario = await Vincular(c, tipo, c.Obra.Id);
+        var item = await c.Db.CursosObrigatoriosFuncaoObra.FirstAsync();
+
+        await new DecidirCursoObrigatorioCommandHandler(c.Db)
+            .Handle(new DecidirCursoObrigatorioCommand(item.Id, true, null, usuario, "token", true), default);
+
+        var salvo = await c.Db.CursosObrigatoriosFuncaoObra.SingleAsync(i => i.Id == item.Id);
+        Assert.Equal(StatusCursoObrigatorio.Aprovado, salvo.Status);
+        Assert.Equal(usuario, salvo.DecididoPorUsuarioId);
+        Assert.Equal("Tecnico Beltrano", salvo.DecididoPorNome);
+    }
+
+    [Fact]
+    public async Task Decidir_TecnicoDeOutraObra_NaoAprovaItemDestaObra()
+    {
+        var c = await Preparar();
+        await Gerar(c);
+        var outra = new Obra { Nome = "Obra B", Codigo = "B" };
+        c.Db.Obras.Add(outra);
+        await c.Db.SaveChangesAsync();
+        var tecnicoB = await Vincular(c, TipoPerfilAcesso.TecnicoSeguranca, outra.Id);
+        var item = await c.Db.CursosObrigatoriosFuncaoObra.FirstAsync();
+
+        await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() =>
+            new DecidirCursoObrigatorioCommandHandler(c.Db)
+                .Handle(new DecidirCursoObrigatorioCommand(item.Id, true, null, tecnicoB, "token", true), default));
+
+        Assert.All(await c.Db.CursosObrigatoriosFuncaoObra.ToListAsync(), i => Assert.Equal(StatusCursoObrigatorio.Sugerido, i.Status));
+    }
+
+    [Fact]
+    public async Task Decidir_AdministradorGlobalOuDaObraAprova_AdministradorDeOutraObraNegado()
+    {
+        var c = await Preparar();
+        await Gerar(c);
+        var outra = new Obra { Nome = "Obra B", Codigo = "B" };
+        c.Db.Obras.Add(outra);
+        await c.Db.SaveChangesAsync();
+        var adminGlobal = await Vincular(c, TipoPerfilAcesso.Administrador, null);
+        var adminB = await Vincular(c, TipoPerfilAcesso.Administrador, outra.Id);
+        var itens = await c.Db.CursosObrigatoriosFuncaoObra.ToListAsync();
+
+        await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() =>
+            new DecidirCursoObrigatorioCommandHandler(c.Db)
+                .Handle(new DecidirCursoObrigatorioCommand(itens[0].Id, true, null, adminB, "token", true), default));
+        await new DecidirCursoObrigatorioCommandHandler(c.Db)
+            .Handle(new DecidirCursoObrigatorioCommand(itens[0].Id, true, null, adminGlobal, "token", true), default);
+        Assert.Equal(StatusCursoObrigatorio.Aprovado, (await c.Db.CursosObrigatoriosFuncaoObra.SingleAsync(i => i.Id == itens[0].Id)).Status);
+    }
+
+    [Fact]
+    public async Task Decidir_UsuarioSemPerfilDeSegurancaOuSemUsuario_Negado()
+    {
+        var c = await Preparar();
+        await Gerar(c);
+        var gestor = await Vincular(c, TipoPerfilAcesso.GestorDeObra, c.Obra.Id);
+        var item = await c.Db.CursosObrigatoriosFuncaoObra.FirstAsync();
+
+        foreach (var quem in new Guid?[] { gestor, null })
+            await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() =>
+                new DecidirCursoObrigatorioCommandHandler(c.Db)
+                    .Handle(new DecidirCursoObrigatorioCommand(item.Id, true, null, quem, "token", true), default));
+    }
+
+    [Fact]
+    public async Task AprovarSugestoes_TecnicoGlobalAprovaTudo_TecnicoDeOutraObraNegado()
+    {
+        var c = await Preparar();
+        await Gerar(c);
+        var outra = new Obra { Nome = "Obra B", Codigo = "B" };
+        c.Db.Obras.Add(outra);
+        await c.Db.SaveChangesAsync();
+        var tecnicoB = await Vincular(c, TipoPerfilAcesso.TecnicoSeguranca, outra.Id);
+        var global = await Vincular(c, TipoPerfilAcesso.TecnicoSeguranca, null);
+
+        await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() => AprovarTodas(c, tecnicoB, c.Obra.Id));
+        Assert.Equal(4, await AprovarTodas(c, global, c.Obra.Id));
+    }
+
+    [Fact]
+    public async Task Adicionar_TecnicoDaObraAdiciona_TecnicoDeOutraObraNegado_SemExigirNaoChecaPerfil()
+    {
+        var c = await Preparar();
+        var tecnicoA = await Vincular(c, TipoPerfilAcesso.TecnicoSeguranca, c.Obra.Id);
+        var outra = new Obra { Nome = "Obra B", Codigo = "B" };
+        c.Db.Obras.Add(outra);
+        await c.Db.SaveChangesAsync();
+        var tecnicoB = await Vincular(c, TipoPerfilAcesso.TecnicoSeguranca, outra.Id);
+        var h = new AdicionarCursoObrigatorioCommandHandler(c.Db);
+
+        await Assert.ThrowsAsync<AAHBRANT.SST.Application.Common.Seguranca.AcessoNegadoException>(() =>
+            h.Handle(new AdicionarCursoObrigatorioCommand(c.Obra.Id, c.Armador.Id, c.Nr35.Id, tecnicoB, "t", true), default));
+        await h.Handle(new AdicionarCursoObrigatorioCommand(c.Obra.Id, c.Armador.Id, c.Nr35.Id, tecnicoA, "t", true), default);
+        var item = await c.Db.CursosObrigatoriosFuncaoObra.SingleAsync();
+        Assert.Equal(StatusCursoObrigatorio.Aprovado, item.Status);
+        Assert.Equal("Tecnico Beltrano", item.DecididoPorNome);
     }
 
     [Fact]
@@ -90,7 +214,7 @@ public class CursosObrigatoriosTests
         });
         await c.Db.SaveChangesAsync();
         await new AdicionarCursoObrigatorioCommandHandler(c.Db)
-            .Handle(new AdicionarCursoObrigatorioCommand(c.Obra.Id, c.Armador.Id, c.Nr35.Id, null, "Eng. Teste"), default);
+            .Handle(new AdicionarCursoObrigatorioCommand(c.Obra.Id, c.Armador.Id, c.Nr35.Id, null, "Eng. Teste", false), default);
 
         var aptidao = await new ObterAptidaoPorCursoQueryHandler(c.Db).Handle(new ObterAptidaoPorCursoQuery(c.Obra.Id), default);
 

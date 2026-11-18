@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Input, Text, makeStyles, mergeClasses } from '@fluentui/react-components';
-import type { Acidente, RegistroHhtMensal } from '../../lib/api';
+import { TipoOcorrencia, type Acidente, type RegistroHhtMensal } from '../../lib/api';
 import { SstTooltip, StatusChip, designTokens, tokensUi, useTipografia, escalonado } from '@ui';
 
 // Mesma casca visual do KpiCard (@ui): este card vive na grade de indicadores do Dashboard e
@@ -41,7 +41,9 @@ interface TaxaGravidadeKpiCardProps {
 // consistente com todos os outros KPIs do app (nenhum endpoint de agregação dedicado).
 // A meta de comparação é um valor de negócio que este sistema não pode inventar — fica salva em
 // localStorage, definida pelo próprio usuário no card (decisão de 2026-08-26).
-export function TaxaGravidadeKpiCard({ acidentes, registrosHht, indice = 0 }: TaxaGravidadeKpiCardProps) {
+export function TaxaGravidadeKpiCard({ acidentes: acidentesBrutos, registrosHht, indice = 0 }: TaxaGravidadeKpiCardProps) {
+  // Pessoa externa não é empregada: fica fora dos indicadores da NBR 14280 (dias perdidos/debitados).
+  const acidentes = useMemo(() => acidentesBrutos.filter((a) => a.tipo !== TipoOcorrencia.PessoaExterna), [acidentesBrutos]);
   const casca = useStyles();
   const tipo = useTipografia();
   const [meta, setMeta] = useState<number | null>(null);

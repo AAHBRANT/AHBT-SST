@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Campo, FeedbackInline, Field, FormGrid, FormRodape, FormSection, Input, Select, Switch } from '@ui';
-import { api, TipoCamera, tipoCameraLabel, type CameraResumo, type DadosCamera, type Obra } from '../../lib/api';
+import { PauseCircle16Regular } from '@fluentui/react-icons';
+import { Button, Campo, FeedbackInline, Field, FormGrid, FormRodape, FormSection, Input, Select, Switch, tokensUi } from '@ui';
+import { api, FonteCamera, ParteImagemCamera, StreamCamera, TipoCamera, tipoCameraLabel, type CameraResumo, type DadosCamera, type Obra } from '../../lib/api';
+import { useAgentesCamera, useCameras, useEquipamentosCamera } from '../../lib/consultas';
+import { OrigemImagemCamera, type OrigemImagem } from './OrigemImagemCamera';
+import { ehCameraIp } from './rotulos';
+import { RegrasAlertaCamera, type RegrasAlertaTextos } from './RegrasAlertaCamera';
+import { LIMITE_NAO_REPETIR, LIMITE_PERSISTENCIA, lerSegundos, mensagemLimite, NAO_REPETIR_PADRAO, PERSISTENCIA_PADRAO } from './regrasAlerta';
+import { useEstilosRegrasAlerta } from './estilosRegrasAlerta';
+import { useEstilosCameraIp } from './estilosCameraIp';
 
 const INTERVALOS_PADRAO = [0, 5, 10, 30, 60];
 // Câmera nova nasce com 30 minutos entre alertas de quem não foi identificado (igual ao padrão do servidor).
@@ -15,20 +23,49 @@ export interface FormularioCameraProps {
   camera?: CameraResumo;
   obras: Obra[];
   obraInicial?: string;
+  // Cadastro aberto a partir de uma lente livre da aba "Equipamentos e agentes": já nasce como câmera IP daquele equipamento.
+  ipInicial?: { equipamentoId: string; canal: number };
   aoSalvar: (obraId: string) => void;
   aoCancelar: () => void;
 }
 
-export function FormularioCamera({ camera, obras, obraInicial, aoSalvar, aoCancelar }: FormularioCameraProps) {
+export function FormularioCamera({ camera, obras, obraInicial, ipInicial, aoSalvar, aoCancelar }: FormularioCameraProps) {
   const edicao = !!camera;
   const [obraId, setObraId] = useState(camera?.obraId ?? obraInicial ?? '');
   const [nome, setNome] = useState(camera?.nome ?? '');
   const [areaSstId, setAreaSstId] = useState(camera?.areaSstId ?? '');
   const [tipo, setTipo] = useState<number>(camera?.tipo ?? TipoCamera.Canteiro);
+  const ip = useEstilosCameraIp();
   const [habilitada, setHabilitada] = useState(camera?.habilitada ?? true);
+  // Câmera sem os campos (resposta antiga) vale imagem inteira e com aviso no Telegram.
+  const [avisarTelegram, setAvisarTelegram] = useState(camera?.avisarTelegram ?? true);
+  const [parteImagem, setParteImagem] = useState<number>(camera?.parteImagem ?? ParteImagemCamera.Inteira);
   const [intervalo, setIntervalo] = useState(camera?.intervaloMinimoAlertasMinutos ?? INTERVALO_INICIAL);
+  const estilosRegras = useEstilosRegrasAlerta();
+  // Etapa 3. Câmera nova nasce em modo sombra; câmera de resposta antiga (sem o campo) segue sem modo sombra.
+  const [modoSombra, setModoSombra] = useState(camera ? (camera.modoSombra ?? false) : true);
+  const [regras, setRegras] = useState<RegrasAlertaTextos>({
+    capacete: String(camera?.persistenciaCapaceteSegundos ?? PERSISTENCIA_PADRAO),
+    colete: String(camera?.persistenciaColeteSegundos ?? PERSISTENCIA_PADRAO),
+    oculos: String(camera?.persistenciaOculosSegundos ?? PERSISTENCIA_PADRAO),
+    naoRepetir: String(camera?.naoRepetirSegundos ?? NAO_REPETIR_PADRAO),
+  });
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+
+  // Etapa 2 - origem da imagem. Câmera existente de tablet/navegador segue como está, a menos que o usuário troque a origem.
+  const origemSalva: OrigemImagem = camera && ehCameraIp(camera) ? 'ip' : 'tablet';
+  const [origem, setOrigem] = useState<OrigemImagem>(ipInicial ? 'ip' : origemSalva);
+  const [equipamentoId, setEquipamentoId] = useState(camera?.equipamentoCameraId ?? ipInicial?.equipamentoId ?? '');
+  const [canal, setCanal] = useState<number | null>(camera?.canal ?? ipInicial?.canal ?? null);
+  const [stream, setStream] = useState<number>(camera?.stream ?? StreamCamera.Secundaria);
+  const equipamentos = useEquipamentosCamera(obraId || undefined, !!obraId && origem === 'ip');
+  const agentes = useAgentesCamera(obraId || undefined, !!obraId && origem === 'ip');
+  const todasCameras = useCameras();
+  const equipamentoEscolhido = (equipamentos.data ?? []).find((q) => q.id === equipamentoId);
+  // Câmera IP sem a senha do equipamento pode ser salva, mas só desligada.
+  const semSenhaNoEquipamento = origem === 'ip' && !!equipamentoEscolhido && !equipamentoEscolhido.senhaDefinida;
+  const ligada = habilitada && !semSenhaNoEquipamento;
 
   const areas = useQuery({
     queryKey: ['areasSst', 'lista', obraId],
@@ -49,15 +86,47 @@ export function FormularioCamera({ camera, obras, obraInicial, aoSalvar, aoCance
     if (!obraId) return setErro('Selecione a obra da câmera.');
     if (!nomeLimpo) return setErro('Informe o nome da câmera.');
     if (nomeLimpo.length > 100) return setErro('O nome da câmera pode ter no máximo 100 caracteres.');
+    const capacete = lerSegundos(regras.capacete, LIMITE_PERSISTENCIA);
+    const colete = lerSegundos(regras.colete, LIMITE_PERSISTENCIA);
+    const oculos = lerSegundos(regras.oculos, LIMITE_PERSISTENCIA);
+    const naoRepetir = lerSegundos(regras.naoRepetir, LIMITE_NAO_REPETIR);
+    if (capacete === null) return setErro(`Confirmar falta de capacete: ${mensagemLimite(LIMITE_PERSISTENCIA)}`);
+    if (colete === null) return setErro(`Confirmar falta de colete: ${mensagemLimite(LIMITE_PERSISTENCIA)}`);
+    if (oculos === null) return setErro(`Confirmar falta de óculos: ${mensagemLimite(LIMITE_PERSISTENCIA)}`);
+    if (naoRepetir === null) return setErro(`Não repetir alerta da mesma pessoa: ${mensagemLimite(LIMITE_NAO_REPETIR)}`);
+    if (origem === 'ip') {
+      if (!equipamentoId) return setErro('Escolha o equipamento da câmera IP.');
+      if (canal === null) return setErro('Escolha a lente da câmera.');
+    }
 
     const dados: DadosCamera = {
       obraId,
       nome: nomeLimpo,
       areaSstId: areaSstId || null,
       tipo,
-      habilitada,
+      habilitada: ligada,
       intervaloMinimoAlertasMinutos: intervalo,
+      avisarTelegram,
+      persistenciaCapaceteSegundos: capacete,
+      persistenciaColeteSegundos: colete,
+      persistenciaOculosSegundos: oculos,
+      naoRepetirSegundos: naoRepetir,
+      modoSombra,
     };
+    if (origem === 'ip') {
+      dados.fonte = FonteCamera.Rtsp;
+      dados.equipamentoCameraId = equipamentoId;
+      dados.canal = canal;
+      dados.stream = stream;
+      dados.parteImagem = parteImagem;
+    } else if (origemSalva === 'ip') {
+      // Voltou para tablet/navegador: limpa equipamento, lente e qualidade. Câmera de tablet que continua de tablet não envia nada de origem.
+      dados.fonte = FonteCamera.Navegador;
+      dados.equipamentoCameraId = null;
+      dados.canal = null;
+      dados.stream = null;
+      dados.parteImagem = ParteImagemCamera.Inteira;
+    }
     try {
       setSalvando(true);
       setErro(null);
@@ -92,6 +161,9 @@ export function FormularioCamera({ camera, obras, obraInicial, aoSalvar, aoCance
               onChange={(_, d) => {
                 setObraId(d.value);
                 setAreaSstId('');
+                // Equipamento e lente são da obra anterior.
+                setEquipamentoId('');
+                setCanal(null);
               }}
             >
               <option value="">Selecione</option>
@@ -150,12 +222,62 @@ export function FormularioCamera({ camera, obras, obraInicial, aoSalvar, aoCance
         </Campo>
         <Campo span={6}>
           <Switch
-            checked={habilitada}
+            checked={ligada}
+            disabled={semSenhaNoEquipamento}
             label="Monitoramento ligado"
             onChange={(_, d) => setHabilitada(d.checked)}
           />
+          {semSenhaNoEquipamento && (
+            <div style={{ color: tokensUi.status.atencao.tinta, fontSize: 12, lineHeight: '16px', fontWeight: 500, marginTop: 6 }}>
+              Para ligar, defina antes a senha do equipamento (Etapa 2).
+            </div>
+          )}
+        </Campo>
+        <Campo span={6}>
+          <Switch
+            checked={avisarTelegram}
+            disabled={modoSombra}
+            label="Avisar no Telegram"
+            onChange={(_, d) => setAvisarTelegram(d.checked)}
+          />
+          <div className={ip.dica} style={{ fontSize: 12, lineHeight: '16px' }}>
+            Desligado, a câmera continua analisando e registrando as ocorrências no sistema, só não envia mensagem no Telegram.
+          </div>
+          {modoSombra && (
+            <div className={estilosRegras.pausado}>
+              <PauseCircle16Regular aria-hidden="true" />
+              <span>Em pausa pelo modo sombra. Ao desligar o modo sombra, volta a valer esta escolha.</span>
+            </div>
+          )}
         </Campo>
       </FormGrid>
+      <FormSection titulo="Origem da imagem" numero={2}>
+        <OrigemImagemCamera
+          obraId={obraId}
+          camera={camera}
+          origem={origem}
+          aoMudarOrigem={setOrigem}
+          equipamentoId={equipamentoId}
+          aoMudarEquipamento={setEquipamentoId}
+          canal={canal}
+          aoMudarCanal={setCanal}
+          stream={stream}
+          aoMudarStream={setStream}
+          parteImagem={parteImagem}
+          aoMudarParteImagem={setParteImagem}
+          equipamentos={equipamentos.data ?? []}
+          agentes={agentes.data ?? []}
+          todasCameras={todasCameras.data ?? []}
+        />
+      </FormSection>
+      <RegrasAlertaCamera
+        valores={regras}
+        aoMudar={(parcial) => setRegras((atual) => ({ ...atual, ...parcial }))}
+        modoSombra={modoSombra}
+        aoMudarModoSombra={setModoSombra}
+        avisarTelegram={avisarTelegram}
+        cameraNova={!edicao}
+      />
       <FormRodape>
         <Button onClick={aoCancelar} disabled={salvando}>
           Cancelar

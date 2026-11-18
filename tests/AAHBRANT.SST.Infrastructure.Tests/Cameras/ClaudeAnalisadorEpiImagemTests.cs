@@ -70,22 +70,278 @@ public class ClaudeAnalisadorEpiImagemTests
         Assert.EndsWith("/v1/messages", handler.Requisicao!.RequestUri!.AbsolutePath);
     }
 
+    // Uma entrada de pessoasDetalhe no formato novo. Padrão: pessoa inteira, de corpo todo, conforme.
+    private static string Pessoa(double x = 0.5, double y = 0.3, bool cabeca = true, bool tronco = true,
+        string capacete = "conforme", string colete = "conforme", double y0 = 0.1, double y1 = 0.9,
+        double cabecaY0 = 0.1, double cabecaY1 = 0.2, string? oculos = "conforme", string? cor = "nao_avaliavel", bool? rostoVisivel = true)
+    {
+        var extra = (oculos is null ? "" : $"\"oculos\":\"{oculos}\",") + (cor is null ? "" : $"\"corCapacete\":\"{cor}\",")
+            + (rostoVisivel is null ? "" : $"\"rostoVisivel\":{(rostoVisivel == true ? "true" : "false")},");
+        return string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"{{\"cabecaX\":{x},\"cabecaY\":{y},\"cabecaVisivel\":{(cabeca ? "true" : "false")},\"troncoVisivel\":{(tronco ? "true" : "false")}," +
+            $"\"capacete\":\"{capacete}\",\"colete\":\"{colete}\",{extra}\"caixa\":{{\"x0\":0.3,\"y0\":{y0},\"x1\":0.7,\"y1\":{y1}}}," +
+            $"\"caixaCabeca\":{{\"x0\":0.3,\"y0\":{cabecaY0},\"x1\":0.7,\"y1\":{cabecaY1}}}}}");
+    }
+
+    // Totais da IA propositalmente diferentes do detalhe: o que vale é o detalhe.
+    private static string Resposta(int pessoasIa, int semCapaceteIa, int semColeteIa, params string[] pessoas)
+        => RespostaClaude(
+            $"{{\"pessoas\":{pessoasIa},\"semCapacete\":{semCapaceteIa},\"semColete\":{semColeteIa},\"confianca\":\"alta\",\"pessoasDetalhe\":[{string.Join(",", pessoas)}]}}");
+
+    private static Task<ResultadoAnaliseEpi> Analisar(string resposta)
+        => Criar(new HandlerFalso(HttpStatusCode.OK, resposta)).AnalisarAsync(new byte[] { 0xFF, 0xD8, 0x01 }, default);
+
     [Fact]
     public async Task Analisar_ComPosicoesCoerentes_DevolveODetalheDeCadaPessoa()
     {
-        var handler = new HandlerFalso(HttpStatusCode.OK, RespostaClaude(
-            "{\"pessoas\":2,\"semCapacete\":1,\"semColete\":0,\"confianca\":\"alta\",\"pessoasDetalhe\":[" +
-            "{\"cabecaX\":0.25,\"cabecaY\":0.3,\"semCapacete\":true,\"semColete\":false}," +
-            "{\"cabecaX\":1.4,\"cabecaY\":-0.2,\"semCapacete\":false,\"semColete\":false}]}"));
+        var handler = new HandlerFalso(HttpStatusCode.OK, Resposta(2, 1, 0,
+            Pessoa(x: 0.25, y: 0.3, capacete: "nao_conforme"),
+            Pessoa(x: 1.4, y: -0.2)));
 
         var resultado = await Criar(handler).AnalisarAsync(new byte[] { 0xFF, 0xD8, 0x01 }, default);
 
         Assert.NotNull(resultado.Detalhe);
         Assert.Equal(2, resultado.Detalhe!.Count);
-        Assert.Equal(new PessoaNaCena(0.25, 0.3, true, false), resultado.Detalhe[0]);
+        var caixa = new CaixaPessoa(0.3, 0.1, 0.7, 0.9);
+        var cabeca = new CaixaPessoa(0.3, 0.1, 0.7, 0.2);
+        Assert.Equal(new PessoaNaCena(0.25, 0.3, true, false, Caixa: caixa, CaixaCabeca: cabeca), resultado.Detalhe[0]);
         // Posição fora da imagem é trazida para a borda.
-        Assert.Equal(new PessoaNaCena(1, 0, false, false), resultado.Detalhe[1]);
+        Assert.Equal(new PessoaNaCena(1, 0, false, false, Caixa: caixa, CaixaCabeca: cabeca), resultado.Detalhe[1]);
         Assert.Contains("pessoasDetalhe", handler.CorpoEnviado);
+    }
+
+    [Fact]
+    public async Task Analisar_CalculaOsTotaisAPartirDoDetalheEIgnoraOsTotaisDaIa()
+    {
+        // A IA diz 3 pessoas / 4 sem capacete / 4 sem colete, mas o detalhe só tem 1 de cada.
+        var r = await Analisar(Resposta(3, 4, 4,
+            Pessoa(capacete: "nao_conforme"),
+            Pessoa(colete: "nao_conforme"),
+            Pessoa()));
+
+        Assert.Equal(3, r.Pessoas);
+        Assert.Equal(1, r.SemCapacete);
+        Assert.Equal(1, r.SemColete);
+        Assert.Equal(0, r.CapaceteNaoAvaliavel);
+        Assert.Equal(0, r.ColeteNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_CabecaForaDaImagem_CapaceteNaoConformeViraNaoAvaliavel()
+    {
+        var r = await Analisar(Resposta(1, 1, 0, Pessoa(cabeca: false, capacete: "nao_conforme", colete: "conforme")));
+
+        Assert.Equal(1, r.Pessoas);
+        Assert.Equal(0, r.SemCapacete);
+        Assert.Equal(1, r.CapaceteNaoAvaliavel);
+        Assert.Equal(0, r.ColeteNaoAvaliavel);
+        var p = Assert.Single(r.Detalhe!);
+        Assert.False(p.CabecaVisivel);
+        Assert.False(p.SemCapacete);
+        Assert.True(p.CapaceteNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_TroncoForaDaImagem_ColeteNaoConformeViraNaoAvaliavel()
+    {
+        var r = await Analisar(Resposta(1, 0, 1, Pessoa(tronco: false, capacete: "conforme", colete: "nao_conforme")));
+
+        Assert.Equal(0, r.SemColete);
+        Assert.Equal(1, r.ColeteNaoAvaliavel);
+        Assert.Equal(0, r.CapaceteNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_SoPernas_NadaEJulgado()
+    {
+        var r = await Analisar(Resposta(1, 1, 1, Pessoa(cabeca: false, tronco: false, capacete: "nao_conforme", colete: "nao_conforme")));
+
+        Assert.Equal(1, r.Pessoas);
+        Assert.Equal(0, r.SemCapacete);
+        Assert.Equal(0, r.SemColete);
+        Assert.Equal(1, r.CapaceteNaoAvaliavel);
+        Assert.Equal(1, r.ColeteNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_IaDizNaoAvaliavelComParteVisivel_ContaComoNaoAvaliavel()
+    {
+        var r = await Analisar(Resposta(1, 0, 0, Pessoa(capacete: "nao_avaliavel", colete: "conforme")));
+
+        Assert.Equal(0, r.SemCapacete);
+        Assert.Equal(1, r.CapaceteNaoAvaliavel);
+        Assert.Equal(0, r.ColeteNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_ValorDesconhecido_ViraNaoAvaliavelENaoAlerta()
+    {
+        var r = await Analisar(Resposta(1, 0, 0, Pessoa(capacete: "talvez", colete: "")));
+
+        Assert.Equal(0, r.SemCapacete);
+        Assert.Equal(0, r.SemColete);
+        Assert.Equal(1, r.CapaceteNaoAvaliavel);
+        Assert.Equal(1, r.ColeteNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_CabecaPequenaDemais_CapaceteNaoAvaliavelMasColeteContinuaJulgado()
+    {
+        // Cabeça de 3% da imagem (abaixo do mínimo), pessoa grande: só o capacete deixa de ser julgado.
+        var r = await Analisar(Resposta(1, 1, 1,
+            Pessoa(capacete: "nao_conforme", colete: "nao_conforme", cabecaY0: 0.10, cabecaY1: 0.13)));
+
+        Assert.Equal(0, r.SemCapacete);
+        Assert.Equal(1, r.CapaceteNaoAvaliavel);
+        Assert.Equal(1, r.SemColete);
+        Assert.Equal(0, r.ColeteNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_AlturaDaCabecaNoLimite_ComTolerancia_PeloDoisLados()
+    {
+        var min = ClaudeAnalisadorEpiImagem.AlturaMinimaCabeca;
+        // 0.2 + min - 0.2 pode sair 1e-17 abaixo de min em ponto flutuante: a tolerância mantém a pessoa julgada.
+        var noLimite = Pessoa(capacete: "nao_conforme", colete: "conforme", cabecaY0: 0.2, cabecaY1: 0.2 + min);
+        var logoAbaixo = Pessoa(capacete: "nao_conforme", colete: "conforme", cabecaY0: 0.2, cabecaY1: 0.2 + min - 0.001);
+        var logoAcima = Pessoa(capacete: "nao_conforme", colete: "conforme", cabecaY0: 0.2, cabecaY1: 0.2 + min + 0.001);
+
+        var r = await Analisar(Resposta(3, 3, 0, noLimite, logoAbaixo, logoAcima));
+
+        Assert.Equal(2, r.SemCapacete);
+        Assert.Equal(1, r.CapaceteNaoAvaliavel);
+        Assert.False(r.Detalhe![0].CapaceteNaoAvaliavel);
+        Assert.True(r.Detalhe[1].CapaceteNaoAvaliavel);
+        Assert.False(r.Detalhe[2].CapaceteNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_PessoaDaCinturaParaCima_ComCabecaNoTamanhoMinimo_ContinuaJulgada()
+    {
+        // Parte visível da pessoa com 14% da altura (cabeça + tronco até a cintura): antes, o corte de 10% sobre a caixa
+        // da pessoa derrubava casos próximos disso; agora vale o tamanho da cabeça e esta pessoa é julgada nos dois itens.
+        var r = await Analisar(Resposta(1, 1, 1,
+            Pessoa(capacete: "nao_conforme", colete: "nao_conforme", y0: 0.30, y1: 0.44, cabecaY0: 0.30, cabecaY1: 0.37)));
+
+        Assert.Equal(1, r.SemCapacete);
+        Assert.Equal(1, r.SemColete);
+        Assert.Equal(0, r.CapaceteNaoAvaliavel);
+        Assert.Equal(0, r.ColeteNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_PessoaPequenaDemaisParaColete_ColeteNaoAvaliavelMasCapaceteJulgado()
+    {
+        var min = ClaudeAnalisadorEpiImagem.AlturaMinimaPessoaParaColete;
+        // Caixa da pessoa de 7% (abaixo de 8%) com cabeça de 4%: capacete julgado, colete não.
+        var pequena = Pessoa(capacete: "nao_conforme", colete: "nao_conforme", y0: 0.40, y1: 0.47, cabecaY0: 0.40, cabecaY1: 0.44);
+        // Caixa da pessoa exatamente no mínimo (com tolerância): colete julgado.
+        var noLimite = Pessoa(capacete: "conforme", colete: "nao_conforme", y0: 0.40, y1: 0.40 + min, cabecaY0: 0.40, cabecaY1: 0.44);
+
+        var r = await Analisar(Resposta(2, 1, 2, pequena, noLimite));
+
+        Assert.Equal(1, r.SemCapacete);
+        Assert.Equal(1, r.SemColete);
+        Assert.Equal(1, r.ColeteNaoAvaliavel);
+        Assert.True(r.Detalhe![0].ColeteNaoAvaliavel);
+        Assert.False(r.Detalhe[1].ColeteNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_PessoaDeCostasSemColete_ContaSemColete()
+    {
+        // De costas a cabeça e o tronco aparecem (o colete tem faixas nas costas): é julgada normalmente.
+        var r = await Analisar(Resposta(1, 0, 1, Pessoa(cabeca: true, tronco: true, capacete: "conforme", colete: "nao_conforme")));
+
+        Assert.Equal(1, r.SemColete);
+        Assert.Equal(0, r.ColeteNaoAvaliavel);
+    }
+
+    // Cenário A: IA diz 3 pessoas, mas o detalhe tem 2 entradas e só 1 nao_conforme.
+    [Fact]
+    public async Task Analisar_CenarioA_MenosEntradasQuePessoas_TotaisDoDetalheESemCruzamentoComRostos()
+    {
+        var r = await Analisar(Resposta(3, 3, 3, Pessoa(capacete: "nao_conforme"), Pessoa()));
+
+        Assert.Equal(3, r.Pessoas);
+        Assert.Equal(1, r.SemCapacete);
+        Assert.Equal(0, r.SemColete);
+        Assert.Null(r.Detalhe);
+    }
+
+    // Cenário B: IA diz 0 pessoas, mas há entradas no detalhe.
+    [Fact]
+    public async Task Analisar_CenarioB_ZeroPessoasComEntradas_UsaAQuantidadeDeEntradas()
+    {
+        var r = await Analisar(Resposta(0, 0, 0, Pessoa(capacete: "nao_conforme"), Pessoa(colete: "nao_conforme")));
+
+        Assert.Equal(2, r.Pessoas);
+        Assert.Equal(1, r.SemCapacete);
+        Assert.Equal(1, r.SemColete);
+        Assert.Null(r.Detalhe);
+    }
+
+    // Cenário C: IA diz 2 pessoas e semColete=1, mas a única entrada é de só pernas: não pode alertar.
+    [Fact]
+    public async Task Analisar_CenarioC_TotalDaIaComUmaEntradaSoPernas_NaoAlerta()
+    {
+        var r = await Analisar(Resposta(2, 0, 1,
+            Pessoa(cabeca: false, tronco: false, capacete: "nao_conforme", colete: "nao_conforme")));
+
+        Assert.Equal(2, r.Pessoas);
+        Assert.Equal(0, r.SemCapacete);
+        Assert.Equal(0, r.SemColete);
+        Assert.Equal(1, r.CapaceteNaoAvaliavel);
+        Assert.Equal(1, r.ColeteNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_PessoaInteiraSemCapacete_ContaNormalmente()
+    {
+        var r = await Analisar(Resposta(1, 1, 0, Pessoa(capacete: "nao_conforme", colete: "conforme")));
+
+        Assert.Equal(1, r.SemCapacete);
+        Assert.Equal(0, r.CapaceteNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_EntradaNoFormatoAntigo_UsaTotaisDaIaSemDetalhe()
+    {
+        // Formato antigo por pessoa (sem cabecaVisivel/capacete/colete): o detalhe é descartado.
+        var r = await Analisar(RespostaClaude(
+            "{\"pessoas\":1,\"semCapacete\":1,\"semColete\":0,\"confianca\":\"media\",\"pessoasDetalhe\":[" +
+            "{\"cabecaX\":0.25,\"cabecaY\":0.3,\"semCapacete\":true,\"semColete\":false}]}"));
+
+        Assert.Equal(1, r.Pessoas);
+        Assert.Equal(1, r.SemCapacete);
+        Assert.Null(r.Detalhe);
+        Assert.Equal(0, r.CapaceteNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_CaixaAusenteOuInvalida_NaoAplicaOTamanhoMinimo()
+    {
+        var semCaixa = "{\"cabecaX\":0.5,\"cabecaY\":0.3,\"cabecaVisivel\":true,\"troncoVisivel\":true,\"capacete\":\"nao_conforme\",\"colete\":\"conforme\"}";
+        var caixaZerada = "{\"cabecaX\":0.5,\"cabecaY\":0.3,\"cabecaVisivel\":true,\"troncoVisivel\":true,\"capacete\":\"nao_conforme\",\"colete\":\"conforme\"," +
+                          "\"caixa\":{\"x0\":0.3,\"y0\":0.5,\"x1\":0.7,\"y1\":0.5}}";
+
+        var r = await Analisar(Resposta(2, 2, 0, semCaixa, caixaZerada));
+
+        Assert.Equal(2, r.SemCapacete);
+        Assert.All(r.Detalhe!, p => Assert.Null(p.Caixa));
+    }
+
+    [Fact]
+    public void Prompt_NaoPresumeOItemEMandaMarcarNaoAvaliavel()
+    {
+        Assert.DoesNotContain("considere que ela está usando", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.Contains("nao_avaliavel", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.Contains("Nunca presuma", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.Contains("de costas ou de lado a cabeça e o capacete também são avaliáveis", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.Contains("faixas refletivas também nas costas", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.Contains("de cabeça para baixo", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.DoesNotContain("aparece inteira", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.Contains("caixaCabeca", ClaudeAnalisadorEpiImagem.Pedido);
     }
 
     [Fact]
@@ -153,5 +409,170 @@ public class ClaudeAnalisadorEpiImagemTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => Criar(handler, apiKey: null).AnalisarAsync(new byte[] { 0xFF, 0xD8 }, default));
         Assert.Null(handler.Requisicao);
+    }
+
+    [Fact]
+    public void Prompt_TrazOculosECorSemPerderOTextoAnterior()
+    {
+        Assert.Contains("Para cada pessoa, avalie três itens", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.Contains("(3) óculos de proteção", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.Contains("DOIS ombros", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.Contains("mesmo que a barriga ou a cintura apareçam", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.Contains("rostoVisivel", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.Contains("rostoVisivel (true somente se o rosto aparece", ClaudeAnalisadorEpiImagem.Pedido);
+        Assert.Contains("troncoVisivel (true somente se os dois ombros", ClaudeAnalisadorEpiImagem.Pedido);
+        Assert.Contains("lente escura ou fumê", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.Contains("cor do capacete", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.Contains("faixas refletivas também nas costas", ClaudeAnalisadorEpiImagem.Instrucoes);
+        Assert.Contains("oculos (conforme, nao_conforme ou nao_avaliavel", ClaudeAnalisadorEpiImagem.Pedido);
+        Assert.Contains("corCapacete (branco, amarelo, azul, verde, vermelho, laranja, outra ou nao_avaliavel", ClaudeAnalisadorEpiImagem.Pedido);
+    }
+
+    [Fact]
+    public async Task Analisar_EnviaOculosECorCapaceteNoSchema()
+    {
+        var handler = new HandlerFalso(HttpStatusCode.OK, Resposta(1, 0, 0, Pessoa()));
+
+        await Criar(handler).AnalisarAsync(new byte[] { 0xFF, 0xD8, 0x01 }, default);
+
+        Assert.Contains("\"oculos\"", handler.CorpoEnviado);
+        Assert.Contains("\"corCapacete\"", handler.CorpoEnviado);
+        Assert.Contains("\"rostoVisivel\"", handler.CorpoEnviado);
+    }
+
+    [Fact]
+    public async Task Analisar_OculosNaoConformeComRostoVisivel_ContaSemOculos()
+    {
+        var r = await Analisar(Resposta(1, 0, 0, Pessoa(oculos: "nao_conforme")));
+
+        Assert.Equal(1, r.SemOculos);
+        Assert.Equal(0, r.OculosNaoAvaliavel);
+        Assert.True(r.Detalhe![0].SemOculos);
+        Assert.True(r.Detalhe![0].Irregular);
+    }
+
+    [Fact]
+    public async Task Analisar_RostoNaoAparece_OculosNaoConformeViraNaoAvaliavel()
+    {
+        // De costas / cabeça cortada: a IA diz nao_conforme, mas sem rosto visível não vale.
+        var r = await Analisar(Resposta(1, 0, 0, Pessoa(rostoVisivel: false, oculos: "nao_conforme")));
+
+        Assert.Equal(0, r.SemOculos);
+        Assert.Equal(1, r.OculosNaoAvaliavel);
+        Assert.False(r.Detalhe![0].Irregular);
+    }
+
+    [Fact]
+    public async Task Analisar_RostoVisivelAusenteNaResposta_OculosNaoAvaliavel()
+    {
+        var r = await Analisar(Resposta(1, 0, 0, Pessoa(oculos: "nao_conforme", rostoVisivel: null)));
+
+        Assert.Equal(0, r.SemOculos);
+        Assert.Equal(1, r.OculosNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_CabecaEntreOsDoisMinimos_CapaceteJulgadoMasOculosNaoAvaliavel()
+    {
+        // Cabeça de 5% da altura: acima do mínimo do capacete (3,5%), abaixo do mínimo dos óculos (7%).
+        var r = await Analisar(Resposta(1, 0, 0, Pessoa(cabecaY0: 0.10, cabecaY1: 0.15, capacete: "nao_conforme", oculos: "nao_conforme")));
+
+        Assert.Equal(1, r.SemCapacete);
+        Assert.Equal(0, r.SemOculos);
+        Assert.Equal(1, r.OculosNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_CabecaNoMinimoDosOculos_ComTolerancia_OculosJulgado()
+    {
+        var r = await Analisar(Resposta(1, 0, 0, Pessoa(cabecaY0: 0.10, cabecaY1: 0.10 + ClaudeAnalisadorEpiImagem.AlturaMinimaCabecaParaOculos, oculos: "nao_conforme")));
+
+        Assert.Equal(1, r.SemOculos);
+    }
+
+    [Fact]
+    public async Task Analisar_CaixaDaCabecaInvalida_OculosNaoAvaliavel()
+    {
+        // 0,0,0,0 é a cabeça "fora da imagem": sem tamanho conhecido, óculos não se julga.
+        var r = await Analisar(Resposta(1, 0, 0, Pessoa(cabecaY0: 0, cabecaY1: 0, oculos: "nao_conforme")));
+
+        Assert.Equal(0, r.SemOculos);
+        Assert.Equal(1, r.OculosNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_ColeteComOmbrosCortados_TroncoNaoVisivel_ColeteNaoAvaliavel()
+    {
+        // Só pernas e a parte de baixo da camiseta: a IA marca troncoVisivel=false, e nao_conforme não vale.
+        var r = await Analisar(Resposta(1, 0, 1, Pessoa(tronco: false, colete: "nao_conforme")));
+
+        Assert.Equal(0, r.SemColete);
+        Assert.Equal(1, r.ColeteNaoAvaliavel);
+    }
+
+    [Fact]
+    public async Task Analisar_CabecaPequenaDemais_OculosNaoAvaliavelECorNula()
+    {
+        var r = await Analisar(Resposta(1, 0, 0, Pessoa(cabecaY0: 0.1, cabecaY1: 0.12, oculos: "nao_conforme", cor: "azul")));
+
+        Assert.Equal(0, r.SemOculos);
+        Assert.Equal(1, r.OculosNaoAvaliavel);
+        Assert.Null(r.Detalhe![0].CorCapaceteVista);
+    }
+
+    [Fact]
+    public async Task Analisar_OculosConformeOuAusenteNaResposta_NaoGeraIrregularidade()
+    {
+        var r = await Analisar(Resposta(2, 0, 0, Pessoa(oculos: "conforme"), Pessoa(oculos: null, cor: null)));
+
+        Assert.Equal(0, r.SemOculos);
+        Assert.Equal(1, r.OculosNaoAvaliavel); // campo ausente = não avaliável
+        Assert.Equal(2, r.Detalhe!.Count);
+    }
+
+    [Theory]
+    [InlineData("branco", CorCapacete.Branco)]
+    [InlineData("amarelo", CorCapacete.Amarelo)]
+    [InlineData("azul", CorCapacete.Azul)]
+    [InlineData("verde", CorCapacete.Verde)]
+    [InlineData("vermelho", CorCapacete.Vermelho)]
+    [InlineData("laranja", CorCapacete.Laranja)]
+    [InlineData("AZUL", CorCapacete.Azul)]
+    public async Task Analisar_CorDoCapaceteConforme_ViraACorDoPadrao(string cor, CorCapacete esperada)
+    {
+        var r = await Analisar(Resposta(1, 0, 0, Pessoa(cor: cor)));
+
+        Assert.Equal(esperada, r.Detalhe![0].CorCapaceteVista);
+    }
+
+    [Theory]
+    [InlineData("outra")]
+    [InlineData("nao_avaliavel")]
+    [InlineData("rosa-choque")]
+    public async Task Analisar_CorOutraOuNaoAvaliavel_FicaNula(string cor)
+    {
+        var r = await Analisar(Resposta(1, 0, 0, Pessoa(cor: cor)));
+
+        Assert.Null(r.Detalhe![0].CorCapaceteVista);
+    }
+
+    [Fact]
+    public async Task Analisar_CapaceteNaoConformeOuNaoAvaliavel_NaoGuardaCor()
+    {
+        var r = await Analisar(Resposta(2, 0, 0, Pessoa(capacete: "nao_conforme", cor: "azul"), Pessoa(cabeca: false, cor: "azul")));
+
+        Assert.All(r.Detalhe!, p => Assert.Null(p.CorCapaceteVista));
+    }
+
+    [Fact]
+    public async Task Analisar_SemDetalheValido_NaoHaOculosNemCor()
+    {
+        var handler = new HandlerFalso(HttpStatusCode.OK,
+            RespostaClaude("{\"pessoas\":1,\"semCapacete\":1,\"semColete\":0,\"confianca\":\"alta\"}"));
+
+        var r = await Criar(handler).AnalisarAsync(new byte[] { 0xFF, 0xD8, 0x01 }, default);
+
+        Assert.Equal(0, r.SemOculos);
+        Assert.Equal(0, r.OculosNaoAvaliavel);
     }
 }

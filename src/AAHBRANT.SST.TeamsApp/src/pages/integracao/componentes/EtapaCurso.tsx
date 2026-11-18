@@ -1,17 +1,17 @@
-import { useState } from 'react';
-import { Button, Card, FeedbackInline, StatusChip } from '@ui';
-import { Checkmark16Regular, Fingerprint24Regular, PersonRegular } from '@fluentui/react-icons';
-import { api, type EtapaIntegracao, type IntegracaoAtendimentoDetalhe, type SessaoTreinamentoDetalhe } from '../../../lib/api';
+import { Card, FeedbackInline, StatusChip } from '@ui';
+import { PersonRegular } from '@fluentui/react-icons';
+import type { EtapaIntegracao, FotosAutomaticasIntegracao, IntegracaoAtendimentoDetalhe, SessaoTreinamentoDetalhe } from '../../../lib/api';
 import type { DispositivoLocal } from '../../../lib/agenteBiometricoLocal';
-import { PresencaBiometricaTurma } from '../../../components/treinamentos/PresencaBiometricaTurma';
+import { lerInstanteUtc } from '../../../components/assinatura/assinaturaDigital';
 import { FotosTurma } from '../../../components/treinamentos/FotosTurma';
 import { BlocoInstrutorTurma } from '../../treinamentos/BlocoInstrutorTurma';
 import { CargaEtapa } from './CargaEtapa';
-import { CadastroBiometriaDialog } from './CadastroBiometriaDialog';
-import { NaoAssinouDialog } from './NaoAssinouDialog';
-import { AvatarIniciais, TituloSecao } from './pecas';
-import { mergeClasses, useEstilosIntegracao } from './estilos';
-import { TOTAL_FOTOS_ETAPA, dataHoraBrasil, nomesCurtos, participantesAtivos, rotuloEtapa } from './helpers';
+import { FilaAssinaturasEtapa } from './FilaAssinaturasEtapa';
+import { FotosAutomaticasEtapa } from './FotosAutomaticasEtapa';
+import { TituloSecao } from './pecas';
+import { useEstilosIntegracao } from './estilos';
+import { TOTAL_FOTOS_ETAPA, nomesCurtos, participantesAtivos, rotuloEtapa } from './helpers';
+import { formatarHoraBrasil } from './helpersInstrutor';
 
 interface Props {
   integracao: IntegracaoAtendimentoDetalhe;
@@ -26,13 +26,16 @@ interface Props {
   dispositivoLocal: DispositivoLocal | null;
   /** Etapa já concluída (ou integração concluída): nada mais se altera. */
   somenteLeitura: boolean;
+  /** Relógio da tela (ms), para a carga automática e a espera do fim. */
+  agoraMs: number;
+  /** Intervalos das fotos automáticas (servidor). */
+  fotosAutomaticas?: FotosAutomaticasIntegracao | null;
 }
 
-const rotuloMetodo = (metodo?: string | null) => (metodo === 'reconhecimentoFacial' ? 'facial' : metodo === 'biometria' ? 'digital' : null);
-
-// Etapa de curso (mockup v4): carga x mínimo, 3 fotos exclusivas da etapa e uma assinatura biométrica
-// por pessoa, que gera o certificado do curso. A turma da etapa é uma SessaoTreinamento comum, então
-// presença e fotos reaproveitam os mesmos componentes e endpoints da turma.
+// Etapa de curso (mockup v3, 16/11/2026): cartão da etapa, carga horária AUTOMÁTICA, fotos (automáticas, com
+// "Tirar foto agora" como plano B) e a fila única de assinaturas (instrutor + colaboradores). A turma da etapa
+// é uma SessaoTreinamento comum, então presença e fotos reaproveitam os mesmos componentes e endpoints da
+// turma. Cada seção tem `data-alvo`: as linhas "Falta" da página rolam até ela e a destacam.
 export function EtapaCurso({
   integracao,
   etapa,
@@ -43,39 +46,23 @@ export function EtapaCurso({
   agenteDisponivel,
   dispositivoLocal,
   somenteLeitura,
+  agoraMs,
+  fotosAutomaticas,
 }: Props) {
   const e = useEstilosIntegracao();
   const rotulo = rotuloEtapa(etapa.tipo);
   // O título do servidor já começa com o código ("NR-18 — Construção civil"); tira o prefixo para não repetir.
   const tituloSemCodigo = etapa.titulo?.replace(new RegExp(`^${rotulo.codigo}\\s*[—·:-]\\s*`), '').trim();
   const nomeCurso = tituloSemCodigo && tituloSemCodigo !== rotulo.codigo ? tituloSemCodigo : rotulo.nome;
-  const [coletando, setColetando] = useState(false);
-  const [marcandoNaoAssinou, setMarcandoNaoAssinou] = useState<{ trabalhadorId: string; nome: string } | null>(null);
-  const [desfazendoId, setDesfazendoId] = useState<string | null>(null);
-  const [cadastrando, setCadastrando] = useState<{ trabalhadorId: string; nome: string } | null>(null);
 
   const participantes = etapa.participantes;
   const funcaoPorTrabalhador = new Map(integracao.participantes.map((p) => [p.trabalhadorId, p.funcao]));
   const ativos = participantesAtivos(etapa);
-  const nAssinaram = ativos.filter((p) => p.presencaConfirmada).length;
-  const todosAssinaram = ativos.length > 0 && nAssinaram === ativos.length;
   const nFotos = etapa.fotosRegistradas;
   const necessarias = etapa.fotosNecessarias > 0 ? etapa.fotosNecessarias : TOTAL_FOTOS_ETAPA;
   const total = integracao.participantes.length;
   const nomesParticipantes = ativos.length === total ? 'todos os admitidos' : nomesCurtos(ativos.map((p) => p.nome)).join(', ');
-
-  async function desfazer(trabalhadorId: string) {
-    try {
-      setDesfazendoId(trabalhadorId);
-      aoErro(null);
-      aoAtualizarIntegracao(await api.integracoesAtendimento.desfazerNaoAssinou(integracao.id, etapa.id, trabalhadorId));
-      void recarregar();
-    } catch (err) {
-      aoErro(err instanceof Error ? err.message : 'Não foi possível desfazer.');
-    } finally {
-      setDesfazendoId(null);
-    }
-  }
+  const abertaEm = etapa.iniciadaEmUtc ? lerInstanteUtc(etapa.iniciadaEmUtc).getTime() : null;
 
   if (etapa.status === 'pulada' || participantes.length === 0) {
     return (
@@ -101,7 +88,6 @@ export function EtapaCurso({
             <PersonRegular /> {etapa.aplicabilidade}
           </div>
         )}
-        <CargaEtapa integracaoId={integracao.id} etapa={etapa} somenteLeitura={somenteLeitura} aoAtualizar={aoAtualizarIntegracao} aoErro={aoErro} />
         <dl className={e.kv}>
           {etapa.conteudo && (
             <>
@@ -115,157 +101,81 @@ export function EtapaCurso({
           <dd className={e.kvValor}>
             <b>{ativos.length}</b>{ativos.length > 0 ? ` (${nomesParticipantes})` : ' (ninguém para assinar nesta etapa)'}
           </dd>
+          {abertaEm != null && Number.isFinite(abertaEm) && (
+            <>
+              <dt className={e.kvRotulo}>Aberta às</dt>
+              <dd className={e.kvValor}>{formatarHoraBrasil(abertaEm)}</dd>
+            </>
+          )}
         </dl>
       </Card>
 
       {sessao && !sessao.instrutor && !somenteLeitura && (
-        <BlocoInstrutorTurma
-          detalhe={sessao}
-          agenteDisponivel={agenteDisponivel}
-          dispositivoLocal={dispositivoLocal}
-          aoAtualizar={recarregar}
-        />
+        <div data-alvo="instrutor" tabIndex={-1} className={e.secaoAlvo}>
+          <BlocoInstrutorTurma detalhe={sessao} agenteDisponivel={agenteDisponivel} dispositivoLocal={dispositivoLocal} aoAtualizar={recarregar} />
+        </div>
       )}
+
+      <div data-alvo="carga" tabIndex={-1} className={e.secaoAlvo}>
+        <CargaEtapa
+          integracaoId={integracao.id}
+          etapa={etapa}
+          codigoCurso={rotulo.codigo}
+          somenteLeitura={somenteLeitura}
+          agoraMs={agoraMs}
+          aoAtualizar={aoAtualizarIntegracao}
+          aoErro={aoErro}
+        />
+      </div>
 
       {sessao && (
-        <Card>
-          {nFotos < necessarias && !somenteLeitura && (
-            <FeedbackInline tom="aviso">
-              <b>Tire as {necessarias} fotos desta etapa, em horário próprio.</b> A etapa só avança com as {necessarias} fotos.
-            </FeedbackInline>
-          )}
-          <FotosTurma
-            detalhe={sessao}
-            somenteLeitura={somenteLeitura}
-            aoAtualizar={recarregar}
-            exigirCamera
-            exigirTokenCaptura
-            localFoto={`${rotulo.codigo} · Foto exclusiva desta etapa`}
-            titulo="Fotos da etapa"
-            subtitulo={`Evidência do ${rotulo.codigo}. Só câmera ao vivo, sem galeria nem envio de arquivo. As fotos nunca valem para outro curso.`}
-          />
-          <div className={e.fotosNota}>
-            Cada foto leva carimbo de data/hora, geolocalização e curso. Mesmo no mesmo dia, cada curso tem o seu bloco de horário (ex.: NR-06 de manhã, NR-12 à tarde).
-          </div>
-        </Card>
-      )}
-
-      <Card
-        titulo={
-          <TituloSecao numero="·" estado={todosAssinaram ? 'feito' : 'neutro'}>
-            Assinaturas do {rotulo.codigo} ({nAssinaram}/{ativos.length})
-          </TituloSecao>
-        }
-        subtitulo="Uma assinatura biométrica por pessoa neste curso, por digital ou facial. Cada uma gera o certificado da pessoa."
-      >
-        {!somenteLeitura && sessao && (
-          <div style={{ marginBottom: 12 }}>
-            <Button
-              appearance="primary"
-              size="large"
-              className={mergeClasses(e.btnGrande, e.btnCheio)}
-              icon={<Fingerprint24Regular />}
-              disabled={todosAssinaram}
-              aria-expanded={coletando}
-              onClick={() => setColetando((v) => !v)}
-            >
-              {coletando ? 'Fechar a coleta de assinaturas' : 'Coletar assinaturas'}
-            </Button>
-            <div className={e.mudo} style={{ marginTop: 6 }}>
-              {todosAssinaram
-                ? 'Todas as assinaturas deste curso foram coletadas.'
-                : 'Abre a fila de leitura por digital ou facial. Quem estiver sem biometria cadastra na linha da própria pessoa.'}
-            </div>
-          </div>
-        )}
-
-        {coletando && !somenteLeitura && !todosAssinaram && sessao && (
-          <div style={{ marginBottom: 12 }}>
-            <PresencaBiometricaTurma
-              detalhe={sessao}
+        <div data-alvo="fotos" tabIndex={-1} className={e.secaoAlvo}>
+          <Card
+            titulo={<TituloSecao numero="·" estado={nFotos >= necessarias ? 'feito' : 'atual'}>Fotos da etapa ({nFotos}/{necessarias})</TituloSecao>}
+            acoes={nFotos >= necessarias ? <StatusChip tom="ok">Completas</StatusChip> : <StatusChip tom="atencao">Faltam {necessarias - nFotos}</StatusChip>}
+            subtitulo={somenteLeitura ? undefined : 'Deixe o tablet virado para a turma: o sistema tira as fotos sozinho, com a câmera ao vivo.'}
+          >
+            <FotosAutomaticasEtapa
+              sessao={sessao}
+              codigoEtapa={rotulo.codigo}
+              configuracao={fotosAutomaticas}
               somenteLeitura={somenteLeitura}
-              agenteDisponivel={agenteDisponivel}
-              dispositivoLocal={dispositivoLocal}
               aoAtualizar={recarregar}
               aoErro={aoErro}
-              textoAjuda={`Abra a fila: cada pessoa assina o ${rotulo.codigo} pela digital ou pelo rosto, uma após a outra. Esta leitura vale só para este curso.`}
             />
-          </div>
-        )}
-
-        {participantes.map((p) => {
-          const metodo = rotuloMetodo(p.metodo);
-          const semBiometria = !p.presencaConfirmada && !p.naoAssinou && !p.temDigital && !p.temFacial;
-          const podeMarcar = !p.presencaConfirmada && !p.naoAssinou && !somenteLeitura;
-          return (
-            <div key={p.trabalhadorId} className={e.linhaParticipante}>
-              <AvatarIniciais nome={p.nome} pequeno />
-              <div>
-                <b>{p.nome}</b> <span className={e.funcaoPessoa}>{funcaoPorTrabalhador.get(p.trabalhadorId) ?? ''}</span>
-                <div style={{ marginTop: 4 }}>
-                  {p.presencaConfirmada ? (
-                    <StatusChip tom="ok" icone={<Checkmark16Regular />}>
-                      {metodo ? `Assinado por ${metodo}` : 'Assinado'}
-                      {p.presencaEmUtc ? ` em ${dataHoraBrasil(p.presencaEmUtc)}` : ''}
-                    </StatusChip>
-                  ) : p.naoAssinou ? (
-                    <StatusChip tom="neutro">Não assinou — sem certificado</StatusChip>
-                  ) : semBiometria ? (
-                    <StatusChip tom="alerta">Sem biometria</StatusChip>
-                  ) : (
-                    <StatusChip tom="atencao">Aguardando</StatusChip>
-                  )}
-                </div>
-                {p.naoAssinou && p.motivoNaoAssinou && <div className={e.mudo} style={{ marginTop: 4 }}>Motivo: {p.motivoNaoAssinou}</div>}
-              </div>
-              <div className={e.acoesLinha}>
-                {semBiometria && !somenteLeitura && (
-                  <Button
-                    appearance="primary"
-                    className={e.btnMedio}
-                    icon={<Fingerprint24Regular />}
-                    onClick={() => setCadastrando({ trabalhadorId: p.trabalhadorId, nome: p.nome })}
-                  >
-                    Cadastrar biometria agora
-                  </Button>
-                )}
-                {podeMarcar && (
-                  <Button appearance="secondary" className={e.btnMedio} onClick={() => setMarcandoNaoAssinou({ trabalhadorId: p.trabalhadorId, nome: p.nome })}>
-                    Não assinou
-                  </Button>
-                )}
-                {p.naoAssinou && !somenteLeitura && (
-                  <Button className={e.btnMedio} disabled={desfazendoId === p.trabalhadorId} onClick={() => void desfazer(p.trabalhadorId)}>
-                    Desfazer
-                  </Button>
-                )}
-              </div>
+            <div style={{ height: 14 }} />
+            <FotosTurma
+              detalhe={sessao}
+              somenteLeitura={somenteLeitura}
+              aoAtualizar={recarregar}
+              exigirCamera
+              exigirTokenCaptura
+              localFoto={`${rotulo.codigo} · Foto exclusiva desta etapa`}
+              titulo="Fotos registradas"
+              subtitulo={`Evidência do ${rotulo.codigo}. Só câmera ao vivo, sem galeria nem envio de arquivo. As fotos nunca valem para outro curso. Toque em um quadro vazio para tirar uma foto agora.`}
+            />
+            <div className={e.fotosNota}>
+              Cada foto leva carimbo de data/hora, geolocalização e curso. Mesmo no mesmo dia, cada curso tem o seu bloco de horário (ex.: NR-06 de manhã, NR-12 à tarde).
             </div>
-          );
-        })}
-      </Card>
+          </Card>
+        </div>
+      )}
 
-      {marcandoNaoAssinou && (
-        <NaoAssinouDialog
-          nome={marcandoNaoAssinou.nome}
+      <div data-alvo="fila" tabIndex={-1} className={e.secaoAlvo}>
+        <FilaAssinaturasEtapa
+          integracao={integracao}
+          etapa={etapa}
           codigoCurso={rotulo.codigo}
-          aoFechar={() => setMarcandoNaoAssinou(null)}
-          aoConfirmar={async (motivo) => {
-            aoAtualizarIntegracao(await api.integracoesAtendimento.marcarNaoAssinou(integracao.id, etapa.id, marcandoNaoAssinou.trabalhadorId, motivo));
-            setMarcandoNaoAssinou(null);
-            void recarregar();
-          }}
+          sessao={sessao}
+          funcaoPorTrabalhador={funcaoPorTrabalhador}
+          somenteLeitura={somenteLeitura}
+          agenteDisponivel={agenteDisponivel}
+          dispositivoLocal={dispositivoLocal}
+          recarregar={recarregar}
+          aoAtualizarIntegracao={aoAtualizarIntegracao}
+          aoErro={aoErro}
         />
-      )}
-
-      {cadastrando && (
-        <CadastroBiometriaDialog
-          trabalhadorId={cadastrando.trabalhadorId}
-          trabalhadorNome={cadastrando.nome}
-          aoFechar={() => setCadastrando(null)}
-          aoAlterar={() => void recarregar()}
-        />
-      )}
+      </div>
     </>
   );
 }

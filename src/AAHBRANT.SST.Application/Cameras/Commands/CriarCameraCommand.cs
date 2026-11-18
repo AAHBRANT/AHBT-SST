@@ -13,7 +13,26 @@ public record CriarCameraCommand(
     Guid? AreaSstId,
     TipoCamera Tipo,
     bool Habilitada,
-    int IntervaloMinimoAlertasMinutos) : IRequest<Guid>;
+    int IntervaloMinimoAlertasMinutos,
+    // Câmera IP lida pelo agente da obra (Fonte = Rtsp): equipamento, lente (canal 1 ou 2) e qualidade (stream 0 = principal,
+    // 1 = secundário). Omitidos = câmera do navegador, como sempre foi.
+    FonteCamera Fonte = FonteCamera.Navegador,
+    Guid? EquipamentoCameraId = null,
+    int? Canal = null,
+    int? Stream = null,
+    int IntervaloEnvioSegundos = CameraIpRegras.IntervaloEnvioPadraoSegundos,
+    // Câmera IP de duas lentes empilhadas: metade da imagem analisada (só vale para Fonte = Rtsp). AvisarTelegram = false
+    // mantém a análise e a ocorrência, mas não envia o alerta ao Telegram. Omitidos = imagem inteira e com aviso, como sempre foi.
+    ParteImagemCamera ParteImagem = ParteImagemCamera.Inteira,
+    bool AvisarTelegram = true,
+    // Regras de alerta: segundos para confirmar a falta de cada item e para não repetir o alerta da mesma pessoa/posição.
+    // ModoSombra omitido = LIGADO: câmera nova só registra, sem Telegram, até alguém desligar. As câmeras já existentes
+    // continuam como estão (migration) e a tela envia o valor escolhido.
+    int PersistenciaCapaceteSegundos = RegrasAlertaCamera.PersistenciaPadraoSegundos,
+    int PersistenciaColeteSegundos = RegrasAlertaCamera.PersistenciaPadraoSegundos,
+    int PersistenciaOculosSegundos = RegrasAlertaCamera.PersistenciaPadraoSegundos,
+    int NaoRepetirSegundos = RegrasAlertaCamera.NaoRepetirPadraoSegundos,
+    bool ModoSombra = true) : IRequest<Guid>;
 
 public class CriarCameraCommandValidator : AbstractValidator<CriarCameraCommand>
 {
@@ -23,6 +42,21 @@ public class CriarCameraCommandValidator : AbstractValidator<CriarCameraCommand>
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Tipo).IsInEnum();
         RuleFor(x => x.IntervaloMinimoAlertasMinutos).InclusiveBetween(0, 1440);
+        RuleFor(x => x.Fonte).IsInEnum();
+        RuleFor(x => x.IntervaloEnvioSegundos).IntervaloDeEnvio();
+        RuleFor(x => x.ParteImagem).ParteDaImagem();
+        RuleFor(x => x.PersistenciaCapaceteSegundos).PersistenciaDeConfirmacao();
+        RuleFor(x => x.PersistenciaColeteSegundos).PersistenciaDeConfirmacao();
+        RuleFor(x => x.PersistenciaOculosSegundos).PersistenciaDeConfirmacao();
+        RuleFor(x => x.NaoRepetirSegundos).NaoRepetirAlerta();
+        When(x => x.Fonte != FonteCamera.Rtsp && Enum.IsDefined(x.ParteImagem), () =>
+            RuleFor(x => x.ParteImagem).Equal(ParteImagemCamera.Inteira).WithMessage(CameraIpRegras.MensagemParteSoEmCameraIp));
+        When(x => x.Fonte == FonteCamera.Rtsp, () =>
+        {
+            RuleFor(x => x.EquipamentoCameraId).Must(id => id is { } g && g != Guid.Empty).WithMessage("Escolha o equipamento da câmera IP.");
+            RuleFor(x => x.Canal).Must(c => c is 1 or 2).WithMessage("O canal (lente) precisa ser 1 ou 2.");
+            RuleFor(x => x.Stream).Must(s => s is 0 or 1).WithMessage("A qualidade precisa ser principal (0) ou secundária (1).");
+        });
     }
 }
 
@@ -43,6 +77,13 @@ public class CriarCameraCommandHandler : IRequestHandler<CriarCameraCommand, Gui
         if (await _db.Cameras.AnyAsync(c => c.ObraId == request.ObraId && c.Nome == nome, ct))
             throw new InvalidOperationException($"Já existe uma câmera chamada \"{nome}\" nesta obra.");
 
+        var ip = request.Fonte == FonteCamera.Rtsp;
+        if (ip)
+        {
+            await CameraIpRegras.ExigirEquipamentoUsavelAsync(_db, request.EquipamentoCameraId!.Value, request.ObraId, request.Habilitada, ct);
+            await CameraIpRegras.ExigirLenteLivreAsync(_db, request.EquipamentoCameraId!.Value, request.Canal!.Value, request.ParteImagem, null, ct);
+        }
+
         var camera = new Camera
         {
             ObraId = request.ObraId,
@@ -51,6 +92,18 @@ public class CriarCameraCommandHandler : IRequestHandler<CriarCameraCommand, Gui
             Tipo = request.Tipo,
             Habilitada = request.Habilitada,
             IntervaloMinimoAlertasMinutos = request.IntervaloMinimoAlertasMinutos,
+            Fonte = request.Fonte,
+            EquipamentoCameraId = ip ? request.EquipamentoCameraId : null,
+            Canal = ip ? request.Canal : null,
+            Stream = ip ? request.Stream : null,
+            IntervaloEnvioSegundos = request.IntervaloEnvioSegundos,
+            ParteImagem = ip ? request.ParteImagem : ParteImagemCamera.Inteira,
+            AvisarTelegram = request.AvisarTelegram,
+            PersistenciaCapaceteSegundos = request.PersistenciaCapaceteSegundos,
+            PersistenciaColeteSegundos = request.PersistenciaColeteSegundos,
+            PersistenciaOculosSegundos = request.PersistenciaOculosSegundos,
+            NaoRepetirSegundos = request.NaoRepetirSegundos,
+            ModoSombra = request.ModoSombra,
         };
         _db.Cameras.Add(camera);
         await _db.SaveChangesAsync(ct);

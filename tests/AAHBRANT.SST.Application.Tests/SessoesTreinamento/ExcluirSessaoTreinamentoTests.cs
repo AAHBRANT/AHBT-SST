@@ -112,6 +112,31 @@ public class ExcluirSessaoTreinamentoTests
     }
 
     [Fact]
+    public async Task TurmaComAssinaturaBiometricaDoInstrutor_ESaiSemErro_SemDeixarALinhaNemAImagem()
+    {
+        var db = NovoContexto(Guid.NewGuid().ToString());
+        var sessao = await CriarTurmaAsync(db, ObraA);
+        var outra = await CriarTurmaAsync(db, ObraA, participantes: 1, fotos: 1);
+        AssinaturaInstrutorSessaoTreinamento Assinatura(Guid sessaoId) => new()
+        {
+            ObraId = ObraA, SessaoTreinamentoId = sessaoId, InstrutorTrabalhadorId = Guid.NewGuid(), Metodo = MetodoAutenticacaoAssinatura.Biometria,
+            AssinadoEmUtc = DateTime.UtcNow, EvidenciaConteudo = [7, 7, 7], EvidenciaContentType = "image/png",
+        };
+        db.AssinaturasInstrutorSessaoTreinamento.AddRange(Assinatura(sessao.Id), Assinatura(outra.Id));
+        await db.SaveChangesAsync();
+
+        await ExcluirAsync(db, sessao.Id);
+
+        Assert.False(await db.SessoesTreinamento.IgnoreQueryFilters().AnyAsync(s => s.Id == sessao.Id));
+        Assert.False(await db.AssinaturasInstrutorSessaoTreinamento.IgnoreQueryFilters().AnyAsync(a => a.SessaoTreinamentoId == sessao.Id));
+        // A assinatura da outra turma segue intacta, e a trilha registra a remoção (sem a imagem).
+        Assert.True(await db.AssinaturasInstrutorSessaoTreinamento.IgnoreQueryFilters().AnyAsync(a => a.SessaoTreinamentoId == outra.Id));
+        var trilha = await db.TrilhaAuditoria.SingleAsync(t => t.EntidadeId == sessao.Id);
+        Assert.Contains("\"AssinaturasInstrutorRemovidas\":1", trilha.DadosDepoisJson);
+        Assert.DoesNotContain("EvidenciaConteudo", trilha.DadosDepoisJson);
+    }
+
+    [Fact]
     public async Task InscricaoEFotoJaExcluidasLogicamente_TambemSaem()
     {
         var db = NovoContexto(Guid.NewGuid().ToString());

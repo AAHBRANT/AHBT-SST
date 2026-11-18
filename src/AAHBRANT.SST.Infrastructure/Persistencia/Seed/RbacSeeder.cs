@@ -158,6 +158,10 @@ public static class RbacSeeder
         ("acidente:criar", "Acidente", "Criar", "Registrar acidente/incidente"),
         ("acidente:editar", "Acidente", "Editar", "Editar registro de acidente/investigação"),
         ("acidente:avancar_status", "Acidente", "AvancarStatus", "Avançar status do acidente"),
+        // Dado pessoal (CPF/telefone) de pessoa externa envolvida em ocorrência; cada consulta é auditada.
+        // Entra só no catálogo: nenhum perfil recebe por padrão. Proposta (LGPD, necessidade): Administrador,
+        // Gestor QSMS, Engenheiro de Segurança e Técnico de Segurança — o Admin libera em Perfis & Matriz.
+        ("acidente:ver_dados_pessoais", "Acidente", "VerDadosPessoais", "Ver CPF e telefone de pessoa externa envolvida em ocorrência (cada consulta é auditada)"),
 
         ("hht:ver", "RegistroHht", "Ver", "Ver registros mensais de HHT por obra"),
         ("hht:criar", "RegistroHht", "Criar", "Lançar registro mensal de HHT"),

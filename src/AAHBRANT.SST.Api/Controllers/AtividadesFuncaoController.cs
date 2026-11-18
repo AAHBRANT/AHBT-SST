@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AAHBRANT.SST.Api.Controllers;
 
 // Atividades por função na OS (Entrega 4, 10/11/2026): a IA sugere quais atividades do GHE cada função
-// executa e o Engenheiro de Segurança confirma; a OS passa a listar só as confirmadas. Quem decidiu vem
+// executa e o Técnico, o Engenheiro de Segurança ou o Administrador da obra confirma; a OS passa a listar só as confirmadas. Quem decidiu vem
 // sempre do token. Sem DELETE (descartar não apaga) e sem endpoint anônimo.
 [ApiController]
 [Route("api/obras/{obraId:guid}")]
@@ -41,7 +41,7 @@ public class AtividadesFuncaoController : ControllerBase
     public async Task<IActionResult> SugerirComIa(Guid obraId, Guid gheId, CancellationToken ct)
         => Ok(await _mediator.Send(new SugerirAtividadesFuncaoGheCommand(obraId, gheId), ct));
 
-    [Authorize(Policy = PoliticasAutorizacao.SomenteEngenheiroSeguranca)]
+    [Authorize(Policy = PoliticasAutorizacao.DecisorDeSugestoes)]
     [HttpPost("atividades-funcao/decidir")]
     public async Task<IActionResult> Decidir(Guid obraId, DecidirAtividadesFuncaoRequest corpo, CancellationToken ct)
     {
@@ -49,7 +49,7 @@ public class AtividadesFuncaoController : ControllerBase
         var itens = (corpo.Itens ?? new()).Select(i => new DecisaoAtividadeFuncao(i.AtividadeId, i.FuncaoId, i.Executa)).ToList();
         var decididos = await _mediator.Send(new DecidirAtividadesFuncaoCommand(obraId, itens, usuarioId, User.FindFirst("name")?.Value,
             // Entra ID desligado (dev): não há identidade real, mantém o comportamento de dev.
-            ExigirEngenheiroNaObra: !string.IsNullOrWhiteSpace(_configuracao["AzureAd:TenantId"])), ct);
+            ExigirPerfilNaObra: !string.IsNullOrWhiteSpace(_configuracao["AzureAd:TenantId"])), ct);
         return Ok(new { decididos });
     }
 }

@@ -155,7 +155,10 @@ public enum TipoAlerta
     DocumentoTerceirizadoVencido = 36,
     // ASO desativado porque sumiu do G-RH (aviso ao Técnico de Segurança da obra, 26/10/2026). Criado no ato pela
     // sincronização, não pelo Motor Central de Alertas periódico.
-    AsoDesativadoGrh = 37
+    AsoDesativadoGrh = 37,
+    // Ocorrência com óbito e providências em aberto / ocorrência aguardando laudo (AcidenteAlertaProvider).
+    ObitoProvidenciasPendentes = 38,
+    OcorrenciaAguardandoLaudo = 39
 }
 
 public enum SeveridadeAlerta
@@ -192,7 +195,9 @@ public enum TipoModuloAlerta
     // Validade do PCMSO (PcmsoAlertaProvider), 16/10/2026.
     Pcmso = 15,
     // Documentos da empresa terceirizada (DocumentoEmpresaTerceirizadaAlertaProvider), 21/10/2026.
-    DocumentoTerceirizado = 16
+    DocumentoTerceirizado = 16,
+    // Ocorrências (acidentes): providências de óbito e laudo em espera (AcidenteAlertaProvider).
+    Acidente = 17
 }
 
 public enum StatusAlerta
@@ -685,7 +690,34 @@ public enum TipoOcorrencia
     QuaseAcidente = 3,
     CondicaoInsegura = 4,
     AtoInseguro = 5,
-    DoencaOcupacional = 6
+    DoencaOcupacional = 6,
+    // Ocorrência cuja(s) vítima(s) não são funcionários (terceiro, visitante, transeunte...). Exige
+    // pelo menos uma pessoa externa (AcidentePessoaExterna) e nenhum funcionário com papel Envolvido.
+    OcorrenciaComPessoaExterna = 7
+}
+
+// Vínculo da pessoa externa com a obra/empresa.
+public enum VinculoPessoaExterna
+{
+    Terceiro = 1,
+    Visitante = 2,
+    Transeunte = 3,
+    Outro = 4
+}
+
+// Desfecho da ocorrência para a pessoa externa.
+public enum ResultadoPessoaExterna
+{
+    SemLesao = 1,
+    Lesao = 2,
+    Obito = 3
+}
+
+// Papel do funcionário na ocorrência. Testemunha não entra no G-RH nem na taxa de gravidade.
+public enum PapelEnvolvido
+{
+    Envolvido = 1,
+    Testemunha = 2
 }
 
 // Seção 28 da Base de Conhecimento (linhas 702-708) — vocabulário literal de metodologias de
@@ -707,7 +739,9 @@ public enum StatusAcidente
 {
     Registrado = 1,
     EmInvestigacao = 2,
-    Concluido = 3
+    Concluido = 3,
+    // Investigação pausada à espera de laudo (ex.: óbito). Anexado ao fim: não renumerar.
+    AguardandoLaudo = 4
 }
 
 // Classificação de gravidade do acidente, usada para calcular Dias Debitados na Taxa de
@@ -844,6 +878,9 @@ public enum PapelAssinatura
     // APR por biometria (05/11): elaboração e supervisão; envolvido assina sem papel.
     AprElaboracao = 6,
     AprSupervisao = 7,
+    // Ordem de Serviço (16/11): o técnico (ou, na integração, o instrutor) assina só por biometria (digital ou
+    // facial). Não é o dono do documento; a identidade é conferida contra a obra da OS ou o instrutor da integração.
+    TecnicoSegurancaOs = 8,
 }
 
 // Formação do instrutor de treinamento; sai impressa no certificado.
@@ -961,7 +998,16 @@ public enum StatusProcessoEleitoralCipa
     InscricoesEncerradas = 3,
     VotacaoRealizada = 4,
     Apurado = 5,
-    Encerrado = 6
+    Encerrado = 6,
+    // Urna biométrica (16/11/2026): votação aberta no tablet do canteiro.
+    VotacaoAberta = 7
+}
+
+public enum MetodoIdentificacaoEleitorCipa
+{
+    Digital = 1,
+    Facial = 2,
+    Mesario = 3
 }
 
 public enum StatusCandidatoCipa
@@ -1125,6 +1171,31 @@ public enum TipoCamera
     Portaria = 2,
 }
 
+// De onde vem a imagem da câmera: do navegador do tablet (tela Monitorar) ou lida direto da câmera IP pelo
+// agente instalado na obra (RTSP). As câmeras já cadastradas são Navegador.
+public enum FonteCamera
+{
+    Navegador = 0,
+    Rtsp = 1,
+}
+
+// Parte da imagem da câmera IP que a análise usa. Câmera de duas lentes (ex.: A31) entrega as lentes empilhadas numa imagem só;
+// cadastrar uma câmera por metade evita contar a mesma pessoa duas vezes. O recorte é feito pelo agente (ffmpeg).
+public enum ParteImagemCamera
+{
+    Inteira = 0,
+    MetadeSuperior = 1,
+    MetadeInferior = 2,
+}
+
+// Último estado gravado para a câmera. A situação mostrada na tela é calculada na consulta (ver ListarCamerasQuery),
+// porque depende também do último contato do agente.
+public enum SituacaoConexaoCamera
+{
+    Desconhecida = 0,
+    RecebendoImagem = 1,
+}
+
 public enum SituacaoOcorrenciaEpi
 {
     Nova = 1,
@@ -1137,4 +1208,17 @@ public enum ConfiancaAnaliseEpi
     Baixa = 1,
     Media = 2,
     Alta = 3,
+}
+
+// Cor do capacete esperada para uma função (padrão AAHBRANT) e cor vista pela câmera.
+// SemPadrao (0): a função não tem cor definida; na ocorrência a cor vista "outra/indefinida" não se grava (fica nulo).
+public enum CorCapacete
+{
+    SemPadrao = 0,
+    Branco = 1,
+    Amarelo = 2,
+    Azul = 3,
+    Verde = 4,
+    Vermelho = 5,
+    Laranja = 6,
 }

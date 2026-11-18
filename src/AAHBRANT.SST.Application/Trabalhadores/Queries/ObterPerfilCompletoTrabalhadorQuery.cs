@@ -78,7 +78,9 @@ public record OcorrenciaDto(
     GravidadeAcidente Gravidade,
     bool HouveAfastamento,
     int? DiasAfastamento,
-    StatusAcidente Status);
+    StatusAcidente Status,
+    // Testemunha: a aba do perfil mostra o papel; Envolvido é o padrão (registros anteriores).
+    PapelEnvolvido Papel = PapelEnvolvido.Envolvido);
 
 public record AssinaturaPerfilDto(
     Guid SignatarioId,
@@ -290,7 +292,10 @@ public class ObterPerfilCompletoTrabalhadorQueryHandler : IRequestHandler<ObterP
                 a.Gravidade,
                 a.HouveAfastamento,
                 a.DiasAfastamento,
-                a.Status))
+                a.Status,
+                _db.AcidentesEnvolvidos.Any(e => e.AcidenteId == a.Id && e.TrabalhadorId == request.Id && e.Papel == PapelEnvolvido.Testemunha)
+                    ? PapelEnvolvido.Testemunha
+                    : PapelEnvolvido.Envolvido))
             .ToListAsync(ct);
 
         var assinaturas = await _db.DocumentoSignatarios
