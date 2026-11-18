@@ -134,7 +134,25 @@ public class ObterIntegracaoQueryHandler : IRequestHandler<ObterIntegracaoQuery,
     public async Task<IntegracaoAtendimentoDto?> Handle(ObterIntegracaoQuery request, CancellationToken ct)
     {
         // Atendimento de outra obra fora do escopo do usuário (ou sem vínculo do técnico): 404.
-        await AutorizacaoIntegracaoAtendimento.CarregarAsync(_db, request.IntegracaoId, request.AzureAdObjectId, request.AutenticacaoHabilitada, ct);
+        var (at, _) = await AutorizacaoIntegracaoAtendimento.CarregarAsync(_db, request.IntegracaoId, request.AzureAdObjectId, request.AutenticacaoHabilitada, ct);
+        // Autocorreção idempotente (17/11/2026): a carga da etapa em andamento (aberta na regra nova) é sempre a automática, contada
+        // desde a abertura; na primeira leitura de uma etapa ajustada à mão ela volta ao automático, nas seguintes nada muda. Não mexe
+        // se a turma da etapa já foi concluída (igual ao Avançar). Concorrência: duas abas lendo ao mesmo tempo gravariam períodos
+        // em dobro; por isso a correção também incrementa at.Versao (token de concorrência) e a gravação perdedora falha com
+        // DbUpdateConcurrencyException, que é engolida aqui: a tela segue com o que a gravação vencedora deixou no banco.
+        if (at.Status == StatusIntegracaoAtendimento.EmAndamento)
+        {
+            var etapa = await _db.IntegracaoEtapas.FirstOrDefaultAsync(
+                e => e.IntegracaoAtendimentoId == at.Id && e.Ordem == at.EtapaAtualOrdem && e.Status == StatusEtapaIntegracao.EmAndamento, ct);
+            var turmaConcluida = etapa?.SessaoTreinamentoId is { } sessaoId
+                && await _db.SessoesTreinamento.AnyAsync(s => s.Id == sessaoId && s.Status == StatusSessaoTreinamento.Concluida, ct);
+            if (etapa is not null && !turmaConcluida && await PeriodosAutomaticosEtapa.GarantirAsync(_db, at, etapa, ct))
+            {
+                at.Versao++;
+                try { await _db.SaveChangesAsync(ct); }
+                catch (DbUpdateConcurrencyException) { /* outra leitura já corrigiu: a Montagem abaixo lê o estado gravado */ }
+            }
+        }
         return await MontadorIntegracaoAtendimento.MontarAsync(_db, request.IntegracaoId, ct);
     }
 }

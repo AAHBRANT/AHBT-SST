@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Input, makeStyles } from '@fluentui/react-components';
-import type { Acidente, RegistroHhtMensal } from '../../lib/api';
+import { TipoOcorrencia, type Acidente, type RegistroHhtMensal } from '../../lib/api';
 import { Card, Legenda, StatusChip, designTokens, usePaletaGraficos } from '@ui';
 import { RotuloEscopo } from './RotuloEscopo';
 
@@ -106,7 +106,9 @@ const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'S
 // localStorage, definida pelo próprio usuário no card (decisão de 2026-08-26).
 // Card próprio ao lado do ASO desde 04/10: saiu da faixa de KPIs para ter espaço de mostrar a meta,
 // a evolução mensal e a composição do cálculo.
-export function TaxaGravidadeCard({ acidentes, registrosHht, escopo, className }: TaxaGravidadeCardProps) {
+export function TaxaGravidadeCard({ acidentes: acidentesBrutos, registrosHht, escopo, className }: TaxaGravidadeCardProps) {
+  // Pessoa externa não é empregada: fica fora dos indicadores da NBR 14280 (dias perdidos/debitados).
+  const acidentes = useMemo(() => acidentesBrutos.filter((a) => a.tipo !== TipoOcorrencia.PessoaExterna), [acidentesBrutos]);
   const estilos = useStyles();
   const paleta = usePaletaGraficos();
   const [meta, setMeta] = useState<number | null>(null);

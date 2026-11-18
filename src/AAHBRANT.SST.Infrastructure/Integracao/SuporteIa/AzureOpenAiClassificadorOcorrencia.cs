@@ -27,7 +27,11 @@ public class AzureOpenAiClassificadorOcorrencia : IClassificadorRelatoOcorrencia
         - tipo: Acidente (houve lesão ou doença no trabalhador), Incidente (dano material ou ao
           processo, sem lesão), QuaseAcidente (poderia ter causado lesão, ninguém se feriu),
           CondicaoInsegura (situação de risco no ambiente, sem evento), AtoInseguro (comportamento
-          de risco observado, sem evento), DoencaOcupacional.
+          de risco observado, sem evento), DoencaOcupacional, OcorrenciaComPessoaExterna (a vítima ou
+          envolvido que sofreu o evento NÃO é funcionário da obra — terceiro de outra empresa, visitante,
+          transeunte, ciclista, morador — e nenhum funcionário foi lesionado). Se algum funcionário
+          foi lesionado, mantenha Acidente (ou o tipo que couber) e liste a pessoa externa em
+          pessoasExternas mesmo assim.
         - gravidade: SemAfastamento quando não há lesão ou não houve afastamento; ComAfastamento só
           quando o relato disser que houve afastamento ou atestado; IncapacidadePermanenteParcial,
           IncapacidadePermanenteTotal e Obito só quando o relato afirmar isso explicitamente.
@@ -36,25 +40,33 @@ public class AzureOpenAiClassificadorOcorrencia : IClassificadorRelatoOcorrencia
           "ontem", "segunda passada" a partir da data atual informada. Sem hora citada, hora = null.
         - local: o ponto da obra onde ocorreu (bloco, pavimento, setor, frente de serviço).
         - atividade: exatamente um nome da lista de atividades da obra, ou null se nenhuma servir.
-        - nomesCitados: nomes de pessoas envolvidas como foram ditos no relato (sem cargo).
+        - nomesCitados: SÓ funcionários ou trabalhadores da obra (da AAHBRANT ou de empresas
+          contratadas que trabalham na obra) citados pelo nome, como foram ditos no relato (sem cargo).
+          Não repita aqui as pessoas externas.
+        - pessoasExternas: pessoas citadas que NÃO são funcionários da obra — terceiros de outra
+          empresa, visitantes, transeuntes, ciclistas, pedestres, moradores, vítimas que não são da
+          obra. Para cada uma: nome como foi dito (sem cargo); vinculoProvavel, um destes textos:
+          Terceiro, Visitante, Transeunte ou Outro; trecho, a frase curta do relato que a cita.
+          Sem nome citado, não crie a pessoa. Nunca invente CPF, telefone ou outro dado. Sem pessoas
+          externas, devolva lista vazia.
         - descricao: o relato reescrito em linguagem técnica e impessoal, em ordem cronológica,
           sem perder nenhum detalhe e sem acrescentar conclusões.
         - lesao, consequencia, atendimento: frases curtas, só com o que o relato informa.
         - Nunca informe número de CAT nem dias debitados.
         """;
 
-    private static readonly object Schema = new
+    internal static readonly object Schema = new
     {
         type = "object",
         additionalProperties = false,
         required = new[]
         {
             "tipo", "gravidade", "local", "data", "hora", "descricao", "lesao", "consequencia",
-            "atendimento", "houveAfastamento", "diasAfastamento", "atividade", "nomesCitados", "perguntas",
+            "atendimento", "houveAfastamento", "diasAfastamento", "atividade", "nomesCitados", "pessoasExternas", "perguntas",
         },
         properties = new
         {
-            tipo = new { type = "string", @enum = new[] { "Acidente", "Incidente", "QuaseAcidente", "CondicaoInsegura", "AtoInseguro", "DoencaOcupacional" } },
+            tipo = new { type = "string", @enum = new[] { "Acidente", "Incidente", "QuaseAcidente", "CondicaoInsegura", "AtoInseguro", "DoencaOcupacional", "OcorrenciaComPessoaExterna" } },
             gravidade = new { type = "string", @enum = new[] { "SemAfastamento", "ComAfastamento", "IncapacidadePermanenteParcial", "IncapacidadePermanenteTotal", "Obito" } },
             local = new { type = new[] { "string", "null" } },
             data = new { type = new[] { "string", "null" } },
@@ -67,6 +79,24 @@ public class AzureOpenAiClassificadorOcorrencia : IClassificadorRelatoOcorrencia
             diasAfastamento = new { type = new[] { "integer", "null" } },
             atividade = new { type = new[] { "string", "null" } },
             nomesCitados = new { type = "array", items = new { type = "string" } },
+            // vinculoProvavel sem "enum": o Claude recusa o schema quando enum e null se misturam; os
+            // valores válidos ficam nas instruções e o handler normaliza (desconhecido vira Outro).
+            pessoasExternas = new
+            {
+                type = "array",
+                items = new
+                {
+                    type = "object",
+                    additionalProperties = false,
+                    required = new[] { "nome", "vinculoProvavel", "trecho" },
+                    properties = new
+                    {
+                        nome = new { type = "string" },
+                        vinculoProvavel = new { type = "string" },
+                        trecho = new { type = "string" },
+                    },
+                },
+            },
             perguntas = new
             {
                 type = "array",
@@ -121,13 +151,18 @@ public class AzureOpenAiClassificadorOcorrencia : IClassificadorRelatoOcorrencia
             r.NomesCitados ?? new List<string>(),
             (r.Perguntas ?? new List<PerguntaModelo>())
                 .Select(q => new PerguntaRelatoOcorrencia(q.Campo ?? "outro", q.Pergunta ?? string.Empty))
+                .ToList(),
+            (r.PessoasExternas ?? new List<PessoaExternaModelo>())
+                .Select(p => new PessoaExternaCitadaIa(p.Nome, p.VinculoProvavel, p.Trecho))
                 .ToList());
     }
 
     private sealed record RespostaModelo(
         string? Tipo, string? Gravidade, string? Local, string? Data, string? Hora, string? Descricao,
         string? Lesao, string? Consequencia, string? Atendimento, bool? HouveAfastamento, int? DiasAfastamento,
-        string? Atividade, List<string>? NomesCitados, List<PerguntaModelo>? Perguntas);
+        string? Atividade, List<string>? NomesCitados, List<PessoaExternaModelo>? PessoasExternas, List<PerguntaModelo>? Perguntas);
+
+    private sealed record PessoaExternaModelo(string? Nome, string? VinculoProvavel, string? Trecho);
 
     private sealed record PerguntaModelo(string? Campo, string? Pergunta);
 }

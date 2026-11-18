@@ -2975,6 +2975,48 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.170.0",
+            Titulo: "Integração: carga horária da etapa sempre automática",
+            DataPublicacao: new DateTime(2026, 11, 17, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "A carga horária da etapa de curso é contada sozinha",
+                    "A carga podia ser lançada, ajustada e removida à mão, o que fazia o tempo registrado diferir do tempo real da etapa.",
+                    "A carga começa a contar no momento em que a etapa é aberta. Os botões Ajustar horário, Lançar período, Lançar outro período e Remover período saíram da tela, e o sistema não aceita mais lançamento manual."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Etapas abertas a partir de 16/11 voltaram a contar pelo tempo real",
+                    "Etapas que tiveram o horário ajustado à mão ficavam com esse horário, mesmo fora do tempo real.",
+                    "A carga dessas etapas é recalculada sozinha: começa na abertura e termina depois da carga prevista do curso. As etapas abertas antes de 16/11 continuam como estavam."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Curso sem carga prevista é registrado ao avançar",
+                    null,
+                    "Quando o curso não tem carga prevista, a carga é registrada no momento em que você clica em Avançar, contando da abertura da etapa até esse momento."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Você vê se o período é automático ou manual",
+                    null,
+                    "Cada período da etapa mostra se foi contado automaticamente pelo sistema ou lançado à mão, para deixar claro de onde vem a carga."),
+            }),
+        new(
+            Versao: "5.171.0",
+            Titulo: "Registre pessoas externas e testemunhas nas ocorrências",
+            DataPublicacao: new DateTime(2026, 11, 17, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Pessoas que não são funcionárias podem ser registradas na ocorrência",
+                    "A ocorrência só registrava funcionários.",
+                    "Terceiros, visitantes e outras pessoas envolvidas entram na ocorrência com vínculo, lesão, atendimento e resultado. Os dados pessoais ficam protegidos e só aparecem para quem tem permissão."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Testemunhas e o status Aguardando laudo",
+                    null,
+                    "Funcionários podem ser registrados como testemunhas, sem entrar na taxa de gravidade. Quando a investigação depende de um laudo, use o status Aguardando laudo e retome de onde parou quando ele chegar. Em caso de óbito, a ocorrência traz um checklist de providências e o sistema avisa o que estiver em aberto."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Conclusão com justificativa e 3 fotos nas ocorrências novas",
+                    null,
+                    "Ao concluir a investigação sem ação no plano, informe a justificativa. Toda ocorrência nova passa a ter 3 fotos obrigatórias, de qualquer tipo."),
+            }),
+        new(
+            Versao: "5.172.0",
             Titulo: "PGR pela EAP: queda de altura e inclusão de risco pelo técnico",
             DataPublicacao: new DateTime(2026, 11, 17, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]

@@ -54,7 +54,7 @@ public class AzureOpenAiAnalistaPlanoOcorrencia : IAnalistaPlanoOcorrencia
           medidas preventivas práticas. Não cite número de norma nem item.
         """;
 
-    private static readonly object Schema = new
+    internal static readonly object Schema = new
     {
         type = "object",
         additionalProperties = false,

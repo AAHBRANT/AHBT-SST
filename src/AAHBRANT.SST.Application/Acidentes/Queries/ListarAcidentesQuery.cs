@@ -58,12 +58,26 @@ public class ListarAcidentesQueryHandler : IRequestHandler<ListarAcidentesQuery,
                 Causas = a.Causas,
                 Status = a.Status,
                 DataConclusaoInvestigacao = a.DataConclusaoInvestigacao,
+                ConclusaoInvestigacao = a.ConclusaoInvestigacao,
+                LaudoObservacao = a.LaudoObservacao,
+                AguardandoLaudoDesde = a.AguardandoLaudoDesde,
             })
             .ToListAsync(ct);
 
         var envolvidos = await AcidenteEnvolvidosSync.CarregarAsync(_db, lista.Select(a => a.Id).ToList(), ct);
+        var ids = lista.Select(a => a.Id).ToList();
+        var testemunhas = await AcidenteEnvolvidosSync.CarregarTestemunhasAsync(_db, ids, ct);
+        var pessoasExternas = await AcidentePessoasExternasSync.CarregarAsync(_db, ids, ct);
+        var criadoEm = await _db.Acidentes.Where(a => ids.Contains(a.Id))
+            .Select(a => new { a.Id, a.CreatedAtUtc }).ToDictionaryAsync(a => a.Id, a => a.CreatedAtUtc, ct);
         foreach (var a in lista)
+        {
+            a.ExigeTresFotos = criadoEm.TryGetValue(a.Id, out var c)
+                && Commands.AvancarStatusAcidenteCommandHandler.ExigeTresFotos(a.Tipo, c);
             a.Envolvidos = envolvidos.GetValueOrDefault(a.Id) ?? new();
+            a.Testemunhas = testemunhas.GetValueOrDefault(a.Id) ?? new();
+            a.PessoasExternas = pessoasExternas.GetValueOrDefault(a.Id) ?? new();
+        }
         return lista;
     }
 }

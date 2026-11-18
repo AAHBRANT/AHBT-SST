@@ -1,6 +1,6 @@
 import { dataBr } from '../../components/documentos-obra/CartoesVigentesPorObra';
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Abas, useAbaNaUrl, Button, Card, Carregando, FeedbackInline, PageHeader, StatusChip, Text, type Tom } from '@ui';
 import { DocumentArrowUp24Regular, DocumentPdf24Regular } from '@fluentui/react-icons';
 import { DialogoNovaRevisao } from '../../components/revisoes/DialogoNovaRevisao';
@@ -45,7 +45,10 @@ export function PgrDetalhePage() {
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   // ?aba=atividades-funcao abre a aba direto (atalho das pendências da Ordem de Serviço).
   const [aba, setAba] = useAbaNaUrl<AbaPgr>('aba', abasPgr, 'resumo');
-  const [atividadeEmFoco, setAtividadeEmFoco] = useState<string | null>(null);
+  // ?aba=inventario&atividade=<id> (17/11/2026): atalho das pendências da OS — abre a atividade já com os
+  // "Detalhes para a OS" expandidos, sem a SST ter de procurá-la no inventário.
+  const [searchParams] = useSearchParams();
+  const [atividadeEmFoco, setAtividadeEmFoco] = useState<string | null>(() => searchParams.get('atividade'));
   const [detalhe, setDetalhe] = useState<PgrDetalhe | null>(null);
   const [obras, setObras] = useState<Obra[]>([]);
   const [geracao, setGeracao] = useState<ResumoGeracaoPgrEap | undefined>();
@@ -55,9 +58,10 @@ export function PgrDetalhePage() {
   const [versaoDocumento, setVersaoDocumento] = useState(0);
   const leituraIa = useLeituraIa('pgr', id ?? '');
   // O foco vale uma vez só: depois que a aba "Riscos e medidas" abriu a atividade, voltar a ela à mão não reabre.
+  // Só depois que o detalhe carregou: antes disso o inventário nem montou (o foco vindo da URL se perderia).
   useEffect(() => {
-    if (aba === 'inventario' && atividadeEmFoco) setAtividadeEmFoco(null);
-  }, [aba, atividadeEmFoco]);
+    if (aba === 'inventario' && atividadeEmFoco && detalhe) setAtividadeEmFoco(null);
+  }, [aba, atividadeEmFoco, detalhe]);
   const obraDoPgr = detalhe?.pgr.obraId ?? '';
   const atividadesFuncao = useAtividadesFuncaoGhes(obraDoPgr);
 

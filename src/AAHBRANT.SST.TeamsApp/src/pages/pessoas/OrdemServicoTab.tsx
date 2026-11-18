@@ -7,10 +7,16 @@ import {
 import { api, metodoAutenticacaoAssinaturaLabel, nivelRiscoLabel, type MinutaOrdemServico, type OrdemServicoEmitida, type PendenciaOs } from '../../lib/api';
 import { AssinaturaOrdemServicoDialog } from '../../components/assinatura/AssinaturaOrdemServicoDialog';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { RevisarSugestoesIaDialog, VincularProcedimentosDialog } from './ResolverPendenciasOsDialogs';
 
 const tomPorNivel: Record<number, Tom> = { 1: 'ok', 2: 'info', 3: 'atencao', 4: 'alerta', 5: 'alerta' };
 const ehPendenciaAtividadesFuncao = (p: PendenciaOs) =>
   p.tipo === 'AtividadesFuncaoNaoConfirmadas' || p.tipo === 'AtividadesFuncaoSemDecisao' || p.tipo === 'AtividadesFuncaoNenhumaConfirmada';
+// Pendências que se resolvem no Inventário do PGR, abrindo direto na atividade (17/11/2026).
+const ehPendenciaDoInventario = (p: PendenciaOs) => p.tipo === 'RiscoSemAvaliacao' || p.tipo === 'MedidasNaoSeparadas';
+// Pendências resolvidas em lote, sem sair da OS (17/11/2026).
+type Lote = { tipo: 'procedimentos' | 'sugestoes'; atividadeIds: string[]; pgrId?: string | null };
+const lotePorTipo: Record<string, Lote['tipo']> = { SemProcedimento: 'procedimentos', SugestoesPendentes: 'sugestoes' };
 const data = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
 const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 const situacaoOs: Record<OrdemServicoEmitida['situacao'], { tom: Tom; texto: string }> = {
@@ -35,8 +41,20 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
   const [emitindo, setEmitindo] = useState(false);
   const [erroEmissao, setErroEmissao] = useState<string | null>(null);
   const [assinando, setAssinando] = useState<OrdemServicoEmitida | null>(null);
+  const [lote, setLote] = useState<Lote | null>(null);
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const navigate = useNavigate();
+
+  // abrirPop: com pendência, o pop-up explicativo abre sozinho (ao entrar na aba e ao voltar de um lote).
+  async function carregarMinuta(abrirPop: boolean) {
+    try {
+      const m = await api.ordensServico.obterMinuta(trabalhadorId);
+      setMinuta(m);
+      if (abrirPop) setPopAberto(m.pendencias.length > 0);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao montar a Ordem de Serviço.');
+    }
+  }
 
   async function carregarEmitidas() {
     try {
@@ -65,32 +83,47 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
   }
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const m = await api.ordensServico.obterMinuta(trabalhadorId);
-        setMinuta(m);
-        // Com pendência, o pop-up explicativo abre sozinho ao entrar na aba.
-        setPopAberto(m.pendencias.length > 0);
-      } catch (e) {
-        setErro(e instanceof Error ? e.message : 'Falha ao montar a Ordem de Serviço.');
-      }
-    })();
+    void carregarMinuta(true);
     void carregarEmitidas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trabalhadorId]);
 
   if (!minuta) return erro ? <FeedbackInline tom="erro">{erro}</FeedbackInline> : <Carregando variante="detalhe" linhas={6} />;
 
+  // Abre a atividade no Inventário do PGR ("Riscos e medidas"), já com os "Detalhes para a OS" abertos.
+  function abrirAtividadeNoPgr(pgrId: string, atividadeId: string) {
+    setPopAberto(false);
+    setLote(null);
+    navigate(`/prevencao/pgr/${pgrId}?aba=inventario&atividade=${atividadeId}`);
+  }
+
   function irPara(p: PendenciaOs) {
     setPopAberto(false);
-    if (p.destino === 'pgr' && p.destinoId) navigate(`/prevencao/pgr/${p.destinoId}${ehPendenciaAtividadesFuncao(p) ? '?aba=atividades-funcao' : ''}`);
+    const tipoLote = lotePorTipo[p.tipo];
+    if (tipoLote && p.atividadeIds?.length) {
+      setLote({ tipo: tipoLote, atividadeIds: p.atividadeIds, pgrId: p.destinoId });
+      return;
+    }
+    if (p.destino === 'pgr' && p.destinoId && ehPendenciaDoInventario(p) && p.atividadeIds?.length)
+      abrirAtividadeNoPgr(p.destinoId, p.atividadeIds[0]);
+    else if (p.destino === 'pgr' && p.destinoId) navigate(`/prevencao/pgr/${p.destinoId}${ehPendenciaAtividadesFuncao(p) ? '?aba=atividades-funcao' : ''}`);
     else if (p.destino === 'pgr') navigate('/gestao-sst?secao=pgr');
     else if (p.destino === 'treinamentos') aoIrParaAba('treinamentos');
     else if (p.destino === 'aso') aoIrParaAba('geral');
   }
 
+  function fecharLote(alterou: boolean) {
+    setLote(null);
+    // Volta para a lista de pendências já atualizada: a SST vê o que sumiu e o que ainda falta.
+    if (alterou) void carregarMinuta(true);
+    else setPopAberto(true);
+  }
+
   const rotuloDestino = (p: PendenciaOs) =>
     ehPendenciaAtividadesFuncao(p) ? 'Confirmar atividades da função'
+    : p.tipo === 'SemProcedimento' && p.atividadeIds?.length ? 'Vincular procedimentos'
+    : p.tipo === 'SugestoesPendentes' && p.atividadeIds?.length ? 'Revisar sugestões'
+    : ehPendenciaDoInventario(p) && p.atividadeIds?.length ? 'Abrir no Inventário'
     : p.destino === 'pgr' ? 'Abrir no PGR' : p.destino === 'treinamentos' ? 'Ver treinamentos' : 'Ver ASO';
 
   const riscos = minuta.atividades.flatMap((a) => a.riscos);
@@ -101,6 +134,8 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
   const previaPorConfirmacao = minuta.atividadesDaFuncaoConfirmadas === false;
   const pendSst = minuta.pendencias.filter((p) => p.quemResolve === 'SST');
   const pendRh = minuta.pendencias.filter((p) => p.quemResolve === 'RH');
+  // Só na transição (nenhuma decisão do engenheiro) as pendências por atividade ficam escondidas.
+  const pendenciasPorAtividadeOcultas = minuta.pendencias.some((p) => p.tipo === 'AtividadesFuncaoNaoConfirmadas');
   const base = [
     minuta.pgr ? `PGR ${minuta.pgr.nome}` : 'sem PGR vigente',
     minuta.ghes.length ? `GHE ${minuta.ghes.map((g) => String(g.numero).padStart(2, '0')).join(', ')}` : null,
@@ -175,8 +210,9 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
                 return p ? { rotulo: 'Confirmar atividades da função', aoClicar: () => irPara(p) } : undefined;
               })()}
             >
-              <b>Prévia.</b> A confirmação das atividades desta função ainda está pendente. A lista abaixo ainda pode mudar
-              e as pendências de procedimento aparecem depois da confirmação.
+              <b>Prévia.</b> A confirmação {pendenciasPorAtividadeOcultas ? 'das' : 'de parte das'} atividades desta função ainda está
+              pendente. A lista abaixo ainda pode mudar
+              {pendenciasPorAtividadeOcultas ? ' e as pendências de procedimento aparecem depois da confirmação' : ''}.
             </FeedbackInline>
           </div>
         )}
@@ -250,6 +286,15 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
       )}
       {dialogoVisualizador}
 
+      {lote?.tipo === 'procedimentos' && <VincularProcedimentosDialog atividadeIds={lote.atividadeIds} aoFechar={fecharLote} />}
+      {lote?.tipo === 'sugestoes' && (
+        <RevisarSugestoesIaDialog
+          atividadeIds={lote.atividadeIds}
+          aoFechar={fecharLote}
+          aoEditarNoPgr={lote.pgrId ? (atividadeId) => abrirAtividadeNoPgr(lote.pgrId!, atividadeId) : undefined}
+        />
+      )}
+
       <Dialog open={popAberto} onOpenChange={(_, d) => setPopAberto(d.open)}>
         <DialogSurface style={{ maxWidth: 640 }}>
           <DialogBody>
@@ -258,15 +303,44 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
               <Text style={{ display: 'block', textAlign: 'justify' }}>
                 A Ordem de Serviço só pode ser emitida quando todos os riscos tiverem avaliação, todas as medidas
                 tiverem sido validadas pelo responsável de SST e o trabalhador estiver com treinamentos e ASO em dia.
-                Por isso ela fica como <b>minuta</b> até {minuta.pendencias.length === 1 ? 'a ' : 'as '}<b>{minuta.pendencias.length} pendência(s)</b> abaixo serem resolvidas.
-                {previaPorConfirmacao && ' As pendências de procedimento aparecem depois da confirmação das atividades.'}
+                Ela fica como <b>minuta</b> até {minuta.pendencias.length === 1 ? 'a pendência abaixo ser resolvida' : <>as <b>{minuta.pendencias.length} pendências</b> abaixo serem resolvidas</>}.
+                {pendenciasPorAtividadeOcultas && ' As pendências de procedimento aparecem depois da confirmação das atividades.'}
               </Text>
-              {minuta.pendencias.map((p, i) => (
-                <div key={i} style={{ border: '1px solid var(--colorNeutralStroke2)', borderLeft: '4px solid var(--colorPaletteRedBorderActive)', borderRadius: 4, padding: '8px 10px', marginTop: 10 }}>
-                  <Text weight="semibold" style={{ display: 'block' }}>{i + 1}. {p.titulo}</Text>
-                  <Text size={200} style={{ display: 'block' }}><b>Por que bloqueia:</b> {p.porQueBloqueia}</Text>
-                  <Text size={200} style={{ display: 'block' }}><b>Quem resolve:</b> {p.quemResolve === 'SST' ? 'Responsável de SST' : 'RH / trabalhador'}</Text>
-                  {p.destino && <Button size="small" style={{ marginTop: 6 }} onClick={() => irPara(p)}>{rotuloDestino(p)}</Button>}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                {pendSst.length > 0 && <StatusChip tom="alerta">Cadastro do PGR: {pendSst.length}</StatusChip>}
+                {pendRh.length > 0 && <StatusChip tom="alerta">Do trabalhador: {pendRh.length}</StatusChip>}
+              </div>
+              {[
+                {
+                  titulo: 'Cadastro do PGR — responsável de SST',
+                  dica: 'Resolvido uma vez, vale para todos os trabalhadores desta função na obra.',
+                  lista: pendSst,
+                },
+                { titulo: 'Do trabalhador — RH', dica: 'Vale só para este trabalhador.', lista: pendRh },
+              ].filter((g) => g.lista.length > 0).map((g) => (
+                <div key={g.titulo} style={{ marginTop: 14 }}>
+                  <Text weight="semibold" style={{ display: 'block' }}>{g.titulo}</Text>
+                  <Text size={200} style={{ display: 'block', color: 'var(--colorNeutralForeground3)' }}>{g.dica}</Text>
+                  {g.lista.map((p, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        border: '1px solid var(--colorNeutralStroke2)',
+                        borderLeft: `4px solid ${p.tipo === 'SugestoesPendentes' ? 'var(--colorPaletteMarigoldBorderActive)' : 'var(--colorPaletteRedBorderActive)'}`,
+                        borderRadius: 4, padding: '8px 10px', marginTop: 8,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                        <Text weight="semibold" style={{ flex: '1 1 260px' }}>{p.titulo}</Text>
+                        {p.destino && (
+                          <Button size="small" appearance={lotePorTipo[p.tipo] ? 'primary' : 'secondary'} onClick={() => irPara(p)}>
+                            {rotuloDestino(p)}
+                          </Button>
+                        )}
+                      </div>
+                      <Text size={200} style={{ display: 'block', marginTop: 2 }}>{p.porQueBloqueia}</Text>
+                    </div>
+                  ))}
                 </div>
               ))}
             </DialogContent>

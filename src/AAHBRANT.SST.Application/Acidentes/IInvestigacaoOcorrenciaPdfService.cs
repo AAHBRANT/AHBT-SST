@@ -30,6 +30,17 @@ public record InvestigacaoOcorrenciaPdfReuniaoModelo(
     IReadOnlyList<string>? Presentes = null,
     string? Ata = null);
 
+// Pessoa externa no PDF: CPF sempre mascarado (o relatório circula fora do sistema); telefone não vai.
+public record InvestigacaoOcorrenciaPdfPessoaExternaModelo(
+    string Nome,
+    string Vinculo,
+    string? Empresa,
+    string? CpfMascarado,
+    int? Idade,
+    string Resultado,
+    string? Lesao,
+    string? Atendimento);
+
 public record InvestigacaoOcorrenciaPdfModelo(
     string? ObraNome,
     byte[]? ObraLogoConteudo,
@@ -60,7 +71,10 @@ public record InvestigacaoOcorrenciaPdfModelo(
     byte[] QrCodePng,
     bool TemAssinatura,
     // Códigos do mapa corporal (RegioesCorpoAcidente): o serviço desenha o mapa e lista os rótulos.
-    IReadOnlyList<string>? RegioesCorpo = null);
+    IReadOnlyList<string>? RegioesCorpo = null,
+    IReadOnlyList<string>? Testemunhas = null,
+    IReadOnlyList<InvestigacaoOcorrenciaPdfPessoaExternaModelo>? PessoasExternas = null,
+    string? ConclusaoInvestigacao = null);
 
 public interface IInvestigacaoOcorrenciaPdfService
 {

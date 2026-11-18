@@ -3,8 +3,7 @@
 // `node --test tests-unit/`. O relógio entra como parâmetro (`agoraMs`): os testes fixam a hora e a tela
 // recalcula a cada tick. A trava real é do servidor (409); aqui a tela só explica o que falta.
 import type { EtapaIntegracao, PendenciaEtapaIntegracao } from '../../../lib/api';
-import { lerInstanteUtc } from '../../../components/assinatura/assinaturaDigital.ts';
-import { faltasDaEtapa, formatarCarga, participantesAtivos } from './helpers.ts';
+import { faltasDaEtapa, participantesAtivos } from './helpers.ts';
 
 /** 'biometria' (nome do servidor) é a DIGITAL; 'reconhecimentoFacial' é a facial. */
 export function rotuloMetodo(metodo?: string | null): 'digital' | 'facial' | null {
@@ -142,92 +141,6 @@ export function percentualCarga(
   const alvo = Math.round(etapa.cargaMinimaHoras * 60) || etapa.cargaLancadaMinutos;
   if (alvo <= 0) return 0;
   return Math.max(0, Math.min(100, Math.round((cargaDecorridaMin(etapa.periodos, agoraMs) / alvo) * 100)));
-}
-
-/** Aviso do "Ajustar horário" quando o período digitado fica abaixo do mínimo da NR. null = atende (ou não há mínimo). */
-export function avisoAbaixoDoMinimo(inicio: string, fim: string, cargaMinimaHoras: number): string | null {
-  const ini = /^(\d{2}):(\d{2})$/.exec(inicio);
-  const fi = /^(\d{2}):(\d{2})$/.exec(fim);
-  if (!ini || !fi) return null;
-  const minutos = Number(fi[1]) * 60 + Number(fi[2]) - (Number(ini[1]) * 60 + Number(ini[2]));
-  const minimo = Math.round(cargaMinimaHoras * 60);
-  if (minutos <= 0 || minimo <= 0 || minutos >= minimo) return null;
-  return `${formatarCarga(minutos)} neste ajuste. Faltam ${formatarCarga(minimo - minutos)} para o mínimo de ${cargaMinimaHoras} h; a etapa só avança com a carga atendida.`;
-}
-
-// ---- ajuste de horário (rota única POST .../periodos/ajustar) ----
-
-export interface PeriodoAjuste {
-  /** yyyy-MM-dd */
-  data: string;
-  /** HH:mm */
-  inicio: string;
-  /** HH:mm */
-  fim: string;
-}
-
-/** Abertura da etapa em ms. O servidor devolve o UTC às vezes sem o "Z": sem fuso, o instante é UTC. null = ausente ou inválida. */
-export function aberturaEtapaMs(iniciadaEmUtc?: string | null): number | null {
-  if (!iniciadaEmUtc) return null;
-  const ms = lerInstanteUtc(iniciadaEmUtc).getTime();
-  return Number.isFinite(ms) ? ms : null;
-}
-
-/** Dia de hoje em Brasília (yyyy-MM-dd): o servidor valida "data não futura" por esse dia. */
-export function hojeIsoBrasilia(agoraMs: number): string {
-  return new Date(agoraMs).toLocaleDateString('en-CA', { timeZone: FUSO_BRASILIA });
-}
-
-function minutosDe(hhmm: string): number | null {
-  const m = /^(\d{2}):(\d{2})$/.exec(hhmm);
-  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
-}
-
-/**
- * Erro de UM período do ajuste, na ordem das regras do servidor: data não futura, fim depois do início, até 12 h,
- * início não anterior à abertura da etapa (em Brasília, ao minuto) e fim não futuro. null = válido.
- * `aberturaMs` = etapa.iniciadaEmUtc em ms (null/NaN = sem a regra).
- */
-export function validarPeriodoAjuste(p: PeriodoAjuste, agoraMs: number, aberturaMs?: number | null): string | null {
-  const ini = minutosDe(p.inicio);
-  const fi = minutosDe(p.fim);
-  if (!p.data || ini == null || fi == null) return 'Informe a data, o horário de início e o de fim do período.';
-  if (p.data > hojeIsoBrasilia(agoraMs)) return 'A data não pode ser futura.';
-  if (fi <= ini) return 'O horário de fim precisa ser depois do início.';
-  if (fi - ini > 12 * 60) return 'O período pode ter no máximo 12 h.';
-  if (aberturaMs != null && Number.isFinite(aberturaMs)) {
-    const aberturaMin = Math.floor(aberturaMs / 60_000) * 60_000;
-    if (instanteBrasilia(p.data, p.inicio) < aberturaMin) {
-      return `O início não pode ser anterior à abertura da etapa (${formatarHoraBrasil(aberturaMs)} de ${diaBrasil(aberturaMs)}).`;
-    }
-  }
-  if (instanteBrasilia(p.data, p.fim) > agoraMs) return `O horário de fim não pode estar no futuro (agora são ${formatarHoraBrasil(agoraMs)}).`;
-  return null;
-}
-
-/** Valida a lista inteira que vai no POST: cada período e a sobreposição entre eles. Com mais de um, a mensagem diz de qual é. */
-export function validarPeriodosAjuste(periodos: PeriodoAjuste[], agoraMs: number, aberturaMs?: number | null): string | null {
-  if (periodos.length === 0) return 'Informe ao menos um período.';
-  for (let i = 0; i < periodos.length; i++) {
-    const erro = validarPeriodoAjuste(periodos[i], agoraMs, aberturaMs);
-    if (erro) return periodos.length > 1 ? `Período ${i + 1}: ${erro}` : erro;
-  }
-  return periodosSobrepostos(periodos) ? 'Os períodos não podem se sobrepor.' : null;
-}
-
-/** true se algum par de períodos se sobrepõe (fim de um depois do início do seguinte). */
-export function periodosSobrepostos(periodos: PeriodoAjuste[]): boolean {
-  const ordenados = [...periodos].sort((a, b) => instanteBrasilia(a.data, a.inicio) - instanteBrasilia(b.data, b.inicio));
-  for (let i = 1; i < ordenados.length; i++) {
-    if (instanteBrasilia(ordenados[i].data, ordenados[i].inicio) < instanteBrasilia(ordenados[i - 1].data, ordenados[i - 1].fim)) return true;
-  }
-  return false;
-}
-
-/** Corpo do ajuste: os períodos editados (automáticos) mais os manuais que a etapa já tem, porque a rota SUBSTITUI todos. */
-export function corpoAjustePeriodos(editados: PeriodoAjuste[], existentes: Array<PeriodoAjuste & { automatico?: boolean }>): PeriodoAjuste[] {
-  const manuais = existentes.filter((p) => !p.automatico).map((p) => ({ data: p.data.slice(0, 10), inicio: p.inicio, fim: p.fim }));
-  return [...manuais, ...editados.map((p) => ({ data: p.data.slice(0, 10), inicio: p.inicio, fim: p.fim }))];
 }
 
 // ---- pendências e bloqueio do Avançar ----
