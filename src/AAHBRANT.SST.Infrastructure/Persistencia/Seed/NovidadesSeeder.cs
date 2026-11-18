@@ -3015,6 +3015,25 @@ public static class NovidadesSeeder
                     null,
                     "Ao concluir a investigação sem ação no plano, informe a justificativa. Toda ocorrência nova passa a ter 3 fotos obrigatórias, de qualquer tipo."),
             }),
+        new(
+            Versao: "5.172.0",
+            Titulo: "Troca de função com histórico",
+            DataPublicacao: new DateTime(2026, 11, 17, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "O sistema guarda o histórico de função do funcionário",
+                    "O cadastro guardava só a função atual. Quando alguém trocava de função, não ficava registrado qual era a anterior nem quando a troca aconteceu.",
+                    "Cada troca de função, feita na tela ou vinda do G-RH, fica registrada com a função anterior, a nova e a data. Treinamentos, entregas de EPI, ASOs e documentos assinados continuam no cadastro do funcionário, como antes."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Ficha de EPI e Ordem de Serviço mostram a função da época",
+                    "Depois de uma troca de função, as assinaturas antigas da ficha de EPI e da Ordem de Serviço passavam a aparecer com a função nova.",
+                    "Cada assinatura aparece com a função que o funcionário exercia na data em que assinou. Vale para as trocas registradas a partir de agora."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Alerta de troca de função sem ASO de mudança de risco",
+                    "Quando um funcionário trocava de função, nada avisava que podia ser necessário o ASO de mudança de risco.",
+                    "A troca de função sem ASO de mudança de função lançado gera um alerta para o SESMT avaliar com o médico do PCMSO. O alerta não bloqueia o funcionário: some quando o ASO é lançado ou quando alguém o encerra por não haver mudança de risco. O responsável que recebe o aviso no Teams é escolhido em Configurações."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

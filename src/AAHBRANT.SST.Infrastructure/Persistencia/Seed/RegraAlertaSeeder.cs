@@ -27,6 +27,8 @@ public static class RegraAlertaSeeder
         TipoModuloAlerta.CadastroFacial,
         // Documentos da empresa terceirizada (PGR, PCMSO...), 21/10/2026.
         TipoModuloAlerta.DocumentoTerceirizado,
+        // Troca de função sem ASO de mudança de risco, 12/11/2026. Com regra, o aviso já sai no dia da troca.
+        TipoModuloAlerta.TrocaFuncao,
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

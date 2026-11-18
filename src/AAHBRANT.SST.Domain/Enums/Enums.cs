@@ -158,7 +158,10 @@ public enum TipoAlerta
     AsoDesativadoGrh = 37,
     // Ocorrência com óbito e providências em aberto / ocorrência aguardando laudo (AcidenteAlertaProvider).
     ObitoProvidenciasPendentes = 38,
-    OcorrenciaAguardandoLaudo = 39
+    OcorrenciaAguardandoLaudo = 39,
+    // Troca de função sem ASO de mudança de risco (TrocaFuncaoSemAsoAlertaProvider), 12/11/2026. Só avisa
+    // o SESMT; não bloqueia.
+    TrocaFuncaoSemAsoMudancaRisco = 40
 }
 
 public enum SeveridadeAlerta
@@ -197,7 +200,9 @@ public enum TipoModuloAlerta
     // Documentos da empresa terceirizada (DocumentoEmpresaTerceirizadaAlertaProvider), 21/10/2026.
     DocumentoTerceirizado = 16,
     // Ocorrências (acidentes): providências de óbito e laudo em espera (AcidenteAlertaProvider).
-    Acidente = 17
+    Acidente = 17,
+    // Troca de função sem ASO de mudança de risco (TrocaFuncaoSemAsoAlertaProvider), 12/11/2026.
+    TrocaFuncao = 18
 }
 
 public enum StatusAlerta

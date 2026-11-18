@@ -87,6 +87,16 @@ public class MesclarFuncaoDuplicadaCommandHandler : IRequestHandler<MesclarFunca
             .Where(r => r.FuncaoId == remover.Id).ToListAsync(ct);
         foreach (var r in criterios) r.FuncaoId = manter.Id;
 
+        // Histórico de função: mesclar duplicadas não é troca de função (não gera linha nova), mas as
+        // linhas antigas que citam a função removida passam a citar a que fica.
+        var historicos = await _db.HistoricosFuncaoTrabalhador.IgnoreQueryFilters()
+            .Where(h => h.FuncaoAnteriorId == remover.Id || h.FuncaoNovaId == remover.Id).ToListAsync(ct);
+        foreach (var h in historicos)
+        {
+            if (h.FuncaoAnteriorId == remover.Id) h.FuncaoAnteriorId = manter.Id;
+            if (h.FuncaoNovaId == remover.Id) h.FuncaoNovaId = manter.Id;
+        }
+
         await _db.SaveChangesAsync(ct);
 
         // Descarta o rastreamento antes de excluir: uma matriz redundante descartada acima (já
