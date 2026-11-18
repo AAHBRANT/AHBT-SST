@@ -277,7 +277,7 @@ export function TrabalhadorDetalhePage() {
             )}
             {aba === 'ordem-servico' && <OrdemServicoTab trabalhadorId={id!} aoIrParaAba={setAba} />}
             {aba === 'ocorrencias' && <OcorrenciasTab ocorrencias={perfil.ocorrencias} />}
-            {aba === 'cofre' && <CofreAssinaturasTab trabalhadorId={id} assinaturas={perfil.assinaturas} />}
+            {aba === 'cofre' && <CofreAssinaturasTab assinaturas={perfil.assinaturas} />}
             {aba === 'terceirizado' && <TerceirizadoTab trabalhadorId={id} perfil={perfil} />}
           </div>
         </div>
