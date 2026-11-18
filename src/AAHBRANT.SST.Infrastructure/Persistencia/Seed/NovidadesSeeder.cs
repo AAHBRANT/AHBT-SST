@@ -3129,6 +3129,25 @@ public static class NovidadesSeeder
                     "Quando um funcionário trocava de função, nada avisava que podia ser necessário o ASO de mudança de risco.",
                     "A troca de função sem ASO de mudança de função lançado gera um alerta para o SESMT avaliar com o médico do PCMSO. O alerta não bloqueia o funcionário: some quando o ASO é lançado ou quando alguém o encerra por não haver mudança de risco. O responsável que recebe o aviso no Teams é escolhido em Configurações."),
             }),
+        new(
+            Versao: "5.178.0",
+            Titulo: "Padronização do módulo Ocorrências e Não Conformidades",
+            DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Filtro de obra sincronizado entre análise e tabelas de Ocorrências, HHT e Não Conformidades",
+                    "Escolher uma obra no topo da tela filtrava os gráficos, mas as tabelas de Ocorrências, HHT mensal e Não Conformidades continuavam listando todas as obras (e não conformidades vinculadas diretamente à obra sem atividade não entravam na análise).",
+                    "A obra escolhida agora filtra tanto os painéis de análise quanto as três tabelas simultaneamente, incluindo não conformidades vinculadas diretamente à obra."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Taxa de Gravidade (NBR 14280) e gráfico mensal no fuso local",
+                    "O card de Taxa de Gravidade somava dias perdidos sem filtrar apenas acidentes, e ocorrências do dia 1º do mês apareciam no mês anterior no gráfico de evolução.",
+                    "A Taxa de Gravidade considera exclusivamente acidentes (NBR 14280) e o gráfico de evolução mensal respeita o mês local sem deslocamento de fuso."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Datas em padrão brasileiro, navegação corrigida e exclusão de HHT restrita a Administrador",
+                    "As colunas de data e prazo exibiam AAAA-MM-DD, o botão 'Voltar' da ficha de ocorrência apontava para uma seção inexistente e o botão de excluir HHT aparecia para todos os perfis.",
+                    "Todas as datas aparecem em DD/MM/AAAA, o botão 'Voltar' retorna corretamente para Ocorrências e apenas Administradores visualizam a exclusão de HHT."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

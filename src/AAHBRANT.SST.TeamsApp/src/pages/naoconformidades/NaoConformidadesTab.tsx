@@ -35,6 +35,8 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
+import { dataBr } from '../../lib/datas';
 
 function novaInicial(): NovaNaoConformidade {
   return {
@@ -73,6 +75,7 @@ const tomStatus: Record<number, Tom> = {
 // conversão, seção 1).
 export function NaoConformidadesTab() {
   const navigate = useNavigate();
+  const [obraFiltro] = useFiltroObra();
   const [naoConformidades, setNaoConformidades] = useState<NaoConformidade[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -161,7 +164,7 @@ export function NaoConformidadesTab() {
     { chave: 'obra', rotulo: 'Obra', render: (nc) => nc.obraNome ?? '—' },
     { chave: 'atividade', rotulo: 'Atividade', render: (nc) => nc.atividadeNome ?? '—' },
     { chave: 'responsavel', rotulo: 'Responsável', render: (nc) => nc.responsavelUsuarioNome ?? '—' },
-    { chave: 'prazo', rotulo: 'Prazo', largura: '108px', render: (nc) => nc.prazo?.slice(0, 10) ?? '—' },
+    { chave: 'prazo', rotulo: 'Prazo', largura: '108px', render: (nc) => dataBr(nc.prazo) },
     {
       chave: 'status',
       rotulo: 'Status',
@@ -332,7 +335,15 @@ export function NaoConformidadesTab() {
         <DataTable
           aria-label="Não conformidades cadastradas"
           colunas={colunas}
-          linhas={naoConformidades}
+          linhas={
+            obraFiltro
+              ? naoConformidades.filter(
+                  (nc) =>
+                    nc.obraId === obraFiltro ||
+                    (!!nc.atividadeId && atividades.some((a) => a.id === nc.atividadeId && a.obraId === obraFiltro)),
+                )
+              : naoConformidades
+          }
           chaveLinha={(nc) => nc.id}
           carregando={carregandoLista}
           aoClicarLinha={(nc) => navigate(`/nao-conformidades/${nc.id}`)}

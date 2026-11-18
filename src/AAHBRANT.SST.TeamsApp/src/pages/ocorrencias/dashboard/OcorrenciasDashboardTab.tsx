@@ -111,7 +111,7 @@ export function OcorrenciasDashboardTab() {
   const naoConformidadesFiltradas = useMemo(
     () =>
       naoConformidades.filter(
-        (nc) => obraId === '' || (!!nc.atividadeId && idsAtividadesObra.has(nc.atividadeId)),
+        (nc) => obraId === '' || nc.obraId === obraId || (!!nc.atividadeId && idsAtividadesObra.has(nc.atividadeId)),
       ),
     [naoConformidades, obraId, idsAtividadesObra],
   );
@@ -184,8 +184,8 @@ export function OcorrenciasDashboardTab() {
       ultimosSeisMeses().map(({ ano, mes, rotulo }) => ({
         rotulo,
         valor: acidentesFiltrados.filter((a) => {
-          const data = new Date(a.data);
-          return data.getFullYear() === ano && data.getMonth() + 1 === mes;
+          const [anoData, mesData] = (a.data ?? '').slice(0, 10).split('-').map(Number);
+          return anoData === ano && mesData === mes;
         }).length,
       })),
     [acidentesFiltrados],
