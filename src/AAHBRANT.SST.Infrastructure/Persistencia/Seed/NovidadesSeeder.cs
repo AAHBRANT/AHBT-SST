@@ -3074,6 +3074,25 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.175.0",
+            Titulo: "Menu Operação padronizado (APR, PT, Inspeções, CIPA, EPI, Uniforme, EPC, DDS e Áreas)",
+            DataPublicacao: new DateTime(2026, 11, 18, 0, 15, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Datas no formato brasileiro em todas as tabelas da Operação",
+                    "As listas de APR, PT, Inspeções, CIPA, EPI, Uniforme, EPC e DDS exibiam datas no formato americano (AAAA-MM-DD).",
+                    "Todas as tabelas da Operação agora mostram as datas de emissão, validade, mandato, reunião, entrega e semana em DD/MM/AAAA."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Exclusão restrita a Administrador e datas no fuso do Brasil na Operação",
+                    "Botões de excluir apareciam para perfis não administradores em catálogos e abas da CIPA, e entregas de EPI/Uniforme/EPC sugeriam o dia seguinte após as 21h.",
+                    "Apenas Administradores veem ações de exclusão em todos os sub-módulos da Operação, e os formulários de entrega/instalação usam sempre a data local do Brasil."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Áreas de SST com painel de criação recolhível e EPC integrado à Obra Ativa",
+                    "A aba de Áreas de SST mantinha o formulário sempre aberto no layout antigo e a aba Instalações de EPC não acompanhava a obra selecionada.",
+                    "Áreas de SST agora usa o mesmo painel recolhível e chips de status das demais telas, e Instalações de EPC compartilha a obra ativa do módulo."),
+            }),
+        new(
+            Versao: "5.176.0",
             Titulo: "Troca de função com histórico",
             DataPublicacao: new DateTime(2026, 11, 17, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]

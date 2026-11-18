@@ -31,6 +31,8 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { dataBr } from '../../lib/datas';
 
 function vazio(): NovaInspecaoCipa {
   return { obraId: '', membroCipaId: null, data: '', local: '', riscoIdentificado: '', grauRisco: null };
@@ -57,6 +59,7 @@ export function InspecoesCipaTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -148,7 +151,7 @@ export function InspecoesCipaTab() {
 
   const colunas: Coluna<InspecaoCipa>[] = [
     { chave: 'obra', rotulo: 'Obra', render: (i) => nomeObra(i.obraId) },
-    { chave: 'data', rotulo: 'Data', render: (i) => i.data?.slice(0, 10) ?? '' },
+    { chave: 'data', rotulo: 'Data', render: (i) => dataBr(i.data) },
     { chave: 'local', rotulo: 'Local' },
     { chave: 'riscoIdentificado', rotulo: 'Risco identificado' },
     { chave: 'grauRisco', rotulo: 'Grau', render: (i) => (i.grauRisco != null ? nivelRiscoLabel[i.grauRisco] : '—') },
@@ -314,7 +317,9 @@ export function InspecoesCipaTab() {
                   Gerar NC
                 </Button>
               )}
-              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(i.id)} aria-label="Excluir" />
+              {souAdministrador && (
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(i.id)} aria-label="Excluir" />
+              )}
             </div>
           )}
         />

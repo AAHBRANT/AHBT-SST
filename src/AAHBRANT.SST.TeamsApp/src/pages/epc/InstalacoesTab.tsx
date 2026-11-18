@@ -32,8 +32,10 @@ import {
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
+import { dataBr, hojeIso } from '../../lib/datas';
 
-const hoje = () => new Date().toISOString().slice(0, 10);
+const hoje = () => hojeIso();
 
 const instalacaoVazia = (obraId: string): NovaInstalacaoEpc => ({
   catalogoEpcId: '',
@@ -56,7 +58,7 @@ const instalacaoVazia = (obraId: string): NovaInstalacaoEpc => ({
 export function InstalacoesTab() {
   const souAdministrador = useSouAdministrador();
   const [obras, setObras] = useState<Obra[]>([]);
-  const [obraId, setObraId] = useState('');
+  const [obraId, setObraId] = useFiltroObra();
   const [epcs, setEpcs] = useState<CatalogoEpc[]>([]);
   const [instalacoes, setInstalacoes] = useState<InstalacaoEpc[]>([]);
   const [novaInstalacao, setNovaInstalacao] = useState<NovaInstalacaoEpc>(instalacaoVazia(''));
@@ -79,7 +81,7 @@ export function InstalacoesTab() {
         const [listaObras, listaEpcs] = await Promise.all([api.obras.listar(), api.catalogosEpc.listar()]);
         setObras(listaObras);
         setEpcs(listaEpcs);
-        if (listaObras.length > 0) setObraId(listaObras[0].id);
+        if (!obraId && listaObras.length > 0) setObraId(listaObras[0].id);
       } catch (e) {
         setErro(e instanceof Error ? e.message : 'Falha ao carregar obras e catálogo de EPC.');
       }
@@ -194,14 +196,14 @@ export function InstalacoesTab() {
     { chave: 'epc', rotulo: 'EPC', render: (inst) => nomeEpc(inst.catalogoEpcId) },
     { chave: 'local', rotulo: 'Local', render: (inst) => inst.localInstalacao },
     { chave: 'quantidade', rotulo: 'Qtd.', alinhar: 'direita', render: (inst) => inst.quantidade },
-    { chave: 'instalacao', rotulo: 'Instalação', render: (inst) => inst.dataInstalacao.slice(0, 10) },
-    { chave: 'validade', rotulo: 'Validade', render: (inst) => inst.dataValidade?.slice(0, 10) },
+    { chave: 'instalacao', rotulo: 'Instalação', render: (inst) => dataBr(inst.dataInstalacao) },
+    { chave: 'validade', rotulo: 'Validade', render: (inst) => dataBr(inst.dataValidade) },
     {
       chave: 'ultimaInspecao',
       rotulo: 'Última inspeção',
       render: (inst) =>
         inst.dataUltimaInspecao
-          ? `${inst.dataUltimaInspecao.slice(0, 10)} — ${statusInspecaoEpcLabel[inst.statusUltimaInspecao ?? 0] ?? ''}`
+          ? `${dataBr(inst.dataUltimaInspecao)} — ${statusInspecaoEpcLabel[inst.statusUltimaInspecao ?? 0] ?? ''}`
           : 'Sem inspeção',
     },
     {
@@ -209,7 +211,7 @@ export function InstalacoesTab() {
       rotulo: 'Situação',
       render: (inst) =>
         inst.dataRemocao ? (
-          <StatusChip tom="neutro">Removida em {inst.dataRemocao.slice(0, 10)}</StatusChip>
+          <StatusChip tom="neutro">Removida em {dataBr(inst.dataRemocao)}</StatusChip>
         ) : (
           <StatusChip tom="ok">Instalada</StatusChip>
         ),

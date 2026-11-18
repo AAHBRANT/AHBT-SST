@@ -27,6 +27,7 @@ import { SlotFotoRemota } from '../../components/camera/SlotFotoRemota';
 import { referenciasUniforme, referenciaUniforme } from './referenciasUniforme';
 import { FotoCatalogoUniforme } from './FotoCatalogoUniforme';
 import { useCatalogoStyles } from './estilosUniforme';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 const itemVazio: NovoCatalogoUniforme = { nome: '', categoria: '' };
 
@@ -53,6 +54,7 @@ export function CatalogoUniformeTab() {
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
   const [fotoAmpliada, setFotoAmpliada] = useState<{ item: CatalogoUniforme; url: string; revogar: boolean } | null>(null);
+  const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -321,7 +323,9 @@ export function CatalogoUniformeTab() {
                 ) : (
                   <>
                     <Button className={e.botaoRodape} onClick={() => iniciarEdicao(item)}>Editar</Button>
-                    <BotaoAcao tom="excluir" className={e.lixeira} icon={<Delete24Regular />} onClick={() => excluir(item.id)} aria-label="Excluir" />
+                    {souAdministrador && (
+                      <BotaoAcao tom="excluir" className={e.lixeira} icon={<Delete24Regular />} onClick={() => excluir(item.id)} aria-label="Excluir" />
+                    )}
                   </>
                 )}
               </div>

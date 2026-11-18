@@ -31,7 +31,7 @@ import {
   type NovaDdsSemanal,
   type Obra,
 } from '../../lib/api';
-import { segundaFeiraAtualIso } from '../../lib/datas';
+import { dataBr, segundaFeiraAtualIso } from '../../lib/datas';
 import { usePodeNaObra } from '../../lib/UsuarioLogadoContext';
 import { FaixaSupervisao } from '../../components/FaixaSupervisao';
 
@@ -138,7 +138,7 @@ export function DdsSemanalPage() {
     {
       chave: 'semana',
       rotulo: 'Semana',
-      render: (s) => `${s.dataInicioSemana?.slice(0, 10)} a ${s.dataFimSemana?.slice(0, 10)}`,
+      render: (s) => `${dataBr(s.dataInicioSemana)} a ${dataBr(s.dataFimSemana)}`,
     },
     { chave: 'responsavel', rotulo: 'Responsável', render: (s) => s.responsavelUsuarioNome },
     {

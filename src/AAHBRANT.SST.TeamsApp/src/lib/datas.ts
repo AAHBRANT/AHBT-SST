@@ -17,3 +17,9 @@ export function segundaFeiraAtualIso(): string {
   const segunda = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - diferenca);
   return `${segunda.getFullYear()}-${String(segunda.getMonth() + 1).padStart(2, '0')}-${String(segunda.getDate()).padStart(2, '0')}`;
 }
+
+export function dataBr(iso?: string | null): string {
+  if (!iso) return '—';
+  const [ano, mes, dia] = iso.slice(0, 10).split('-');
+  return dia && mes && ano ? `${dia}/${mes}/${ano}` : iso.slice(0, 10);
+}

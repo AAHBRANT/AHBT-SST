@@ -23,6 +23,8 @@ import { api, type CatalogoEpc, type NovoCatalogoEpc } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { SlotFotoRemota } from '../../components/camera/SlotFotoRemota';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { dataBr } from '../../lib/datas';
 
 const epcVazio: NovoCatalogoEpc = {
   nome: '',
@@ -49,6 +51,7 @@ export function CatalogoEpcTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -204,7 +207,7 @@ export function CatalogoEpcTab() {
             onChange={(_, d) => setEdicao({ ...edicao, certificadoAprovacaoValidade: d.value })}
           />
         ) : (
-          epc.certificadoAprovacaoValidade?.slice(0, 10)
+          dataBr(epc.certificadoAprovacaoValidade)
         ),
     },
     {
@@ -339,14 +342,14 @@ export function CatalogoEpcTab() {
                 disabled={carregando}
                 aria-label="Salvar"
               />
-            ) : (
+            ) : souAdministrador ? (
               <BotaoAcao
                 tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={() => excluir(epc.id)}
                 aria-label="Excluir"
               />
-            )
+            ) : null
           }
         />
         <Legenda>
