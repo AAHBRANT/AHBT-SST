@@ -3148,6 +3148,25 @@ public static class NovidadesSeeder
                     "As colunas de data e prazo exibiam AAAA-MM-DD, o botão 'Voltar' da ficha de ocorrência apontava para uma seção inexistente e o botão de excluir HHT aparecia para todos os perfis.",
                     "Todas as datas aparecem em DD/MM/AAAA, o botão 'Voltar' retorna corretamente para Ocorrências e apenas Administradores visualizam a exclusão de HHT."),
             }),
+        new(
+            Versao: "5.179.0",
+            Titulo: "Padronização do módulo Terceirizado",
+            DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Filtro de obra sincronizado entre análise e abas de Empresas, Pessoas e Pendências",
+                    "A escolha de obra no painel de análise de Terceirizado não filtrava as abas de Empresas, Pessoas e Pendências nem ficava sincronizada com a obra ativa do sistema.",
+                    "A obra escolhida agora filtra o painel de análise e as três abas simultaneamente, exibindo apenas empresas, pessoas e pendências vinculadas aos contratos da obra."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Linguagem positiva, datas em padrão brasileiro e abertura direta ao clicar nas linhas",
+                    "Gráficos e checklist de adequação exibiam 'Vencidos'/'Vence em breve', datas de vigência e alertas apareciam em AAAA-MM-DD e as tabelas não abriam o detalhe ao clicar na linha.",
+                    "Os indicadores usam 'Renovação pendente' / 'A renovar', vigências e alertas aparecem em DD/MM/AAAA e clicar em qualquer linha abre a ficha da empresa, contrato ou funcionário."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Inativação de empresa e remoção de documento restritas a Administrador",
+                    "Botões de inativar empresa e remover documento enviado no checklist apareciam para perfis não administradores.",
+                    "Apenas Administradores visualizam as ações destrutivas de inativação de empresa e exclusão de documento enviado."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

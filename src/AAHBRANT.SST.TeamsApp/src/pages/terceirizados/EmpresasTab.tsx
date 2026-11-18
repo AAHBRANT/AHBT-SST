@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BotaoAcao,
@@ -18,8 +18,10 @@ import {
   type Coluna,
 } from '@ui';
 import { Add24Regular, Delete24Regular, DocumentPdf24Regular, DocumentBulletList24Regular, Eye24Regular, FolderOpen24Regular } from '@fluentui/react-icons';
-import { api, type Empresa, type NovaEmpresa, type ResumoConformidadeEmpresa } from '../../lib/api';
+import { api, type Contrato, type Empresa, type NovaEmpresa, type ResumoConformidadeEmpresa } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { CadastroPorContratoPdf } from './CadastroPorContratoPdf';
 import { ImportarPastaTerceirizado } from './ImportarPastaTerceirizado';
 import { ChipFaixa } from './ConformidadeEmpresa';
@@ -34,7 +36,10 @@ const empresaVazia: NovaEmpresa = {
 // drawer). Contratos e pessoas vinculadas ficam na ficha da empresa (EmpresaDetalhePage, Task 15).
 export function EmpresasTab() {
   const navigate = useNavigate();
+  const [obraId] = useFiltroObra();
+  const souAdmin = useSouAdministrador();
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [contratos, setContratos] = useState<Contrato[]>([]);
   const [novaEmpresa, setNovaEmpresa] = useState<NovaEmpresa>(empresaVazia);
   const [erro, setErro] = useState<string | null>(null);
   const [erroPainel, setErroPainel] = useState<string | null>(null);
@@ -58,6 +63,10 @@ export function EmpresasTab() {
         api.terceirizados.empresas.listar(),
         api.terceirizados.empresas.listarConformidade().catch(() => [] as ResumoConformidadeEmpresa[]),
       ]);
+      const contratosPorEmpresa = await Promise.all(
+        lista.map((e) => api.terceirizados.contratos.listarPorEmpresa(e.id).catch(() => [] as Contrato[])),
+      );
+      setContratos(contratosPorEmpresa.flat());
       const porEmpresa = new Map(resumo.map((r) => [r.empresaId, r]));
       // Da menos adequada para a mais adequada; sem cálculo (ou sem itens) vai para o fim.
       const ordem = (e: Empresa) => porEmpresa.get(e.id)?.percentual ?? Number.MAX_SAFE_INTEGER;
@@ -105,6 +114,12 @@ export function EmpresasTab() {
       setErro(e instanceof Error ? e.message : 'Falha ao inativar empresa.');
     }
   }
+
+  const empresasFiltradas = useMemo(() => {
+    if (!obraId) return empresas;
+    const idsComContratoNaObra = new Set(contratos.filter((c) => c.obraId === obraId).map((c) => c.empresaId));
+    return empresas.filter((e) => idsComContratoNaObra.has(e.id));
+  }, [empresas, contratos, obraId]);
 
   const colunas: Coluna<Empresa>[] = [
     { chave: 'razaoSocial', rotulo: 'Razão social' },
@@ -272,9 +287,10 @@ export function EmpresasTab() {
         <DataTable
           aria-label="Empresas terceirizadas cadastradas"
           colunas={colunas}
-          linhas={empresas}
+          linhas={empresasFiltradas}
           chaveLinha={(e) => e.id}
           carregando={carregandoLista}
+          aoClicarLinha={(e) => navigate(`/terceirizados/empresas/${e.id}`)}
           vazio={{
             titulo: 'Nenhuma empresa terceirizada cadastrada ainda',
             acao: { rotulo: 'Cadastrar empresa', aoClicar: () => setPainelAberto(true) },
@@ -287,7 +303,9 @@ export function EmpresasTab() {
                 onClick={() => navigate(`/terceirizados/empresas/${e.id}`)}
                 aria-label="Ver detalhes"
               />
-              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(e.id)} aria-label="Inativar" />
+              {souAdmin && (
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(e.id)} aria-label="Inativar" />
+              )}
             </>
           )}
         />
