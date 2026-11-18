@@ -22,6 +22,7 @@ import {
 import { AddCircle24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type ItemQuestionarioAplicabilidade, type Obra, type RespostaQuestionarioObra } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 // Onda 2 Task 18 (camada ui/): catálogo de perguntas do questionário de aplicabilidade + respostas
 // por obra. Duas tabelas (catálogo e respostas) viram DataTable; Radio/RadioGroup do Fluent
@@ -38,6 +39,7 @@ export function QuestionarioAplicabilidadeTab() {
   const [processando, setProcessando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const { confirmar, dialogElement } = useConfirmar();
+  const souAdministrador = useSouAdministrador();
   const sucessoToast = useSucessoToast();
 
   async function carregarCatalogoEObras() {
@@ -207,9 +209,11 @@ export function QuestionarioAplicabilidadeTab() {
             chaveLinha={(i) => i.id}
             carregando={carregandoLista}
             vazio={{ titulo: 'Nenhuma pergunta cadastrada ainda.' }}
-            acoesLinha={(i) => (
-              <BotaoAcao tom="excluir" icon={<Delete24Regular />} aria-label="Excluir" onClick={() => excluirItem(i.id)} />
-            )}
+            acoesLinha={
+              souAdministrador
+                ? (i) => <BotaoAcao tom="excluir" icon={<Delete24Regular />} aria-label="Excluir" onClick={() => excluirItem(i.id)} />
+                : undefined
+            }
           />
         </Card>
       </div>

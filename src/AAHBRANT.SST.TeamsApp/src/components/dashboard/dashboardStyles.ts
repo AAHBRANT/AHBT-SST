@@ -1,4 +1,4 @@
-import { makeStyles, tokens } from '@fluentui/react-components';
+import { makeStyles } from '@fluentui/react-components';
 import { designTokens, tokensUi } from '@ui';
 
 export const useDashboardStyles = makeStyles({
@@ -167,37 +167,6 @@ export const useDashboardStyles = makeStyles({
     alignItems: 'start',
     marginBottom: '16px',
   },
-  // No celular o card ocupava uma linha inteira só pra mostrar um calendário mensal, que já existe
-  // por completo em /calendario — pedido do usuário (21/09) pra ganhar espaço de tela lá.
-  calendarioEscondidoNoMobile: {
-    '@media (max-width: 620px)': { display: 'none' },
-  },
-  // Grade dos 7 indicadores do topo (6 KPIs + Taxa de Gravidade). Colunas FIXAS por largura, e não
-  // auto-fit: com auto-fit o número de colunas variava com a tela e o 7º cartão caía sozinho numa
-  // segunda linha ao lado de um vazio (13/09). Com colunas fixas, as linhas ficam sempre alinhadas
-  // (7 em uma linha em telas largas; 4+3 em médias; 2 por linha em estreitas).
-  gradeKpis: {
-    display: 'grid',
-    gridTemplateColumns: '1fr',
-    gap: '16px',
-    flexGrow: 1,
-    minWidth: 0,
-    // Faixas mutuamente exclusivas de propósito: o Griffel não garante a ordem das @media na folha
-    // gerada, e com min-width em cascata a regra de 4 colunas vencia a de 7 em tela larga.
-    '@media (min-width: 480px) and (max-width: 959px)': { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },
-    '@media (min-width: 960px) and (max-width: 1559px)': { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' },
-    '@media (min-width: 1560px)': { gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' },
-  },
-  dashboardGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
-    gap: '16px',
-    marginBottom: '16px',
-    minWidth: 0,
-    '@media (max-width: 680px)': {
-      gridTemplateColumns: '1fr',
-    },
-  },
   // Última linha do Início: Aptidão por treinamento, Conformidade por obra, Vencimentos e Atividade
   // em duas colunas iguais (04/10).
   gradeDoisColunas: {
@@ -211,8 +180,7 @@ export const useDashboardStyles = makeStyles({
     },
   },
   // Grade única do Início (proposta A, 28/10/2026): todos os blocos na mesma régua de 12 colunas,
-  // cards da mesma linha com a mesma altura. Faixas de @media mutuamente exclusivas pelo mesmo motivo
-  // da gradeKpis (o Griffel não garante a ordem das @media na folha gerada).
+  // cards da mesma linha com a mesma altura.
   gradeInicio: {
     display: 'grid',
     gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
@@ -278,88 +246,6 @@ export const useDashboardStyles = makeStyles({
     ':hover': { backgroundColor: 'var(--sst-acao-marca-wash)' },
   },
   chipPrazo: { fontSize: '11.5px', fontWeight: 700, borderRadius: '10px', padding: '2px 9px', whiteSpace: 'nowrap' },
-  kpiIcone: {
-    width: '34px',
-    height: '34px',
-    borderRadius: tokensUi.raio.md,
-    backgroundColor: designTokens.colorNeutralLight,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: '2px',
-  },
-  kpiValor: {
-    fontSize: '28px',
-    fontWeight: 800,
-    letterSpacing: '-0.01em',
-    fontVariantNumeric: 'tabular-nums',
-    lineHeight: '32px',
-  },
-  kpiRotulo: {
-    color: designTokens.colorNeutralMedium,
-    fontSize: '12.5px',
-    fontWeight: 600,
-  },
-  chartRow: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
-    gap: '16px',
-    marginBottom: '16px',
-  },
-  chartCard: {
-    backgroundColor: designTokens.colorSurface,
-    borderRadius: '12px',
-    border: `1px solid ${designTokens.colorCardBorder}`,
-    boxShadow: designTokens.cardShadow,
-    padding: '18px 20px',
-  },
-  chartTitulo: {
-    fontSize: '14px',
-    fontWeight: 700,
-    marginBottom: '4px',
-  },
-  chartSubtitulo: {
-    fontSize: '12px',
-    color: tokens.colorNeutralForeground3,
-    marginBottom: '12px',
-  },
-  motorPainel: {
-    backgroundColor: designTokens.colorSurface,
-    borderRadius: '12px',
-    border: `1px solid ${designTokens.colorCardBorder}`,
-    boxShadow: designTokens.cardShadow,
-    padding: '18px 20px',
-  },
-  motorCabecalho: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '12px',
-    marginBottom: '16px',
-  },
-  motorLista: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    maxHeight: '420px',
-    overflowY: 'auto',
-  },
-  motorLinha: {
-    display: 'grid',
-    gridTemplateColumns: '1fr auto',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '10px 14px',
-    borderRadius: '6px',
-    backgroundColor: tokens.colorNeutralBackground2,
-  },
-  motorLinhaBloqueada: {
-    borderLeft: `3px solid ${tokens.colorPaletteRedForeground1}`,
-  },
-  motorLinhaApta: {
-    borderLeft: `3px solid ${tokens.colorPaletteGreenForeground1}`,
-  },
   feed: {
     display: 'flex',
     flexDirection: 'column',

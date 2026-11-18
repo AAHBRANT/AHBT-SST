@@ -33,10 +33,11 @@ import {
   type Pcmso,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { CartoesVigentesPorObra, type CartaoDocumentoObra } from '../../components/documentos-obra/CartoesVigentesPorObra';
+import { CartoesVigentesPorObra, dataBr, type CartaoDocumentoObra } from '../../components/documentos-obra/CartoesVigentesPorObra';
 import { BarraObraAcoes } from '../../components/documentos-obra/BarraObraAcoes';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { DICA_IA, EnvioPdfComIa, dataCampo, sugerirObra } from '../../components/leitura-ia/EnvioPdfComIa';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 function pcmsoVazio(): NovoPcmso {
   return {
@@ -89,6 +90,7 @@ export function PcmsoTab() {
   const [lendoIa, setLendoIa] = useState(false);
   const [camposIa, setCamposIa] = useState<Set<keyof NovoPcmso>>(new Set());
   const { confirmar, dialogElement } = useConfirmar();
+  const souAdministrador = useSouAdministrador();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -169,7 +171,7 @@ export function PcmsoTab() {
         if (temObra) await api.leiturasIa.iniciar('pcmso', id).catch(() => undefined);
         limpar();
         sucessoToast(temObra ? 'PCMSO criado. A IA está lendo o documento completo.' : 'PCMSO criado com o PDF anexado.');
-        navigate(`/saude-ocupacional/pcmso/${id}`);
+        navigate(`/operacao/saude-ocupacional/pcmso/${id}`);
         return;
       }
       limpar();
@@ -227,7 +229,7 @@ export function PcmsoTab() {
           },
         ],
         acao: { rotulo: 'Abrir PDF', aoClicar: () => abrirPdf(p) },
-        acaoExtra: { rotulo: 'Ver PCMSO completo →', aoClicar: () => navigate(`/saude-ocupacional/pcmso/${p.id}`) },
+        acaoExtra: { rotulo: 'Ver PCMSO completo →', aoClicar: () => navigate(`/operacao/saude-ocupacional/pcmso/${p.id}`) },
       }))
       .sort((a, b) => a.obra.localeCompare(b.obra, 'pt-BR'));
     const comVigente = new Set(pcmsos.filter((p) => p.status === 3).map((p) => p.obraId));
@@ -258,13 +260,13 @@ export function PcmsoTab() {
     { chave: 'numeroDocumento', rotulo: 'Nº do documento', render: (p) => p.numeroDocumento ?? '-' },
     { chave: 'nome', rotulo: 'Nome' },
     { chave: 'obra', rotulo: 'Obra', render: (p) => nomeObra(p.obraId) },
-    { chave: 'emissao', rotulo: 'Emissão', render: (p) => p.dataEmissao?.slice(0, 10) ?? '' },
+    { chave: 'emissao', rotulo: 'Emissão', render: (p) => dataBr(p.dataEmissao) },
     {
       chave: 'validade',
       rotulo: 'Validade',
       render: (p) => (
         <>
-          {p.validade?.slice(0, 10) ?? '—'} {chipVencimento(p.validade)}
+          {dataBr(p.validade)} {chipVencimento(p.validade)}
         </>
       ),
     },
@@ -388,10 +390,12 @@ export function PcmsoTab() {
           chaveLinha={(p) => p.id}
           carregando={carregandoLista}
           vazio={{ titulo: 'Nenhum PCMSO cadastrado ainda.' }}
-          aoClicarLinha={(p) => navigate(`/saude-ocupacional/pcmso/${p.id}`)}
-          acoesLinha={(p) => (
-            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(p.id)} aria-label="Excluir" />
-          )}
+          aoClicarLinha={(p) => navigate(`/operacao/saude-ocupacional/pcmso/${p.id}`)}
+          acoesLinha={
+            souAdministrador
+              ? (p) => <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(p.id)} aria-label="Excluir" />
+              : undefined
+          }
         />
       </Card>
       )}

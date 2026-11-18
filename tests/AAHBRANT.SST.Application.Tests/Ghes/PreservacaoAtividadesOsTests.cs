@@ -100,6 +100,9 @@ public class PreservacaoAtividadesOsTests
         StatusMedidaPrevencao status = StatusMedidaPrevencao.Validada)
     {
         var atividade = await db.Atividades.EmUso(db).SingleAsync();
+        db.AtividadesFuncoes.RemoveRange(await db.AtividadesFuncoes.Where(x => x.AtividadeId == atividade.Id).ToListAsync());
+        db.AtividadeDocumentos.RemoveRange(await db.AtividadeDocumentos.Where(x => x.AtividadeId == atividade.Id).ToListAsync());
+        await db.SaveChangesAsync();
         atividade.CondicoesExecucao = "Sem chuva";
         atividade.Ferramentas = "Torquês";
         var decisao = new AtividadeFuncao
@@ -171,8 +174,9 @@ public class PreservacaoAtividadesOsTests
         await GerarAsync(db, obra, funcao, eap, ambiente: mudanca == "ambiente" ? "Subsolo" : "Laje",
             probabilidade: mudanca == "risco" ? 3 : 2, atividadeNome: mudanca == "atividade" ? "Desforma" : "Armação");
         var atual = await db.Atividades.EmUso(db).SingleAsync();
-        Assert.False(await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == atual.Id));
-        Assert.False(await db.AtividadeDocumentos.AnyAsync(x => x.AtividadeId == atual.Id));
+        Assert.False(await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == atual.Id && x.JustificativaIa == "Atividade da função"));
+        Assert.Equal(eap, await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == atual.Id && x.Status == StatusMedidaPrevencao.Validada));
+        Assert.Equal(eap, await db.AtividadeDocumentos.AnyAsync(x => x.AtividadeId == atual.Id));
         Assert.Null(atual.CondicoesExecucao);
     }
 
@@ -182,10 +186,11 @@ public class PreservacaoAtividadesOsTests
     public async Task FuncaoComDescricaoAlterada_NaoHerdaDecisao(bool eap)
     {
         var (db, obra, funcao) = await CriarAsync(eap);
-        await PrepararDetalhesAsync(db, funcao);
+        await PrepararDetalhesAsync(db, funcao, StatusMedidaPrevencao.Descartada);
         await GerarAsync(db, obra, funcao, eap, descricaoFuncao: "Supervisiona sem executar");
         var atual = await db.Atividades.EmUso(db).SingleAsync();
-        Assert.False(await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == atual.Id));
+        Assert.False(await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == atual.Id && x.JustificativaIa == "Atividade da função"));
+        Assert.Equal(eap, await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == atual.Id && x.Status == StatusMedidaPrevencao.Validada));
     }
 
     [Theory]
@@ -194,18 +199,19 @@ public class PreservacaoAtividadesOsTests
     public async Task OrigemComAtividadeDuplicada_NaoEscolheUmaArbitrariamente(bool eap)
     {
         var (db, obra, funcao) = await CriarAsync(eap);
-        await PrepararDetalhesAsync(db, funcao);
+        var prep = await PrepararDetalhesAsync(db, funcao);
+        var docAnterior = await db.AtividadeDocumentos.AsNoTracking().SingleAsync(x => x.Id == prep.DocumentoId);
         var anterior = await db.Atividades.EmUso(db).SingleAsync();
         db.Atividades.Add(new Atividade { ObraId = obra.Id, GheId = anterior.GheId, Nome = anterior.Nome, Descricao = anterior.Descricao });
         await db.SaveChangesAsync();
         await GerarAsync(db, obra, funcao, eap);
         var atual = await db.Atividades.EmUso(db).SingleAsync();
-        Assert.False(await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == atual.Id));
-        Assert.False(await db.AtividadeDocumentos.AnyAsync(x => x.AtividadeId == atual.Id));
+        Assert.False(await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == atual.Id && x.JustificativaIa == "Atividade da função"));
+        Assert.False(await db.AtividadeDocumentos.AnyAsync(x => x.AtividadeId == atual.Id && x.MaterialApoioId == docAnterior.MaterialApoioId));
     }
 
     [Fact]
-    public async Task AtividadeNova_FicaSemDecisaoEExistentePreservaConfirmacao()
+    public async Task AtividadeNova_RecebeConfirmacaoAutomaticaEExistentePreservaConfirmacaoAnterior()
     {
         var (db, obra, funcao) = await CriarAsync(true);
         await PrepararDetalhesAsync(db, funcao);
@@ -214,21 +220,56 @@ public class PreservacaoAtividadesOsTests
         Assert.Equal(2, atividades.Count);
         var antiga = atividades.Single(a => a.Nome == "1.1 Armação");
         var nova = atividades.Single(a => a.Nome == "1.2 Concretagem");
-        Assert.True(await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == antiga.Id && x.Status == StatusMedidaPrevencao.Validada));
-        Assert.False(await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == nova.Id));
+        Assert.True(await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == antiga.Id && x.JustificativaIa == "Atividade da função"));
+        Assert.True(await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == nova.Id && x.Status == StatusMedidaPrevencao.Validada && x.JustificativaIa == "Confirmada na aprovação do PGR"));
+        Assert.True(await db.AtividadeDocumentos.AnyAsync(x => x.AtividadeId == nova.Id));
     }
 
     [Fact]
-    public async Task FuncaoSubstituida_NaoHerdaDecisaoDaFuncaoRemovida()
+    public async Task FuncaoSubstituida_NaoHerdaDecisaoDaFuncaoRemovida_EConfirmaNovaFuncao()
     {
         var (db, obra, funcao) = await CriarAsync(true);
-        await PrepararDetalhesAsync(db, funcao);
+        await PrepararDetalhesAsync(db, funcao, StatusMedidaPrevencao.Descartada);
         var novaFuncao = new Funcao { Nome = "Supervisor" };
         db.Funcoes.Add(novaFuncao);
         await db.SaveChangesAsync();
         await GerarAsync(db, obra, novaFuncao, true);
         var atual = await db.Atividades.EmUso(db).SingleAsync();
-        Assert.False(await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == atual.Id));
+        Assert.False(await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == atual.Id && x.FuncaoId == funcao.Id));
+        Assert.True(await db.AtividadesFuncoes.AnyAsync(x => x.AtividadeId == atual.Id && x.FuncaoId == novaFuncao.Id && x.Status == StatusMedidaPrevencao.Validada));
         Assert.True(await db.AtividadeDocumentos.AnyAsync(x => x.AtividadeId == atual.Id));
+    }
+
+    [Fact]
+    public async Task AprovarGeracaoPgr_GeraItVigenteEConfirmaAtividadesAutomaticamente_LiberandoMinutaDaOs()
+    {
+        var (db, obra, funcao) = await CriarAsync(true);
+        var trabalhador = new Trabalhador
+        {
+            ObraId = obra.Id,
+            FuncaoId = funcao.Id,
+            Nome = "Antony Adriel",
+            Cpf = "12345678901",
+            DataAdmissao = DateTime.UtcNow.AddDays(-5),
+        };
+        db.Trabalhadores.Add(trabalhador);
+        db.Asos.Add(new Aso
+        {
+            Trabalhador = trabalhador,
+            DataExame = DateTime.UtcNow.Date.AddDays(-5),
+            DataValidade = DateTime.UtcNow.Date.AddYears(1),
+            ResultadoStatus = ResultadoAso.Apto,
+        });
+        await db.SaveChangesAsync();
+
+        var minuta = await new AAHBRANT.SST.Application.OrdensServico.ObterMinutaOrdemServicoQueryHandler(db)
+            .Handle(new AAHBRANT.SST.Application.OrdensServico.ObterMinutaOrdemServicoQuery(trabalhador.Id), default);
+
+        Assert.NotNull(minuta);
+        Assert.Empty(minuta!.Pendencias);
+        Assert.True(minuta.PodeEmitir);
+        Assert.Single(minuta.Atividades);
+        Assert.NotEmpty(minuta.Atividades[0].Procedimentos);
+        Assert.Contains("IT-SSO-1.1", minuta.Atividades[0].Procedimentos[0]);
     }
 }
