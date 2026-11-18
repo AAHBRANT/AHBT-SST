@@ -3218,7 +3218,7 @@ public static class NovidadesSeeder
             DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
             {
-                new NovidadeSeedItem(CategoriaNovidade.Novo,
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
                     "CEP, CNAE e Grau de Risco (NR-04) centralizados em Administração › Obras e edição de CNPJ liberada",
                     "CEP, CNAE e Grau de Risco ficavam restritos ao passo 4 do PGR, o CNPJ não podia ser editado depois da criação da obra e o campo Cliente aparecia sem necessidade.",
                     "O cadastro e a edição da obra concentram CNPJ, CEP, CNAE e Grau de Risco (sem Cliente), migrando automaticamente os dados já informados em PGRs e dimensionamentos de CIPA."),

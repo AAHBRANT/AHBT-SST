@@ -86,6 +86,17 @@ public class ObterEntradaIntegracaoQueryHandler : IRequestHandler<ObterEntradaIn
                                AAHBRANT.SST.Application.Instrutores.DescricaoInstrutor.Registro(p.Conselho, p.NumeroRegistro, p.UfRegistro),
                                instrComDigital.Contains(t.Id), instrComFacial.Contains(t.Id)))
             .ToList();
+
+        // Quando quem está logado já é instrutor, fica fixo nele mesmo (não pode escolher outro instrutor).
+        if (!string.IsNullOrWhiteSpace(request.AzureAdObjectId))
+        {
+            var meuTrabalhadorId = await _db.Usuarios
+                .Where(u => u.AzureAdObjectId == request.AzureAdObjectId && u.Ativo && u.Status == StatusUsuario.Ativo)
+                .Select(u => u.TrabalhadorId)
+                .FirstOrDefaultAsync(ct);
+            if (meuTrabalhadorId is { } idMeu && instrutores.Any(i => i.TrabalhadorId == idMeu))
+                instrutores = instrutores.Where(i => i.TrabalhadorId == idMeu).ToList();
+        }
         if (instrutores.Count == 0)
             bloqueios.Add(new("InstrutorNaoCadastrado", "Cadastre o perfil de instrutor de quem vai conduzir a integração.", "/pessoas"));
 

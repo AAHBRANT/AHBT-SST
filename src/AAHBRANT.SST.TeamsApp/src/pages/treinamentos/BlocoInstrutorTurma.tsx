@@ -28,7 +28,7 @@ import {
 } from '../../lib/api';
 import { capturarDigitalLocal, credencialLeitura, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
-import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { useSouAdministrador, useUsuarioLogado } from '../../lib/UsuarioLogadoContext';
 import { AssinaturaBiometricaBotoes } from '../../components/assinatura/AssinaturaBiometricaBotoes';
 import { CadastroBiometriaDialog } from '../integracao/componentes/CadastroBiometriaDialog';
 import { dataHoraBrasil } from '../integracao/componentes/helpers';
@@ -50,6 +50,7 @@ interface Props {
 // botão da digital pós-encerramento (rota antiga), que some quando todos os certificados estão assinados.
 export function BlocoInstrutorTurma({ detalhe, agenteDisponivel, dispositivoLocal, aoAtualizar }: Props) {
   const souAdministrador = useSouAdministrador();
+  const { usuario } = useUsuarioLogado();
   const { sessao, instrutor } = detalhe;
   const concluida = sessao.status === StatusSessaoTreinamento.Concluida;
   const [perfis, setPerfis] = useState<PerfilInstrutor[]>([]);
@@ -71,10 +72,32 @@ export function BlocoInstrutorTurma({ detalhe, agenteDisponivel, dispositivoLoca
   }, []);
 
   const [cadastrandoBiometria, setCadastrandoBiometria] = useState(false);
+  const meuPerfilInstrutor = usuario?.trabalhadorId ? perfis.find((p) => p.trabalhadorId === usuario.trabalhadorId) ?? null : null;
+  const perfisDisponiveis = meuPerfilInstrutor ? [meuPerfilInstrutor] : perfis;
+
+  // Se a turma ainda não tem instrutor e quem abriu já é instrutor cadastrado, vincula automaticamente a ele mesmo.
+  useEffect(() => {
+    if (!instrutor && meuPerfilInstrutor && !ocupado && !concluida) {
+      void (async () => {
+        try {
+          setOcupado(true);
+          await api.sessoesTreinamento.definirInstrutor(sessao.id, meuPerfilInstrutor.trabalhadorId);
+          await aoAtualizar();
+        } catch {
+          // Ignora se a sessão não puder mais alterar instrutor
+        } finally {
+          setOcupado(false);
+        }
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instrutor?.trabalhadorId, meuPerfilInstrutor?.trabalhadorId, sessao.id, concluida]);
+
   const assinouAntes = !!instrutor?.assinouAntesDeEncerrar;
   const todosAssinaram = !!instrutor && (assinouAntes || (instrutor.totalCertificados > 0 && instrutor.certificadosAssinados >= instrutor.totalCertificados));
-  // Depois de assinado (guardado ou em certificados) o servidor recusa a troca; a tela nem oferece.
-  const podeTrocar = !instrutor || (instrutor.certificadosAssinados === 0 && !assinouAntes);
+  // Quando o próprio instrutor está logado (ou já está definido na turma para quem não é admin), fica fixo nele mesmo e não troca por outro.
+  const fixoNoInstrutorLogado = !!meuPerfilInstrutor && instrutor?.trabalhadorId === meuPerfilInstrutor.trabalhadorId;
+  const podeTrocar = !fixoNoInstrutorLogado && (!instrutor || (souAdministrador && instrutor.certificadosAssinados === 0 && !assinouAntes));
   const semBiometria = !!instrutor && instrutor.temDigital === false && instrutor.temFacial === false;
   const metodoAssinatura = rotuloMetodo(instrutor?.metodoAssinatura);
 
@@ -147,7 +170,7 @@ export function BlocoInstrutorTurma({ detalhe, agenteDisponivel, dispositivoLoca
             <Field label={instrutor ? 'Trocar instrutor' : 'Escolher instrutor'}>
               <Select value={escolhido} onChange={(_, d) => setEscolhido(d.value)} aria-label="Instrutor da turma">
                 <option value="">Selecione…</option>
-                {perfis.map((p) => (
+                {perfisDisponiveis.map((p) => (
                   <option key={p.id} value={p.trabalhadorId}>
                     {p.trabalhadorNome} — {p.formacaoDescricao}
                   </option>

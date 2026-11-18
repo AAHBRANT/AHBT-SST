@@ -25,7 +25,10 @@ public class MinutaOrdemServicoDto
     public AsoOsDto? Aso { get; set; }
     public List<PoliticaOsDto> Politicas { get; set; } = new();
     public List<PendenciaOsDto> Pendencias { get; set; } = new();
+    public TecnicoOsDto? TecnicoResponsavel { get; set; }
 }
+
+public record TecnicoOsDto(string Nome, string? Funcao, string? Registro);
 
 public class ObraOsDto
 {

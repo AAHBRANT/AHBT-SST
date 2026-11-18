@@ -206,6 +206,8 @@ public class ObterMinutaOrdemServicoQueryHandler : IRequestHandler<ObterMinutaOr
             .Select(m => new PoliticaOsDto(m.Nome, m.Codigo, m.Revisao, m.FormaConsulta))
             .ToListAsync(ct);
 
+        minuta.TecnicoResponsavel = await ResolverTecnicoResponsavelAsync(t.ObraId, pgr?.ResponsavelUsuarioId, ct);
+
         minuta.Pendencias = AvaliadorPendenciasOs.Avaliar(new AvaliadorPendenciasOs.Entrada(
             minuta.Pgr?.Id,
             ghesDaFuncao.Count > 0,
@@ -221,6 +223,82 @@ public class ObterMinutaOrdemServicoQueryHandler : IRequestHandler<ObterMinutaOr
             GhesNumeros: minuta.Ghes.Select(g => g.Numero).ToList()));
 
         return minuta;
+    }
+
+    private async Task<TecnicoOsDto?> ResolverTecnicoResponsavelAsync(Guid obraId, Guid? responsavelPgrUsuarioId, CancellationToken ct)
+    {
+        // 1º Perfil de instrutor ativo na obra (ou autorizado para outras obras)
+        var perfis = await _db.PerfisInstrutor.ToListAsync(ct);
+        if (perfis.Count > 0)
+        {
+            var idsInstr = perfis.Select(p => p.TrabalhadorId).ToList();
+            var instrutoresTrab = await _db.Trabalhadores.IgnoreQueryFilters()
+                .Where(tr => idsInstr.Contains(tr.Id) && tr.Ativo && tr.Situacao == SituacaoTrabalhador.Ativo)
+                .Select(tr => new { tr.Id, tr.Nome, tr.ObraId })
+                .ToListAsync(ct);
+
+            var escolhido = (from p in perfis
+                             join tr in instrutoresTrab on p.TrabalhadorId equals tr.Id
+                             where tr.ObraId == obraId || (p.PodeAssinarEmOutrasObras && p.AutorizadoOutrasObrasEm != null)
+                             orderby tr.ObraId == obraId ? 0 : 1, tr.Nome
+                             select new
+                             {
+                                 tr.Nome,
+                                 Formacao = AAHBRANT.SST.Application.Instrutores.DescricaoInstrutor.Formacao(p.Formacao),
+                                 Registro = AAHBRANT.SST.Application.Instrutores.DescricaoInstrutor.Registro(p.Conselho, p.NumeroRegistro, p.UfRegistro),
+                             }).FirstOrDefault();
+
+            if (escolhido is not null)
+                return new TecnicoOsDto(escolhido.Nome, escolhido.Formacao, escolhido.Registro);
+        }
+
+        // 2º Técnico que assinou a geração aprovada do PGR da obra
+        var geracaoJson = await _db.GeracoesPgrEap
+            .Where(g => g.ObraId == obraId && g.Status == StatusGeracaoPgrEap.Aprovado)
+            .OrderByDescending(g => g.AprovadoEmUtc)
+            .Select(g => g.EstruturaJson)
+            .FirstOrDefaultAsync(ct);
+        if (!string.IsNullOrWhiteSpace(geracaoJson))
+        {
+            try
+            {
+                var est = System.Text.Json.JsonSerializer.Deserialize<AAHBRANT.SST.Application.GeracaoPgr.EstruturaGeracaoPgr>(
+                    geracaoJson, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+                if (est?.Complementares?.Tecnico is { Nome.Length: > 0 } tec)
+                    return new TecnicoOsDto(tec.Nome!, "Técnico de Segurança do Trabalho", tec.Registro);
+            }
+            catch
+            {
+                // Ignora falha de leitura de JSON antigo
+            }
+        }
+
+        // 3º Trabalhador ativo na obra com função de Técnico de Segurança
+        var funcoesDaObra = await _db.Funcoes.Select(f => new { f.Id, f.Nome }).ToListAsync(ct);
+        var idsFuncaoTecnico = funcoesDaObra.Where(f => FuncaoSstClassifier.EhTecnicoSeguranca(f.Nome)).Select(f => f.Id).ToHashSet();
+        if (idsFuncaoTecnico.Count > 0)
+        {
+            var tecObra = await _db.Trabalhadores
+                .Where(tr => tr.ObraId == obraId && tr.Situacao == SituacaoTrabalhador.Ativo && idsFuncaoTecnico.Contains(tr.FuncaoId))
+                .OrderBy(tr => tr.Nome)
+                .Select(tr => new { tr.Nome, tr.FuncaoId })
+                .FirstOrDefaultAsync(ct);
+            if (tecObra is not null)
+            {
+                var nomeFunc = funcoesDaObra.FirstOrDefault(f => f.Id == tecObra.FuncaoId)?.Nome ?? "Técnico de Segurança do Trabalho";
+                return new TecnicoOsDto(tecObra.Nome, nomeFunc, null);
+            }
+        }
+
+        // 4º Usuário responsável pelo PGR vigente
+        if (responsavelPgrUsuarioId is { } uid)
+        {
+            var nomeResp = await _db.Usuarios.Where(u => u.Id == uid).Select(u => u.Nome).FirstOrDefaultAsync(ct);
+            if (!string.IsNullOrWhiteSpace(nomeResp))
+                return new TecnicoOsDto(nomeResp, "Responsável de SST", null);
+        }
+
+        return null;
     }
 
     private static string? CondicoesDoGhe(string? ambiente, string? jornada)
