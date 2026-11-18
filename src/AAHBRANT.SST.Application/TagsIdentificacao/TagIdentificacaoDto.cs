@@ -10,6 +10,9 @@ public class TagIdentificacaoDto
     public StatusTag Status { get; set; }
     public TipoEntidadeVinculada? EntidadeVinculadaTipo { get; set; }
     public Guid? EntidadeVinculadaId { get; set; }
+    // Preenchido só para os objetos do adesivo de inspeção (Veículo, Item de tema, Alojamento); Área e
+    // Funcionário continuam sendo nomeados pela tela a partir das próprias listas.
+    public string? EntidadeVinculadaNome { get; set; }
 }
 
 // NTAG.md §1 — "o sistema resolve o identificador e carrega a entidade correspondente no

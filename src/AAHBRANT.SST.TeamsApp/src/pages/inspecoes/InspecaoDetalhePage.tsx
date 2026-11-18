@@ -38,9 +38,11 @@ import {
   TipoInspecao,
   tipoInspecaoLabel,
   tipoVeiculoLabel,
+  type AdesivoInspecaoInfo,
   type InspecaoDetalhe,
   type Usuario,
 } from '../../lib/api';
+import { BotaoImprimirAdesivo, ImprimirAdesivoDialog } from '../../components/inspecoes/ImprimirAdesivoDialog';
 import { SlotFoto } from '../../components/camera/SlotFoto';
 import { SeletorStatusItemChecklist } from '../../components/inspecoes/SeletorStatusItemChecklist';
 import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
@@ -122,6 +124,9 @@ export function InspecaoDetalhePage() {
   const [gerandoOcorrenciaId, setGerandoOcorrenciaId] = useState<string | null>(null);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
+  // Adesivo de inspeção: só existe com a inspeção Concluída e depende do servidor dizer que está disponível.
+  const [adesivo, setAdesivo] = useState<AdesivoInspecaoInfo | null>(null);
+  const [adesivoAberto, setAdesivoAberto] = useState(false);
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [fotoDepoisUrls, setFotoDepoisUrls] = useState<Record<string, string>>({});
   const [fotoAdicionalUrls, setFotoAdicionalUrls] = useState<Record<string, string>>({});
@@ -163,6 +168,21 @@ export function InspecaoDetalhePage() {
     const cancelar = assinarMudancasSync(() => void carregar());
     return () => { cancelar(); versaoCarga.current += 1; };
   }, [carregar]);
+
+  const statusDaInspecao = detalhe?.inspecao.status;
+  useEffect(() => {
+    if (!id || statusDaInspecao !== StatusInspecao.Concluida || !estaOnline()) {
+      setAdesivo(null);
+      return;
+    }
+    let cancelado = false;
+    api.inspecoes
+      .obterAdesivo(id)
+      .then((info) => { if (!cancelado) setAdesivo(info.disponivel ? info : null); })
+      // Sem o adesivo (API fora, objeto sem adesivo) o botão simplesmente não aparece.
+      .catch(() => { if (!cancelado) setAdesivo(null); });
+    return () => { cancelado = true; };
+  }, [id, statusDaInspecao]);
 
   // Miniaturas das evidências (antes/depois) são baixadas sob demanda (só para respostas com
   // temFoto/temFotoDepois) e mantidas como object URL até a página ser desmontada — mesmo padrão de
@@ -412,6 +432,17 @@ export function InspecaoDetalhePage() {
     void visualizar({ titulo: 'PDF da inspeção', nomeArquivo: nomeArquivoPdf(detalhe), obter: () => api.inspecoes.baixarPdf(id) });
   }
 
+  // O PDF do adesivo abre no mesmo visualizador do "Visualizar PDF" (o Teams bloqueia window.open).
+  function abrirAdesivoNoVisualizador(pdf: Blob) {
+    if (!detalhe) return;
+    setAdesivoAberto(false);
+    void visualizar({
+      titulo: 'Adesivo de inspeção',
+      nomeArquivo: `adesivo-${detalhe.inspecao.numeroDocumento ?? detalhe.inspecao.data?.slice(0, 10)}.pdf`,
+      obter: async () => pdf,
+    });
+  }
+
   if (!id) return <FeedbackInline tom="erro">Inspeção não encontrada.</FeedbackInline>;
 
   // Erro na carga inicial precisa aparecer aqui: sem isso o skeleton ficaria para sempre e a falha
@@ -516,7 +547,20 @@ export function InspecaoDetalhePage() {
             <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf} aria-label="Baixar PDF">
               Baixar PDF
             </BotaoAcao>
+            {adesivo && <BotaoImprimirAdesivo onClick={() => setAdesivoAberto(true)} />}
             {dialogoVisualizador}
+            {adesivo && adesivoAberto && (
+              <ImprimirAdesivoDialog
+                aberto={true}
+                onFechar={() => setAdesivoAberto(false)}
+                inspecaoId={id}
+                adesivo={adesivo}
+                protocolo={inspecao.numeroDocumento}
+                dataInspecao={inspecao.data}
+                inspetorNome={inspecao.responsavelUsuarioNome}
+                onGerado={abrirAdesivoNoVisualizador}
+              />
+            )}
             {inspecao.status === StatusInspecao.AguardandoAssinatura && (
               <BotaoAcao
                 tom="assinar"

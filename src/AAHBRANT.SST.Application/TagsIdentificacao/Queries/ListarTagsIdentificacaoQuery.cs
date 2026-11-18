@@ -23,7 +23,7 @@ public class ListarTagsIdentificacaoQueryHandler : IRequestHandler<ListarTagsIde
         if (request.Tipo.HasValue)
             query = query.Where(t => t.Tipo == request.Tipo.Value);
 
-        return await query
+        var tags = await query
             .OrderBy(t => t.Uid)
             .Select(t => new TagIdentificacaoDto
             {
@@ -35,5 +35,16 @@ public class ListarTagsIdentificacaoQueryHandler : IRequestHandler<ListarTagsIde
                 EntidadeVinculadaId = t.EntidadeVinculadaId
             })
             .ToListAsync(ct);
+
+        // Nome do objeto das tags do adesivo (placa, item, alojamento) em uma consulta por tipo, não por tag.
+        foreach (var grupo in tags.Where(t => NomeEntidadeVinculada.EhObjetoDeInspecao(t.EntidadeVinculadaTipo) && t.EntidadeVinculadaId.HasValue)
+                     .GroupBy(t => t.EntidadeVinculadaTipo!.Value))
+        {
+            var ids = grupo.Select(t => t.EntidadeVinculadaId!.Value).Distinct().ToList();
+            var nomes = await NomeEntidadeVinculada.ObterVariosAsync(_db, grupo.Key, ids, ct);
+            foreach (var tag in grupo) tag.EntidadeVinculadaNome = nomes.GetValueOrDefault(tag.EntidadeVinculadaId!.Value);
+        }
+
+        return tags;
     }
 }

@@ -50,7 +50,7 @@ export function TagsPerdidasPanel({ tags }: TagsPerdidasPanelProps) {
                   <Legenda>
                     {tipoTagLabel[tag.tipo]}
                     {tag.entidadeVinculadaTipo
-                      ? ` · vinculada a ${tipoEntidadeVinculadaLabel[tag.entidadeVinculadaTipo]}`
+                      ? ` · vinculada a ${tipoEntidadeVinculadaLabel[tag.entidadeVinculadaTipo] ?? 'objeto'}${tag.entidadeVinculadaNome ? `: ${tag.entidadeVinculadaNome}` : ''}`
                       : ' · sem vínculo'}
                   </Legenda>
                 </div>

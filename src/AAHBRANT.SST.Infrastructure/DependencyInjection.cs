@@ -141,6 +141,7 @@ public static class DependencyInjection
         services.AddScoped<IAtaSessaoTreinamentoPdfService, AtaSessaoTreinamentoPdfService>();
         services.AddScoped<IRelatorioFiscalizacaoPdfService, RelatorioFiscalizacaoPdfService>();
         services.AddScoped<IInspecaoPdfService, InspecaoPdfService>();
+        services.AddScoped<AAHBRANT.SST.Application.Inspecoes.Adesivo.IAdesivoInspecaoPdfService, AdesivoInspecaoPdfService>();
         services.AddScoped<AAHBRANT.SST.Application.OrdensServico.IOrdemServicoPdfService, OrdemServicoPdfService>();
         services.AddScoped<IInvestigacaoOcorrenciaPdfService, InvestigacaoOcorrenciaPdfService>();
         services.AddScoped<IGeradorNumeroDocumentoService, GeradorNumeroDocumentoService>();

@@ -6,8 +6,8 @@ export function ResolverTagResultado({ resultado }: { resultado: ResolverTagDto 
     <Text as="p">
       Tag {resultado.uid} ({tipoTagLabel[resultado.tipo]}) — status {statusTagLabel[resultado.status]}.{' '}
       {resultado.entidadeVinculadaTipo
-        ? `Vinculada a ${tipoEntidadeVinculadaLabel[resultado.entidadeVinculadaTipo]}: ${
-            resultado.entidadeVinculadaNome ?? resultado.entidadeVinculadaId
+        ? `Vinculada a ${tipoEntidadeVinculadaLabel[resultado.entidadeVinculadaTipo] ?? 'Objeto'}: ${
+            resultado.entidadeVinculadaNome ?? '—'
           }`
         : 'Sem vínculo.'}
     </Text>

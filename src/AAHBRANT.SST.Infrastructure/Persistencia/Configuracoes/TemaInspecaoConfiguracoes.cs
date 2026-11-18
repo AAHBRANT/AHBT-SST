@@ -12,6 +12,10 @@ public class TemaInspecaoConfiguracao : IEntityTypeConfiguration<TemaInspecao>
         // Dois temas ativos com o mesmo nome confundiriam os cards; o desativado libera o nome.
         builder.HasIndex(t => t.Nome).IsUnique().HasFilter("[Ativo] = 1");
         builder.HasQueryFilter(t => t.Ativo);
+        // Inteiro (default Liberado = 1): a migration é só aditiva, linhas existentes ficam como Liberado.
+        builder.Property(t => t.ModeloAdesivo)
+            .HasDefaultValue(AAHBRANT.SST.Domain.Enums.ModeloAdesivoInspecao.Liberado)
+            .HasSentinel(AAHBRANT.SST.Domain.Enums.ModeloAdesivoInspecao.Liberado);
     }
 }
 

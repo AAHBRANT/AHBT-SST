@@ -2958,6 +2958,21 @@ public static class NovidadesSeeder
                     null,
                     "O cabeçalho da integração, as etapas concluídas e a barra de carga horária ganharam o destaque em verde-esmeralda, no mesmo padrão dos indicadores da tela Início."),
             }),
+        new(
+            Versao: "5.169.0",
+            Titulo: "Adesivo de inspeção com QR Code",
+            DataPublicacao: new DateTime(2026, 11, 17, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Adesivo de inspeção para colar no veículo, no alojamento ou no item inspecionado",
+                    null,
+                    "Depois de concluída e assinada, a inspeção gera o adesivo LIBERADO, INSPECIONADO ou NÃO LIBERADO, com a logo da obra, o inspetor, o protocolo e a data da próxima inspeção. Escolha entre a folha A4 (8 adesivos, imprimindo na posição que quiser) e a etiqueta avulsa."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "QR Code do adesivo mostra a situação atual",
+                    null,
+                    "Quem lê o QR Code com o celular, sem precisar de login, vê a situação mais recente do equipamento ou do local e a data da próxima inspeção. Se o adesivo for de uma inspeção anterior, a tela avisa e mostra a mais recente."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
