@@ -12,6 +12,8 @@ import { DadosComplementaresPgr } from './DadosComplementaresPgr';
 import { QuemAssinaPgr } from './QuemAssinaPgr';
 import { ExposicaoRiscoEditor, SeletorEpi } from './ExposicaoRiscoEditor';
 import { InventarioPorPerigo } from './InventarioPorPerigo';
+import { NovoRiscoForm, type InicialNovoRisco } from './NovoRiscoForm';
+import { DANOS_QUEDA_DE_ALTURA, QUEDA_DE_ALTURA, chaveAltura, funcoesEmAltura, incluirRisco, normalizar, precisaConfirmarAltura } from './riscoManual';
 import { CronogramaTreinamentosCard } from './CronogramaTreinamentosCard';
 import { BotaoRascunhoPcmso } from '../saude-ocupacional/BotaoRascunhoPcmso';
 import { CampoCbo, ChipCbo, situacaoCbo } from './CampoCbo';
@@ -537,6 +539,31 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   const [modo, setModo] = useState<'perigo' | 'atividade'>('perigo');
+  // Formulário "Adicionar risco" aberto (um por vez): no GHE (cabeçalho do Por perigo ou aviso de altura) ou numa atividade.
+  const [form, setForm] = useState<{
+    gi: number; escopo: 'ghe' | 'atividade'; atual: string | null; marcadas: string[]; inicial?: InicialNovoRisco; chave: number;
+  } | null>(null);
+  const abrirForm = (f: Omit<NonNullable<typeof form>, 'chave'>) => setForm((atual) => ({ ...f, chave: (atual?.chave ?? 0) + 1 }));
+  // Inclui o risco nas atividades marcadas. Não duplica perigo que a atividade já tem: avisa qual atividade e deixa o técnico decidir.
+  const incluirNoGhe = (gi: number) => (dados: Parameters<typeof incluirRisco>[2], codigos: string[]) => {
+    const alvo = normalizar(dados.perigo);
+    const repetidas = e.ghes[gi].atividades
+      .filter((a) => codigos.includes(a.codigoEap) && a.riscos.some((r) => !r.excluido && normalizar(r.perigo) === alvo))
+      .map((a) => a.codigoEap);
+    if (repetidas.length > 0) return `"${dados.perigo.trim()}" já existe em ${repetidas.join(', ')}. Desmarque essas atividades.`;
+    alterar((x) => { incluirRisco(x.ghes[gi].atividades, codigos, dados); });
+    setForm(null);
+    return null;
+  };
+  const formulario = (gi: number, gh: GheGerado) => form && form.gi === gi && (
+    <NovoRiscoForm key={form.chave}
+      titulo={form.escopo === 'ghe'
+        ? `Adicionar risco no GHE ${String(gh.numero).padStart(2, '0')}`
+        : `Adicionar risco em ${gh.atividades.find((a) => a.codigoEap === form.atual)?.codigoEap ?? ''} ${gh.atividades.find((a) => a.codigoEap === form.atual)?.nome ?? ''}`.trim()}
+      atividades={gh.atividades} marcadas={form.marcadas} inicial={form.inicial}
+      tipos={TIPOS} grupoDoTipo={(t) => GRUPO_RISCO[t]} maxP={g.maxProbabilidade} maxS={g.maxSeveridade} matriz={g.matriz}
+      aoCancelar={() => setForm(null)} aoAdicionar={incluirNoGhe(gi)} />
+  );
   useEffect(() => {
     api.usuarios.listar(StatusUsuario.Ativo).then(setUsuarios).catch(() => setUsuarios([]));
     api.catalogosEpi.listar().then(setEpis).catch(() => setEpis([]));
@@ -574,9 +601,32 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
 
       {e.ghes.map((gh, gi) => (
         <Card key={gh.numero} titulo={`GHE ${String(gh.numero).padStart(2, '0')} · ${gh.nome}`}>
+          {editavel && precisaConfirmarAltura(gh) && (() => {
+            const nomes = funcoesEmAltura(gh);
+            const lista = nomes.length > 1 ? `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}` : nomes[0];
+            return (
+              <FeedbackInline tom="aviso"
+                acao={{
+                  rotulo: 'Adicionar Queda de altura',
+                  aoClicar: () => abrirForm({
+                    gi, escopo: 'ghe', atual: null, marcadas: gh.atividades.map((a) => a.codigoEap),
+                    inicial: { perigo: QUEDA_DE_ALTURA, tipo: 'Acidente', danos: DANOS_QUEDA_DE_ALTURA },
+                  }),
+                }}
+                acaoSecundaria={{ rotulo: 'Não se aplica', aoClicar: () => alterar((x) => { x.ghes[gi].alturaNaoSeAplicaChave = chaveAltura(x.ghes[gi]); }) }}>
+                <b>Confirme se há trabalho em altura.</b> {lista} {nomes.length > 1 ? 'costumam' : 'costuma'} trabalhar em altura, mas nenhuma atividade
+                deste GHE tem Queda de altura. Confirme com o engenheiro se há trabalho acima de 2 m (NR-35).
+              </FeedbackInline>
+            );
+          })()}
+          {form?.escopo === 'ghe' && formulario(gi, gh)}
           {modo === 'perigo' && (
             <InventarioPorPerigo gh={gh} gi={gi} editavel={editavel} ocupado={ocupado} alterar={alterar} gerarAtividade={gerarAtividade}
               matriz={g.matriz}
+              acaoAdicionar={editavel ? (
+                <Button size="small" disabled={form?.gi === gi && form.escopo === 'ghe'}
+                  onClick={() => abrirForm({ gi, escopo: 'ghe', atual: null, marcadas: [] })}>Adicionar risco</Button>
+              ) : undefined}
               renderRisco={(r, alt) => <RiscoEditor r={r} maxP={g.maxProbabilidade} maxS={g.maxSeveridade} matriz={g.matriz} editavel={editavel} epis={epis} alterar={alt} />} />
           )}
           {modo === 'atividade' && gh.atividades.map((a, ai) => (
@@ -592,10 +642,13 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
                         x.ghes[gi].atividades[ai].riscos.forEach((r) => { r.revisado = true; r.medidas.forEach((m) => { if (m.decisao === 'Pendente') m.decisao = 'Aceita'; }); });
                       })}>Revisar todos e aceitar medidas</Button>
                     )}
+                    <Button size="small" disabled={form?.gi === gi && form.escopo === 'atividade' && form.atual === a.codigoEap}
+                      onClick={() => abrirForm({ gi, escopo: 'atividade', atual: a.codigoEap, marcadas: [a.codigoEap] })}>Adicionar risco</Button>
                     <Button size="small" disabled={ocupado} onClick={() => gerarAtividade(gh, a)}>{a.riscosGerados ? 'Gerar de novo' : 'Gerar riscos'}</Button>
                   </span>
                 )}
               </div>
+              {form?.escopo === 'atividade' && form.atual === a.codigoEap && formulario(gi, gh)}
               {!a.riscosGerados && <Text size={200}>Riscos ainda não gerados.</Text>}
               {a.riscos.map((r, ri) => !r.excluido && (
                 <RiscoEditor key={r.id} r={r} maxP={g.maxProbabilidade} maxS={g.maxSeveridade} matriz={g.matriz} editavel={editavel} epis={epis}
@@ -698,11 +751,15 @@ function RiscoEditor({ r, maxP, maxS, matriz, editavel, epis, alterar }: {
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
         <StatusChip tom={tom}>P × S = {nivel}{rotulo ? ` · ${rotulo}` : ''}</StatusChip>
+        {r.incluidoPeloTecnico && <StatusChip tom="info">Incluído pelo técnico</StatusChip>}
         {r.base.map((b) => <StatusChip key={b} tom="neutro">{b}</StatusChip>)}
         {editavel && <Checkbox label="Revisado" checked={r.revisado} onChange={(_, d) => alterar((x) => { x.revisado = !!d.checked; })} />}
         {editavel && <Button size="small" onClick={() => alterar((x) => { x.excluido = true; })}>Excluir risco</Button>}
       </div>
       <div style={{ marginTop: 6 }}>
+        {editavel && r.incluidoPeloTecnico && !r.medidas.some((m) => m.decisao !== 'Descartada') && (
+          <Text size={200} style={{ display: 'block' }}>Nenhuma medida ainda. Inclua pela "Nova medida" abaixo.</Text>
+        )}
         {r.medidas.map((m, mi) => m.decisao !== 'Descartada' && (
           <div key={mi} style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '3px 0', flexWrap: 'wrap' }}>
             <StatusChip tom="neutro">{FASES[m.fase]}</StatusChip>
