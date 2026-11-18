@@ -4638,6 +4638,7 @@ export const tipoAlertaLabel: Record<number, string> = {
   36: 'Documento de terceirizado vencido',
   38: 'Óbito: providências pendentes',
   39: 'Ocorrência aguardando laudo',
+  40: 'Troca de função sem ASO de mudança de risco',
 };
 
 export const SeveridadeAlerta = {
@@ -4856,6 +4857,8 @@ export const TipoModuloAlerta = {
   DocumentoTerceirizado: 16,
   // Ocorrências: providências de óbito e laudo em espera (AcidenteAlertaProvider).
   Acidente: 17,
+  // Troca de função sem ASO de mudança de risco (TrocaFuncaoSemAsoAlertaProvider).
+  TrocaFuncao: 18,
 } as const;
 
 export const moduloAlertaLabel: Record<number, string> = {
@@ -4876,6 +4879,7 @@ export const moduloAlertaLabel: Record<number, string> = {
   15: 'PCMSO',
   16: 'Documentos de terceirizados',
   17: 'Ocorrências',
+  18: 'Troca de função (ASO de mudança de risco)',
 };
 
 export interface RegraAlerta {

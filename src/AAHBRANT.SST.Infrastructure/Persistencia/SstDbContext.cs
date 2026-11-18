@@ -178,6 +178,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic => Set<TemplateBiometricoFutronic>();
     public DbSet<PerfilInstrutor> PerfisInstrutor => Set<PerfilInstrutor>();
     public DbSet<FotoCadastroFacial> FotosCadastroFacial => Set<FotoCadastroFacial>();
+    public DbSet<HistoricoFuncaoTrabalhador> HistoricosFuncaoTrabalhador => Set<HistoricoFuncaoTrabalhador>();
     public DbSet<FalhaReconhecimentoFacial> FalhasReconhecimentoFacial => Set<FalhaReconhecimentoFacial>();
     public DbSet<RelatorioGerado> RelatoriosGerados => Set<RelatorioGerado>();
     public DbSet<RelatorioEnvio> RelatorioEnvios => Set<RelatorioEnvio>();

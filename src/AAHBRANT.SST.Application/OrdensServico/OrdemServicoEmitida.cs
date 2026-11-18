@@ -50,7 +50,14 @@ internal static class AssinaturasOrdemServico
             .Join(db.Trabalhadores.IgnoreQueryFilters(), s => s.TrabalhadorId, t => t.Id,
                 (s, t) => new { s.DocumentoAssinaturaId, s.TrabalhadorId, t.Nome, t.FuncaoId, s.AssinadoEm, s.MetodoAutenticacao, s.Papel })
             .ToListAsync(ct);
-        var idsFuncoes = signatarios.Select(s => s.FuncaoId).Distinct().ToList();
+        // Função de quem assinou é a da data da assinatura: a OS antiga de quem trocou de função
+        // continua mostrando a função em que ela foi assinada.
+        var trocasFuncao = await Trabalhadores.HistoricoFuncao.CarregarAsync(
+            db, signatarios.Select(s => s.TrabalhadorId).Distinct().ToList(), ct);
+        Guid FuncaoNaAssinatura(Guid trabalhadorId, Guid funcaoAtualId, DateTime assinadoEm) =>
+            Trabalhadores.HistoricoFuncao.FuncaoNaData(trocasFuncao, trabalhadorId, funcaoAtualId, assinadoEm);
+        var idsFuncoes = signatarios.Select(s => s.FuncaoId)
+            .Concat(trocasFuncao.Select(t => t.FuncaoAnteriorId)).Distinct().ToList();
         var funcoes = await db.Funcoes.IgnoreQueryFilters()
             .Where(f => idsFuncoes.Contains(f.Id))
             .ToDictionaryAsync(f => f.Id, f => f.Nome, ct);
@@ -68,8 +75,8 @@ internal static class AssinaturasOrdemServico
             var tecnico = doDocumento.FirstOrDefault(s => s.Papel == PapelAssinatura.TecnicoSegurancaOs || s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada);
             resultado[os.Id] = (
                 documento?.Id,
-                funcionario is null ? null : new AssinaturaOsDto(funcionario.Nome, funcoes.GetValueOrDefault(funcionario.FuncaoId), funcionario.AssinadoEm, funcionario.MetodoAutenticacao),
-                tecnico is null ? null : new AssinaturaOsDto(tecnico.Nome, funcoes.GetValueOrDefault(tecnico.FuncaoId), tecnico.AssinadoEm, tecnico.MetodoAutenticacao));
+                funcionario is null ? null : new AssinaturaOsDto(funcionario.Nome, funcoes.GetValueOrDefault(FuncaoNaAssinatura(funcionario.TrabalhadorId, funcionario.FuncaoId, funcionario.AssinadoEm)), funcionario.AssinadoEm, funcionario.MetodoAutenticacao),
+                tecnico is null ? null : new AssinaturaOsDto(tecnico.Nome, funcoes.GetValueOrDefault(FuncaoNaAssinatura(tecnico.TrabalhadorId, tecnico.FuncaoId, tecnico.AssinadoEm)), tecnico.AssinadoEm, tecnico.MetodoAutenticacao));
         }
         return resultado;
     }
