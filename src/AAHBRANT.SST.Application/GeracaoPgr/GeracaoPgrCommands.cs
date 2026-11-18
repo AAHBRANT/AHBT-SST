@@ -917,6 +917,7 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
         }
 
         detalhesAnteriores.Aplicar(_db, novosGhes);
+        await PreparacaoAutomaticaOsDoPgr.AplicarNaAprovacaoAsync(_db, g.ObraId, novosGhes, request.UsuarioId, aprovador, agora, ct);
 
         // Matriz de EPI da obra a partir do PGR (04/11/2026): só liga ao catálogo que já existe; o que falta vira ação do plano.
         var episSemItem = await MatrizEpiDoPgr.AplicarAsync(_db, e, g.ObraId, funcoesDaGeracao, ct);
