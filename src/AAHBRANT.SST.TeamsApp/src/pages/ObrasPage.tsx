@@ -4,6 +4,7 @@ import { api, MetodoAssinaturaObra, statusObraLabel, StatusObra, type NovaObra, 
 import { SeletorFotoCamera } from '../components/SeletorFotoCamera';
 import { SlotFotoRemota } from '../components/camera/SlotFotoRemota';
 import { useSucessoToast } from '../hooks/useSucessoToast';
+import { useSouAdministrador } from '../lib/UsuarioLogadoContext';
 import {
   BotaoAcao,
   Button,
@@ -43,6 +44,7 @@ const obraVazia: NovaObra = {
 // cobrir a tela com uma gaveta. Erro do painel é estado próprio, separado do erro de nível de
 // lista (Guia §4).
 export function ObrasPage() {
+  const souAdmin = useSouAdministrador();
   const [obras, setObras] = useState<Obra[]>([]);
   const [painelAberto, setPainelAberto] = useState(false);
   const [novaObra, setNovaObra] = useState<NovaObra>(obraVazia);
@@ -484,15 +486,17 @@ export function ObrasPage() {
                 }}
                 aria-label="Editar"
               />
-              <BotaoAcao
-                tom="excluir"
-                icon={<Delete24Regular />}
-                onClick={(evento) => {
-                  evento.stopPropagation();
-                  excluir(o.id);
-                }}
-                aria-label="Excluir"
-              />
+              {souAdmin && (
+                <BotaoAcao
+                  tom="excluir"
+                  icon={<Delete24Regular />}
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    excluir(o.id);
+                  }}
+                  aria-label="Excluir"
+                />
+              )}
             </>
           )}
         />
