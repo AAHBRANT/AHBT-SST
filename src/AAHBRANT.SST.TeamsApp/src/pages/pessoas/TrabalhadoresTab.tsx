@@ -61,6 +61,7 @@ import { RequisitosFuncaoDialog } from '../../components/pessoas/RequisitosFunca
 import { CadastrosFaciaisFracosCard } from '../../components/pessoas/CadastrosFaciaisFracosCard';
 import { FaixaKpis } from '../../components/dashboard/FaixaKpis';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
 import { PessoasDashboardTab } from './dashboard/PessoasDashboardTab';
 
 // ASO vigente (regra única, lib/aso.ts): o do exame mais recente. Os anteriores não entram na situação da pessoa.
@@ -118,10 +119,10 @@ function situacaoAso(aso: Aso | undefined): Item {
   if (!aso) return { tom: 'alerta', texto: 'sem ASO cadastrado' };
   // Vencimento vence qualquer parecer; o parecer só decide quando o exame ainda vale.
   const nivel = nivelVencimento(aso.dataValidade);
-  if (nivel === 'vencido') return { tom: 'alerta', texto: `vencido em ${dataBr(aso.dataValidade)}` };
+  if (nivel === 'vencido') return { tom: 'alerta', texto: `renovação pendente desde ${dataBr(aso.dataValidade)}` };
   if (aso.resultadoStatus === ResultadoAso.Pendente) return { tom: 'alerta', texto: 'ASO sem parecer' };
   if (aso.resultadoStatus === ResultadoAso.Inapto) return { tom: 'alerta', texto: 'inapto' };
-  if (nivel === 'alerta') return { tom: 'atencao', texto: `vence em ${dataBr(aso.dataValidade)}` };
+  if (nivel === 'alerta') return { tom: 'atencao', texto: `a renovar até ${dataBr(aso.dataValidade)}` };
   if (aso.resultadoStatus === ResultadoAso.AptoComRestricao) return { tom: 'atencao', texto: 'apto com restrição' };
   return { tom: 'ok', texto: `válido até ${dataBr(aso.dataValidade)}` };
 }
@@ -130,8 +131,8 @@ function situacaoAso(aso: Aso | undefined): Item {
 function piorValidade(validades: string[], plural: string): Item {
   const vencidos = validades.filter((v) => nivelVencimento(v) === 'vencido').length;
   const vencendo = validades.filter((v) => nivelVencimento(v) === 'alerta').length;
-  if (vencidos > 0) return { tom: 'alerta', texto: `${vencidos} ${plural} vencido(s)` };
-  if (vencendo > 0) return { tom: 'atencao', texto: `${vencendo} ${plural} vencendo em até 30 dias` };
+  if (vencidos > 0) return { tom: 'alerta', texto: `${vencidos} ${plural} com renovação pendente` };
+  if (vencendo > 0) return { tom: 'atencao', texto: `${vencendo} ${plural} a renovar em até 30 dias` };
   return { tom: 'ok', texto: `${plural} em dia` };
 }
 
@@ -198,7 +199,9 @@ export function TrabalhadoresTab({
     }
     return ids;
   }, [filtroCertificado, certificados]);
-  const [obraFiltro, setObraFiltro] = useState<string | null>(null);
+  const [obraFiltroId, setObraFiltroId] = useFiltroObra();
+  const obraFiltro = obraFiltroId || null;
+  const setObraFiltro = (id: string | null) => setObraFiltroId(id ?? '');
   const [analiseAberta, setAnaliseAberta] = useState(false);
   const [limite, setLimite] = useState(PASSO_PAGINA);
   const [telaEstreita, setTelaEstreita] = useState(() => window.matchMedia(CONSULTA_TELA_ESTREITA).matches);
@@ -320,7 +323,7 @@ export function TrabalhadoresTab({
             const vencidos = [...porCurso.entries()]
               .filter(([, validade]) => nivelVencimento(validade) === 'vencido')
               .map(([cursoId]) => nomeCurso.get(cursoId) ?? 'curso');
-            nr = { tom: 'alerta', texto: `vencido: ${vencidos.join(', ')}` };
+            nr = { tom: 'alerta', texto: `renovação pendente: ${vencidos.join(', ')}` };
           }
         }
       }
@@ -350,17 +353,20 @@ export function TrabalhadoresTab({
   );
 
   const kpis = useMemo(() => {
+    let total = 0;
     let aptos = 0;
     let bloqueados = 0;
     let asoVencendo = 0;
     for (const t of universo) {
+      if (t.vinculo === TipoVinculo.PrestadorServico) continue;
+      total++;
       const s = situacoes.get(t.id);
       if (!s) continue;
       if (s.geral === 'apto') aptos++;
       if (s.geral === 'bloqueado') bloqueados++;
       if (s.aso.tom !== 'ok') asoVencendo++;
     }
-    return { total: universo.length, aptos, bloqueados, asoVencendo };
+    return { total, aptos, bloqueados, asoVencendo };
   }, [universo, situacoes]);
 
   // Faixa de obras (substitui a grade com os 4 contadores de vínculo, que mostrava zeros): total e
@@ -370,7 +376,7 @@ export function TrabalhadoresTab({
     for (const t of trabalhadores) {
       const atual = mapa.get(t.obraId) ?? { total: 0, bloqueados: 0 };
       atual.total++;
-      if (situacoes.get(t.id)?.geral === 'bloqueado') atual.bloqueados++;
+      if (t.vinculo !== TipoVinculo.PrestadorServico && situacoes.get(t.id)?.geral === 'bloqueado') atual.bloqueados++;
       mapa.set(t.obraId, atual);
     }
     return mapa;
@@ -736,8 +742,8 @@ export function TrabalhadoresTab({
               aria-label="Filtrar por certificado"
             >
               <option value="">Todos os certificados</option>
-              <option value="vencendo">Certificado vencendo (30 dias)</option>
-              <option value="vencido">Certificado vencido</option>
+              <option value="vencendo">Certificado a renovar (30 dias)</option>
+              <option value="vencido">Certificado com renovação pendente</option>
               <option value="sem-anexo">Certificado externo sem anexo</option>
             </Select>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: tokensUi.espaco.sm }}>
@@ -788,13 +794,13 @@ export function TrabalhadoresTab({
           ]}
         />
         <KpiCard
-          rotulo="ASOs vencendo ou vencidos"
+          rotulo="ASOs a renovar ou pendentes"
           valor={kpis.asoVencendo}
           tom="atencao"
           indice={3}
           icone={<Warning24Regular />}
           onClick={() => alternarFiltroKpi('asoVencendo')}
-          ariaLabel="Filtrar funcionários com ASO vencendo, vencido ou ausente"
+          ariaLabel="Filtrar funcionários com ASO a renovar, renovação pendente ou ausente"
           deltas={[
             filtroRapido === 'asoVencendo'
               ? { texto: 'Filtro ativo', tom: 'atencao' }

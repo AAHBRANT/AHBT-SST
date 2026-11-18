@@ -22,6 +22,7 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type CursoNr6SemMarcador, type CursoTreinamento, type NovoCursoTreinamento, type PadraoNr } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 const cursoVazio: NovoCursoTreinamento = {
   nome: '',
@@ -53,6 +54,7 @@ export function CursosTreinamentoTab() {
   const [painelAberto, setPainelAberto] = useState(false);
   const [padroesNr, setPadroesNr] = useState<PadraoNr[]>([]);
   const [padraoAplicado, setPadraoAplicado] = useState<string | null>(null);
+  const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -291,7 +293,9 @@ export function CursosTreinamentoTab() {
                   Marcar como Integração de Segurança
                 </Button>
               )}
-              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(c.id)} aria-label="Excluir" />
+              {souAdministrador && (
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(c.id)} aria-label="Excluir" />
+              )}
             </>
           )}
         />

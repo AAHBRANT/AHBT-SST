@@ -58,8 +58,8 @@ function consumoValidade(inicio: string, fim: string): number {
 }
 
 function textoPrazo(dias: number): string {
-  if (dias < 0) return `vencido há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}`;
-  if (dias === 0) return 'vence hoje';
+  if (dias < 0) return `renovação pendente há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}`;
+  if (dias === 0) return 'renovar hoje';
   return `faltam ${dias} ${dias === 1 ? 'dia' : 'dias'}`;
 }
 
@@ -144,7 +144,7 @@ export function PerfilGeralTab({
       abaDestino: 'epi',
       detalhe:
         epis.vencidos + epis.vencendo > 0
-          ? { texto: `${epis.vencidos} vencido · ${epis.vencendo} vencendo`, tom: epis.vencidos > 0 ? 'alerta' : 'atencao' }
+          ? { texto: `${epis.vencidos} pendente · ${epis.vencendo} a renovar`, tom: epis.vencidos > 0 ? 'alerta' : 'atencao' }
           : { texto: 'Todos em dia', tom: 'ok' },
     },
     {
@@ -206,7 +206,7 @@ export function PerfilGeralTab({
               fracao={Math.max(0, diasAso) / DIAS_CICLO_ASO}
               tom={nivelAso ? tomDeVencimento(nivelAso) : 'neutro'}
               centro={Math.max(0, diasAso)}
-              legenda={diasAso < 0 ? 'ASO vencido' : 'dias de validade'}
+              legenda={diasAso < 0 ? 'Renovação pendente' : 'dias de validade'}
               aria-label={`ASO ${textoPrazo(diasAso)}`}
             />
             <div style={{ flex: '1 1 260px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: tokensUi.espaco.md }}>
@@ -244,7 +244,7 @@ export function PerfilGeralTab({
               <div style={{ paddingTop: tokensUi.espaco.md, borderTop: `1px solid ${designTokens.colorCardBorder}` }}>
                 <Legenda>
                   {diasAso < 0
-                    ? `Vencido em ${dataBr(asoAtivo.dataValidade)} — novo exame necessário`
+                    ? `Validade encerrada em ${dataBr(asoAtivo.dataValidade)} — novo exame necessário`
                     : `Próximo exame até ${dataBr(asoAtivo.dataValidade)}`}
                 </Legenda>
               </div>
