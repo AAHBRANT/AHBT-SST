@@ -126,6 +126,28 @@ export const referenciasUniforme = [
     "arquivo": "/uniformes/agasalho-laranja.jpeg",
     "frente": "/uniformes/agasalho-laranja-frente.jpg",
     "categoria": "Agasalhos"
+  },
+  {
+    "chave": "fardamento-auxiliar-marsala",
+    "nome": "FARDAMENTO AUXILIAR DE SERVIÇOS MANGA LONGA",
+    "cor": "Marsala",
+    "grupo": "Auxiliar de serviços",
+    "funcoesIndicadas": [],
+    "tecido": "Tricoline",
+    "arquivo": "/uniformes/fardamento-auxiliar-marsala.jpeg",
+    "frente": "/uniformes/fardamento-auxiliar-marsala-frente.jpg",
+    "categoria": "Conjuntos"
+  },
+  {
+    "chave": "fardamento-auxiliar-cinza",
+    "nome": "FARDAMENTO AUXILIAR DE SERVIÇOS MANGA LONGA",
+    "cor": "Cinza claro",
+    "grupo": "Auxiliar de serviços",
+    "funcoesIndicadas": [],
+    "tecido": "Tricoline",
+    "arquivo": "/uniformes/fardamento-auxiliar-cinza.jpeg",
+    "frente": "/uniformes/fardamento-auxiliar-cinza-frente.jpg",
+    "categoria": "Conjuntos"
   }
 ] as const;
 export function referenciaUniforme(chave?: string | null) { return referenciasUniforme.find(r => r.chave === chave); }

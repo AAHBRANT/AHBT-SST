@@ -4,10 +4,10 @@ import {
   Button, Card, Carregando, Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle,
   FeedbackInline, StatusChip, Text, designTokens, type Tom,
 } from '@ui';
-import { api, metodoAutenticacaoAssinaturaLabel, nivelRiscoLabel, type MinutaOrdemServico, type OrdemServicoEmitida, type PendenciaOs } from '../../lib/api';
+import { api, metodoAutenticacaoAssinaturaLabel, nivelRiscoLabel, type MinutaOrdemServico, type OrdemServicoEmitida, type PendenciaOs, type UsuarioLogado } from '../../lib/api';
 import { AssinaturaOrdemServicoDialog } from '../../components/assinatura/AssinaturaOrdemServicoDialog';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
-import { useUsuarioLogado, type UsuarioLogado } from '../../lib/UsuarioLogadoContext';
+import { useUsuarioLogado } from '../../lib/UsuarioLogadoContext';
 import { RevisarSugestoesIaDialog, VincularProcedimentosDialog } from './ResolverPendenciasOsDialogs';
 
 const tomPorNivel: Record<number, Tom> = { 1: 'ok', 2: 'info', 3: 'atencao', 4: 'alerta', 5: 'alerta' };
