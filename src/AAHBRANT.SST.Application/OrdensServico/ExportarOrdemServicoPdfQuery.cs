@@ -19,7 +19,8 @@ public record OrdemServicoPdfModelo(
     AssinaturaOsDto? Tecnico,
     string ConteudoHash,
     string UrlValidacaoPublica,
-    byte[] QrCodePng);
+    byte[] QrCodePng,
+    CertificadoAssinaturasModelo? Certificado = null);
 
 public interface IOrdemServicoPdfService
 {
@@ -36,12 +37,17 @@ public class ExportarOrdemServicoPdfQueryHandler : IRequestHandler<ExportarOrdem
     private readonly IAppDbContext _db;
     private readonly IOrdemServicoPdfService _pdf;
     private readonly IRegistradorRastreabilidadeService _rastreabilidade;
+    private readonly IImagemBiometricaCriptografia? _cripto;
+    private readonly IQrCodeDocumentoService? _qrCode;
 
-    public ExportarOrdemServicoPdfQueryHandler(IAppDbContext db, IOrdemServicoPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
+    public ExportarOrdemServicoPdfQueryHandler(IAppDbContext db, IOrdemServicoPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade,
+        IImagemBiometricaCriptografia? cripto = null, IQrCodeDocumentoService? qrCode = null)
     {
         _db = db;
         _pdf = pdf;
         _rastreabilidade = rastreabilidade;
+        _cripto = cripto;
+        _qrCode = qrCode;
     }
 
     public async Task<byte[]?> Handle(ExportarOrdemServicoPdfQuery request, CancellationToken ct)
@@ -63,10 +69,38 @@ public class ExportarOrdemServicoPdfQueryHandler : IRequestHandler<ExportarOrdem
         var (_, funcionario, tecnico) = (await AssinaturasOrdemServico.CarregarAsync(_db, new[] { os }, ct))[os.Id];
         var rastreio = await _rastreabilidade.GarantirAsync(OrdemServico.EntidadeTipoAssinatura, os.Id, ct);
 
+        var docAssinatura = await _db.DocumentosAssinatura.AsNoTracking()
+            .Include(d => d.Signatarios)
+            .Where(d => d.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura && d.EntidadeId == os.Id && d.Status != StatusDocumentoAssinatura.Cancelado)
+            .OrderByDescending(d => d.CreatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+        var assinaturasAtivas = docAssinatura?.Signatarios.Where(s => s.Ativo).ToList() ?? new List<DocumentoSignatario>();
+        var dadosSignatarios = assinaturasAtivas.Count > 0
+            ? await MontadorCertificadoAssinaturas.CarregarSignatariosAsync(_db, assinaturasAtivas.Select(s => s.TrabalhadorId), ct)
+            : new Dictionary<Guid, MontadorCertificadoAssinaturas.DadosSignatario>();
+        var painel = new PainelCertificado("Ordem de Serviço", $"OS Nº {os.Numero} (Rev. {os.Revisao}) · {conteudo.Trabalhador.Nome}", new List<SecaoPainelCertificado>
+        {
+            new("Ordem de Serviço", new List<LinhaPainelCertificado>
+            {
+                new("Nº", $"{os.Numero} (Rev. {os.Revisao})"),
+                new("Emissão", os.EmitidaEm.ToString("dd/MM/yyyy")),
+                new("Trabalhador", conteudo.Trabalhador.Nome),
+                new("Função", conteudo.Trabalhador.Funcao),
+            }),
+        });
+        var certificado = docAssinatura is null || assinaturasAtivas.Count == 0
+            ? null
+            : await MontadorCertificadoAssinaturas.MontarAsync(
+                _db, _cripto, _qrCode, docAssinatura, assinaturasAtivas, dadosSignatarios,
+                s => s.Papel == PapelAssinatura.TecnicoSegurancaOs ? "Ordem de Serviço — assinatura do Técnico de Segurança" : "Ordem de Serviço — ciência do Trabalhador",
+                "Ordem de Serviço de SST",
+                $"OS Nº {os.Numero} · {conteudo.Trabalhador.Nome} · {conteudo.Obra.Nome}",
+                conteudo.Obra.Nome, logo, rastreio, painel, compacto: false, ct);
+
         var pdf = _pdf.Gerar(new OrdemServicoPdfModelo(
             conteudo, os.Numero, os.Revisao, os.EmitidaEm, logo,
             AssinaturasOrdemServico.Situacao(funcionario, tecnico), funcionario, tecnico,
-            rastreio.ConteudoHash, rastreio.UrlValidacaoPublica, rastreio.QrCodePng));
+            rastreio.ConteudoHash, rastreio.UrlValidacaoPublica, rastreio.QrCodePng, certificado));
 
         var finalizado = await _db.DocumentosAssinatura.AnyAsync(
             d => d.Id == rastreio.DocumentoId && d.Status == StatusDocumentoAssinatura.Finalizado, ct);

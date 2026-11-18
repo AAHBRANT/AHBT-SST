@@ -60,7 +60,11 @@ public class InspecaoPdfService : IInspecaoPdfService
                     coluna, "Inspeção", modelo.Protocolo, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, modelo.TemAssinatura));
             });
 
-            if (modelo.Assinatura is not null)
+            if (modelo.Certificado is { } certificado)
+            {
+                CertificadoAssinaturasPdf.Adicionar(container, certificado);
+            }
+            else if (modelo.Assinatura is not null)
             {
                 container.Page(pagina =>
                 {

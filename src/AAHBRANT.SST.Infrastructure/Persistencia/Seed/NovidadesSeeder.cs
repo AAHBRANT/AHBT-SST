@@ -3015,6 +3015,25 @@ public static class NovidadesSeeder
                     null,
                     "Ao concluir a investigação sem ação no plano, informe a justificativa. Toda ocorrência nova passa a ter 3 fotos obrigatórias, de qualquer tipo."),
             }),
+        new(
+            Versao: "5.172.0",
+            Titulo: "Padronização de sigilo nas fotos de assinatura, certificados e documentos",
+            DataPublicacao: new DateTime(2026, 11, 17, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Marca CONFIDENCIAL nas fotos de assinatura do Relatório de Fiscalização e na abertura de foto avulsa",
+                    "As fotos comparativas de assinatura no Relatório de Fiscalização e a imagem aberta pelo Cofre de Assinaturas saíam sem a marca d'água CONFIDENCIAL.",
+                    "Todas as fotos biométricas de assinatura — tanto no Relatório de Fiscalização quanto ao abrir a foto pelo Cofre de Assinaturas — agora trazem a marca d'água diagonal CONFIDENCIAL com a data e hora da assinatura (LGPD)."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Certificado de Assinaturas padrão na Inspeção e na Ordem de Serviço",
+                    "A Inspeção assinada usava uma folha simples antiga sem as fotos comparativas e a Ordem de Serviço não anexava o Certificado de Assinaturas.",
+                    "Inspeção de Segurança e Ordem de Serviço (OS) agora anexam o Certificado de Assinaturas Eletrônicas no mesmo padrão da Ficha de EPI, DDS, Treinamento, APR e PT."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Nomes dos documentos em português no Cofre de Assinaturas e paginação nos rodapés",
+                    "O Cofre de Assinaturas mostrava códigos internos (como EntregaEpi e SessaoTreinamento) e alguns relatórios saíam sem número de página.",
+                    "Os documentos aparecem com seus nomes em português (Entrega de EPI, Lista de Presença de Treinamento, Ordem de Serviço) e todos os relatórios trazem a identificação G-SST e a numeração de páginas no rodapé."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

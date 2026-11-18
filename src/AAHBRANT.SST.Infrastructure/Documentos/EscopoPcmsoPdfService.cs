@@ -75,7 +75,7 @@ public class EscopoPcmsoPdfService : IEscopoPcmsoPdfService
 
                 pagina.Footer().AlignCenter().Text(t =>
                 {
-                    t.Span("AAHBRANT SST · Escopo para elaboração do PCMSO · página ").FontSize(7);
+                    t.Span("G-SST · AAHBRANT · Escopo para elaboração do PCMSO · página ").FontSize(7);
                     t.CurrentPageNumber().FontSize(7);
                     t.Span(" de ").FontSize(7);
                     t.TotalPages().FontSize(7);

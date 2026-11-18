@@ -90,7 +90,9 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
                 // sem faixas brancas e sem distorcer.
                 linha.ConstantItem(FotoLarguraPt + 10).PaddingLeft(10).Height(FotoAlturaPt).Element(foto =>
                 {
-                    var recortada = modelo.TrabalhadorFoto is { Length: > 0 } bytes ? RecortarFoto3x4(bytes) : null;
+                    var recortada = modelo.TrabalhadorFoto is { Length: > 0 } bytes && FotoValida(bytes)
+                        ? FotoRetrato34.Cortar(bytes)
+                        : null;
                     if (recortada is not null)
                         foto.Image(recortada).FitArea();
                     else
@@ -103,32 +105,6 @@ public class EntregaEpiPdfService : IFichaEpiPdfService
 
     private const float FotoLarguraPt = 85f;   // 3 cm
     private const float FotoAlturaPt = 113.4f; // 4 cm
-
-    // Recorta ao centro na proporção 3:4, puxando o corte para cima (rosto fica no terço superior).
-    // Devolve null se os bytes não forem uma imagem válida.
-    private static byte[]? RecortarFoto3x4(byte[] bytes)
-    {
-        try
-        {
-            using var imagem = AAHBRANT.SST.Infrastructure.Imagens.ImagemSegura.Carregar(bytes);
-            imagem.Mutate(x => x.AutoOrient());
-            const double alvo = 3.0 / 4.0;
-            int largura = imagem.Width, altura = imagem.Height;
-            int cw = largura, ch = altura;
-            if ((double)largura / altura > alvo) cw = (int)Math.Round(altura * alvo);
-            else ch = (int)Math.Round(largura / alvo);
-            var x0 = (largura - cw) / 2;
-            var y0 = (int)Math.Round((altura - ch) * 0.25);
-            imagem.Mutate(x => x.Crop(new SixLabors.ImageSharp.Rectangle(x0, y0, cw, ch)));
-            using var saida = new MemoryStream();
-            imagem.Save(saida, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 90 });
-            return saida.ToArray();
-        }
-        catch
-        {
-            return null;
-        }
-    }
 
     private static bool FotoValida(byte[] bytes)
         // Mesma régua de formato/tamanho do resto do sistema (ver ImagemSegura).

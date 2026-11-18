@@ -78,7 +78,7 @@ public static class RelatorioImagemEstilo
     {
         container.BorderTop(1).BorderColor(Linha).PaddingVertical(10).PaddingHorizontal(28).Row(linha =>
         {
-            linha.RelativeItem().Text("Sistema SST AAHBRANT").FontSize(9).FontColor(Cinza);
+            linha.RelativeItem().Text("G-SST · AAHBRANT").FontSize(9).FontColor(Cinza);
             linha.AutoItem().Text($"Gerado às {geradoEm:HH:mm}").FontSize(9).FontColor(Cinza);
         });
     }

@@ -72,8 +72,12 @@ public class DossieTrabalhadorPdfService : IDossieTrabalhadorPdfService
 
                 pagina.Footer().AlignCenter().Text(t =>
                 {
-                    t.Span("Gerado em ").FontSize(9);
-                    t.Span(HorarioBrasilia.Agora.ToString("dd/MM/yyyy HH:mm")).FontSize(9);
+                    t.Span("G-SST · Gerado em ").FontSize(8.5f);
+                    t.Span(HorarioBrasilia.Agora.ToString("dd/MM/yyyy HH:mm")).FontSize(8.5f);
+                    t.Span(" · Página ").FontSize(8.5f);
+                    t.CurrentPageNumber().FontSize(8.5f);
+                    t.Span(" de ").FontSize(8.5f);
+                    t.TotalPages().FontSize(8.5f);
                 });
             });
         }).GeneratePdf();
@@ -106,6 +110,15 @@ public class DossieTrabalhadorPdfService : IDossieTrabalhadorPdfService
                 pagina.Margin(2, Unit.Centimetre);
                 pagina.Header().Column(coluna => CabecalhoDocumentoPadrao.Desenhar(coluna, titulo, obraNome, obraLogo));
                 pagina.Content().PaddingVertical(12).AlignCenter().Image(normalizada).FitArea();
+                pagina.Footer().AlignCenter().Text(t =>
+                {
+                    t.Span("G-SST · Gerado em ").FontSize(8.5f);
+                    t.Span(HorarioBrasilia.Agora.ToString("dd/MM/yyyy HH:mm")).FontSize(8.5f);
+                    t.Span(" · Página ").FontSize(8.5f);
+                    t.CurrentPageNumber().FontSize(8.5f);
+                    t.Span(" de ").FontSize(8.5f);
+                    t.TotalPages().FontSize(8.5f);
+                });
             });
         }).GeneratePdf();
     }
