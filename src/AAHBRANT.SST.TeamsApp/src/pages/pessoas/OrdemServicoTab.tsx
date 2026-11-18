@@ -42,6 +42,7 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
   const [erroEmissao, setErroEmissao] = useState<string | null>(null);
   const [assinando, setAssinando] = useState<OrdemServicoEmitida | null>(null);
   const [lote, setLote] = useState<Lote | null>(null);
+  const [logoObraUrl, setLogoObraUrl] = useState<string | null>(null);
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const navigate = useNavigate();
 
@@ -87,6 +88,29 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
     void carregarEmitidas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trabalhadorId]);
+
+  useEffect(() => {
+    const obraId = minuta?.obra?.id;
+    if (!obraId) {
+      setLogoObraUrl(null);
+      return;
+    }
+    let ativo = true;
+    let urlCriada: string | null = null;
+    void api.obras.baixarLogo(obraId)
+      .then((blob) => {
+        if (!ativo || blob.size === 0) return;
+        urlCriada = URL.createObjectURL(blob);
+        setLogoObraUrl(urlCriada);
+      })
+      .catch(() => {
+        if (ativo) setLogoObraUrl(null);
+      });
+    return () => {
+      ativo = false;
+      if (urlCriada) URL.revokeObjectURL(urlCriada);
+    };
+  }, [minuta?.obra?.id]);
 
   if (!minuta) return erro ? <FeedbackInline tom="erro">{erro}</FeedbackInline> : <Carregando variante="detalhe" linhas={6} />;
 
@@ -177,17 +201,27 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div>
-            <Text weight="semibold" size={500} style={{ display: 'block', marginBottom: 6 }}>Ordem de Serviço (NR-01)</Text>
-            {minuta.podeEmitir
-              ? <StatusChip tom="ok">PRONTA PARA EMISSÃO</StatusChip>
-              : <StatusChip tom="alerta">MINUTA — EMISSÃO BLOQUEADA</StatusChip>}
-            <Text weight="semibold" size={400} style={{ display: 'block', marginTop: 4 }}>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+            {logoObraUrl && (
+              <div style={{
+                width: 68, height: 52, borderRadius: 6, border: '1px solid var(--colorNeutralStroke2)',
+                background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, flexShrink: 0,
+              }}>
+                <img src={logoObraUrl} alt={`Logo ${minuta.obra.nome}`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              </div>
+            )}
+            <div>
+              <Text weight="semibold" size={500} style={{ display: 'block', marginBottom: 6 }}>Ordem de Serviço (NR-01)</Text>
               {minuta.podeEmitir
-                ? 'Todos os dados estão validados'
-                : `${minuta.pendencias.length} pendência(s) impedem a emissão da OS`}
-            </Text>
-            <Text size={200}>Base: {base}</Text>
+                ? <StatusChip tom="ok">PRONTA PARA EMISSÃO</StatusChip>
+                : <StatusChip tom="alerta">MINUTA — EMISSÃO BLOQUEADA</StatusChip>}
+              <Text weight="semibold" size={400} style={{ display: 'block', marginTop: 4 }}>
+                {minuta.podeEmitir
+                  ? 'Todos os dados estão validados'
+                  : `${minuta.pendencias.length} pendência(s) impedem a emissão da OS`}
+              </Text>
+              <Text size={200}>Base: {base}</Text>
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {!minuta.podeEmitir && <Button onClick={() => setPopAberto(true)}>Ver pendências</Button>}
@@ -359,11 +393,11 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
       </Dialog>
 
       <Dialog open={previaAberta} onOpenChange={(_, d) => setPreviaAberta(d.open)}>
-        <DialogSurface style={{ maxWidth: 900, width: '95vw' }}>
+        <DialogSurface style={{ maxWidth: 940, width: '95vw' }}>
           <DialogBody>
             <DialogTitle>{minuta.podeEmitir ? 'Prévia da Ordem de Serviço' : 'Minuta da Ordem de Serviço (não emitida)'}</DialogTitle>
             <DialogContent>
-              <PreviaOs minuta={minuta} />
+              <PreviaOs minuta={minuta} logoObraUrl={logoObraUrl} />
             </DialogContent>
             <DialogActions>
               <Button appearance="primary" onClick={() => setPreviaAberta(false)}>Fechar</Button>
@@ -375,90 +409,209 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
   );
 }
 
-// Mesmo conteúdo e ordem do modelo aprovado (v5); o PDF oficial vem na etapa de emissão.
-function PreviaOs({ minuta }: { minuta: MinutaOrdemServico }) {
+// Mesmo conteúdo e ordem do modelo aprovado (v6), com cabeçalho institucional (logo da obra), grade de campos e assinaturas.
+function PreviaOs({ minuta, logoObraUrl }: { minuta: MinutaOrdemServico; logoObraUrl?: string | null }) {
+  const corMarca = designTokens.colorPrimary;
   const secao = (n: number, titulo: string) => (
-    <div style={{ background: designTokens.colorPrimary, color: designTokens.colorWhite, padding: '4px 8px', fontWeight: 600, fontSize: 12, marginTop: 12 }}>
+    <div style={{ background: corMarca, color: designTokens.colorWhite, padding: '4px 10px', fontWeight: 700, fontSize: 12, marginTop: 14, letterSpacing: 0.3 }}>
       {n}. {titulo.toUpperCase()}
     </div>
   );
-  const lista = (itens: string[]) => (itens.length ? <ul style={{ margin: '4px 0', paddingLeft: 18 }}>{itens.map((i) => <li key={i}>{i}</li>)}</ul> : <Text size={200}>—</Text>);
+  const linhaGrade = (rotulo: string, valor?: string | null) => (
+    <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', border: '1px solid var(--colorNeutralStroke2)', marginTop: -1 }}>
+      <div style={{ background: 'var(--colorNeutralBackground3)', padding: '5px 8px', fontWeight: 600, fontSize: 12, borderRight: '1px solid var(--colorNeutralStroke2)' }}>
+        {rotulo}
+      </div>
+      <div style={{ padding: '5px 8px', fontSize: 12 }}>
+        {valor && valor.trim() ? valor : '—'}
+      </div>
+    </div>
+  );
+  const lista = (itens: string[]) => (
+    itens.length ? (
+      <ul style={{ margin: '4px 0', paddingLeft: 18 }}>
+        {itens.map((i, idx) => <li key={`${idx}-${i}`} style={{ marginBottom: 2 }}>{i}</li>)}
+      </ul>
+    ) : <Text size={200}>—</Text>
+  );
 
   return (
-    <div style={{ fontSize: 13, lineHeight: 1.45 }}>
+    <div style={{
+      fontSize: 13, lineHeight: 1.45, border: '1px solid var(--colorNeutralStroke2)',
+      borderRadius: 6, padding: '16px 20px', background: 'var(--colorNeutralBackground1)',
+    }}>
+      {/* Cabeçalho institucional com a logo da obra */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '110px 1fr 165px', gap: 12, alignItems: 'center',
+        paddingBottom: 10, borderBottom: `2px solid ${corMarca}`, marginBottom: 6,
+      }}>
+        <div style={{
+          width: 100, height: 60, border: '1px solid var(--colorNeutralStroke2)', borderRadius: 4,
+          background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4,
+        }}>
+          {logoObraUrl ? (
+            <img src={logoObraUrl} alt={`Logo ${minuta.obra.nome}`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+          ) : (
+            <Text size={100} style={{ color: 'var(--colorNeutralForeground3)', textAlign: 'center' }}>{minuta.obra.nome}</Text>
+          )}
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <Text weight="bold" size={400} style={{ display: 'block', color: corMarca, textTransform: 'uppercase' }}>
+            {minuta.obra.nome}
+          </Text>
+          <Text weight="semibold" size={300} style={{ display: 'block', marginTop: 2 }}>
+            Ordem de Serviço de Segurança e Saúde no Trabalho
+          </Text>
+          <Text size={100} style={{ display: 'block', marginTop: 2, color: 'var(--colorNeutralForeground3)' }}>
+            NR-01, item 1.4.1, alínea &quot;c&quot; • CLT, art. 157, inciso II
+          </Text>
+        </div>
+        <div style={{ textAlign: 'right', fontSize: 11, lineHeight: 1.35 }}>
+          <div><b>Situação:</b> {minuta.podeEmitir ? 'PRONTA' : 'MINUTA'}</div>
+          <div><b>Data:</b> {new Date().toLocaleDateString('pt-BR')}</div>
+          {minuta.pgr && <div><b>Revisão PGR:</b> {minuta.pgr.revisao ?? 0}</div>}
+        </div>
+      </div>
+
       {secao(1, 'Identificação da empresa e da obra')}
-      <Text style={{ display: 'block' }}>{minuta.obra.nome}{minuta.obra.cliente ? ` · ${minuta.obra.cliente}` : ''}{minuta.obra.cnpj ? ` · CNPJ ${minuta.obra.cnpj}` : ''}</Text>
-      {minuta.obra.endereco && <Text style={{ display: 'block' }}>{minuta.obra.endereco}</Text>}
+      <div style={{ marginTop: 4 }}>
+        {linhaGrade('Obra / Contrato', minuta.obra.nome)}
+        {linhaGrade('Cliente', minuta.obra.cliente)}
+        {linhaGrade('CNPJ', minuta.obra.cnpj)}
+        {linhaGrade('Endereço da obra', minuta.obra.endereco)}
+      </div>
 
       {secao(2, 'Identificação do trabalhador')}
-      <Text style={{ display: 'block' }}>
-        {minuta.trabalhador.nome} · CPF {minuta.trabalhador.cpf || minuta.trabalhador.cpfMascarado}{minuta.trabalhador.matricula ? ` · Matrícula ${minuta.trabalhador.matricula}` : ''}
-      </Text>
-      <Text style={{ display: 'block' }}>
-        {minuta.trabalhador.funcao}{minuta.trabalhador.cbo ? ` · CBO ${minuta.trabalhador.cbo}` : ''} · Admissão {data(minuta.trabalhador.dataAdmissao)}
-      </Text>
+      <div style={{ marginTop: 4 }}>
+        {linhaGrade('Nome', minuta.trabalhador.nome)}
+        {linhaGrade('Matrícula / CPF', `${minuta.trabalhador.matricula || '—'} • CPF ${minuta.trabalhador.cpf || minuta.trabalhador.cpfMascarado}`)}
+        {linhaGrade('Função / CBO', `${minuta.trabalhador.funcao}${minuta.trabalhador.cbo ? ` • CBO ${minuta.trabalhador.cbo}` : ''}`)}
+        {linhaGrade('Admissão', data(minuta.trabalhador.dataAdmissao))}
+      </div>
 
       {secao(3, 'Atividades da função (conforme PGR)')}
-      {minuta.pgr && <Text size={200} style={{ display: 'block' }}>Fonte: {minuta.pgr.nome}{minuta.pgr.revisao != null ? ` — revisão ${minuta.pgr.revisao}` : ''}</Text>}
-      {minuta.ghes.map((g) => (
-        <Text key={g.numero} style={{ display: 'block', whiteSpace: 'pre-line', textAlign: 'justify' }}>
-          <b>GHE {String(g.numero).padStart(2, '0')}:</b> {g.descricaoAtividades || '— descrição não informada no PGR —'}
+      <div style={{ border: '1px solid var(--colorNeutralStroke2)', padding: '8px 10px', marginTop: 4 }}>
+        {minuta.pgr && (
+          <Text size={200} style={{ display: 'block', fontStyle: 'italic', marginBottom: 4 }}>
+            Fonte: {minuta.pgr.nome}{minuta.pgr.revisao != null ? ` — revisão ${minuta.pgr.revisao}` : ''}
+          </Text>
+        )}
+        {minuta.ghes.map((g) => (
+          <Text key={g.numero} style={{ display: 'block', whiteSpace: 'pre-line', textAlign: 'justify', marginBottom: 4 }}>
+            <b>GHE {String(g.numero).padStart(2, '0')}:</b> {g.descricaoAtividades || '— descrição não informada no PGR —'}
+          </Text>
+        ))}
+        <Text size={100} style={{ display: 'block', marginTop: 4, color: 'var(--colorNeutralForeground3)' }}>
+          Esta OS não amplia as atividades acima. Atividades fora desta lista não estão autorizadas por este documento.
         </Text>
-      ))}
+      </div>
 
-      {secao(4, 'Atividades: riscos, prevenção e requisitos')}
+      {secao(4, 'Atividades da função: riscos, prevenção e requisitos')}
       {minuta.atividades.map((a) => (
-        <div key={a.id} style={{ border: '1px solid var(--colorNeutralStroke2)', padding: 8, marginTop: 8 }}>
-          <Text weight="semibold" style={{ display: 'block' }}>{a.nome}</Text>
-          <Text size={200} style={{ display: 'block', whiteSpace: 'pre-line' }}><b>Condições:</b> {a.condicoes || '—'}</Text>
-          {a.riscos.map((r) => (
-            <div key={r.id} style={{ marginTop: 6 }}>
-              <StatusChip tom={tomPorNivel[r.nivel] ?? 'neutro'}>{nivelRiscoLabel[r.nivel]}</StatusChip>{' '}
-              <b>{r.perigo}</b>{r.consequencia ? ` — ${r.consequencia}` : ''}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
-                <div><Text size={200} weight="semibold">Antes</Text>{lista(r.antes)}</div>
-                <div><Text size={200} weight="semibold">Durante</Text>{lista(r.durante)}</div>
-                <div><Text size={200} weight="semibold">Após</Text>{lista(r.apos)}</div>
+        <div key={a.id} style={{ border: '1px solid var(--colorNeutralStroke2)', borderRadius: 4, overflow: 'hidden', marginTop: 8 }}>
+          <div style={{ background: '#ebe9ad', color: '#1f1f1f', padding: '5px 10px', fontWeight: 700, fontSize: 12.5 }}>
+            {a.nome}
+          </div>
+          <div style={{ padding: '8px 10px' }}>
+            <Text size={200} style={{ display: 'block', whiteSpace: 'pre-line', marginBottom: 6 }}>
+              <b>Condições de execução:</b> {a.condicoes || '—'}
+            </Text>
+            {a.riscos.map((r) => (
+              <div
+                key={r.id}
+                style={{
+                  border: '1px solid var(--colorNeutralStroke2)', borderRadius: 4,
+                  padding: '6px 8px', marginTop: 6, background: 'var(--colorNeutralBackground2)',
+                }}
+              >
+                <div style={{ marginBottom: 4 }}>
+                  <StatusChip tom={tomPorNivel[r.nivel] ?? 'neutro'}>{nivelRiscoLabel[r.nivel]}</StatusChip>{' '}
+                  <b>{r.perigo}</b>{r.consequencia ? ` — ${r.consequencia}` : ''}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 8 }}>
+                  <div><Text size={200} weight="semibold" style={{ color: corMarca }}>Antes do trabalho</Text>{lista(r.antes)}</div>
+                  <div><Text size={200} weight="semibold" style={{ color: corMarca }}>Durante o trabalho</Text>{lista(r.durante)}</div>
+                  <div><Text size={200} weight="semibold" style={{ color: corMarca }}>Após o trabalho</Text>{lista(r.apos)}</div>
+                </div>
               </div>
-            </div>
-          ))}
-          <Text size={200} style={{ display: 'block', marginTop: 6 }}><b>Ferramentas:</b> {a.ferramentas.join(', ') || '—'} · <b>EPCs:</b> {a.epcs.join(', ') || '—'}</Text>
-          <Text size={200} style={{ display: 'block' }}><b>Procedimentos:</b> {a.procedimentos.join('; ') || '—'}</Text>
-          <Text size={200} weight="semibold" style={{ display: 'block', marginTop: 4 }}>Interromper e avisar a liderança quando</Text>{lista(a.interromperQuando)}
-          <Text size={200} weight="semibold" style={{ display: 'block' }}>Não executar sem capacitação, autorização ou liberação</Text>
-          {lista(a.restricoes.map((r) => (r.requisito ? `${r.texto} → ${r.requisito}` : r.texto)))}
-          <Text size={200} weight="semibold" style={{ display: 'block' }}>Autorizações exigidas</Text>{lista(a.autorizacoes)}
+            ))}
+            {a.ferramentas.length > 0 && (
+              <Text size={200} style={{ display: 'block', marginTop: 6 }}><b>Ferramentas e equipamentos:</b> {a.ferramentas.join(', ')}</Text>
+            )}
+            {a.epcs.length > 0 && (
+              <Text size={200} style={{ display: 'block', marginTop: 4 }}><b>EPCs:</b> {a.epcs.join(', ')}</Text>
+            )}
+            <Text size={200} style={{ display: 'block', marginTop: 4 }}><b>Procedimentos aplicáveis:</b> {a.procedimentos.join('; ') || '—'}</Text>
+            {a.interromperQuando.length > 0 && (
+              <>
+                <Text size={200} weight="semibold" style={{ display: 'block', marginTop: 4 }}>Interromper a atividade e comunicar a liderança quando</Text>
+                {lista(a.interromperQuando)}
+              </>
+            )}
+            {a.restricoes.length > 0 && (
+              <>
+                <Text size={200} weight="semibold" style={{ display: 'block', marginTop: 4 }}>Não executar sem capacitação, autorização ou liberação</Text>
+                {lista(a.restricoes.map((r) => (r.requisito ? `${r.texto} → ${r.requisito}` : r.texto)))}
+              </>
+            )}
+            {a.autorizacoes.length > 0 && (
+              <>
+                <Text size={200} weight="semibold" style={{ display: 'block', marginTop: 4 }}>Autorizações exigidas</Text>
+                {lista(a.autorizacoes)}
+              </>
+            )}
+          </div>
         </div>
       ))}
 
       {secao(5, 'EPIs obrigatórios')}
-      {lista(minuta.epis.map((e) => `${e.nome}${e.ca ? ` — CA ${e.ca}` : ''}`))}
+      <div style={{ border: '1px solid var(--colorNeutralStroke2)', padding: '6px 10px', marginTop: 4 }}>
+        {lista(minuta.epis.map((e) => `${e.nome}${e.ca ? ` — CA ${e.ca}` : ''}`))}
+      </div>
 
       {secao(6, 'Qualificações e autorizações do trabalhador')}
-      {lista([
-        ...minuta.treinamentos.map((t) => `${t.curso}: ${t.situacao === 'Valido' ? `válido até ${data(t.validade)}` : t.situacao === 'Vencido' ? `vencido em ${data(t.validade)}` : 'não realizado'}`),
-        minuta.aso ? `ASO: ${minuta.aso.valido ? `apto até ${data(minuta.aso.validade)}` : 'vencido ou sem aptidão'}` : 'ASO: não cadastrado',
-      ])}
+      <div style={{ border: '1px solid var(--colorNeutralStroke2)', padding: '6px 10px', marginTop: 4 }}>
+        {lista([
+          ...minuta.treinamentos.map((t) => `${t.curso}: ${t.situacao === 'Valido' ? `válido até ${data(t.validade)}` : t.situacao === 'Vencido' ? `vencido em ${data(t.validade)}` : 'não realizado'}`),
+          minuta.aso ? `ASO: ${minuta.aso.valido ? `apto até ${data(minuta.aso.validade)}` : 'vencido ou sem aptidão'}` : 'ASO: não cadastrado',
+        ])}
+      </div>
 
       {secao(7, 'Responsabilidades do trabalhador')}
-      {lista([
-        'Cumprir as disposições legais e regulamentares de SST e as instruções desta OS (NR-01, item 1.4.2).',
-        'Utilizar máquinas, ferramentas e equipamentos somente para os quais esteja capacitado e autorizado, obedecendo aos procedimentos e normas da empresa.',
-        'Usar os EPIs fornecidos, guardá-los, conservá-los e comunicar qualquer alteração que os torne impróprios (NR-06).',
-        'Comunicar prontamente acidentes, incidentes, quase acidentes, condições inseguras, falhas de equipamentos e mudanças nas condições de trabalho.',
-        'Participar das orientações e capacitações aplicáveis e colaborar com as medidas de prevenção.',
-        'Exercer o direito de recusa diante de risco grave e iminente, comunicando imediatamente a liderança (NR-01, item 1.4.3).',
-      ])}
+      <div style={{ border: '1px solid var(--colorNeutralStroke2)', padding: '6px 10px', marginTop: 4 }}>
+        {lista([
+          'Cumprir as disposições legais e regulamentares de SST e as instruções desta OS (NR-01, item 1.4.2).',
+          'Utilizar máquinas, ferramentas e equipamentos somente para os quais esteja capacitado e autorizado, obedecendo aos procedimentos e normas da empresa.',
+          'Usar os EPIs fornecidos, guardá-los, conservá-los e comunicar qualquer alteração que os torne impróprios (NR-06).',
+          'Comunicar prontamente acidentes, incidentes, quase acidentes, condições inseguras, falhas de equipamentos e mudanças nas condições de trabalho.',
+          'Participar das orientações e capacitações aplicáveis e colaborar com as medidas de prevenção.',
+          'Exercer o direito de recusa diante de risco grave e iminente, comunicando imediatamente a liderança (NR-01, item 1.4.3).',
+        ])}
+      </div>
 
       {secao(8, 'Políticas corporativas aplicáveis')}
-      {lista(minuta.politicas.map((p) => `${p.codigo ? `${p.codigo} — ` : ''}${p.titulo} (rev. ${p.revisao ?? '—'})${p.formaConsulta ? ` · Consulta: ${p.formaConsulta}` : ''}`))}
+      <div style={{ border: '1px solid var(--colorNeutralStroke2)', padding: '6px 10px', marginTop: 4 }}>
+        {lista(minuta.politicas.map((p) => `${p.codigo ? `${p.codigo} — ` : ''}${p.titulo} (rev. ${p.revisao ?? '—'})${p.formaConsulta ? ` • Consulta: ${p.formaConsulta}` : ''}`))}
+      </div>
 
       {secao(9, 'Ciência e responsabilidade')}
-      <Text style={{ display: 'block', textAlign: 'justify' }}>
-        Declaro ter recebido esta Ordem de Serviço, ter sido informado(a) de forma clara sobre as atividades, os riscos, as medidas
-        de prevenção e os limites da minha função, e comprometo-me a cumpri-la. Estou ciente de que a recusa injustificada em observar
-        as instruções de segurança e em usar os EPIs constitui ato faltoso (CLT, art. 158, parágrafo único).
-      </Text>
+      <div style={{ border: '1px solid var(--colorNeutralStroke2)', padding: '8px 10px', marginTop: 4 }}>
+        <Text style={{ display: 'block', textAlign: 'justify' }}>
+          Declaro ter recebido esta Ordem de Serviço, ter sido informado(a) de forma clara sobre as atividades, os riscos, as medidas
+          de prevenção e os limites da minha função, e comprometo-me a cumpri-la. Estou ciente de que a recusa injustificada em observar
+          as instruções de segurança e em usar os EPIs constitui ato faltoso (CLT, art. 158, parágrafo único).
+        </Text>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24, marginTop: 24, paddingTop: 12 }}>
+          <div style={{ borderTop: '1px solid var(--colorNeutralStroke1)', paddingTop: 6, textAlign: 'center' }}>
+            <Text weight="semibold" size={200} style={{ display: 'block' }}>{minuta.trabalhador.nome}</Text>
+            <Text size={100} style={{ display: 'block', color: 'var(--colorNeutralForeground3)' }}>TRABALHADOR(A) • {minuta.trabalhador.funcao}</Text>
+          </div>
+          <div style={{ borderTop: '1px solid var(--colorNeutralStroke1)', paddingTop: 6, textAlign: 'center' }}>
+            <Text weight="semibold" size={200} style={{ display: 'block' }}>TÉCNICO DE SEGURANÇA DO TRABALHO</Text>
+            <Text size={100} style={{ display: 'block', color: 'var(--colorNeutralForeground3)' }}>Responsável de SST da obra</Text>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
