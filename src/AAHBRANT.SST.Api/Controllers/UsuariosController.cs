@@ -31,10 +31,15 @@ public class UsuariosController : ControllerBase
     public async Task<ActionResult<UsuarioLogadoDto>> Eu(CancellationToken ct)
     {
         var azureAdObjectId = User.FindFirst("oid")?.Value ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var nomeToken = User.FindFirst("name")?.Value ?? User.FindFirst(ClaimTypes.Name)?.Value;
+        var emailToken = User.FindFirst("preferred_username")?.Value
+            ?? User.FindFirst("upn")?.Value
+            ?? User.FindFirst(ClaimTypes.Upn)?.Value
+            ?? User.FindFirst(ClaimTypes.Email)?.Value;
         // Mesma flag de PermissaoAuthorizationHandler e EscopoPorObraMiddleware: com o Entra ID
         // desligado (desenvolvimento), o servidor não checa nada e a tela precisa saber disso.
         var autenticacaoHabilitada = !string.IsNullOrWhiteSpace(_configuracao["AzureAd:TenantId"]);
-        return Ok(await _mediator.Send(new ObterUsuarioLogadoQuery(azureAdObjectId, autenticacaoHabilitada), ct));
+        return Ok(await _mediator.Send(new ObterUsuarioLogadoQuery(azureAdObjectId, autenticacaoHabilitada, nomeToken, emailToken), ct));
     }
 
     [Authorize(Policy = "usuario:ver")]

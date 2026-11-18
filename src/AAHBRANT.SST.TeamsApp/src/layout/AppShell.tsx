@@ -53,6 +53,8 @@ import {
 import { designTokens } from '@ui';
 import { useThemeMode } from '../theme/ThemeModeContext';
 import { useTeamsContext } from '../teams/useTeamsContext';
+import { useUsuarioLogado } from '../lib/UsuarioLogadoContext';
+import { obterContaNavegadorAtiva } from '../lib/browserAuth';
 import { useAcessoCameras, useObras } from '../lib/consultas';
 import {
   api,
@@ -79,7 +81,7 @@ import { AvisoErroModal } from '../components/avisos/AvisoErroModal';
 const LARGURA_RAIL_COLAPSADO = '64px';
 const LARGURA_RAIL_EXPANDIDO = '240px';
 const CHAVE_RAIL_EXPANDIDO = 'sst.railExpandido';
-const VERSAO_APP = '5.10.0';
+const VERSAO_APP = '5.174.0';
 const TAMANHO_MAXIMO_FOTO_PERFIL_BYTES = 8 * 1024 * 1024;
 const DIMENSAO_MAXIMA_FOTO_PERFIL = 256;
 
@@ -348,7 +350,7 @@ const useStyles = makeStyles({
     fontWeight: 700,
     color: designTokens.colorNeutralDark,
     whiteSpace: 'nowrap',
-    maxWidth: '180px',
+    maxWidth: '240px',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
   },
@@ -384,7 +386,7 @@ const useStyles = makeStyles({
     fontSize: '12px',
     lineHeight: '16px',
     color: designTokens.colorNeutralMedium,
-    maxWidth: '180px',
+    maxWidth: '260px',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
@@ -835,16 +837,32 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { carregando, dentroDoTeams, contexto } = useTeamsContext();
+  const { usuario: usuarioLogado } = useUsuarioLogado();
   const { modo, alternarModo } = useThemeMode();
-  // `??` só cobre null/undefined — o Teams client já retornou displayName como string vazia em
-  // produção (achado ao testar o pop-up de novidades, 18/09), então precisa tratar vazio também.
-  const nomeUsuario = contexto?.user?.displayName?.trim() || 'Usuário';
-  const emailUsuario = contexto?.user?.userPrincipalName ?? contexto?.user?.loginHint ?? '';
+  const contaMsal = obterContaNavegadorAtiva();
+  const nomeApi = usuarioLogado?.nome?.trim();
+  const nomeTeams = contexto?.user?.displayName?.trim();
+  const nomeMsal = contaMsal?.nome?.trim();
+  const nomeUsuario =
+    (nomeApi && nomeApi !== 'Usuário' ? nomeApi : null) ||
+    nomeTeams ||
+    nomeMsal ||
+    nomeApi ||
+    'Usuário';
+  const emailUsuario =
+    usuarioLogado?.email?.trim() ||
+    contexto?.user?.userPrincipalName ||
+    contexto?.user?.loginHint ||
+    contaMsal?.email ||
+    '';
   const identidadeUsuario = emailUsuario || nomeUsuario;
   const chaveFotoUsuario = `sst.fotoPerfil.${identidadeUsuario}`;
   const chaveNomeUsuario = `sst.nomePerfil.${identidadeUsuario}`;
   const [fotoPerfil, setFotoPerfil] = useState<string | null>(() => localStorage.getItem(chaveFotoUsuario));
-  const [nomePerfil, setNomePerfil] = useState(() => localStorage.getItem(chaveNomeUsuario) ?? nomeUsuario);
+  const [nomePerfil, setNomePerfil] = useState(() => {
+    const salvo = localStorage.getItem(chaveNomeUsuario)?.trim();
+    return salvo && salvo !== 'Usuário' ? salvo : nomeUsuario;
+  });
   const [menuPerfilAberto, setMenuPerfilAberto] = useState(false);
   const [perfilAberto, setPerfilAberto] = useState(false);
   const [alertasAbertos, setAlertasAbertos] = useState<number | null>(null);
@@ -864,7 +882,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setFotoPerfil(localStorage.getItem(chaveFotoUsuario));
-    setNomePerfil(localStorage.getItem(chaveNomeUsuario) ?? nomeUsuario);
+    const salvo = localStorage.getItem(chaveNomeUsuario)?.trim();
+    setNomePerfil(salvo && salvo !== 'Usuário' ? salvo : nomeUsuario);
   }, [chaveFotoUsuario, chaveNomeUsuario, nomeUsuario]);
 
   const iniciaisPerfil = obterIniciais(nomePerfil);
@@ -1095,7 +1114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="gs-marca-divisor" aria-hidden />
             <span className={estilos.marcaTexto}>
               <span className={estilos.marcaNome}>G-SST</span>
-              <span className={estilos.marcaSubtitulo}>Hub Gênesis SST</span>
+              <span className={estilos.marcaSubtitulo}>AAHBRANT · SST</span>
             </span>
           </NavLink>
         </div>

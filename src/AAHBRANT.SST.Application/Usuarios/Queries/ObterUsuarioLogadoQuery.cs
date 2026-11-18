@@ -13,7 +13,11 @@ namespace AAHBRANT.SST.Application.Usuarios.Queries;
 //
 // A identidade NUNCA vem da rota nem do corpo: o controller resolve pelo claim do token e passa
 // aqui. Sem isso, qualquer um consultaria (e exibiria) o perfil de outra pessoa.
-public record ObterUsuarioLogadoQuery(string? AzureAdObjectId, bool AutenticacaoHabilitada)
+public record ObterUsuarioLogadoQuery(
+    string? AzureAdObjectId,
+    bool AutenticacaoHabilitada,
+    string? NomeToken = null,
+    string? EmailToken = null)
     : IRequest<UsuarioLogadoDto>;
 
 public record UsuarioLogadoDto(
@@ -55,23 +59,46 @@ public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogado
         // total. Responder "não é administrador" aqui esconderia na tela botões que o servidor
         // aceitaria — o pior dos dois mundos para quem está desenvolvendo.
         if (!request.AutenticacaoHabilitada)
-            return new UsuarioLogadoDto("Usuário", null, EhAdministrador: true, new List<string>(),
+        {
+            var usuarioDev = await _db.Usuarios
+                .AsNoTracking()
+                .Where(u => u.Ativo && u.Status == StatusUsuario.Ativo)
+                .OrderBy(u => u.CreatedAtUtc)
+                .Select(u => new { u.Nome, u.Email })
+                .FirstOrDefaultAsync(ct);
+            var nomeDev = !string.IsNullOrWhiteSpace(usuarioDev?.Nome)
+                ? usuarioDev.Nome
+                : (!string.IsNullOrWhiteSpace(request.NomeToken) ? request.NomeToken : "Usuário");
+            return new UsuarioLogadoDto(nomeDev, usuarioDev?.Email ?? request.EmailToken, EhAdministrador: true, new List<string>(),
                 EhEngenheiroSeguranca: true, EngenheiroSegurancaGlobal: true, ObrasEngenheiroSeguranca: new List<Guid>(),
                 PodeDecidirSugestoes: true, PodeDecidirSugestoesGlobal: true, ObrasPodeDecidirSugestoes: new List<Guid>());
+        }
 
-        if (string.IsNullOrWhiteSpace(request.AzureAdObjectId))
-            return new UsuarioLogadoDto(string.Empty, null, EhAdministrador: false, new List<string>());
+        if (string.IsNullOrWhiteSpace(request.AzureAdObjectId) && string.IsNullOrWhiteSpace(request.EmailToken))
+            return new UsuarioLogadoDto(request.NomeToken ?? string.Empty, request.EmailToken, EhAdministrador: false, new List<string>());
 
-        var usuario = await _db.Usuarios
-            .AsNoTracking()
-            .Where(u => u.Ativo && u.AzureAdObjectId == request.AzureAdObjectId && u.Status == StatusUsuario.Ativo)
-            .Select(u => new { u.Id, u.Nome, u.Email })
-            .FirstOrDefaultAsync(ct);
+        var usuario = !string.IsNullOrWhiteSpace(request.AzureAdObjectId)
+            ? await _db.Usuarios
+                .AsNoTracking()
+                .Where(u => u.Ativo && u.AzureAdObjectId == request.AzureAdObjectId && u.Status == StatusUsuario.Ativo)
+                .Select(u => new { u.Id, u.Nome, u.Email })
+                .FirstOrDefaultAsync(ct)
+            : null;
+
+        if (usuario is null && !string.IsNullOrWhiteSpace(request.EmailToken))
+        {
+            var emailBusca = request.EmailToken.Trim().ToLower();
+            usuario = await _db.Usuarios
+                .AsNoTracking()
+                .Where(u => u.Ativo && u.Status == StatusUsuario.Ativo && u.Email != null && u.Email.ToLower() == emailBusca)
+                .Select(u => new { u.Id, u.Nome, u.Email })
+                .FirstOrDefaultAsync(ct);
+        }
 
         // Autenticado no Entra, mas sem cadastro de Usuario ativo aqui: não é administrador e não
-        // tem permissão nenhuma — as telas tratam isso como visitante.
+        // tem permissão nenhuma — as telas tratam isso como visitante, preservando o nome do token se houver.
         if (usuario is null)
-            return new UsuarioLogadoDto(string.Empty, null, EhAdministrador: false, new List<string>());
+            return new UsuarioLogadoDto(request.NomeToken ?? string.Empty, request.EmailToken, EhAdministrador: false, new List<string>());
 
         var perfis = await _db.UsuariosPerfilObra
             .AsNoTracking()

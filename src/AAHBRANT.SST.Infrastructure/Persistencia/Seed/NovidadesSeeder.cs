@@ -3053,6 +3053,25 @@ public static class NovidadesSeeder
                     null,
                     "Ao gerar os riscos de uma atividade, a IA agora considera as funções do GHE para avaliar a queda de altura, e esse risco não sai mais da lista por causa do limite de cinco riscos por atividade."),
             }),
+        new(
+            Versao: "5.174.0",
+            Titulo: "Início, cabeçalho e Gestão de SST padronizados",
+            DataPublicacao: new DateTime(2026, 11, 17, 23, 55, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Nome do usuário logado e data completa no cabeçalho superior",
+                    "No navegador fora do Teams, o topo mostrava 'Usuário' (US) e cortava o ano da data por falta de espaço.",
+                    "O topo agora exibe o nome real do usuário autenticado (com as iniciais corretas) e a data por extenso completa."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Filtro por obra nos ASOs e datas no padrão brasileiro no PCMSO",
+                    "A aba ASOs não filtrava pela obra selecionada e a tabela de PCMSOs mostrava datas no formato americano (AAAA-MM-DD).",
+                    "A aba ASOs agora compartilha o filtro de obra da Gestão de SST, usa linguagem positiva ('Renovação pendente' / 'A renovar') e o PCMSO exibe datas em DD/MM/AAAA."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Painel de Início alinhado ao fuso do Brasil e exclusão restrita ao Administrador",
+                    "Após as 21h o calendário e o card de Taxa de Gravidade viravam o dia antes da hora, e botões de excluir apareciam para perfis não administradores em algumas abas da Gestão de SST.",
+                    "Todas as datas da tela de Início e do PGR usam o horário local do Brasil, prestadores de serviço não distorcem a conformidade por obra e apenas Administradores veem ações de exclusão."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
