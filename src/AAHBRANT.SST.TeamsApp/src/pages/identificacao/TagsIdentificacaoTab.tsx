@@ -1,5 +1,20 @@
 import { useEffect, useState } from 'react';
-import { BotaoAcao, Button, DataTable, Field, FeedbackInline, Input, Select, Text, useConfirmar, type Coluna } from '@ui';
+import {
+  BotaoAcao,
+  Button,
+  Campo,
+  Card,
+  DataTable,
+  Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
+  Input,
+  Select,
+  useConfirmar,
+  type Coluna,
+} from '@ui';
 import {
   Add24Regular,
   ArrowDownload24Regular,
@@ -25,18 +40,14 @@ import {
   type ResolverTagDto,
   type QrCodeTrabalhador,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 import { ResolverTagResultado } from './ResolverTagResultado';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 const tagVazia: NovaTagIdentificacao = { uid: '', tipo: TipoTag.QrCode };
 
-// Onda 2 Task 9 (camada ui/): lista de Tags de identificação (NFC/QR) — Table→DataTable,
-// erro→FeedbackInline, useConfirmarExclusao→useConfirmar (item 1, 4, 6 do Guia). Os dois cards
-// (resolver por UID e cadastro/lista) mantêm o layout estilos.card/formGrid de pageStyles (não
-// tagueado pro item 2 nesta task).
 export function TagsIdentificacaoTab() {
-  const estilos = usePageStyles();
+  const souAdmin = useSouAdministrador();
   const [tags, setTags] = useState<TagIdentificacao[]>([]);
   const [areas, setAreas] = useState<AreaSst[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
@@ -225,25 +236,23 @@ export function TagsIdentificacaoTab() {
   }
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
-      <div className={estilos.card} style={{ marginBottom: 20 }}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Resolver tag por UID (leitura de NFC/QR)</Text>
-        </div>
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Buscar por UID</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col4}>
-            <Field label="UID lido">
-              <Input value={uidBusca} onChange={(_, d) => setUidBusca(d.value)} />
-            </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<Search24Regular />} onClick={resolverUid} disabled={!uidBusca}>
-            Resolver
-          </Button>
-        </div>
+      <Card titulo="Resolver tag por UID (leitura de NFC/QR)">
+        <FormSection titulo="Buscar por UID" primeira>
+          <FormGrid>
+            <Campo span={4}>
+              <Field label="UID lido">
+                <Input value={uidBusca} onChange={(_, d) => setUidBusca(d.value)} />
+              </Field>
+            </Campo>
+          </FormGrid>
+          <FormRodape>
+            <Button appearance="primary" icon={<Search24Regular />} onClick={resolverUid} disabled={!uidBusca}>
+              Resolver
+            </Button>
+          </FormRodape>
+        </FormSection>
         {erroBusca && (
           <FeedbackInline tom="erro" aoFechar={() => setErroBusca(null)}>
             {erroBusca}
@@ -252,18 +261,17 @@ export function TagsIdentificacaoTab() {
         {resultadoBusca && <ResolverTagResultado resultado={resultadoBusca} />}
 
         {resultadoBusca && resultadoBusca.status === StatusTag.Disponivel && (
-          <>
-            <div className={estilos.sectionTitle}>Vincular Tag Encontrada</div>
-            <div className={estilos.formGrid}>
-              <div className={estilos.col3}>
+          <FormSection titulo="Vincular Tag Encontrada">
+            <FormGrid>
+              <Campo span={3}>
                 <Field label="Vincular a">
                   <Select value={String(tipoVinculoBusca)} onChange={(_, d) => setTipoVinculoBusca(Number(d.value))}>
                     <option value={TipoEntidadeVinculada.Area}>Área</option>
                     <option value={TipoEntidadeVinculada.Trabalhador}>Funcionário</option>
                   </Select>
                 </Field>
-              </div>
-              <div className={estilos.col3}>
+              </Campo>
+              <Campo span={3}>
                 <Field label="Entidade">
                   <Select value={entidadeVinculoIdBusca} onChange={(_, d) => setEntidadeVinculoIdBusca(d.value)}>
                     <option value="">Selecione</option>
@@ -281,39 +289,36 @@ export function TagsIdentificacaoTab() {
                       ))}
                   </Select>
                 </Field>
-              </div>
-            </div>
-            <div className={estilos.formActions}>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
               <Button appearance="primary" icon={<Link24Regular />} onClick={vincularPorUid} disabled={!entidadeVinculoIdBusca}>
                 Vincular esta tag
               </Button>
-            </div>
-          </>
+            </FormRodape>
+          </FormSection>
         )}
-      </div>
+      </Card>
 
-      <div className={estilos.card}>
-        <div className={estilos.toolbar}>
-          <Text weight="semibold">Tags de identificação cadastradas</Text>
-        </div>
-
+      <Card titulo="Tags de identificação cadastradas">
         {erro && (
           <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
             {erro}
           </FeedbackInline>
         )}
 
-        <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>QR dos funcionários</div>
-        <div className={estilos.formActions}>
-          <Button
-            appearance="primary"
-            icon={<QrCode24Regular />}
-            onClick={gerarQrFuncionarios}
-            disabled={gerandoQrFuncionarios}
-          >
-            Gerar ou atualizar QR Codes
-          </Button>
-        </div>
+        <FormSection titulo="QR dos funcionários" primeira>
+          <FormRodape>
+            <Button
+              appearance="primary"
+              icon={<QrCode24Regular />}
+              onClick={gerarQrFuncionarios}
+              disabled={gerandoQrFuncionarios}
+            >
+              Gerar ou atualizar QR Codes
+            </Button>
+          </FormRodape>
+        </FormSection>
 
         {qrFuncionarios.length > 0 && (
           <DataTable
@@ -346,44 +351,44 @@ export function TagsIdentificacaoTab() {
           />
         )}
 
-        <div className={estilos.sectionTitle}>Nova Tag</div>
-        <div className={estilos.formGrid}>
-          <div className={estilos.col4}>
-            <Field label="UID da tag">
-              <Input value={novaTag.uid} onChange={(_, d) => setNovaTag({ ...novaTag, uid: d.value })} />
-            </Field>
-          </div>
-          <div className={estilos.col3}>
-            <Field label="Tipo">
-              <Select value={String(novaTag.tipo)} onChange={(_, d) => setNovaTag({ ...novaTag, tipo: Number(d.value) })}>
-                {Object.entries(tipoTagLabel).map(([valor, rotulo]) => (
-                  <option key={valor} value={valor}>
-                    {rotulo}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-        </div>
-        <div className={estilos.formActions}>
-          <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !novaTag.uid}>
-            Cadastrar tag
-          </Button>
-        </div>
+        <FormSection titulo="Nova Tag">
+          <FormGrid>
+            <Campo span={4}>
+              <Field label="UID da tag">
+                <Input value={novaTag.uid} onChange={(_, d) => setNovaTag({ ...novaTag, uid: d.value })} />
+              </Field>
+            </Campo>
+            <Campo span={3}>
+              <Field label="Tipo">
+                <Select value={String(novaTag.tipo)} onChange={(_, d) => setNovaTag({ ...novaTag, tipo: Number(d.value) })}>
+                  {Object.entries(tipoTagLabel).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>
+                      {rotulo}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </Campo>
+          </FormGrid>
+          <FormRodape>
+            <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando || !novaTag.uid}>
+              Cadastrar tag
+            </Button>
+          </FormRodape>
+        </FormSection>
 
         {vinculandoId && (
-          <>
-            <div className={estilos.sectionTitle}>Vincular Tag</div>
-            <div className={estilos.formGrid}>
-              <div className={estilos.col3}>
+          <FormSection titulo="Vincular Tag">
+            <FormGrid>
+              <Campo span={3}>
                 <Field label="Vincular a">
                   <Select value={String(tipoVinculo)} onChange={(_, d) => setTipoVinculo(Number(d.value))}>
                     <option value={TipoEntidadeVinculada.Area}>Área</option>
                     <option value={TipoEntidadeVinculada.Trabalhador}>Funcionário</option>
                   </Select>
                 </Field>
-              </div>
-              <div className={estilos.col3}>
+              </Campo>
+              <Campo span={3}>
                 <Field label="Entidade">
                   <Select value={entidadeVinculoId} onChange={(_, d) => setEntidadeVinculoId(d.value)}>
                     <option value="">Selecione</option>
@@ -401,17 +406,17 @@ export function TagsIdentificacaoTab() {
                       ))}
                   </Select>
                 </Field>
-              </div>
-            </div>
-            <div className={estilos.formActions}>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
               <Button appearance="primary" onClick={confirmarVinculo} disabled={!entidadeVinculoId}>
                 Confirmar vínculo
               </Button>
               <Button appearance="subtle" onClick={() => setVinculandoId(null)}>
                 Cancelar
               </Button>
-            </div>
-          </>
+            </FormRodape>
+          </FormSection>
         )}
 
         <DataTable
@@ -436,13 +441,6 @@ export function TagsIdentificacaoTab() {
                   <BotaoAcao
                     tom="ver"
                     icon={<QrCode24Regular />}
-                    // Nunca usar window.location.pathname aqui: se essa tela for aberta de dentro do
-                    // Teams (cujo manifesto costuma apontar direto pra ".../index.html"), o link
-                    // gravado na tag física herdava esse "/index.html" — e como o MSAL calcula o
-                    // redirectUri de login a partir do pathname da página (ver browserAuth.ts), quem
-                    // escaneasse a tag fora do Teams caía num redirect_uri nunca cadastrado no App
-                    // Registration (erro AADSTS50011). A raiz sempre serve o index.html (nginx.conf),
-                    // então basta a origem — sem depender de onde este botão foi clicado.
                     onClick={() => window.open(`${window.location.origin}/#/p/${tag.uid}`, '_blank')}
                     aria-label="Abrir crachá/card público desta tag"
                     title="Abrir crachá/card público (o link para gravar na NTAG215 ou gerar o QR Code)"
@@ -455,16 +453,18 @@ export function TagsIdentificacaoTab() {
                   />
                 </>
               )}
-              <BotaoAcao
-                tom="excluir"
-                icon={<Delete24Regular />}
-                onClick={() => excluir(tag.id)}
-                aria-label="Excluir"
-              />
+              {souAdmin && (
+                <BotaoAcao
+                  tom="excluir"
+                  icon={<Delete24Regular />}
+                  onClick={() => excluir(tag.id)}
+                  aria-label="Excluir"
+                />
+              )}
             </>
           )}
         />
-      </div>
-    </>
+      </Card>
+    </div>
   );
 }

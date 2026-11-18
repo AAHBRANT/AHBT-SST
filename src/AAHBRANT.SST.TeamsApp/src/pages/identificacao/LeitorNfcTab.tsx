@@ -1,19 +1,14 @@
 import { useState } from 'react';
-import { Button, Field, FeedbackInline, Input, Text } from '@ui';
+import { Button, Campo, Card, Field, FeedbackInline, FormGrid, FormRodape, FormSection, Input, Text } from '@ui';
 import { ScanObject24Regular } from '@fluentui/react-icons';
 import { api, type ResolverTagDto } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 import { ResolverTagResultado } from './ResolverTagResultado';
-
-// Onda 2 Task 9 (camada ui/): leitor NFC — só o item 4 do Guia (erro→FeedbackInline) se aplica
-// aqui; o layout de estilos.card/formGrid de pageStyles não muda.
 
 // Web NFC (NDEFReader) só existe em Android Chrome/Edge sobre HTTPS. Em outros navegadores
 // (iOS, desktop) não há suporte nenhum, então a leitura manual do UID é o único caminho.
 const nfcSuportado = typeof window !== 'undefined' && 'NDEFReader' in window;
 
 export function LeitorNfcTab() {
-  const estilos = usePageStyles();
   const [lendo, setLendo] = useState(false);
   const [uidManual, setUidManual] = useState('');
   const [resultado, setResultado] = useState<ResolverTagDto | null>(null);
@@ -53,22 +48,18 @@ export function LeitorNfcTab() {
   }
 
   return (
-    <div className={estilos.card}>
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Leitor / Teste NFC</Text>
-      </div>
-
+    <Card titulo="Leitor / Teste NFC">
       {nfcSuportado ? (
-        <>
+        <FormSection titulo="Leitura NFC" primeira>
           <Text as="p">
             Este dispositivo suporta leitura NFC pelo navegador. Toque no botão abaixo e aproxime a tag.
           </Text>
-          <div className={estilos.formActions}>
+          <FormRodape>
             <Button appearance="primary" icon={<ScanObject24Regular />} onClick={iniciarLeituraNfc} disabled={lendo}>
               {lendo ? 'Aproxime a tag...' : 'Iniciar leitura NFC'}
             </Button>
-          </div>
-        </>
+          </FormRodape>
+        </FormSection>
       ) : (
         <Text as="p">
           Este navegador/dispositivo não suporta leitura NFC via Web NFC (suporte hoje limitado a Android
@@ -76,19 +67,20 @@ export function LeitorNfcTab() {
         </Text>
       )}
 
-      <div className={estilos.sectionTitle}>Leitura Manual</div>
-      <div className={estilos.formGrid}>
-        <div className={estilos.col4}>
-          <Field label="UID manual (ou lido via QR Code)">
-            <Input value={uidManual} onChange={(_, d) => setUidManual(d.value)} />
-          </Field>
-        </div>
-      </div>
-      <div className={estilos.formActions}>
-        <Button appearance="secondary" onClick={() => resolver(uidManual)} disabled={!uidManual}>
-          Resolver
-        </Button>
-      </div>
+      <FormSection titulo="Leitura Manual" primeira={!nfcSuportado}>
+        <FormGrid>
+          <Campo span={4}>
+            <Field label="UID manual (ou lido via QR Code)">
+              <Input value={uidManual} onChange={(_, d) => setUidManual(d.value)} />
+            </Field>
+          </Campo>
+        </FormGrid>
+        <FormRodape>
+          <Button appearance="secondary" onClick={() => resolver(uidManual)} disabled={!uidManual}>
+            Resolver
+          </Button>
+        </FormRodape>
+      </FormSection>
 
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
@@ -96,6 +88,6 @@ export function LeitorNfcTab() {
         </FeedbackInline>
       )}
       {resultado && <ResolverTagResultado resultado={resultado} />}
-    </div>
+    </Card>
   );
 }

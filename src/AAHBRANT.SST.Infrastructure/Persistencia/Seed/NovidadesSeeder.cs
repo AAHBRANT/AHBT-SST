@@ -3197,6 +3197,21 @@ public static class NovidadesSeeder
                     "O rascunho de chamado na Central de Suporte IA mostrava fixo 'CL / Usuário do SST' e as datas dos chamados podiam aparecer com fuso UTC.",
                     "O rascunho exibe o nome e as iniciais reais do usuário logado no G-SST, com seletores padronizados e datas no horário de Brasília."),
             }),
+        new(
+            Versao: "5.182.0",
+            Titulo: "Padronização do módulo Administração e Crachá Público",
+            DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Telas de Tags (NFC/QR), Leitor NFC e Novidades migradas para componentes @ui padronizados",
+                    "As abas de Tags e Leitor NFC usavam estilos antigos de formulário e a aba Novidades usava seletor nativo e data em fuso UTC.",
+                    "Todas as abas de Administração usam Card, FormSection, FormGrid e Select padronizados, com datas em DD/MM/AAAA no fuso local."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Ações de exclusão e revogação em Administração restritas a Administrador e datas pt-BR no Crachá Público",
+                    "Botões de exclusão em Obras, Controle de Acesso, Tags, Leitores de Digital, Destinatários e Novidades apareciam sem checagem de perfil no frontend, e o Crachá Público exibia datas em AAAA-MM-DD.",
+                    "Apenas Administradores visualizam botões de exclusão/revogação e o Crachá Público exibe datas em DD/MM/AAAA com linguagem positiva."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
