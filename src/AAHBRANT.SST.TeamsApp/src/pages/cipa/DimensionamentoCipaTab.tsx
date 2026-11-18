@@ -21,6 +21,8 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, nivelRiscoLabel, type DimensionamentoCipa, type NovoDimensionamentoCipa, type Obra, type SituacaoCipaObra } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { dataBr } from '../../lib/datas';
 
 function vazio(): NovoDimensionamentoCipa {
   return { obraId: '', cnae: '', grauRisco: 1, numeroFuncionarios: 0, numeroTitulares: 0, numeroSuplentes: 0, observacoes: '' };
@@ -44,6 +46,7 @@ export function DimensionamentoCipaTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -112,7 +115,7 @@ export function DimensionamentoCipaTab() {
     { chave: 'numeroFuncionarios', rotulo: 'Funcionários' },
     { chave: 'numeroTitulares', rotulo: 'Titulares' },
     { chave: 'numeroSuplentes', rotulo: 'Suplentes' },
-    { chave: 'dataCalculo', rotulo: 'Data do cálculo', render: (d) => d.dataCalculo?.slice(0, 10) ?? '' },
+    { chave: 'dataCalculo', rotulo: 'Data do cálculo', render: (d) => dataBr(d.dataCalculo) },
   ];
 
   return (
@@ -233,9 +236,11 @@ export function DimensionamentoCipaTab() {
             titulo: 'Nenhum dimensionamento cadastrado ainda',
             acao: { rotulo: 'Adicionar dimensionamento', aoClicar: () => setPainelAberto(true) },
           }}
-          acoesLinha={(d) => (
-            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(d.id)} aria-label="Excluir" />
-          )}
+          acoesLinha={
+            souAdministrador
+              ? (d) => <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(d.id)} aria-label="Excluir" />
+              : undefined
+          }
         />
       </Card>
     </div>

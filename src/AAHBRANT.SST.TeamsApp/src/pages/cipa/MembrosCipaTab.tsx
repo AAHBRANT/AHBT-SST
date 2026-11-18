@@ -29,6 +29,7 @@ import {
   type Obra,
   type Trabalhador,
 } from '../../lib/api';
+import { dataBr } from '../../lib/datas';
 
 function vazio(): NovoMembroCipa {
   return {
@@ -150,7 +151,7 @@ export function MembrosCipaTab() {
       rotulo: 'Mandato',
       render: (m) => (
         <>
-          {m.dataInicioMandato?.slice(0, 10)} a {m.dataFimMandato?.slice(0, 10)}{' '}
+          {dataBr(m.dataInicioMandato)} a {dataBr(m.dataFimMandato)}{' '}
           {m.mandatoAtivo && <StatusChip tom="ok">Ativo</StatusChip>}
         </>
       ),

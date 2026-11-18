@@ -1,5 +1,24 @@
 import { useEffect, useState } from 'react';
-import { BotaoAcao, Button, DataTable, Field, FeedbackInline, Input, Select, Text, useConfirmar, type Coluna } from '@ui';
+import {
+  BotaoAcao,
+  Button,
+  Campo,
+  Card,
+  DataTable,
+  Field,
+  FeedbackInline,
+  FormGrid,
+  FormRodape,
+  FormSection,
+  Input,
+  PageHeader,
+  PainelCriacaoInline,
+  Select,
+  StatusChip,
+  useConfirmar,
+  type Coluna,
+  type Tom,
+} from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -10,8 +29,8 @@ import {
   type NovaAreaSst,
   type Obra,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 const areaVazia: NovaAreaSst = {
   codigo: '',
@@ -24,19 +43,25 @@ const areaVazia: NovaAreaSst = {
   status: 1,
 };
 
-// Onda 2 Task 9 (camada ui/): lista de Áreas de SST — Table→DataTable, erro→FeedbackInline,
-// useConfirmarExclusao→useConfirmar (item 1, 4, 6 do Guia de conversão). O formulário de criação
-// mantém o layout de estilos.card/formGrid de pageStyles (não tagueado pro item 2 nesta task).
+const tomPorStatusArea: Record<number, Tom> = {
+  1: 'ok',
+  2: 'atencao',
+  3: 'alerta',
+  4: 'neutro',
+};
+
 export function AreasSstTab() {
-  const estilos = usePageStyles();
+  const souAdministrador = useSouAdministrador();
   const [areas, setAreas] = useState<AreaSst[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [novaArea, setNovaArea] = useState<NovaAreaSst>(areaVazia);
   const [riscosTexto, setRiscosTexto] = useState('');
   const [requisitosTexto, setRequisitosTexto] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
+  const [painelAberto, setPainelAberto] = useState(false);
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -68,22 +93,32 @@ export function AreasSstTab() {
       .filter((item) => item.length > 0);
   }
 
+  function fecharPainel() {
+    setPainelAberto(false);
+    setErroPainel(null);
+    setNovaArea(areaVazia);
+    setRiscosTexto('');
+    setRequisitosTexto('');
+  }
+
   async function criar() {
+    if (!novaArea.codigo.trim() || !novaArea.nome.trim() || !novaArea.obraId) {
+      setErroPainel('Informe código, nome e obra da área.');
+      return;
+    }
     try {
       setCarregando(true);
-      setErro(null);
+      setErroPainel(null);
       await api.areasSst.criar({
         ...novaArea,
         riscos: dividirLista(riscosTexto),
         requisitos: dividirLista(requisitosTexto),
       });
-      setNovaArea(areaVazia);
-      setRiscosTexto('');
-      setRequisitosTexto('');
+      fecharPainel();
       await carregar();
       sucessoToast('Área criada com sucesso.');
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao criar área.');
+      setErroPainel(e instanceof Error ? e.message : 'Falha ao criar área.');
     } finally {
       setCarregando(false);
     }
@@ -105,16 +140,31 @@ export function AreasSstTab() {
     { chave: 'nome', rotulo: 'Nome' },
     { chave: 'tipo', rotulo: 'Tipo', render: (a) => tipoAreaLabel[a.tipo] },
     { chave: 'obra', rotulo: 'Obra', render: (a) => nomeObra(a.obraId) },
-    { chave: 'status', rotulo: 'Status', render: (a) => statusAreaLabel[a.status] },
-    { chave: 'riscos', rotulo: 'Riscos', render: (a) => a.riscos.join(', ') },
+    {
+      chave: 'status',
+      rotulo: 'Status',
+      render: (a) => <StatusChip tom={tomPorStatusArea[a.status] ?? 'neutro'}>{statusAreaLabel[a.status]}</StatusChip>,
+    },
+    { chave: 'riscos', rotulo: 'Riscos', render: (a) => a.riscos.join(', ') || '—' },
   ];
 
   return (
-    <div className={estilos.card}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
-      <div className={estilos.toolbar}>
-        <Text weight="semibold">Áreas de SST cadastradas</Text>
-      </div>
+      <PageHeader
+        titulo="Áreas de SST"
+        acoes={
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-area-sst"
+          >
+            {painelAberto ? 'Fechar' : 'Nova área'}
+          </Button>
+        }
+      />
 
       {erro && (
         <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>
@@ -122,80 +172,98 @@ export function AreasSstTab() {
         </FeedbackInline>
       )}
 
-      <div className={`${estilos.sectionTitle} ${estilos.sectionTitleFirst}`}>Informações da área</div>
-      <div className={estilos.formGrid}>
-        <div className={estilos.col2}>
-          <Field label="Código">
-            <Input value={novaArea.codigo} onChange={(_, d) => setNovaArea({ ...novaArea, codigo: d.value })} />
-          </Field>
-        </div>
-        <div className={estilos.col4}>
-          <Field label="Nome">
-            <Input value={novaArea.nome} onChange={(_, d) => setNovaArea({ ...novaArea, nome: d.value })} />
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Tipo">
-            <Select
-              value={String(novaArea.tipo)}
-              onChange={(_, d) => setNovaArea({ ...novaArea, tipo: Number(d.value) })}
-            >
-              {Object.entries(tipoAreaLabel).map(([valor, rotulo]) => (
-                <option key={valor} value={valor}>
-                  {rotulo}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className={estilos.col3}>
-          <Field label="Obra">
-            <Select value={novaArea.obraId} onChange={(_, d) => setNovaArea({ ...novaArea, obraId: d.value })}>
-              <option value="">Selecione</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.nome}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className={estilos.col4}>
-          <Field label="Detalhes da localização">
-            <Input
-              value={novaArea.detalhesLocalizacao ?? ''}
-              onChange={(_, d) => setNovaArea({ ...novaArea, detalhesLocalizacao: d.value })}
-            />
-          </Field>
-        </div>
-        <div className={estilos.col4}>
-          <Field label="Riscos (separados por vírgula)">
-            <Input value={riscosTexto} onChange={(_, d) => setRiscosTexto(d.value)} />
-          </Field>
-        </div>
-        <div className={estilos.col4}>
-          <Field label="Requisitos (separados por vírgula)">
-            <Input value={requisitosTexto} onChange={(_, d) => setRequisitosTexto(d.value)} />
-          </Field>
-        </div>
-      </div>
-      <div className={estilos.formActions}>
-        <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
-          Adicionar área
-        </Button>
+      <div id="painel-nova-area-sst">
+        <PainelCriacaoInline aberto={painelAberto} titulo="Nova área de SST">
+          <FormSection titulo="Informações da área" numero={1} primeira>
+            {erroPainel && (
+              <FeedbackInline tom="erro" aoFechar={() => setErroPainel(null)}>
+                {erroPainel}
+              </FeedbackInline>
+            )}
+            <FormGrid>
+              <Campo span={2}>
+                <Field label="Código" required>
+                  <Input value={novaArea.codigo} onChange={(_, d) => setNovaArea({ ...novaArea, codigo: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Nome" required>
+                  <Input value={novaArea.nome} onChange={(_, d) => setNovaArea({ ...novaArea, nome: d.value })} />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Tipo">
+                  <Select
+                    value={String(novaArea.tipo)}
+                    onChange={(_, d) => setNovaArea({ ...novaArea, tipo: Number(d.value) })}
+                  >
+                    {Object.entries(tipoAreaLabel).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Obra" required>
+                  <Select value={novaArea.obraId} onChange={(_, d) => setNovaArea({ ...novaArea, obraId: d.value })}>
+                    <option value="">Selecione</option>
+                    {obras.map((obra) => (
+                      <option key={obra.id} value={obra.id}>
+                        {obra.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Detalhes da localização">
+                  <Input
+                    value={novaArea.detalhesLocalizacao ?? ''}
+                    onChange={(_, d) => setNovaArea({ ...novaArea, detalhesLocalizacao: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Riscos (separados por vírgula)">
+                  <Input value={riscosTexto} onChange={(_, d) => setRiscosTexto(d.value)} />
+                </Field>
+              </Campo>
+              <Campo span={4}>
+                <Field label="Requisitos (separados por vírgula)">
+                  <Input value={requisitosTexto} onChange={(_, d) => setRequisitosTexto(d.value)} />
+                </Field>
+              </Campo>
+            </FormGrid>
+            <FormRodape>
+              <Button onClick={fecharPainel}>Cancelar</Button>
+              <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
+                Adicionar área
+              </Button>
+            </FormRodape>
+          </FormSection>
+        </PainelCriacaoInline>
       </div>
 
-      <DataTable
-        aria-label="Áreas de SST cadastradas"
-        colunas={colunas}
-        linhas={areas}
-        chaveLinha={(a) => a.id}
-        carregando={carregandoLista}
-        vazio={{ titulo: 'Nenhuma área cadastrada ainda.' }}
-        acoesLinha={(a) => (
-          <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
-        )}
-      />
+      <Card>
+        <DataTable
+          aria-label="Áreas de SST cadastradas"
+          colunas={colunas}
+          linhas={areas}
+          chaveLinha={(a) => a.id}
+          carregando={carregandoLista}
+          vazio={{
+            titulo: 'Nenhuma área cadastrada ainda.',
+            acao: { rotulo: 'Nova área', aoClicar: () => setPainelAberto(true) },
+          }}
+          acoesLinha={
+            souAdministrador
+              ? (a) => <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
+              : undefined
+          }
+        />
+      </Card>
     </div>
   );
 }

@@ -24,6 +24,8 @@ import { useFiltroObra } from '../../lib/ObraAtivaContext';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { SlotFotoRemota } from '../../components/camera/SlotFotoRemota';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { dataBr } from '../../lib/datas';
 
 const epiVazio: NovoCatalogoEpi = {
   nome: '',
@@ -58,6 +60,7 @@ export function CatalogoTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -220,7 +223,7 @@ export function CatalogoTab() {
             onChange={(_, d) => setEdicao({ ...edicao, certificadoAprovacaoValidade: d.value })}
           />
         ) : (
-          epi.certificadoAprovacaoValidade?.slice(0, 10)
+          dataBr(epi.certificadoAprovacaoValidade)
         ),
     },
     {
@@ -355,14 +358,14 @@ export function CatalogoTab() {
                 disabled={carregando}
                 aria-label="Salvar"
               />
-            ) : (
+            ) : souAdministrador ? (
               <BotaoAcao
                 tom="excluir"
                 icon={<Delete24Regular />}
                 onClick={() => excluir(epi.id)}
                 aria-label="Excluir"
               />
-            )
+            ) : null
           }
         />
         <Legenda>

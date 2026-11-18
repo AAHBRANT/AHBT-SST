@@ -35,6 +35,7 @@ import { SeletorItensEpi, type ItemCarrinhoEpi } from './SeletorItensEpi';
 import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { CarrinhoEntregaEpi } from './CarrinhoEntregaEpi';
 import { conferirPendencias } from '../../lib/avisoErro';
+import { hojeIso } from '../../lib/datas';
 
 // Campos aplicados a todas as entregas do carrinho de uma vez (mesmo funcionário, mesma data,
 // mesmo motivo/documentação NR-6) — o que varia por item é só EPI/quantidade/validade, tratado em
@@ -54,7 +55,7 @@ interface CamposComunsEntrega {
 function camposComunsVazios(): CamposComunsEntrega {
   return {
     trabalhadorId: '',
-    dataEntrega: new Date().toISOString().slice(0, 10),
+    dataEntrega: hojeIso(),
     vistoConsorcioResponsavel: '',
     motivo: '',
     observacoes: '',
@@ -281,7 +282,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
           return;
         }
 
-        const hoje = new Date().toISOString().slice(0, 10);
+        const hoje = hojeIso();
         const integracoesValidas = treinamentosTrabalhador.filter(
           (t) => t.cursoTreinamentoId === cursoIntegracao.id && t.dataValidade.slice(0, 10) >= hoje,
         );
@@ -657,7 +658,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
 
   function iniciarDevolucao(entrega: EntregaEpi) {
     setDevolucaoId(entrega.id);
-    setDevolucaoData(new Date().toISOString().slice(0, 10));
+    setDevolucaoData(hojeIso());
     setDevolucaoQtd(String(entrega.quantidade));
   }
 
@@ -719,18 +720,18 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
       ),
     },
     { chave: 'quantidade', rotulo: 'Qtd.', alinhar: 'direita', largura: '64px' },
-    { chave: 'dataEntrega', rotulo: 'Entrega', render: (e) => e.dataEntrega?.slice(0, 10) },
+    { chave: 'dataEntrega', rotulo: 'Entrega', render: (e) => formatarDataBr(e.dataEntrega) },
     {
       chave: 'validade',
       rotulo: 'Validade',
       // Data crua + chip juntos: o rótulo do chip diz o nível, não *quando* vence nem *há quanto*
       // está vencido, e isso é dado de fiscalização (NR-6) que a tela antiga mostrava.
       render: (e) => {
-        if (e.dataDevolucao) return <StatusChip tom="neutro">Devolvido {e.dataDevolucao.slice(0, 10)}</StatusChip>;
+        if (e.dataDevolucao) return <StatusChip tom="neutro">Devolvido {formatarDataBr(e.dataDevolucao)}</StatusChip>;
         const nivel = nivelVencimento(e.dataValidade);
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>{e.dataValidade?.slice(0, 10) ?? '—'}</span>
+            <span>{formatarDataBr(e.dataValidade)}</span>
             {nivel && <StatusChip tom={tomDeVencimento(nivel)}>{rotuloDeVencimento(nivel)}</StatusChip>}
           </div>
         );

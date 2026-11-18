@@ -23,7 +23,7 @@ import {
 import { Add24Regular, Delete24Regular, PeopleTeamAdd24Regular } from '@fluentui/react-icons';
 import { api, StatusApr, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { hojeIso } from '../../lib/datas';
+import { dataBr, hojeIso } from '../../lib/datas';
 import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
@@ -181,8 +181,8 @@ export function AprsTab() {
     { chave: 'numeroApr', rotulo: 'Nº APR', render: (a) => a.numeroApr ?? '-' },
     { chave: 'atividadeNome', rotulo: 'Atividade' },
     { chave: 'local', rotulo: 'Local' },
-    { chave: 'data', rotulo: 'Data', render: (a) => a.data?.slice(0, 10) ?? '' },
-    { chave: 'validade', rotulo: 'Validade', render: (a) => a.validade?.slice(0, 10) ?? '' },
+    { chave: 'data', rotulo: 'Data', render: (a) => dataBr(a.data) },
+    { chave: 'validade', rotulo: 'Validade', render: (a) => dataBr(a.validade) },
     {
       chave: 'status',
       rotulo: 'Status',
