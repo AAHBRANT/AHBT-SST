@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { Card, DataTable, StatusChip, type Coluna, type Tom } from '@ui';
 import {
   PapelEnvolvido,
@@ -6,6 +7,7 @@ import {
   tipoOcorrenciaLabel,
   type OcorrenciaPerfil,
 } from '../../lib/api';
+import { dataBr } from '../../lib/datas';
 
 // Gravidade 1-5: mapeamento por julgamento semântico (guia de conversão da Onda 2), não posicional —
 // StatusChip só tem 5 tons e nenhum equivale a "severe" separado de "danger".
@@ -21,6 +23,7 @@ const tomPorGravidade: Record<number, Tom> = {
 // Card com título de seção + DataTable; sem formulário e sem erro próprio (dados vêm prontos do
 // perfil carregado pela página-mãe), por isso nenhuma conversão de FeedbackInline aqui.
 export function OcorrenciasTab({ ocorrencias }: { ocorrencias: OcorrenciaPerfil[] }) {
+  const navigate = useNavigate();
   const colunas: Coluna<OcorrenciaPerfil>[] = [
     {
       chave: 'tipo',
@@ -34,7 +37,7 @@ export function OcorrenciasTab({ ocorrencias }: { ocorrencias: OcorrenciaPerfil[
           tipoOcorrenciaLabel[o.tipo]
         ),
     },
-    { chave: 'data', rotulo: 'Data', render: (o) => o.data?.slice(0, 10) ?? '' },
+    { chave: 'data', rotulo: 'Data', render: (o) => dataBr(o.data) },
     { chave: 'local', rotulo: 'Local' },
     {
       chave: 'gravidade',
@@ -57,6 +60,7 @@ export function OcorrenciasTab({ ocorrencias }: { ocorrencias: OcorrenciaPerfil[
         colunas={colunas}
         linhas={ocorrencias}
         chaveLinha={(o) => o.id}
+        aoClicarLinha={(o) => navigate(`/acidentes/${o.id}`)}
         vazio={{ titulo: 'Nenhuma ocorrência registrada para este funcionário.' }}
       />
     </Card>
