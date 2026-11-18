@@ -18,21 +18,22 @@ const PERIODOS: Array<{ valor: PeriodoPainel; rotulo: string }> = [
 ];
 
 export function hojeIsoPainel(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString('sv-SE');
 }
 
-// Mesmo critério de corte do Início (DashboardPage): período em relação a hoje, em datas ISO.
+// Mesmo critério de corte do Início (DashboardPage): período em relação a hoje, em datas ISO locais.
 export function usePainelFiltros() {
   const [periodo, setPeriodo] = useState<PeriodoPainel>('tudo');
   // Ligado à obra ativa do cabeçalho: vale para o sistema todo (28/10/2026).
   const [obraId, setObraId] = useFiltroObra();
   const inicioPeriodoISO = useMemo(() => {
     if (periodo === 'tudo') return null;
-    const data = new Date(hojeIsoPainel());
+    const [ano, mes, dia] = hojeIsoPainel().split('-').map(Number);
+    const data = new Date(ano, mes - 1, dia);
     if (periodo === 'semana') data.setDate(data.getDate() - 7);
     if (periodo === 'mes') data.setMonth(data.getMonth() - 1);
     if (periodo === 'ano') data.setFullYear(data.getFullYear() - 1);
-    return data.toISOString().slice(0, 10);
+    return data.toLocaleDateString('sv-SE');
   }, [periodo]);
   const noPeriodo = (dataISO?: string | null) => !!dataISO && (!inicioPeriodoISO || dataISO >= inicioPeriodoISO);
   return { periodo, setPeriodo, obraId, setObraId, noPeriodo };

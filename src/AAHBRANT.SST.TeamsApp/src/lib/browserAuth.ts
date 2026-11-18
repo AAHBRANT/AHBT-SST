@@ -84,6 +84,17 @@ function selecionarConta(msal: PublicClientApplication): AccountInfo | null {
   return null;
 }
 
+export function obterContaNavegadorAtiva(): { nome?: string; email?: string } | null {
+  if (!appMsal) return null;
+  try {
+    const conta = selecionarConta(appMsal);
+    if (!conta) return null;
+    return { nome: conta.name, email: conta.username };
+  } catch {
+    return null;
+  }
+}
+
 export async function processarLoginNavegadorPendente(): Promise<void> {
   const msal = await obterMsal();
   if (!msal) {

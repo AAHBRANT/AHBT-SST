@@ -38,6 +38,7 @@ import {
   type RequisitoLegalCriterio,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 function novoInicial(): NovoRequisitoLegal {
   return { norma: '', artigo: '', titulo: '', descricao: '', categoria: 1, fonte: '' };
@@ -108,6 +109,7 @@ export function RequisitosLegaisTab() {
   // 07/11/2026: formulário de cadastro fechado por padrão; abre pelo botão "Novo requisito".
   const [formAberto, setFormAberto] = useState(false);
   const { confirmar, dialogElement } = useConfirmar();
+  const souAdministrador = useSouAdministrador();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -433,9 +435,11 @@ export function RequisitosLegaisTab() {
               requisitos.length === 0 ? 'Nenhum requisito legal cadastrado ainda.' : 'Nenhum requisito com este status.',
           }}
           aoClicarLinha={alternarExpansao}
-          acoesLinha={(r) => (
-            <BotaoAcao tom="excluir" icon={<Delete24Regular />} aria-label="Excluir" onClick={() => excluir(r.id)} />
-          )}
+          acoesLinha={
+            souAdministrador
+              ? (r) => <BotaoAcao tom="excluir" icon={<Delete24Regular />} aria-label="Excluir" onClick={() => excluir(r.id)} />
+              : undefined
+          }
           expansivel={{
             aberta: (r) => r.id === expandidoId,
             render: (r) => (

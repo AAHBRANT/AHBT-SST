@@ -3034,6 +3034,25 @@ public static class NovidadesSeeder
                     "O Cofre de Assinaturas mostrava códigos internos (como EntregaEpi e SessaoTreinamento) e alguns relatórios saíam sem número de página.",
                     "Os documentos aparecem com seus nomes em português (Entrega de EPI, Lista de Presença de Treinamento, Ordem de Serviço) e todos os relatórios trazem a identificação G-SST e a numeração de páginas no rodapé."),
             }),
+        new(
+            Versao: "5.173.0",
+            Titulo: "Início, cabeçalho e Gestão de SST padronizados",
+            DataPublicacao: new DateTime(2026, 11, 17, 23, 55, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Nome do usuário logado e data completa no cabeçalho superior",
+                    "No navegador fora do Teams, o topo mostrava 'Usuário' (US) e cortava o ano da data por falta de espaço.",
+                    "O topo agora exibe o nome real do usuário autenticado (com as iniciais corretas) e a data por extenso completa."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Filtro por obra nos ASOs e datas no padrão brasileiro no PCMSO",
+                    "A aba ASOs não filtrava pela obra selecionada e a tabela de PCMSOs mostrava datas no formato americano (AAAA-MM-DD).",
+                    "A aba ASOs agora compartilha o filtro de obra da Gestão de SST, usa linguagem positiva ('Renovação pendente' / 'A renovar') e o PCMSO exibe datas em DD/MM/AAAA."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Painel de Início alinhado ao fuso do Brasil e exclusão restrita ao Administrador",
+                    "Após as 21h o calendário e o card de Taxa de Gravidade viravam o dia antes da hora, e botões de excluir apareciam para perfis não administradores em algumas abas da Gestão de SST.",
+                    "Todas as datas da tela de Início e do PGR usam o horário local do Brasil, prestadores de serviço não distorcem a conformidade por obra e apenas Administradores veem ações de exclusão."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

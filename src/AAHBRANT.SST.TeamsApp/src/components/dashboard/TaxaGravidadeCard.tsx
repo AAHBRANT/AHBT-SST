@@ -160,8 +160,8 @@ export function TaxaGravidadeCard({ acidentes: acidentesBrutos, registrosHht, es
         .reduce((soma, r) => soma + r.horasHomemTrabalhadas, 0);
       const dias = acidentes
         .filter((a) => {
-          const d = new Date(a.data);
-          return d.getFullYear() === ano && d.getMonth() + 1 === mes;
+          const [anoAcidente, mesAcidente] = a.data.slice(0, 10).split('-').map(Number);
+          return anoAcidente === ano && mesAcidente === mes;
         })
         .reduce((soma, a) => soma + (a.diasAfastamento ?? 0) + (a.diasDebitados ?? 0), 0);
       return { rotulo: MESES_CURTOS[data.getMonth()], valor: horas > 0 ? (dias * 1_000_000) / horas : null };
@@ -171,15 +171,15 @@ export function TaxaGravidadeCard({ acidentes: acidentesBrutos, registrosHht, es
   // Dias corridos desde o último acidente com afastamento. Sem nenhum registro, não inventa um número.
   const semAfastamento = useMemo(() => {
     const comAfastamento = acidentes
-      .filter((a) => a.houveAfastamento)
+      .filter((a) => a.tipo === TipoOcorrencia.Acidente && a.houveAfastamento)
       .sort((a, b) => b.data.localeCompare(a.data));
     const ultimo = comAfastamento[0];
     if (!ultimo) return null;
     const hoje = new Date();
     // A data do acidente é só o dia (sem fuso): lida como UTC, igual ao 'hoje' abaixo, para não perder um dia.
-    const diaDoAcidente = new Date(ultimo.data.slice(0, 10));
-    const dias = Math.max(0, Math.round((Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()) - diaDoAcidente.getTime()) / 86_400_000));
-    return { dias, data: diaDoAcidente.toLocaleDateString('pt-BR', { timeZone: 'UTC' }), obra: ultimo.obraNome };
+    const diaDoAcidenteMs = Date.parse(`${ultimo.data.slice(0, 10)}T00:00:00Z`);
+    const dias = Math.max(0, Math.round((Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()) - diaDoAcidenteMs) / 86_400_000));
+    return { dias, data: new Date(diaDoAcidenteMs).toLocaleDateString('pt-BR', { timeZone: 'UTC' }), obra: ultimo.obraNome };
   }, [acidentes]);
 
   const dentroDaMeta = meta !== null && taxaGravidade !== null ? taxaGravidade <= meta : null;
