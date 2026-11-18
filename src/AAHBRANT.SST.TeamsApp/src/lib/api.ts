@@ -33,7 +33,10 @@ export interface Obra {
   endereco?: string | null;
   cidade?: string | null;
   uf?: string | null;
+  cep?: string | null;
   cnpj?: string | null;
+  cnae?: string | null;
+  grauRisco?: number | null;
   temLogo: boolean;
   // Flags de MetodoAutenticacaoObra (ver MetodoAssinaturaObra abaixo).
   metodosAssinatura: number;
@@ -722,6 +725,9 @@ export interface EscopoPcmso {
   obraNome: string;
   cnpj?: string | null;
   endereco?: string | null;
+  cep?: string | null;
+  cnae?: string | null;
+  grauRisco?: number | null;
   dataInicio?: string | null;
   dataPrevisaoTermino?: string | null;
   trabalhadoresAtivos: number;
@@ -3428,7 +3434,7 @@ export interface OrdemServicoEmitida {
 export interface MinutaOrdemServico {
   trabalhadorId: string;
   podeEmitir: boolean;
-  obra: { id: string; nome: string; cliente?: string | null; cnpj?: string | null; endereco?: string | null };
+  obra: { id: string; nome: string; cliente?: string | null; cnpj?: string | null; endereco?: string | null; cep?: string | null; cnae?: string | null; grauRisco?: number | null };
   trabalhador: { nome: string; matricula?: string | null; cpf?: string | null; cpfMascarado: string; funcao: string; cbo?: string | null; dataAdmissao: string };
   pgr?: { id: string; nome: string; dataElaboracao: string; revisao?: number | null } | null;
   ghes: { numero: number; descricaoAtividades?: string | null }[];
@@ -3539,7 +3545,7 @@ export interface GeracaoPgrEap {
   id: string; obraId: string; obraNome: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null;
   elaboradoPorNome?: string | null; nomeArquivoEap: string; status: 1 | 2 | 3 | 4; passo: number; motivoDevolucao?: string | null;
   aprovadoPorNome?: string | null; aprovadoEmUtc?: string | null; pgrId?: string | null; estrutura: EstruturaGeracaoPgr;
-  pendenciasAprovacao: string[]; funcoesCadastradas: { id: string; nome: string }[]; maxProbabilidade: number; maxSeveridade: number;
+  pendenciasAprovacao: string[]; faltandoCadastroObra?: string[]; funcoesCadastradas: { id: string; nome: string }[]; maxProbabilidade: number; maxSeveridade: number;
   // Células da matriz vigente: nível (NivelRisco, 1 a 5) de cada combinação de probabilidade e severidade.
   matriz?: { probabilidade: number; severidade: number; nivel: number }[];
 }
@@ -6039,7 +6045,10 @@ export const api = {
       if (obra.endereco) formData.append('Endereco', obra.endereco);
       if (obra.cidade) formData.append('Cidade', obra.cidade);
       if (obra.uf) formData.append('Uf', obra.uf);
+      if (obra.cep) formData.append('Cep', obra.cep);
       if (obra.cnpj) formData.append('Cnpj', obra.cnpj);
+      if (obra.cnae) formData.append('Cnae', obra.cnae);
+      if (obra.grauRisco != null) formData.append('GrauRisco', String(obra.grauRisco));
       formData.append('Logo', logo);
       const response = await fetch(`${API_BASE_URL}/api/obras`, {
         method: 'POST',
@@ -6055,8 +6064,6 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/obras/${id}`, { method: 'DELETE' }),
     atualizarMetodosAssinatura: (id: string, metodos: { biometria: boolean; reconhecimentoFacial: boolean }) =>
       request<void>(`/api/obras/${id}/metodos-assinatura`, { method: 'PUT', body: JSON.stringify(metodos) }),
-    // CNPJ não entra aqui de propósito — o endpoint de edição (AtualizarObraCommand) não o inclui;
-    // trocar de CNPJ é raro o bastante que ficou de fora da primeira versão desta tela.
     atualizar: (id: string, obra: NovaObra & { dataTerminoReal?: string | null }) =>
       request<void>(`/api/obras/${id}`, {
         method: 'PUT',
@@ -6072,6 +6079,10 @@ export const api = {
           endereco: obra.endereco || null,
           cidade: obra.cidade || null,
           uf: obra.uf || null,
+          cep: obra.cep || null,
+          cnpj: obra.cnpj || null,
+          cnae: obra.cnae || null,
+          grauRisco: obra.grauRisco ?? null,
         }),
       }),
     anexarLogo: async (id: string, arquivo: File) => {

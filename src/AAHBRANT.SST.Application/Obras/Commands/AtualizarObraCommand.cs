@@ -17,7 +17,11 @@ public record AtualizarObraCommand(
     DateTime? DataTerminoReal,
     string? Endereco,
     string? Cidade,
-    string? Uf) : IRequest;
+    string? Uf,
+    string? Cnpj = null,
+    string? Cep = null,
+    string? Cnae = null,
+    int? GrauRisco = null) : IRequest;
 
 public class AtualizarObraCommandValidator : AbstractValidator<AtualizarObraCommand>
 {
@@ -27,6 +31,10 @@ public class AtualizarObraCommandValidator : AbstractValidator<AtualizarObraComm
         RuleFor(x => x.Codigo).NotEmpty().MaximumLength(30);
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Uf).MaximumLength(2);
+        RuleFor(x => x.Cep).MaximumLength(10);
+        RuleFor(x => x.Cnpj).MaximumLength(18);
+        RuleFor(x => x.Cnae).MaximumLength(200);
+        RuleFor(x => x.GrauRisco).InclusiveBetween(1, 4).When(x => x.GrauRisco.HasValue);
     }
 }
 
@@ -43,14 +51,19 @@ public class AtualizarObraCommandHandler : IRequestHandler<AtualizarObraCommand>
 
         obra.Codigo = request.Codigo;
         obra.Nome = request.Nome;
-        obra.Cliente = request.Cliente;
+        if (request.Cliente is not null)
+            obra.Cliente = string.IsNullOrWhiteSpace(request.Cliente) ? null : request.Cliente.Trim();
         obra.Status = request.Status;
         obra.DataInicio = request.DataInicio;
         obra.DataPrevisaoTermino = request.DataPrevisaoTermino;
         obra.DataTerminoReal = request.DataTerminoReal;
-        obra.Endereco = request.Endereco;
-        obra.Cidade = request.Cidade;
-        obra.Uf = request.Uf;
+        obra.Endereco = string.IsNullOrWhiteSpace(request.Endereco) ? null : request.Endereco.Trim();
+        obra.Cidade = string.IsNullOrWhiteSpace(request.Cidade) ? null : request.Cidade.Trim();
+        obra.Uf = string.IsNullOrWhiteSpace(request.Uf) ? null : request.Uf.Trim();
+        obra.Cep = string.IsNullOrWhiteSpace(request.Cep) ? null : request.Cep.Trim();
+        obra.Cnpj = string.IsNullOrWhiteSpace(request.Cnpj) ? null : request.Cnpj.Trim();
+        obra.Cnae = string.IsNullOrWhiteSpace(request.Cnae) ? null : request.Cnae.Trim();
+        obra.GrauRisco = request.GrauRisco;
 
         await _db.SaveChangesAsync(ct);
     }

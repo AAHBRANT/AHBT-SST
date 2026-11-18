@@ -34,7 +34,10 @@ public record EscopoPcmsoDto(
     List<string> Pendencias,
     List<EscopoPcmsoFuncaoDto> Funcoes,
     List<EscopoPcmsoRiscoDto> Riscos,
-    List<EscopoPcmsoAtividadeCriticaDto> AtividadesCriticas);
+    List<EscopoPcmsoAtividadeCriticaDto> AtividadesCriticas,
+    string? Cep = null,
+    string? Cnae = null,
+    int? GrauRisco = null);
 
 public record ObterEscopoPcmsoQuery(Guid ObraId) : IRequest<EscopoPcmsoDto?>;
 
@@ -56,7 +59,7 @@ public class ObterEscopoPcmsoQueryHandler : IRequestHandler<ObterEscopoPcmsoQuer
     {
         if (!_db.ObraNoEscopo(request.ObraId)) return null;
         var obra = await _db.Obras.Where(o => o.Id == request.ObraId)
-            .Select(o => new { o.Id, o.Nome, o.Cnpj, o.Endereco, o.Cidade, o.Uf, o.DataInicio, o.DataPrevisaoTermino })
+            .Select(o => new { o.Id, o.Nome, o.Cnpj, o.Endereco, o.Cidade, o.Uf, o.Cep, o.Cnae, o.GrauRisco, o.DataInicio, o.DataPrevisaoTermino })
             .FirstOrDefaultAsync(ct);
         if (obra is null) return null;
 
@@ -135,10 +138,13 @@ public class ObterEscopoPcmsoQueryHandler : IRequestHandler<ObterEscopoPcmsoQuer
         if (listaFuncoes.Count == 0) pendencias.Add("O PGR não tem GHE com funções cadastradas.");
         if (listaRiscos.Count == 0) pendencias.Add("O PGR não tem riscos cadastrados nas atividades dos GHE.");
         if (string.IsNullOrWhiteSpace(obra.Cnpj)) pendencias.Add("CNPJ da obra não preenchido.");
+        if (string.IsNullOrWhiteSpace(obra.Cnae)) pendencias.Add("CNAE da obra não preenchido.");
+        if (obra.GrauRisco is not (>= 1 and <= 4)) pendencias.Add("Grau de risco (NR-04) da obra não preenchido.");
         if (endereco.Length == 0) pendencias.Add("Endereço da obra não preenchido.");
 
         return new EscopoPcmsoDto(obra.Id, obra.Nome, obra.Cnpj, endereco.Length == 0 ? null : endereco, obra.DataInicio, obra.DataPrevisaoTermino,
-            trabalhadores.Count, pgr?.Nome, pgr?.DataElaboracao, DateTime.UtcNow, pendencias, listaFuncoes, listaRiscos, criticas);
+            trabalhadores.Count, pgr?.Nome, pgr?.DataElaboracao, DateTime.UtcNow, pendencias, listaFuncoes, listaRiscos, criticas,
+            obra.Cep, obra.Cnae, obra.GrauRisco);
     }
 }
 

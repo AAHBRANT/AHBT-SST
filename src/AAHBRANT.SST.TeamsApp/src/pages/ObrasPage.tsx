@@ -35,26 +35,30 @@ const obraVazia: NovaObra = {
   endereco: '',
   cidade: '',
   uf: '',
+  cep: '',
   cnpj: '',
+  cnae: '',
+  grauRisco: null,
 };
 
-// Onda A do spec de formulário inline (2026-09-11): o PainelLateral (drawer) saiu — mesmo padrão
-// de AtividadesTab.tsx/InspecoesTab.tsx. Tanto o cadastro quanto a edição de obra agora usam
-// PainelCriacaoInline, que cresce acima da lista só até a altura do próprio formulário, em vez de
-// cobrir a tela com uma gaveta. Erro do painel é estado próprio, separado do erro de nível de
-// lista (Guia §4).
+function resumirCnaeGrau(obra: Obra): string {
+  const codigoCnae = obra.cnae ? obra.cnae.split(/\s+[—–-]\s+/)[0].trim() : '';
+  const partes = [codigoCnae, obra.grauRisco != null ? `GR ${obra.grauRisco}` : ''].filter(Boolean);
+  return partes.length > 0 ? partes.join(' · ') : '—';
+}
+
 export function ObrasPage() {
   const souAdmin = useSouAdministrador();
   const [obras, setObras] = useState<Obra[]>([]);
   const [painelAberto, setPainelAberto] = useState(false);
   const [novaObra, setNovaObra] = useState<NovaObra>(obraVazia);
   const [logoNovaObra, setLogoNovaObra] = useState<File | null>(null);
-  const [erroLista, setErroLista] = useState<string | null>(null);
-  const [erroPainel, setErroPainel] = useState<string | null>(null);
+  const [erroLista, setErroLista] = useState(null as string | null);
+  const [erroPainel, setErroPainel] = useState(null as string | null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [obraEditando, setObraEditando] = useState<Obra | null>(null);
-  const [erroEdicao, setErroEdicao] = useState<string | null>(null);
+  const [erroEdicao, setErroEdicao] = useState(null as string | null);
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
@@ -74,8 +78,6 @@ export function ObrasPage() {
     carregar();
   }, []);
 
-  // Miniatura do logo mora em SlotFotoRemota (14/09) — busca sob demanda por obra, sem precisar de
-  // um mapa de object URLs mantido aqui.
   async function enviarLogo(obraId: string, arquivo: File) {
     try {
       setErroLista(null);
@@ -144,7 +146,6 @@ export function ObrasPage() {
       await api.obras.atualizar(obraEditando.id, {
         codigo: obraEditando.codigo,
         nome: obraEditando.nome,
-        cliente: obraEditando.cliente,
         status: obraEditando.status,
         dataInicio: obraEditando.dataInicio,
         dataPrevisaoTermino: obraEditando.dataPrevisaoTermino,
@@ -152,6 +153,10 @@ export function ObrasPage() {
         endereco: obraEditando.endereco,
         cidade: obraEditando.cidade,
         uf: obraEditando.uf,
+        cep: obraEditando.cep,
+        cnpj: obraEditando.cnpj,
+        cnae: obraEditando.cnae,
+        grauRisco: obraEditando.grauRisco ?? null,
       });
       await api.obras.atualizarMetodosAssinatura(obraEditando.id, {
         biometria: (obraEditando.metodosAssinatura & MetodoAssinaturaObra.Biometria) !== 0,
@@ -181,10 +186,10 @@ export function ObrasPage() {
   const colunas: Coluna<Obra>[] = [
     { chave: 'codigo', rotulo: 'Código' },
     { chave: 'nome', rotulo: 'Nome' },
-    { chave: 'cliente', rotulo: 'Cliente' },
     { chave: 'status', rotulo: 'Status', render: (o) => statusObraLabel[o.status] },
-    { chave: 'cidadeUf', rotulo: 'Cidade/UF', render: (o) => `${o.cidade ?? ''}${o.uf ? `/${o.uf}` : ''}` },
-    { chave: 'cnpj', rotulo: 'CNPJ' },
+    { chave: 'cidadeUf', rotulo: 'Cidade/UF', render: (o) => `${o.cidade ?? ''}${o.uf ? `/${o.uf}` : ''}` || '—' },
+    { chave: 'cnpj', rotulo: 'CNPJ', render: (o) => o.cnpj || '—' },
+    { chave: 'cnaeGrau', rotulo: 'CNAE / Grau', render: resumirCnaeGrau },
     {
       chave: 'logo',
       rotulo: 'Logo',
@@ -243,7 +248,7 @@ export function ObrasPage() {
                   <Input value={novaObra.codigo} onChange={(_, d) => setNovaObra({ ...novaObra, codigo: d.value })} />
                 </Field>
               </Campo>
-              <Campo span={3}>
+              <Campo span={4}>
                 <Field label="Nome">
                   <Input value={novaObra.nome} onChange={(_, d) => setNovaObra({ ...novaObra, nome: d.value })} />
                 </Field>
@@ -270,7 +275,7 @@ export function ObrasPage() {
                   />
                 </Field>
               </Campo>
-              <Campo span={3}>
+              <Campo span={2}>
                 <Field label="Previsão de término">
                   <CampoData
                     value={novaObra.dataPrevisaoTermino ?? ''}
@@ -281,9 +286,43 @@ export function ObrasPage() {
             </FormGrid>
           </FormSection>
 
-          <FormSection titulo="Endereço e Documentos" numero={2}>
+          <FormSection titulo="Enquadramento, Endereço e Logomarca" numero={2}>
             <FormGrid>
-              <Campo span={4}>
+              <Campo span={3}>
+                <Field label="CNPJ">
+                  <Input
+                    value={novaObra.cnpj ?? ''}
+                    maxLength={18}
+                    onChange={(_, d) => setNovaObra({ ...novaObra, cnpj: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={6}>
+                <Field label="CNAE (número e descrição)">
+                  <Input
+                    value={novaObra.cnae ?? ''}
+                    maxLength={200}
+                    placeholder="Ex.: 4211-1/01 — Construção de rodovias"
+                    onChange={(_, d) => setNovaObra({ ...novaObra, cnae: d.value })}
+                  />
+                </Field>
+              </Campo>
+              <Campo span={3}>
+                <Field label="Grau de risco (NR-04)">
+                  <Select
+                    value={novaObra.grauRisco != null ? String(novaObra.grauRisco) : ''}
+                    onChange={(_, d) => setNovaObra({ ...novaObra, grauRisco: d.value ? Number(d.value) : null })}
+                  >
+                    <option value="">Selecione…</option>
+                    {[1, 2, 3, 4].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </Campo>
+              <Campo span={5}>
                 <Field label="Endereço">
                   <Input
                     value={novaObra.endereco ?? ''}
@@ -305,12 +344,12 @@ export function ObrasPage() {
                   />
                 </Field>
               </Campo>
-              <Campo span={3}>
-                <Field label="CNPJ">
+              <Campo span={2}>
+                <Field label="CEP">
                   <Input
-                    value={novaObra.cnpj ?? ''}
-                    maxLength={18}
-                    onChange={(_, d) => setNovaObra({ ...novaObra, cnpj: d.value })}
+                    value={novaObra.cep ?? ''}
+                    maxLength={10}
+                    onChange={(_, d) => setNovaObra({ ...novaObra, cep: d.value })}
                   />
                 </Field>
               </Campo>
@@ -327,7 +366,7 @@ export function ObrasPage() {
                 </Field>
               </Campo>
             </FormGrid>
-            <FormRodape info="A logomarca é obrigatória: ela será usada no cabeçalho dos documentos gerados e assinados para esta obra (APR, PT, DDS, Ficha de EPI, Relatório de Fiscalização).">
+            <FormRodape info="Estes dados e a logomarca alimentam automaticamente a documentação da obra (PGR, Ordem de Serviço, Escopo do PCMSO, CIPA, APR, PT, DDS, Ficha de EPI e Relatório de Fiscalização).">
               <Button appearance="secondary" onClick={fecharPainel}>
                 Cancelar
               </Button>
@@ -358,19 +397,11 @@ export function ObrasPage() {
                       />
                     </Field>
                   </Campo>
-                  <Campo span={3}>
+                  <Campo span={4}>
                     <Field label="Nome">
                       <Input
                         value={obraEditando.nome}
                         onChange={(_, d) => setObraEditando({ ...obraEditando, nome: d.value })}
-                      />
-                    </Field>
-                  </Campo>
-                  <Campo span={2}>
-                    <Field label="Cliente">
-                      <Input
-                        value={obraEditando.cliente ?? ''}
-                        onChange={(_, d) => setObraEditando({ ...obraEditando, cliente: d.value })}
                       />
                     </Field>
                   </Campo>
@@ -396,7 +427,7 @@ export function ObrasPage() {
                       />
                     </Field>
                   </Campo>
-                  <Campo span={3}>
+                  <Campo span={2}>
                     <Field label="Previsão de término">
                       <CampoData
                         value={obraEditando.dataPrevisaoTermino ?? ''}
@@ -407,9 +438,45 @@ export function ObrasPage() {
                 </FormGrid>
               </FormSection>
 
-              <FormSection titulo="Endereço" numero={2}>
+              <FormSection titulo="Enquadramento e Endereço" numero={2}>
                 <FormGrid>
-                  <Campo span={4}>
+                  <Campo span={3}>
+                    <Field label="CNPJ">
+                      <Input
+                        value={obraEditando.cnpj ?? ''}
+                        maxLength={18}
+                        onChange={(_, d) => setObraEditando({ ...obraEditando, cnpj: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={6}>
+                    <Field label="CNAE (número e descrição)">
+                      <Input
+                        value={obraEditando.cnae ?? ''}
+                        maxLength={200}
+                        placeholder="Ex.: 4211-1/01 — Construção de rodovias"
+                        onChange={(_, d) => setObraEditando({ ...obraEditando, cnae: d.value })}
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={3}>
+                    <Field label="Grau de risco (NR-04)">
+                      <Select
+                        value={obraEditando.grauRisco != null ? String(obraEditando.grauRisco) : ''}
+                        onChange={(_, d) =>
+                          setObraEditando({ ...obraEditando, grauRisco: d.value ? Number(d.value) : null })
+                        }
+                      >
+                        <option value="">Selecione…</option>
+                        {[1, 2, 3, 4].map((n) => (
+                          <option key={n} value={n}>
+                            {n}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </Campo>
+                  <Campo span={5}>
                     <Field label="Endereço">
                       <Input
                         value={obraEditando.endereco ?? ''}
@@ -431,6 +498,15 @@ export function ObrasPage() {
                         value={obraEditando.uf ?? ''}
                         maxLength={2}
                         onChange={(_, d) => setObraEditando({ ...obraEditando, uf: d.value.toUpperCase() })}
+                      />
+                    </Field>
+                  </Campo>
+                  <Campo span={2}>
+                    <Field label="CEP">
+                      <Input
+                        value={obraEditando.cep ?? ''}
+                        maxLength={10}
+                        onChange={(_, d) => setObraEditando({ ...obraEditando, cep: d.value })}
                       />
                     </Field>
                   </Campo>

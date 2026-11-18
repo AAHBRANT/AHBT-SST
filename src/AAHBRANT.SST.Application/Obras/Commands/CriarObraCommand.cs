@@ -20,7 +20,10 @@ public record CriarObraCommand(
     string? Uf,
     string? Cnpj,
     byte[] LogoConteudo,
-    string LogoContentType) : IRequest<Guid>;
+    string LogoContentType,
+    string? Cep = null,
+    string? Cnae = null,
+    int? GrauRisco = null) : IRequest<Guid>;
 
 // Logomarca obrigatória no cadastro (decisão do usuário, 31/08): a obra só é considerada
 // finalizada com a logo anexada, pois ela é aplicada no layout padrão dos documentos gerados
@@ -33,7 +36,10 @@ public class CriarObraCommandValidator : AbstractValidator<CriarObraCommand>
         RuleFor(x => x.Codigo).NotEmpty().MaximumLength(30);
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Uf).MaximumLength(2);
+        RuleFor(x => x.Cep).MaximumLength(10);
         RuleFor(x => x.Cnpj).MaximumLength(18);
+        RuleFor(x => x.Cnae).MaximumLength(200);
+        RuleFor(x => x.GrauRisco).InclusiveBetween(1, 4).When(x => x.GrauRisco.HasValue);
         RuleFor(x => x.LogoConteudo)
             .NotEmpty().WithMessage("A logomarca da obra é obrigatória.")
             .Must(f => f.Length <= ValidacaoLogoObra.TamanhoMaximoBytes).WithMessage("A logomarca deve ter no máximo 5 MB.")
@@ -56,14 +62,17 @@ public class CriarObraCommandHandler : IRequestHandler<CriarObraCommand, Guid>
         {
             Codigo = request.Codigo,
             Nome = request.Nome,
-            Cliente = request.Cliente,
+            Cliente = string.IsNullOrWhiteSpace(request.Cliente) ? null : request.Cliente.Trim(),
             Status = request.Status,
             DataInicio = request.DataInicio,
             DataPrevisaoTermino = request.DataPrevisaoTermino,
-            Endereco = request.Endereco,
-            Cidade = request.Cidade,
-            Uf = request.Uf,
-            Cnpj = request.Cnpj,
+            Endereco = string.IsNullOrWhiteSpace(request.Endereco) ? null : request.Endereco.Trim(),
+            Cidade = string.IsNullOrWhiteSpace(request.Cidade) ? null : request.Cidade.Trim(),
+            Uf = string.IsNullOrWhiteSpace(request.Uf) ? null : request.Uf.Trim(),
+            Cep = string.IsNullOrWhiteSpace(request.Cep) ? null : request.Cep.Trim(),
+            Cnpj = string.IsNullOrWhiteSpace(request.Cnpj) ? null : request.Cnpj.Trim(),
+            Cnae = string.IsNullOrWhiteSpace(request.Cnae) ? null : request.Cnae.Trim(),
+            GrauRisco = request.GrauRisco,
             LogoConteudo = request.LogoConteudo,
             LogoContentType = request.LogoContentType
         };

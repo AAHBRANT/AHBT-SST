@@ -7752,11 +7752,19 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<string>("Cep")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
                     b.Property<string>("Cidade")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Cliente")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Cnae")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Cnpj")
                         .HasMaxLength(18)
@@ -7784,6 +7792,9 @@ namespace AAHBRANT.SST.Infrastructure.Persistencia.Migrations
 
                     b.Property<string>("Endereco")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("GrauRisco")
+                        .HasColumnType("int");
 
                     b.Property<string>("LogoContentType")
                         .HasMaxLength(100)
