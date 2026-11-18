@@ -2158,6 +2158,8 @@ export interface EquipamentoPublicoDto {
   protocolo: string;
   protocoloAtual: string;
   inspetorNome: string;
+  /** Há PDF assinado da inspeção do adesivo para abrir pelo QR (sem login, decisão do usuário em 18/11/2026). */
+  temDocumento?: boolean;
 }
 
 export type RecursoPublico = AreaPublicaDto | TrabalhadorPublicoDto | EquipamentoPublicoDto;
@@ -7193,6 +7195,16 @@ export const api = {
     resolver: (codigoOuUid: string, protocoloAdesivo?: string | null) => {
       const consulta = protocoloAdesivo ? `?i=${encodeURIComponent(protocoloAdesivo)}` : '';
       return request<RecursoPublico>(`/sst/p/${encodeURIComponent(codigoOuUid)}${consulta}`);
+    },
+    // PDF assinado da inspeção do adesivo lido. Sem token: a rota é pública e decide o acesso pelo UID da tag.
+    baixarDocumentoEquipamento: async (uid: string, protocoloAdesivo?: string | null) => {
+      const consulta = protocoloAdesivo ? `?i=${encodeURIComponent(protocoloAdesivo)}` : '';
+      const response = await fetch(`${API_BASE_URL}/sst/p/${encodeURIComponent(uid)}/documento${consulta}`);
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return response.blob();
     },
     baixarFotoTrabalhador: async (uid: string) => {
       const response = await fetch(`${API_BASE_URL}/sst/p/${encodeURIComponent(uid)}/foto`, {

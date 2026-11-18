@@ -1,5 +1,6 @@
-import type { CSSProperties } from 'react';
-import type { EquipamentoPublicoDto } from '../../lib/api';
+import { useEffect, useRef, type CSSProperties } from 'react';
+import { api, type EquipamentoPublicoDto } from '../../lib/api';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import {
   ADESIVO_GRADIENTE,
   ADESIVO_MARCA,
@@ -36,11 +37,38 @@ function notaRodape(dto: EquipamentoPublicoDto) {
   if (dto.situacao === 'NaoLiberado') return 'Não utilize até uma nova inspeção. Procure o responsável pela segurança da obra.';
   // O aviso da etiqueta de manutenção só vale para extintor.
   if (/extintor/i.test(dto.tema)) return 'Inspeção interna de SST. Não substitui a etiqueta de manutenção do extintor.';
-  return 'Inspeção interna de SST. Dados pessoais e detalhes da inspeção não são exibidos nesta página.';
+  return dto.temDocumento
+    ? 'Inspeção interna de SST. O documento assinado traz o checklist completo da inspeção.'
+    : 'Inspeção interna de SST. Dados pessoais e detalhes da inspeção não são exibidos nesta página.';
 }
 
-export function EquipamentoPublicoCard({ dados }: { dados: EquipamentoPublicoDto }) {
+interface EquipamentoPublicoCardProps {
+  dados: EquipamentoPublicoDto;
+  /** UID da tag lida (rota /p/{uid}); usado para abrir o PDF assinado da inspeção. */
+  uid: string;
+  /** ?i= do QR: protocolo da inspeção que gerou o adesivo. */
+  protocoloAdesivo?: string | null;
+}
+
+export function EquipamentoPublicoCard({ dados, uid, protocoloAdesivo }: EquipamentoPublicoCardProps) {
   const adesivoAntigo = adesivoEstaAntigo(dados);
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
+
+  // Ao ler o QR, o PDF assinado da inspeção do adesivo abre sozinho (decisão do usuário em 18/11/2026); ao fechar,
+  // fica a situação atual e o botão para abrir de novo.
+  const abrirDocumento = () =>
+    void visualizar({
+      titulo: `Inspeção ${dados.protocolo}`,
+      nomeArquivo: `${dados.protocolo || 'inspecao'}.pdf`,
+      obter: () => api.identificacaoPublica.baixarDocumentoEquipamento(uid, protocoloAdesivo),
+    });
+  const abriuSozinho = useRef(false);
+  useEffect(() => {
+    if (!dados.temDocumento || !uid || abriuSozinho.current) return;
+    abriuSozinho.current = true;
+    abrirDocumento();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dados.temDocumento, uid]);
 
   const linhas: Array<[string, string]> = [['Última inspeção', formatarDataAdesivo(dados.ultimaInspecaoEm)]];
   if (dados.proximaInspecaoEm) {
@@ -110,6 +138,26 @@ export function EquipamentoPublicoCard({ dados }: { dados: EquipamentoPublicoDto
               </b>
             </div>
           </div>
+
+          {dados.temDocumento && (
+            <button
+              type="button"
+              onClick={abrirDocumento}
+              style={{
+                minHeight: 52,
+                borderRadius: 10,
+                border: 0,
+                backgroundColor: ADESIVO_MARCA,
+                color: '#fff',
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Ver documento da inspeção (PDF)
+            </button>
+          )}
+          {dialogoVisualizador}
 
           <div style={{ ...painel, padding: '14px 16px' }}>
             <small style={{ display: 'block', fontSize: 12, lineHeight: '16px', fontWeight: 600, color: MUDO }}>{dados.tema}</small>

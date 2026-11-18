@@ -3238,9 +3238,9 @@ public static class NovidadesSeeder
                     null,
                     "Depois de concluída e assinada, toda inspeção gera o adesivo LIBERADO, INSPECIONADO ou NÃO LIBERADO, com a logo da obra (ou da AAHBRANT, quando a obra não tem logo), o inspetor, o protocolo e a data da próxima inspeção. Em veículo, alojamento e item cadastrado o QR acompanha o objeto; nas demais inspeções aponta para a própria inspeção. Assim que a inspeção é assinada, a tela de impressão abre sozinha, já na folha A4 de papel adesivo (8 adesivos, imprimindo na posição que quiser); a etiqueta avulsa continua disponível."),
                 new NovidadeSeedItem(CategoriaNovidade.Novidade,
-                    "QR Code do adesivo mostra a situação atual",
+                    "QR Code do adesivo abre o documento assinado da inspeção",
                     null,
-                    "Quem lê o QR Code com o celular, sem precisar de login, vê a situação mais recente do equipamento ou do local e a data da próxima inspeção. Se o adesivo for de uma inspeção anterior, a tela avisa e mostra a mais recente."),
+                    "Quem lê o QR Code com o celular, sem precisar de login, abre direto o PDF assinado da inspeção daquele adesivo. Ao fechar o PDF, a tela mostra a situação mais recente do equipamento ou do local e a data da próxima inspeção; se o adesivo for de uma inspeção anterior, a tela avisa."),
             }),
     };
 

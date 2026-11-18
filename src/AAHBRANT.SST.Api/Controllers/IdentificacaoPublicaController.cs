@@ -43,6 +43,18 @@ public class IdentificacaoPublicaController : ControllerBase
         return equipamento is null ? NotFound() : Ok(equipamento);
     }
 
+    // PDF assinado da inspeção do adesivo (decisão do usuário em 18/11/2026: abre sem login). Sem nome de arquivo
+    // para o navegador do celular mostrar o PDF em vez de baixar.
+    [HttpGet("{uid}/documento")]
+    public async Task<IActionResult> ObterDocumentoEquipamento(string uid, [FromQuery(Name = "i")] string? protocoloAdesivo, CancellationToken ct)
+    {
+        var documento = await _mediator.Send(new ObterDocumentoEquipamentoPublicoQuery(uid, protocoloAdesivo), ct);
+        if (documento is null) return NotFound();
+        Response.Headers["Content-Disposition"] = $"inline; filename=\"{documento.NomeArquivo}\"";
+        Response.Headers["Cache-Control"] = "no-store";
+        return File(documento.Conteudo, "application/pdf");
+    }
+
     [HttpGet("{uid}/foto")]
     public async Task<IActionResult> ObterFotoTrabalhador(string uid, CancellationToken ct)
     {

@@ -29,6 +29,11 @@ public class EquipamentoPublicoDto
     // Protocolo da inspeção Concluída mais recente do objeto.
     public string ProtocoloAtual { get; set; } = string.Empty;
     public string? InspetorNome { get; set; }
+    // 18/11/2026: o QR abre o PDF assinado da inspeção do adesivo lido (decisão do usuário: sem login).
+    public bool TemDocumento { get; set; }
+    // Inspeção cujo PDF o QR abre: a do protocolo do adesivo (?i=) quando confere, senão a atual. Nunca vai no JSON.
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Guid InspecaoDocumentoId { get; set; }
 }
 
 public record ResolverEquipamentoPublicoQuery(string Uid, string? ProtocoloAdesivo = null) : IRequest<EquipamentoPublicoDto?>;
@@ -80,19 +85,28 @@ public class ResolverEquipamentoPublicoQueryHandler : IRequestHandler<ResolverEq
 
         var protocoloAtual = dados.Protocolo ?? string.Empty;
         var protocoloAdesivo = protocoloAtual;
+        var inspecaoDocumentoId = atual.Id;
         var pedido = request.ProtocoloAdesivo?.Trim();
         if (!string.IsNullOrEmpty(pedido) && pedido.Length <= TamanhoMaximoProtocolo
             && !string.Equals(pedido, protocoloAtual, StringComparison.OrdinalIgnoreCase))
         {
             var confere = await InspecoesConcluidasDoObjeto(tipo, objetoId)
                 .Where(i => i.NumeroDocumento == pedido)
-                .Select(i => i.NumeroDocumento)
+                .Select(i => new { i.Id, i.NumeroDocumento })
                 .FirstOrDefaultAsync(ct);
-            if (confere is not null) protocoloAdesivo = confere;
+            if (confere is not null)
+            {
+                protocoloAdesivo = confere.NumeroDocumento!;
+                inspecaoDocumentoId = confere.Id;
+            }
         }
+
+        var temDocumento = await DocumentoPublicoInspecao.Consulta(_db, inspecaoDocumentoId).AnyAsync(ct);
 
         return new EquipamentoPublicoDto
         {
+            TemDocumento = temDocumento,
+            InspecaoDocumentoId = inspecaoDocumentoId,
             Situacao = ResultadoAdesivoInspecao.Texto(situacao),
             ObjetoIdentificacao = dados.ObjetoIdentificacao,
             Tema = dados.Tema,

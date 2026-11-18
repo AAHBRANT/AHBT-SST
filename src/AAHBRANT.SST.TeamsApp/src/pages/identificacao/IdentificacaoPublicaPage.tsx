@@ -105,7 +105,7 @@ export function IdentificacaoPublicaPage() {
 
   // Equipamento/local (QR do adesivo de inspeção): página própria, com cabeçalho e coluna de 560 px.
   if (!carregando && ehEquipamentoPublico(recurso)) {
-    return <EquipamentoPublicoCard dados={recurso} />;
+    return <EquipamentoPublicoCard dados={recurso} uid={codigoOuUid ?? ''} protocoloAdesivo={protocoloDoAdesivo} />;
   }
 
   return (

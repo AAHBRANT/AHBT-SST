@@ -417,11 +417,14 @@ public class AdesivoInspecaoTests
         Assert.Equal("2026-12-17", dto.ProximaInspecaoEm);
 
         // Nada de Id, foto, texto das NCs nem CPF: a lista de campos é fechada.
-        var campos = typeof(EquipamentoPublicoDto).GetProperties().Select(p => p.Name).OrderBy(n => n).ToArray();
+        // Só o que vai no JSON (InspecaoDocumentoId é [JsonIgnore] e nunca sai da API).
+        var campos = typeof(EquipamentoPublicoDto).GetProperties()
+            .Where(p => !p.IsDefined(typeof(System.Text.Json.Serialization.JsonIgnoreAttribute), true))
+            .Select(p => p.Name).OrderBy(n => n).ToArray();
         Assert.Equal(new[]
         {
             "InspetorNome", "ObjetoIdentificacao", "ObraNome", "Protocolo", "ProtocoloAtual", "ProximaInspecaoEm",
-            "Situacao", "Tema", "Tipo", "TipoRecurso", "UltimaInspecaoEm",
+            "Situacao", "Tema", "TemDocumento", "Tipo", "TipoRecurso", "UltimaInspecaoEm",
         }, campos);
     }
 
@@ -630,5 +633,61 @@ public class AdesivoInspecaoTests
         Assert.Contains("[Veiculos]", escopoTags);
         Assert.Contains("[ItensInspecionaveis]", escopoTags);
         Assert.Contains("[Alojamentos]", escopoTags);
+    }
+
+    // ---------- QR abre o PDF assinado (18/11/2026) ----------
+
+    private static async Task DocumentoFinalizadoAsync(Cenario c, Inspecao insp, byte[] pdf)
+    {
+        c.Global.DocumentosAssinatura.Add(new DocumentoAssinatura
+        {
+            EntidadeTipo = nameof(Inspecao),
+            EntidadeId = insp.Id,
+            ObraId = insp.ObraId,
+            Status = StatusDocumentoAssinatura.Finalizado,
+            FinalizadoEm = insp.Data,
+            PdfConteudo = pdf,
+        });
+        await c.Global.SaveChangesAsync();
+    }
+
+    private static ObterDocumentoEquipamentoPublicoQueryHandler DocumentoAnonimo(Cenario c)
+        => new(new MediatorSimulado(r => new ResolverEquipamentoPublicoQueryHandler(c.Anonimo)
+            .Handle((ResolverEquipamentoPublicoQuery)r, default).GetAwaiter().GetResult()), c.Anonimo);
+
+    [Fact]
+    public async Task QrPublico_AbreSemLogin_OPdfDaInspecaoDoAdesivo()
+    {
+        var c = await CriarAsync();
+        var antiga = await InspecaoAsync(c, i => i.VeiculoId = c.Veiculo.Id, StatusInspecao.Concluida, Hoje.AddDays(-30), "INSP-ANTIGA");
+        var atual = await InspecaoAsync(c, i => i.VeiculoId = c.Veiculo.Id, StatusInspecao.Concluida, Hoje, "INSP-ATUAL");
+        await DocumentoFinalizadoAsync(c, antiga, new byte[] { 1, 1, 1 });
+        await DocumentoFinalizadoAsync(c, atual, new byte[] { 2, 2, 2 });
+        await Handler(c.Global, new PdfFalso()).Handle(new GerarAdesivoInspecaoCommand(atual.Id, FormatoAdesivo.Etiqueta, null), default);
+        var uid = (await c.Global.TagsIdentificacao.SingleAsync(t => t.EntidadeVinculadaId == c.Veiculo.Id)).Uid;
+
+        var situacao = await new ResolverEquipamentoPublicoQueryHandler(c.Anonimo).Handle(new ResolverEquipamentoPublicoQuery(uid), default);
+        Assert.True(situacao!.TemDocumento);
+
+        // Sem ?i=: a mais recente. Com ?i= de um adesivo antigo: o PDF daquele adesivo.
+        Assert.Equal(new byte[] { 2, 2, 2 }, (await DocumentoAnonimo(c).Handle(new ObterDocumentoEquipamentoPublicoQuery(uid, null), default))!.Conteudo);
+        Assert.Equal(new byte[] { 1, 1, 1 }, (await DocumentoAnonimo(c).Handle(new ObterDocumentoEquipamentoPublicoQuery(uid, "INSP-ANTIGA"), default))!.Conteudo);
+        // Protocolo que não é deste objeto não abre outro documento: cai na atual.
+        Assert.Equal(new byte[] { 2, 2, 2 }, (await DocumentoAnonimo(c).Handle(new ObterDocumentoEquipamentoPublicoQuery(uid, "INSP-QUALQUER"), default))!.Conteudo);
+        // UID inexistente não abre nada.
+        Assert.Null(await DocumentoAnonimo(c).Handle(new ObterDocumentoEquipamentoPublicoQuery("VEI-naoexiste", null), default));
+    }
+
+    [Fact]
+    public async Task QrPublico_SemDocumentoFinalizado_NaoTemPdf()
+    {
+        var c = await CriarAsync();
+        var insp = await InspecaoAsync(c, i => i.VeiculoId = c.Veiculo.Id, StatusInspecao.Concluida, Hoje, "INSP-SEM-PDF");
+        await Handler(c.Global, new PdfFalso()).Handle(new GerarAdesivoInspecaoCommand(insp.Id, FormatoAdesivo.Etiqueta, null), default);
+        var uid = (await c.Global.TagsIdentificacao.SingleAsync(t => t.EntidadeVinculadaId == c.Veiculo.Id)).Uid;
+
+        var situacao = await new ResolverEquipamentoPublicoQueryHandler(c.Anonimo).Handle(new ResolverEquipamentoPublicoQuery(uid), default);
+        Assert.False(situacao!.TemDocumento);
+        Assert.Null(await DocumentoAnonimo(c).Handle(new ObterDocumentoEquipamentoPublicoQuery(uid, null), default));
     }
 }
