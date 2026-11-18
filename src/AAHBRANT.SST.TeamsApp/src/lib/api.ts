@@ -3147,6 +3147,26 @@ export interface PendenciaOs {
   quemResolve: 'SST' | 'RH';
   destino?: 'pgr' | 'treinamentos' | 'aso' | null;
   destinoId?: string | null;
+  // Pendências agrupadas por tipo (17/11/2026): atividades afetadas, para abrir direto ou resolver em lote.
+  atividadeIds?: string[] | null;
+}
+
+export interface ProcedimentosAtividade {
+  atividadeId: string;
+  atividadeNome: string;
+  documentoIds: string[];
+}
+
+// origem: 1 = medida de prevenção por fase, 2 = item da OS (interromper / não executar sem / autorização).
+export interface SugestaoPendenteOs {
+  id: string;
+  origem: 1 | 2;
+  atividadeId: string;
+  atividadeNome: string;
+  perigo?: string | null;
+  categoria: string;
+  texto: string;
+  requisito?: string | null;
 }
 
 export interface RiscoOs {
@@ -6416,6 +6436,18 @@ export const api = {
       request<void>(`/api/medidas-prevencao/${medidaId}/decidir`, {
         method: 'POST',
         body: JSON.stringify({ aceitar, textoEditado: textoEditado ?? null }),
+      }),
+    // Resolução das pendências da OS em lote (17/11/2026).
+    obterProcedimentosAtividades: (atividadeIds: string[]) =>
+      request<ProcedimentosAtividade[]>(`/api/atividades/procedimentos-os?${atividadeIds.map((id) => `ids=${encodeURIComponent(id)}`).join('&')}`),
+    vincularProcedimentosEmLote: (vinculos: { atividadeId: string; documentoIds: string[] }[]) =>
+      request<void>('/api/atividades/procedimentos-os', { method: 'PUT', body: JSON.stringify({ vinculos }) }),
+    listarSugestoesPendentes: (atividadeIds: string[]) =>
+      request<SugestaoPendenteOs[]>(`/api/atividades/sugestoes-ia-pendentes?${atividadeIds.map((id) => `ids=${encodeURIComponent(id)}`).join('&')}`),
+    decidirSugestoesEmLote: (medidaIds: string[], itemIds: string[], aceitar: boolean) =>
+      request<{ decididas: number }>('/api/sugestoes-ia/decidir-em-lote', {
+        method: 'POST',
+        body: JSON.stringify({ medidaIds, itemIds, aceitar }),
       }),
     importarLote: (obraId: string, itens: RiscoLoteItem[]) =>
       request<ImportarRiscosLoteResultado>('/api/riscos/importar-lote', {

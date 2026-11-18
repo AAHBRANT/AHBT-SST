@@ -91,4 +91,7 @@ public record AsoOsDto(ResultadoAso Resultado, DateTime? Validade, bool Valido);
 public record PoliticaOsDto(string Titulo, string? Codigo, string? Revisao, string? FormaConsulta);
 
 // QuemResolve: "SST" ou "RH". Destino/DestinoId: onde corrigir (ex.: "pgr" + pgrId, "treinamentos").
-public record PendenciaOsDto(string Tipo, string Titulo, string PorQueBloqueia, string QuemResolve, string? Destino, Guid? DestinoId);
+// AtividadeIds (17/11/2026): nas pendências agrupadas por tipo, as atividades afetadas — o front abre direto
+// nelas (Inventário) ou resolve em lote (procedimentos, sugestões da IA) sem sair da OS.
+public record PendenciaOsDto(string Tipo, string Titulo, string PorQueBloqueia, string QuemResolve, string? Destino, Guid? DestinoId,
+    List<Guid>? AtividadeIds = null);
