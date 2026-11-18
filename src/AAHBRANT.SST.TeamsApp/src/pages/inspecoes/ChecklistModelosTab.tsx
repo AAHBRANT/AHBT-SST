@@ -29,6 +29,7 @@ import {
   type NovoChecklistModeloItem,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 const itemVazio: NovoChecklistModeloItem = {
   descricao: '',
@@ -58,6 +59,7 @@ export function ChecklistModelosTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -370,15 +372,17 @@ export function ChecklistModelosTab() {
                 }}
                 aria-label="Nova versão"
               />
-              <BotaoAcao
-                tom="excluir"
-                icon={<Delete24Regular />}
-                onClick={(evento) => {
-                  evento.stopPropagation();
-                  excluir(c.id);
-                }}
-                aria-label="Excluir"
-              />
+              {souAdministrador && (
+                <BotaoAcao
+                  tom="excluir"
+                  icon={<Delete24Regular />}
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    excluir(c.id);
+                  }}
+                  aria-label="Excluir"
+                />
+              )}
             </div>
           )}
         />

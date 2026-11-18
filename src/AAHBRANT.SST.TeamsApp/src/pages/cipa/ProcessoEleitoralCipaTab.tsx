@@ -29,6 +29,8 @@ import {
   type ProcessoEleitoralCipa,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { dataBr } from '../../lib/datas';
 
 function vazio(): NovoProcessoEleitoralCipa {
   return { obraId: '', dataConvocacao: '', dataInicioInscricoes: '', dataFimInscricoes: '', dataVotacao: '' };
@@ -62,6 +64,7 @@ export function ProcessoEleitoralCipaTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -125,7 +128,7 @@ export function ProcessoEleitoralCipaTab() {
   const colunas: Coluna<ProcessoEleitoralCipa>[] = [
     { chave: 'obra', rotulo: 'Obra', render: (p) => nomeObra(p.obraId) },
     { chave: 'numeroDocumento', rotulo: 'Nº edital', render: (p) => p.numeroDocumento ?? '—' },
-    { chave: 'dataVotacao', rotulo: 'Votação', render: (p) => p.dataVotacao?.slice(0, 10) ?? '' },
+    { chave: 'dataVotacao', rotulo: 'Votação', render: (p) => dataBr(p.dataVotacao) },
     { chave: 'totalCandidatos', rotulo: 'Candidatos' },
     {
       chave: 'status',
@@ -225,9 +228,11 @@ export function ProcessoEleitoralCipaTab() {
             acao: { rotulo: 'Convocar eleição', aoClicar: () => setPainelAberto(true) },
           }}
           aoClicarLinha={(p) => navigate(`/operacao/cipa/eleicao/${p.id}`)}
-          acoesLinha={(p) => (
-            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(p.id)} aria-label="Excluir" />
-          )}
+          acoesLinha={
+            souAdministrador
+              ? (p) => <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(p.id)} aria-label="Excluir" />
+              : undefined
+          }
         />
       </Card>
     </div>

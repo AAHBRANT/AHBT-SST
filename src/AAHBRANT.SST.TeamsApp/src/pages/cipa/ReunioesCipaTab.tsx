@@ -32,6 +32,8 @@ import {
   type ReuniaoCipa,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { dataBr } from '../../lib/datas';
 
 function vazio(): NovaReuniaoCipa {
   return { obraId: '', tipo: TipoReuniaoCipa.Ordinaria, dataReuniao: '', pauta: '' };
@@ -57,6 +59,7 @@ export function ReunioesCipaTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -120,7 +123,7 @@ export function ReunioesCipaTab() {
   const colunas: Coluna<ReuniaoCipa>[] = [
     { chave: 'obra', rotulo: 'Obra', render: (r) => nomeObra(r.obraId) },
     { chave: 'tipo', rotulo: 'Tipo', render: (r) => tipoReuniaoCipaLabel[r.tipo] },
-    { chave: 'dataReuniao', rotulo: 'Data', render: (r) => r.dataReuniao?.slice(0, 10) ?? '' },
+    { chave: 'dataReuniao', rotulo: 'Data', render: (r) => dataBr(r.dataReuniao) },
     { chave: 'presentes', rotulo: 'Presentes', render: (r) => `${r.totalPresentes}/${r.totalParticipantes}` },
     {
       chave: 'status',
@@ -215,9 +218,11 @@ export function ReunioesCipaTab() {
             acao: { rotulo: 'Agendar reunião', aoClicar: () => setPainelAberto(true) },
           }}
           aoClicarLinha={(r) => navigate(`/operacao/cipa/reuniao/${r.id}`)}
-          acoesLinha={(r) => (
-            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(r.id)} aria-label="Excluir" />
-          )}
+          acoesLinha={
+            souAdministrador
+              ? (r) => <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(r.id)} aria-label="Excluir" />
+              : undefined
+          }
         />
       </Card>
     </div>

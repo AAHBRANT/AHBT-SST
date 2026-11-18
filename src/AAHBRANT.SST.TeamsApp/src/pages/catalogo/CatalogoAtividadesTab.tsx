@@ -29,7 +29,7 @@ import {
   type Obra,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { hojeIso } from '../../lib/datas';
+import { dataBr, hojeIso } from '../../lib/datas';
 import { useFiltroObra } from '../../lib/ObraAtivaContext';
 
 type TipoCatalogo = 'apr' | 'pt';
@@ -219,8 +219,8 @@ export function CatalogoAtividadesTab({ tipo }: { tipo: TipoCatalogo }) {
               aria-label={`${rotulo}s emitidas para a atividade`}
               colunas={[
                 { chave: 'numero', rotulo: `Nº ${rotulo}`, render: (d: CatalogoDocumento) => d.numero ?? '-' },
-                { chave: 'data', rotulo: 'Data', render: (d: CatalogoDocumento) => d.data.slice(0, 10) },
-                { chave: 'validade', rotulo: 'Validade', render: (d: CatalogoDocumento) => d.validade?.slice(0, 10) ?? '' },
+                { chave: 'data', rotulo: 'Data', render: (d: CatalogoDocumento) => dataBr(d.data) },
+                { chave: 'validade', rotulo: 'Validade', render: (d: CatalogoDocumento) => dataBr(d.validade) },
                 {
                   chave: 'status',
                   rotulo: 'Status',

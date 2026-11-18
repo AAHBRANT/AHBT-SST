@@ -23,6 +23,8 @@ import {
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type EventoSipat, type NovoEventoSipat, type Obra } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { dataBr } from '../../lib/datas';
 
 function vazio(): NovoEventoSipat {
   return { obraId: '', anoReferencia: new Date().getFullYear(), dataInicio: '', dataFim: '', tema: '', programacao: '' };
@@ -41,6 +43,7 @@ export function SipatTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -104,7 +107,7 @@ export function SipatTab() {
   const colunas: Coluna<EventoSipat>[] = [
     { chave: 'obra', rotulo: 'Obra', render: (e) => nomeObra(e.obraId) },
     { chave: 'anoReferencia', rotulo: 'Ano' },
-    { chave: 'periodo', rotulo: 'Período', render: (e) => `${e.dataInicio?.slice(0, 10) ?? ''} a ${e.dataFim?.slice(0, 10) ?? ''}` },
+    { chave: 'periodo', rotulo: 'Período', render: (e) => `${dataBr(e.dataInicio)} a ${dataBr(e.dataFim)}` },
     { chave: 'tema', rotulo: 'Tema', render: (e) => e.tema ?? '—' },
     { chave: 'totalAtividades', rotulo: 'Atividades' },
   ];
@@ -203,9 +206,11 @@ export function SipatTab() {
             acao: { rotulo: 'Criar evento', aoClicar: () => setPainelAberto(true) },
           }}
           aoClicarLinha={(e) => navigate(`/operacao/cipa/sipat/${e.id}`)}
-          acoesLinha={(e) => (
-            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(e.id)} aria-label="Excluir" />
-          )}
+          acoesLinha={
+            souAdministrador
+              ? (e) => <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(e.id)} aria-label="Excluir" />
+              : undefined
+          }
         />
       </Card>
     </div>

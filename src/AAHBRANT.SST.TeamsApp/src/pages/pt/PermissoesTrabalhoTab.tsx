@@ -32,7 +32,7 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
-import { hojeIso } from '../../lib/datas';
+import { dataBr, hojeIso } from '../../lib/datas';
 import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
@@ -151,8 +151,8 @@ export function PermissoesTrabalhoTab() {
     { chave: 'numeroPt', rotulo: 'Nº PT', render: (pt) => pt.numeroPt ?? '-' },
     { chave: 'atividadeNome', rotulo: 'Atividade' },
     { chave: 'local', rotulo: 'Local' },
-    { chave: 'data', rotulo: 'Data', render: (pt) => pt.data?.slice(0, 10) ?? '' },
-    { chave: 'validade', rotulo: 'Validade', render: (pt) => pt.validade?.slice(0, 10) ?? '' },
+    { chave: 'data', rotulo: 'Data', render: (pt) => dataBr(pt.data) },
+    { chave: 'validade', rotulo: 'Validade', render: (pt) => dataBr(pt.validade) },
     {
       chave: 'status',
       rotulo: 'Status',

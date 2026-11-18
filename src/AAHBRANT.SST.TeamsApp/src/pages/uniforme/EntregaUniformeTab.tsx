@@ -49,6 +49,7 @@ import type { ItemCarrinhoUniforme } from './SeletorItensUniforme';
 import { VitrineUniforme } from './VitrineUniforme';
 import { conferirPendencias } from '../../lib/avisoErro';
 import { CarrinhoEntregaUniforme } from './CarrinhoEntregaUniforme';
+import { dataBr, hojeIso } from '../../lib/datas';
 
 // Campos aplicados a todas as entregas do carrinho de uma vez; o que varia por item é só
 // peça/quantidade/tamanho (ItemCarrinhoUniforme).
@@ -62,7 +63,7 @@ interface CamposComunsEntrega {
 function camposComunsVazios(): CamposComunsEntrega {
   return {
     trabalhadorId: '',
-    dataEntrega: new Date().toISOString().slice(0, 10),
+    dataEntrega: hojeIso(),
     motivoTipo: MotivoEntregaUniforme.Inicial,
     observacoes: '',
   };
@@ -388,7 +389,7 @@ export function EntregaUniformeTab({ aoNavegarParaMatriz }: EntregaUniformeTabPr
     },
     { chave: 'tamanho', rotulo: 'Tamanho' },
     { chave: 'quantidade', rotulo: 'Qtd.', alinhar: 'direita' },
-    { chave: 'entrega', rotulo: 'Entrega', render: (e) => e.dataEntrega?.slice(0, 10) ?? '' },
+    { chave: 'entrega', rotulo: 'Entrega', render: (e) => dataBr(e.dataEntrega) },
     { chave: 'motivo', rotulo: 'Motivo', render: (e) => motivoEntregaUniformeLabel[e.motivoTipo] },
   ];
 
