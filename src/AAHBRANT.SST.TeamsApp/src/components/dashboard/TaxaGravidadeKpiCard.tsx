@@ -42,8 +42,8 @@ interface TaxaGravidadeKpiCardProps {
 // A meta de comparação é um valor de negócio que este sistema não pode inventar — fica salva em
 // localStorage, definida pelo próprio usuário no card (decisão de 2026-08-26).
 export function TaxaGravidadeKpiCard({ acidentes: acidentesBrutos, registrosHht, indice = 0 }: TaxaGravidadeKpiCardProps) {
-  // Pessoa externa não é empregada: fica fora dos indicadores da NBR 14280 (dias perdidos/debitados).
-  const acidentes = useMemo(() => acidentesBrutos.filter((a) => a.tipo !== TipoOcorrencia.PessoaExterna), [acidentesBrutos]);
+  // NBR 14280: apenas acidentes entram no cálculo da Taxa de Gravidade (dias perdidos/debitados).
+  const acidentes = useMemo(() => acidentesBrutos.filter((a) => a.tipo === TipoOcorrencia.Acidente), [acidentesBrutos]);
   const casca = useStyles();
   const tipo = useTipografia();
   const [meta, setMeta] = useState<number | null>(null);

@@ -23,6 +23,7 @@ import {
   type NovaAcaoPlano,
   type Usuario,
 } from '../../lib/api';
+import { dataBr } from '../../lib/datas';
 
 function novaAcaoInicial(): Omit<NovaAcaoPlano, 'origemTipo' | 'origemId'> {
   return { tipo: 1, descricao: '', responsavelUsuarioId: '', prioridade: 3, prazo: '' };
@@ -377,7 +378,7 @@ export function NaoConformidadeDetalhePage() {
     { chave: 'responsavel', rotulo: 'Responsável', render: (a) => a.responsavelUsuarioNome ?? '—' },
     { chave: 'prioridade', rotulo: 'Prioridade', render: (a) => prioridadeAcaoLabel[a.prioridade] },
     // Largura fixa: sem ela a data ISO quebra em duas linhas quando a descrição é longa.
-    { chave: 'prazo', rotulo: 'Prazo', largura: '108px', render: (a) => a.prazo?.slice(0, 10) ?? '—' },
+    { chave: 'prazo', rotulo: 'Prazo', largura: '108px', render: (a) => dataBr(a.prazo) },
     {
       chave: 'status',
       rotulo: 'Situação',
@@ -439,7 +440,7 @@ export function NaoConformidadeDetalhePage() {
                 <Field label="Responsável"><Input value={nc.responsavelUsuarioNome ?? '—'} readOnly /></Field>
               </Campo>
               <Campo span={12}>
-                <Field label="Prazo"><Input value={nc.prazo?.slice(0, 10) ?? '—'} readOnly /></Field>
+                <Field label="Prazo"><Input value={dataBr(nc.prazo)} readOnly /></Field>
               </Campo>
             </FormGrid>
           </Card>

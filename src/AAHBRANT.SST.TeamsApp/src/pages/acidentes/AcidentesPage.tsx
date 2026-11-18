@@ -44,6 +44,8 @@ import {
   type Trabalhador,
 } from '../../lib/api';
 import { HhtMensalTab } from './HhtMensalTab';
+import { dataBr } from '../../lib/datas';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
 import { CartaoPessoaExternaSugerida, RelatoOcorrenciaIa } from './RelatoOcorrenciaIa';
 import { BlocoPessoasExternas } from './BlocoPessoasExternas';
 import {
@@ -125,6 +127,7 @@ const normalizarNome = (nome: string) =>
 // página-pilar, então sem useAbaNaUrl (mesmo critério já usado nas sub-abas de TrabalhadorDetalhePage).
 export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
   const navigate = useNavigate();
+  const [obraFiltro] = useFiltroObra();
   const [acidentes, setAcidentes] = useState<Acidente[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
@@ -576,7 +579,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
         return nomes.length === 1 ? nomes[0] : `${nomes[0]} +${nomes.length - 1}`;
       },
     },
-    { chave: 'data', rotulo: 'Data', render: (a) => a.data?.slice(0, 10) ?? '' },
+    { chave: 'data', rotulo: 'Data', render: (a) => dataBr(a.data) },
     { chave: 'local', rotulo: 'Local' },
     {
       chave: 'status',
@@ -934,7 +937,7 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
             <DataTable
               aria-label="Acidentes e incidentes"
               colunas={colunas}
-              linhas={acidentes}
+              linhas={obraFiltro ? acidentes.filter((a) => a.obraId === obraFiltro) : acidentes}
               chaveLinha={(a) => a.id}
               vazio={{ titulo: 'Nenhuma ocorrência cadastrada ainda.' }}
               aoClicarLinha={(a) => navigate(`/acidentes/${a.id}`)}

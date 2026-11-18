@@ -44,6 +44,7 @@ import { podeNaObra, useUsuarioLogado } from '../../lib/UsuarioLogadoContext';
 import { CampoComoSeResolve, payloadResolucao, pendenciaResolucao, resolucaoVazia, type ResolucaoEmEdicao } from './CampoComoSeResolve';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { dataBr } from '../../lib/datas';
 import {
   api,
   metodologiaInvestigacaoLabel,
@@ -510,9 +511,7 @@ export function AcidenteDetalhePage() {
   }
 
   const a = detalhe.acidente;
-  // Acidentes/Incidentes/Quase-acidentes viraram abas de OcorrenciasPage (02/09) — volta pra aba
-  // que corresponde ao tipo do registro aberto, não sempre pra "Acidentes".
-  const secaoOcorrencia = a.tipo === 2 ? 'incidentes' : a.tipo === 3 ? 'quase-acidentes' : 'acidentes';
+  const secaoOcorrencia = 'acidentes';
 
   const fotosObrigatorias = a.exigeTresFotos === true;
   const pessoasExternas = a.pessoasExternas ?? [];
@@ -602,7 +601,7 @@ export function AcidenteDetalhePage() {
     },
     { chave: 'responsavel', rotulo: 'Responsável', render: (acao) => acao.responsavelUsuarioNome ?? '—' },
     { chave: 'prioridade', rotulo: 'Prioridade', render: (acao) => prioridadeAcaoLabel[acao.prioridade] },
-    { chave: 'prazo', rotulo: 'Prazo', render: (acao) => acao.prazo?.slice(0, 10) ?? '—' },
+    { chave: 'prazo', rotulo: 'Prazo', render: (acao) => dataBr(acao.prazo) },
     {
       chave: 'status',
       rotulo: 'Status',
@@ -691,7 +690,7 @@ export function AcidenteDetalhePage() {
               )}
               <Campo span={12}>
                 <Field label="Data">
-                  <Input value={a.data?.slice(0, 10) ?? ''} readOnly />
+                  <Input value={dataBr(a.data)} readOnly />
                 </Field>
               </Campo>
               {a.lesao && (
