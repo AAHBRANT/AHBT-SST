@@ -28,8 +28,8 @@ function dataBr(iso?: string | null): string {
 }
 
 function textoPrazo(dias: number): string {
-  if (dias < 0) return `vencido há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}`;
-  if (dias === 0) return 'vence hoje';
+  if (dias < 0) return `renovação pendente há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}`;
+  if (dias === 0) return 'renovar hoje';
   return `faltam ${dias} ${dias === 1 ? 'dia' : 'dias'}`;
 }
 
@@ -69,8 +69,8 @@ export function EpiPerfilSecao({ perfil }: { perfil: PerfilCompletoTrabalhador }
 
   const dadosDonut: FatiaDonut[] = [
     { rotulo: 'Em dia', valor: situacao.emDia, cor: paleta.ok },
-    { rotulo: 'Vence em 30 dias', valor: situacao.vencendo, cor: paleta.atencao },
-    { rotulo: 'Vencido', valor: situacao.vencido, cor: paleta.alerta },
+    { rotulo: 'A renovar em 30 dias', valor: situacao.vencendo, cor: paleta.atencao },
+    { rotulo: 'Renovação pendente', valor: situacao.vencido, cor: paleta.alerta },
   ];
 
   const episOrdenados = useMemo(

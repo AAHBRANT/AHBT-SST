@@ -30,10 +30,9 @@ import { AptitudeEnginePanel } from './AptitudeEnginePanel';
 import { NR_POR_FUNCAO_NOME, normalizarNomeFuncao } from './nrPorFuncao';
 import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
 import { useFiltroObra } from '../../../lib/ObraAtivaContext';
+import { hojeIso } from '../../../lib/datas';
 
-const hojeISO = new Date().toISOString().slice(0, 10);
-
-function diffDias(dataISO: string): number {
+function diffDias(dataISO: string, hojeISO: string): number {
   const diffMs = new Date(dataISO).getTime() - new Date(hojeISO).getTime();
   return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
@@ -55,6 +54,7 @@ function corPorCobertura(cobertura: number, paleta: PaletaGraficos): string {
 // agregação no cliente não muda nesta frente.
 export function PessoasDashboardTab() {
   const paleta = usePaletaGraficos();
+  const hojeISO = hojeIso();
 
   const [obras, setObras] = useState<Obra[]>([]);
   const [funcoes, setFuncoes] = useState<Funcao[]>([]);
@@ -141,7 +141,7 @@ export function PessoasDashboardTab() {
     { rotulo: 'Restrição temporária', valor: statusGeral.restricao, cor: paleta.atencao },
     { rotulo: 'Inaptos', valor: statusGeral.inaptos, cor: paleta.alerta },
     { rotulo: 'Documentação pendente', valor: statusGeral.pendentes, cor: paleta.info },
-    { rotulo: 'ASO vencido', valor: statusGeral.vencidos, cor: paleta.marca },
+    { rotulo: 'ASO c/ renovação pendente', valor: statusGeral.vencidos, cor: paleta.marca },
   ];
 
   const vencimentoAso = useMemo(() => {
@@ -153,23 +153,23 @@ export function PessoasDashboardTab() {
       // O gráfico é de vencimento: só entram o vigente liberado (apto na validade) e o vencido; Inapto e Sem parecer ficam fora.
       const situacao = situacaoDoVigente(aso);
       if (situacao !== 'Liberado' && situacao !== 'Vencido') continue;
-      const dias = diffDias(aso.dataValidade);
+      const dias = diffDias(aso.dataValidade, hojeISO);
       if (dias < 0) vencidos += 1;
       else if (dias <= 15) em15 += 1;
       else if (dias <= 30) em30 += 1;
       else emDia += 1;
     }
     return { vencidos, em15, em30, emDia };
-  }, [asoMaisRecentePorTrabalhador]);
+  }, [asoMaisRecentePorTrabalhador, hojeISO]);
 
   // 4 baldes distintos por urgência — a paleta de status tem tons de sobra (5) pra não precisar
   // colapsar dois níveis no mesmo tom aqui (diferente do caso de 4→3 tons do Guia): "vencidos" fica
   // com o tom mais forte (alerta), "15 dias" com atencao, "30 dias" com info (só pra manter as 4
   // fatias visualmente distintas) e "em dia" com ok.
   const vencimentoAsoDados: FatiaDonut[] = [
-    { rotulo: 'Vencidos', valor: vencimentoAso.vencidos, cor: paleta.alerta },
-    { rotulo: 'Vencem em 15 dias', valor: vencimentoAso.em15, cor: paleta.atencao },
-    { rotulo: 'Vencem em 30 dias', valor: vencimentoAso.em30, cor: paleta.info },
+    { rotulo: 'Renovação pendente', valor: vencimentoAso.vencidos, cor: paleta.alerta },
+    { rotulo: 'A renovar em 15 dias', valor: vencimentoAso.em15, cor: paleta.atencao },
+    { rotulo: 'A renovar em 30 dias', valor: vencimentoAso.em30, cor: paleta.info },
     { rotulo: 'Em dia', valor: vencimentoAso.emDia, cor: paleta.ok },
   ];
 
@@ -241,7 +241,7 @@ export function PessoasDashboardTab() {
         <KpiCard rotulo="Total na força de trabalho" valor={trabalhadoresFiltrados.length} tom="info" indice={0} icone={<People24Regular />} />
         <KpiCard rotulo="Aptos" valor={statusGeral.aptos} tom="ok" indice={1} icone={<CheckmarkCircle24Regular />} />
         <KpiCard rotulo="Bloqueados" valor={bloqueados} tom="alerta" indice={2} icone={<DismissCircle24Regular />} />
-        <KpiCard rotulo="ASOs vencendo em 30 dias" valor={asosVencendo30Dias} tom="atencao" indice={3} icone={<Warning24Regular />} />
+        <KpiCard rotulo="ASOs a renovar em 30 dias" valor={asosVencendo30Dias} tom="atencao" indice={3} icone={<Warning24Regular />} />
       </FaixaKpis>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>

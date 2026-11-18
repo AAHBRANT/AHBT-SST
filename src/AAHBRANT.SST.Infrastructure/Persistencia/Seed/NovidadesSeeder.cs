@@ -3093,6 +3093,25 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.176.0",
+            Titulo: "Módulo Pessoas e Ficha do Trabalhador padronizados",
+            DataPublicacao: new DateTime(2026, 11, 18, 0, 30, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "KPIs e filtro de obra sincronizados entre a lista de Funcionários e o painel de Análise",
+                    "A faixa de obras da lista de funcionários não atualizava o painel 'Ver análise' e os KPIs contavam prestadores de serviço como bloqueados.",
+                    "A escolha da obra agora vale para a lista e para a análise simultaneamente, e os KPIs de aptidão/bloqueio usam a mesma regra em toda a tela."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Linguagem positiva nos indicadores de ASO, NRs e EPIs e clique nas ocorrências da ficha",
+                    "Textos de prazo e gráficos do módulo Pessoas ainda exibiam 'vencido'/'vencendo' e a aba Ocorrências da ficha mostrava datas em AAAA-MM-DD sem abrir o registro.",
+                    "Todos os indicadores usam 'Renovação pendente' / 'A renovar', a aba Ocorrências exibe datas em DD/MM/AAAA e clicar na linha abre o detalhe da ocorrência."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Exclusão e higienização de Funções e Cursos restritas a Administrador",
+                    "Ações administrativas de exclusão de funções e cursos apareciam para perfis não administradores.",
+                    "Apenas Administradores visualizam as ferramentas de exclusão e mesclagem em Funções e no Catálogo de Cursos."),
+            }),
+        new(
+            Versao: "5.177.0",
             Titulo: "Troca de função com histórico",
             DataPublicacao: new DateTime(2026, 11, 17, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
