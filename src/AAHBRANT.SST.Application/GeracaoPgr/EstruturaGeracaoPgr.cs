@@ -254,6 +254,15 @@ public class GheGerado
     public string? Jornada { get; set; }
     public List<FuncaoGerada> Funcoes { get; set; } = new();
     public List<AtividadeGerada> Atividades { get; set; } = new();
+    // O técnico respondeu "Não se aplica" ao aviso de trabalho em altura (17/11/2026). Guarda a chave das funções e
+    // atividades do GHE naquele momento (ver ChaveAltura); o aviso só volta quando a chave atual for diferente.
+    public string? AlturaNaoSeAplicaChave { get; set; }
+
+    // Chave estável das funções + códigos da EAP do GHE: nomes normalizados e ordenados. A tela calcula a mesma chave
+    // (GeracaoPgrEapPage.tsx, chaveAltura) para comparar; os dois lados precisam seguir iguais.
+    public string ChaveAltura() =>
+        string.Join("|", Funcoes.Select(f => Common.FuncaoSstClassifier.Normalizar(f.Nome)).Where(n => n.Length > 0).OrderBy(n => n, StringComparer.Ordinal))
+        + "#" + string.Join("|", Atividades.Select(a => a.CodigoEap.Trim()).Where(c => c.Length > 0).OrderBy(c => c, StringComparer.Ordinal));
 }
 
 public class FuncaoGerada
@@ -508,6 +517,9 @@ public class RiscoGerado
     // O engenheiro (ou o técnico, antes de enviar) conferiu P, S, danos e o texto do risco.
     public bool Revisado { get; set; }
     public bool Excluido { get; set; }
+    // Risco acrescentado à mão pelo técnico (17/11/2026, botão "Adicionar risco"): "Gerar de novo" nunca o descarta,
+    // mesmo que o técnico desmarque Revisado.
+    public bool IncluidoPeloTecnico { get; set; }
     // Como o risco foi avaliado e as medições feitas (ruído, calor, poeira...). Preenchido pelo técnico: a IA não mede nada.
     public ExposicaoRisco Exposicao { get; set; } = new();
 }

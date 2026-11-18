@@ -2973,6 +2973,25 @@ public static class NovidadesSeeder
                     null,
                     "O técnico de segurança também pode publicar uma nova versão da matriz de risco, junto do engenheiro. Aprovar ou devolver o PGR continua só com o engenheiro."),
             }),
+        new(
+            Versao: "5.170.0",
+            Titulo: "PGR pela EAP: queda de altura e inclusão de risco pelo técnico",
+            DataPublicacao: new DateTime(2026, 11, 17, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "O técnico pode adicionar um risco no inventário do PGR",
+                    "Se a IA deixasse um risco de fora, não havia como incluí-lo na tela.",
+                    "No passo Inventário de riscos, o botão \"Adicionar risco\" aparece em cada atividade e no cabeçalho de cada GHE. Você escolhe o perigo da lista padrão ou digita o seu, define probabilidade e severidade e marca em quais atividades o risco vale. O risco entra revisado, com o selo \"Incluído pelo técnico\", e as medidas você inclui em seguida. \"Gerar de novo\" não apaga os riscos incluídos por você."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Aviso de função que costuma trabalhar em altura",
+                    null,
+                    "Quando um GHE tem função como pedreiro, carpinteiro, armador, pintor ou serralheiro e nenhuma atividade tem Queda de altura, a tela pede para você confirmar se há trabalho acima de 2 m (NR-35). Você pode adicionar a Queda de altura em um clique ou marcar \"Não se aplica\"; o aviso só volta se as funções ou as atividades do GHE mudarem."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "A IA avalia a queda de altura pelas funções do GHE",
+                    null,
+                    "Ao gerar os riscos de uma atividade, a IA agora considera as funções do GHE para avaliar a queda de altura, e esse risco não sai mais da lista por causa do limite de cinco riscos por atividade."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

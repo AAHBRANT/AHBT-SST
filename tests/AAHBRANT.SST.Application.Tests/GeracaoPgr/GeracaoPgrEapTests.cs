@@ -812,6 +812,152 @@ public class GeracaoPgrEapTests
     }
 
     [Fact]
+    public void LimitarPorAtividade_QuedaDeAlturaNaoSaiPeloTeto_MesmoComPxSMenor()
+    {
+        // Caso do PGR Beira Rio (17/11/2026): calor, esforço e corte ocupavam as 5 vagas.
+        var riscos = new List<RiscoGerado>
+        {
+            new() { Perigo = "Calor e radiação solar", Probabilidade = 5, Severidade = 3 },
+            new() { Perigo = "Esforço físico e levantamento de peso", Probabilidade = 4, Severidade = 3 },
+            new() { Perigo = "Corte e perfuração por ferramentas e materiais", Probabilidade = 4, Severidade = 3 },
+            new() { Perigo = "Animais peçonhentos e insetos", Probabilidade = 3, Severidade = 4 },
+            new() { Perigo = "Queda em mesmo nível e tropeço", Probabilidade = 4, Severidade = 3 },
+            new() { Perigo = "QUEDA DE ALTURA", Probabilidade = 2, Severidade = 5 },
+        };
+
+        var mantidos = PerigosPadrao.LimitarPorAtividade(riscos, PerigosPadrao.MaxRiscosPorAtividade);
+
+        Assert.Equal(5, mantidos.Count);
+        Assert.Contains(mantidos, r => r.Perigo == "QUEDA DE ALTURA");
+        Assert.DoesNotContain(mantidos, r => r.Perigo == "Queda em mesmo nível e tropeço");
+    }
+
+    [Fact]
+    public void LimitarPorAtividade_SemVagas_AindaMantemOsGraves()
+    {
+        // Técnico já fixou 5 riscos e manda gerar de novo: a queda de altura que a IA achou não pode sumir.
+        var riscos = new List<RiscoGerado>
+        {
+            new() { Perigo = "Ruído", Probabilidade = 5, Severidade = 5 },
+            new() { Perigo = "Queda de altura", Probabilidade = 2, Severidade = 5 },
+        };
+
+        var mantidos = PerigosPadrao.LimitarPorAtividade(riscos, 0);
+
+        Assert.Equal(new[] { "Queda de altura" }, mantidos.Select(r => r.Perigo).ToArray());
+    }
+
+    [Theory]
+    [InlineData("Pedreiro", true)]
+    [InlineData("Carpinteiro", true)]
+    [InlineData("Armador", true)]
+    [InlineData("Pintor", true)]
+    [InlineData("Serralheiro", true)]
+    [InlineData("Ajudante de Eletricista", true)]
+    [InlineData("Montador de Andaime", true)]
+    [InlineData("Ajudante Geral", false)]
+    [InlineData("Jardineiro", false)]
+    [InlineData("Operador de Escavadeira Hidráulica", false)]
+    [InlineData("Engenheiro Civil", false)]
+    public void CostumaTrabalharEmAltura_ReconheceOficios(string funcao, bool esperado)
+    {
+        Assert.Equal(esperado, PerigosPadrao.CostumaTrabalharEmAltura(funcao));
+    }
+
+    // Risco que o técnico incluiu à mão (17/11/2026): "Gerar de novo" não pode descartá-lo, nem sem Revisado.
+    [Fact]
+    public async Task GerarRiscos_MantemRiscoIncluidoPeloTecnico_MesmoSemRevisado()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var ia = new IaFalsa();
+        var id = await CriarGeracaoAsync(db, obra, ia);
+        ia.Ghes = new() { new GheGerado { Nome = "Estrutura", Funcoes = new() { new FuncaoGerada { Nome = "ARMADOR", Descricao = "x" } }, Atividades = new() { new AtividadeGerada { CodigoEap = "1.1" } } } };
+        await new SugerirGhesGeracaoPgrCommandHandler(db, ia).Handle(new SugerirGhesGeracaoPgrCommand(id), default);
+        ia.Riscos = new() { new RiscoGerado { Tipo = "Físico", Perigo = "Ruído", Probabilidade = 2, Severidade = 2 } };
+        await new GerarRiscosAtividadeGeracaoPgrCommandHandler(db, ia).Handle(new GerarRiscosAtividadeGeracaoPgrCommand(id, 1, "1.1"), default);
+
+        var estrutura = (await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default)).Estrutura;
+        var manual = new RiscoGerado { Tipo = "Acidente", Perigo = "Queda de altura", Danos = "Fraturas", Probabilidade = 3, Severidade = 4, IncluidoPeloTecnico = true, Revisado = false };
+        var excluido = new RiscoGerado { Tipo = "Acidente", Perigo = "Choque elétrico", Probabilidade = 2, Severidade = 5, IncluidoPeloTecnico = true, Excluido = true };
+        estrutura.Ghes[0].Atividades[0].Riscos.AddRange(new[] { manual, excluido });
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
+
+        // A IA volta a sugerir a queda (outra caixa) e um perigo novo: a queda do técnico fica, a repetida cai.
+        ia.Riscos = new()
+        {
+            new RiscoGerado { Tipo = "Acidente", Perigo = "QUEDA DE ALTURA", Probabilidade = 5, Severidade = 5 },
+            new RiscoGerado { Tipo = "Físico", Perigo = "Vibração", Probabilidade = 2, Severidade = 2 },
+        };
+        var n = await new GerarRiscosAtividadeGeracaoPgrCommandHandler(db, ia).Handle(new GerarRiscosAtividadeGeracaoPgrCommand(id, 1, "1.1"), default);
+
+        var riscos = (await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default)).Estrutura.Ghes[0].Atividades[0].Riscos;
+        Assert.Equal(new[] { "Queda de altura", "Vibração" }, riscos.Select(r => r.Perigo).ToArray());
+        var mantido = riscos[0];
+        Assert.True(mantido.IncluidoPeloTecnico);
+        Assert.Equal((3, 4, "Fraturas"), (mantido.Probabilidade, mantido.Severidade, mantido.Danos));
+        Assert.Equal(1, n);
+    }
+
+    [Fact]
+    public async Task Salvar_PreservaRiscoIncluidoPeloTecnico_EAChaveDoNaoSeAplica()
+    {
+        var (db, obra, _) = await CriarAsync();
+        var id = await CriarGeracaoAsync(db, obra, new IaFalsa());
+        var estrutura = EstruturaSimplesAprovavel("Instalar linha de vida");
+        estrutura.Ghes[0].Atividades[0].Riscos.Add(new RiscoGerado { Tipo = "Acidente", Perigo = "Choque elétrico", Probabilidade = 2, Severidade = 5, Revisado = true, IncluidoPeloTecnico = true });
+        estrutura.Ghes[0].AlturaNaoSeAplicaChave = estrutura.Ghes[0].ChaveAltura();
+
+        await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
+
+        var lido = (await new ObterGeracaoPgrEapQueryHandler(db).Handle(new ObterGeracaoPgrEapQuery(id), default)).Estrutura;
+        var riscos = lido.Ghes[0].Atividades[0].Riscos;
+        Assert.False(riscos.Single(r => r.Perigo == "Queda de altura").IncluidoPeloTecnico);
+        Assert.True(riscos.Single(r => r.Perigo == "Choque elétrico").IncluidoPeloTecnico);
+        Assert.Equal("armador#1.1", lido.Ghes[0].AlturaNaoSeAplicaChave);
+    }
+
+    [Fact]
+    public void ChaveAltura_IgnoraOrdemAcentoECaixa_EMudaComFuncaoOuAtividadeNova()
+    {
+        var gh = new GheGerado
+        {
+            Funcoes = new() { new FuncaoGerada { Nome = "Serralheiro" }, new FuncaoGerada { Nome = "PEDREIRO" } },
+            Atividades = new() { new AtividadeGerada { CodigoEap = "5.2" }, new AtividadeGerada { CodigoEap = "5.1" } },
+        };
+        var original = gh.ChaveAltura();
+        Assert.Equal("pedreiro|serralheiro#5.1|5.2", original);
+
+        gh.Funcoes.Reverse();
+        gh.Funcoes.Single(f => f.Nome == "Serralheiro").Nome = "  Serralhéiro ";
+        Assert.Equal(original, gh.ChaveAltura());
+
+        gh.Funcoes.Add(new FuncaoGerada { Nome = "Pintor" });
+        Assert.NotEqual(original, gh.ChaveAltura());
+        gh.Funcoes.RemoveAt(gh.Funcoes.Count - 1);
+        gh.Atividades.Add(new AtividadeGerada { CodigoEap = "5.3" });
+        Assert.NotEqual(original, gh.ChaveAltura());
+    }
+
+    // Risco incluído à mão nasce sem medidas: não trava o envio nem a aprovação (a regra de "medida sem decisão vale como aceita" segue).
+    [Fact]
+    public async Task RiscoIncluidoSemMedidas_NaoTravaEnvioNemAprovacao_EViraRiscoDoPgr()
+    {
+        var (db, obra, _) = await CriarAsync();
+        await CarregarTabelaCboAsync(db);
+        var estrutura = EstruturaSimplesAprovavel("Instalar linha de vida");
+        estrutura.Ghes[0].Funcoes[0].Cbo = "715315";
+        estrutura.Ghes[0].Atividades[0].Riscos.Add(new RiscoGerado { Tipo = "Acidente", Perigo = "Choque elétrico", Probabilidade = 2, Severidade = 5, Revisado = true, IncluidoPeloTecnico = true });
+        Assert.Empty(PendenciasGeracaoPgr.Calcular(estrutura, 5, 5));
+
+        await AprovarAsync(db, obra, new IaFalsa(), estrutura);
+
+        var riscos = await db.Riscos.Include(r => r.Perigo).Include(r => r.Medidas).ToListAsync();
+        var choque = riscos.Single(r => r.Perigo!.Nome == "Choque elétrico");
+        Assert.Empty(choque.Medidas);
+        Assert.Equal(2, riscos.Count);
+    }
+
+    [Fact]
     public void CatalogoDePerigosPadrao_NaoTemNomeRepetido()
     {
         var nomes = PerigosPadrao.Catalogo.Select(p => AAHBRANT.SST.Application.Common.FuncaoSstClassifier.Normalizar(p.Nome)).ToList();
