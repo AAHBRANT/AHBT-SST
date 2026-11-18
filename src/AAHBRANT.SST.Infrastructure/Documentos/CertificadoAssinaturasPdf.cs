@@ -242,7 +242,7 @@ public static class CertificadoAssinaturasPdf
     }
 
     // Marca d'água "CONFIDENCIAL" + data e hora por cima da imagem biométrica (dado sensível — LGPD).
-    private static void ImagemComMarca(IContainer container, byte[] imagem, string dataHora, bool compacto)
+    internal static void ImagemComMarca(IContainer container, byte[] imagem, string dataHora, bool compacto)
     {
         var branco = Color.FromARGB(215, 255, 255, 255);
         var sombra = Color.FromARGB(190, 0, 0, 0);
@@ -261,6 +261,22 @@ public static class CertificadoAssinaturasPdf
             camadas.Layer().TranslateX(0.6f).TranslateY(0.6f).Element(c => Texto(c, sombra));
             camadas.PrimaryLayer().Element(c => Texto(c, branco));
         });
+    }
+
+    // Estampa a marca "CONFIDENCIAL" + data/hora na foto avulsa baixada pela tela (Cofre de Assinaturas — LGPD).
+    public static byte[] EstamparConfidencial(byte[] imagem, DateTime assinadoEmUtc, bool retrato34)
+    {
+        if (imagem is not { Length: > 0 } || !EhImagem(imagem)) return imagem;
+        var baseImg = retrato34 ? FotoRetrato34.Cortar(imagem) : imagem;
+        var dataHora = Data(assinadoEmUtc);
+        var largura = 240f;
+        var altura = retrato34 ? 320f : 304f;
+        return Document.Create(c => c.Page(p =>
+        {
+            p.Size(largura, altura);
+            p.Margin(0);
+            p.Content().Element(x => ImagemComMarca(x, baseImg, dataHora, compacto: false));
+        })).GenerateImages(new ImageGenerationSettings { ImageFormat = ImageFormat.Jpeg, ImageCompressionQuality = ImageCompressionQuality.High, RasterDpi = 144 }).First();
     }
 
     private static void Painel(IContainer container, PainelCertificado painel, bool compacto)

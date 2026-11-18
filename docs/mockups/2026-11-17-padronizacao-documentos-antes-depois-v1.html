@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mockup Antes × Depois — Padronização de Documentos e Assinaturas (G-SST)</title>
+  <style>
+    :root {
+      --vinho: #670000;
+      --fundo: #f5f3ee;
+      --papel: #ffffff;
+      --borda: #d9d3c9;
+      --suave: #6f6666;
+      --erro-bg: #fde8e8;
+      --erro-txt: #9b1c1c;
+      --ok-bg: #def7ec;
+      --ok-txt: #03543f;
+    }
+    * { box-sizing: border-box; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
+    body { margin: 0; padding: 24px; background: var(--fundo); color: #1f1f1f; }
+    h1 { margin: 0 0 6px; color: var(--vinho); font-size: 20px; }
+    p.sub { margin: 0 0 20px; color: var(--suave); font-size: 13px; }
+    .secao { margin-bottom: 28px; }
+    .secao-titulo { font-size: 15px; font-weight: 700; color: var(--vinho); margin-bottom: 10px; border-left: 4px solid var(--vinho); padding-left: 10px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .card { background: var(--papel); border: 1px solid var(--borda); border-radius: 6px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .tag-antes { display: inline-block; background: var(--erro-bg); color: var(--erro-txt); font-weight: 700; font-size: 11px; padding: 3px 8px; border-radius: 4px; margin-bottom: 10px; }
+    .tag-depois { display: inline-block; background: var(--ok-bg); color: var(--ok-txt); font-weight: 700; font-size: 11px; padding: 3px 8px; border-radius: 4px; margin-bottom: 10px; }
+    .faixa-sigilo { background: var(--vinho); color: #fff; font-size: 11px; font-weight: 600; padding: 4px 8px; margin: 8px 0; }
+    .linha-cofre { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 1px solid #e5e0d8; padding: 8px 0; }
+    .fotos { display: flex; gap: 10px; }
+    .foto-box { display: flex; flex-direction: column; align-items: center; width: 78px; }
+    .retrato { position: relative; width: 72px; height: 96px; background: linear-gradient(180deg, #5b6b78 0%, #37434d 100%); border: 1px solid #999; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .retrato.sem-marca { border: 2px solid #dc2626; }
+    .retrato.com-marca { border: 2px solid #16a34a; }
+    .marca-confidencial { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transform: rotate(-28deg); color: rgba(255,255,255,0.92); text-shadow: 1px 1px 2px rgba(0,0,0,0.85); pointer-events: none; }
+    .marca-confidencial strong { font-size: 9px; letter-spacing: 0.04em; }
+    .marca-confidencial span { font-size: 6.5px; }
+    .legenda-foto { font-size: 10px; color: #555; margin-top: 3px; text-align: center; }
+    .hl-err { background: #fee2e2; color: #991b1b; padding: 1px 4px; border-radius: 3px; font-weight: 700; }
+    .hl-ok { background: #def7ec; color: #03543f; padding: 1px 4px; border-radius: 3px; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+    th, td { border: 1px solid #e5e0d8; padding: 6px 8px; text-align: left; }
+    th { background: #f3f2f1; }
+    .rodape-sim { text-align: center; font-size: 11px; color: #555; border-top: 1px solid #ddd; padding-top: 8px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Mockup Comparativo (Antes × Depois) — Padronização G-SST</h1>
+  <p class="sub">Comparação visual de cada item fora do padrão identificado na auditoria de 17/11/2026.</p>
+
+  <!-- 1. Relatório de Fiscalização -->
+  <div class="secao">
+    <div class="secao-titulo">1. Relatório de Fiscalização — Seção "Cofre de assinaturas" e Rodapé (Itens 1.1, 2.1 e 4.2)</div>
+    <div class="grid">
+      <div class="card">
+        <span class="tag-antes">ANTES — Fora do Padrão</span>
+        <div style="font-weight:700;color:#670000;font-size:14px">Cofre de assinaturas</div>
+        <div class="faixa-sigilo">CONFIDENCIAL · DADO BIOMÉTRICO · USO RESTRITO À FISCALIZAÇÃO (LGPD)</div>
+        <div class="linha-cofre">
+          <div style="font-size:12px;line-height:1.5">
+            <div>• <span class="hl-err">EntregaEpi</span> — 05/11/2026 11:30 - Horário de Brasília</div>
+            <div>Método: <span class="hl-err">ReconhecimentoFacial</span> · IP 206.42.35.39</div>
+            <div style="font-size:10.5px;color:#666">SHA-256 da foto: 4B88D0A1C93E7F20A1B2C3D4...</div>
+          </div>
+          <div class="fotos">
+            <div class="foto-box">
+              <div class="retrato sem-marca">
+                <svg width="42" height="52" viewBox="0 0 24 24" fill="#d1d5db"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+              </div>
+              <div class="legenda-foto" style="color:#b91c1c;font-weight:700">Facial cadastrada (SEM marca)</div>
+            </div>
+            <div class="foto-box">
+              <div class="retrato sem-marca">
+                <svg width="42" height="52" viewBox="0 0 24 24" fill="#d1d5db"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+              </div>
+              <div class="legenda-foto" style="color:#b91c1c;font-weight:700">Facial da assinatura (SEM marca)</div>
+            </div>
+          </div>
+        </div>
+        <div class="rodape-sim">Gerado em 17/11/2026 22:50 <span class="hl-err">(sem Página X de Y)</span></div>
+      </div>
+
+      <div class="card">
+        <span class="tag-depois">DEPOIS — Padronizado (Fotos já corrigidas no código)</span>
+        <div style="font-weight:700;color:#670000;font-size:14px">Cofre de assinaturas</div>
+        <div class="faixa-sigilo">CONFIDENCIAL · DADO BIOMÉTRICO · USO RESTRITO À FISCALIZAÇÃO (LGPD)</div>
+        <div class="linha-cofre">
+          <div style="font-size:12px;line-height:1.5">
+            <div>• <span class="hl-ok">Entrega de EPI</span> — 05/11/2026 11:30 - Horário de Brasília</div>
+            <div>Método: <span class="hl-ok">Reconhecimento facial</span> · IP 206.42.35.39</div>
+            <div style="font-size:10.5px;color:#666">SHA-256 da foto: 4B88D0A1C93E7F20A1B2C3D4...</div>
+          </div>
+          <div class="fotos">
+            <div class="foto-box">
+              <div class="retrato com-marca">
+                <svg width="42" height="52" viewBox="0 0 24 24" fill="#d1d5db"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+                <div class="marca-confidencial"><strong>CONFIDENCIAL</strong><span>05/11/2026 11:30</span></div>
+              </div>
+              <div class="legenda-foto">Facial cadastrada</div>
+            </div>
+            <div class="foto-box">
+              <div class="retrato com-marca">
+                <svg width="42" height="52" viewBox="0 0 24 24" fill="#d1d5db"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+                <div class="marca-confidencial"><strong>CONFIDENCIAL</strong><span>05/11/2026 11:30</span></div>
+              </div>
+              <div class="legenda-foto">Facial da assinatura</div>
+            </div>
+          </div>
+        </div>
+        <div class="rodape-sim"><span class="hl-ok">G-SST · Gerado em 17/11/2026 22:50 · Página 1 de 2</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Tela Perfil › Cofre de Assinaturas -->
+  <div class="secao">
+    <div class="secao-titulo">2. Tela Perfil do Trabalhador › Aba "Cofre de Assinaturas" e Foto Avulsa (Itens 1.2 e 2.2)</div>
+    <div class="grid">
+      <div class="card">
+        <span class="tag-antes">ANTES — Nome técnico cru + Foto sem marca</span>
+        <table>
+          <thead><tr><th>Documento</th><th>Método</th><th>Data/Hora</th><th>Ação</th></tr></thead>
+          <tbody>
+            <tr><td><span class="hl-err">EntregaEpi</span></td><td>Reconhecimento facial</td><td>05/11/2026 11:30</td><td>Abrir Foto (JPEG cru sem CONFIDENCIAL)</td></tr>
+            <tr><td><span class="hl-err">SessaoTreinamento</span></td><td>Biometria (digital)</td><td>04/11/2026 08:15</td><td>Abrir Foto (JPEG cru sem CONFIDENCIAL)</td></tr>
+            <tr><td><span class="hl-err">OrdemServico</span></td><td>Reconhecimento facial</td><td>03/11/2026 09:00</td><td>Abrir Foto (JPEG cru sem CONFIDENCIAL)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <span class="tag-depois">DEPOIS — Rótulo institucional + Foto com marca CONFIDENCIAL</span>
+        <table>
+          <thead><tr><th>Documento</th><th>Método</th><th>Data/Hora</th><th>Ação</th></tr></thead>
+          <tbody>
+            <tr><td><span class="hl-ok">Entrega de EPI</span></td><td>Reconhecimento facial</td><td>05/11/2026 11:30</td><td>Abrir Foto (c/ estampa CONFIDENCIAL + data/hora)</td></tr>
+            <tr><td><span class="hl-ok">Lista de Presença de Treinamento</span></td><td>Biometria (digital)</td><td>04/11/2026 08:15</td><td>Abrir Foto (c/ estampa CONFIDENCIAL + data/hora)</td></tr>
+            <tr><td><span class="hl-ok">Ordem de Serviço (OS)</span></td><td>Reconhecimento facial</td><td>03/11/2026 09:00</td><td>Abrir Foto (c/ estampa CONFIDENCIAL + data/hora)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Inspeção / OS / Comprovante -->
+  <div class="secao">
+    <div class="secao-titulo">3. Inspeção de Segurança, Ordem de Serviço (OS) e Comprovante do Motor (Itens 3.1, 3.2 e 3.3)</div>
+    <div class="grid">
+      <div class="card">
+        <span class="tag-antes">ANTES — Página manual antiga sem fotos nem trilha completa</span>
+        <div style="font-size:12px;line-height:1.6">
+          <div style="font-weight:700;color:#670000">Assinaturas e validação</div>
+          <div>Documento finalizado em 15/11/2026 14:20.</div>
+          <div style="margin-top:6px;color:#991b1b">
+            ✕ Não usa <code>CertificadoAssinaturasPdf</code><br/>
+            ✕ Não exibe comparativo Foto Cadastrada × Foto Assinatura com <code>CONFIDENCIAL</code><br/>
+            ✕ Não exibe tabela de IP, Geolocalização, Equipamento e Consentimento LGPD
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <span class="tag-depois">DEPOIS — Modelo único CertificadoAssinaturasPdf</span>
+        <div style="font-size:12px;line-height:1.6">
+          <div style="font-weight:700;color:#670000">Certificado de Assinaturas Eletrônicas</div>
+          <div style="margin-top:6px;color:#03543f">
+            ✓ Mesmo padrão de Ficha de EPI, DDS, Lista de Treinamento, APR e PT<br/>
+            ✓ Comparação lado a lado (Cadastrada × Assinatura) com marca <code>CONFIDENCIAL</code><br/>
+            ✓ Tabela técnica completa (IP, Geolocalização, Equipamento, SHA-256, QR Code e Eventos)
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

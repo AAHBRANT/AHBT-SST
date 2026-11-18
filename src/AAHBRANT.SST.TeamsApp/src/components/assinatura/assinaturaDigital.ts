@@ -26,3 +26,30 @@ export function formatarHoraBrasilia(dataIso: string): string {
 export function formatarDataHoraBrasilia(dataIso: string): string {
   return lerInstanteUtc(dataIso).toLocaleString('pt-BR', { timeZone: FUSO_BRASILIA });
 }
+
+const ROTULOS_DOCUMENTO_ASSINATURA: Record<string, string> = {
+  Apr: 'APR — Análise Preliminar de Risco',
+  Dds: 'DDS — Diálogo Diário de Segurança',
+  DdsSemanal: 'Registro Semanal de DDS',
+  CronogramaMensalDdsRevisao: 'Cronograma Mensal de Temas de DDS',
+  Inspecao: 'Inspeção de Segurança',
+  PermissaoTrabalho: 'Permissão de Trabalho',
+  ProcessoEleitoralCipa: 'Ata do Processo Eleitoral da CIPA',
+  ReuniaoCipa: 'Ata de Reunião da CIPA',
+  FichaEpiTrabalhador: 'Ficha de EPI',
+  SessaoTreinamento: 'Lista de Presença de Treinamento',
+  Treinamento: 'Certificado de Treinamento',
+  EntregaEpi: 'Entrega de EPI',
+  TermoCompromissoEpi: 'Termo de Recebimento e Compromisso de Uso (EPI)',
+  DevolucaoEpi: 'Devolução de EPI',
+  EntregaUniforme: 'Entrega de Uniforme',
+  NaoConformidade: 'Registro de Não Conformidade',
+  Acidente: 'Relatório de Investigação de Ocorrência',
+  GeracaoPgrEap: 'PGR — Programa de Gerenciamento de Riscos',
+  SolicitacaoReposicaoEpi: 'Solicitação de Reposição de EPI',
+  OrdemServico: 'Ordem de Serviço de SST',
+};
+
+export function rotuloTipoDocumentoAssinatura(entidadeTipo: string): string {
+  return ROTULOS_DOCUMENTO_ASSINATURA[entidadeTipo] ?? entidadeTipo;
+}

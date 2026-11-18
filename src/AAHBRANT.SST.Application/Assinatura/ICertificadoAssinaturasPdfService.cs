@@ -5,4 +5,5 @@ namespace AAHBRANT.SST.Application.Assinatura;
 public interface ICertificadoAssinaturasPdfService
 {
     byte[] Gerar(CertificadoAssinaturasModelo modelo);
+    byte[] EstamparFotoConfidencial(byte[] imagem, DateTime assinadoEmUtc, bool retrato34) => imagem;
 }

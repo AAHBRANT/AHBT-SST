@@ -27,7 +27,7 @@ internal static class RodapeDocumentoPadrao
             {
                 textoColuna.Item().AlignCenter().Text(t =>
                 {
-                    t.Span("AAHBRANT SST").FontSize(7).SemiBold();
+                    t.Span("G-SST · AAHBRANT").FontSize(7).SemiBold();
                     // O protocolo já embute o prefixo do tipo de documento (ex.: "APR-2026-0001",
                     // "DDS-D-2026-0007") — mostrar "{tituloDocumento} nº {protocolo}" ficava redundante
                     // ("APR nº APR-2026-0001"). Sem protocolo (documentos com chave sintética, sem
