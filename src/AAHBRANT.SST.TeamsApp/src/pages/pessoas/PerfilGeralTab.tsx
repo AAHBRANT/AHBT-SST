@@ -58,8 +58,8 @@ function consumoValidade(inicio: string, fim: string): number {
 }
 
 function textoPrazo(dias: number): string {
-  if (dias < 0) return `vencido há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}`;
-  if (dias === 0) return 'vence hoje';
+  if (dias < 0) return `renovação pendente há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}`;
+  if (dias === 0) return 'renovar hoje';
   return `faltam ${dias} ${dias === 1 ? 'dia' : 'dias'}`;
 }
 
@@ -76,7 +76,13 @@ const estiloRotuloDado = {
 // Status dos EPIs e motivos de troca foram para a aba EPI (ver EpiPerfilSecao). "PTs Liberadas" segue
 // interpretado como "treinamentos de NR do trabalhador com validade em dia" — não existe vínculo
 // Atividade→CursoTreinamento no sistema hoje.
-export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }) {
+export function PerfilGeralTab({
+  perfil,
+  aoIrParaAba,
+}: {
+  perfil: PerfilCompletoTrabalhador;
+  aoIrParaAba?: (aba: 'epi' | 'treinamentos') => void;
+}) {
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
   const tipo = useTipografia();
 
@@ -122,15 +128,23 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
   const diasAso = asoAtivo ? diasAte(asoAtivo.dataValidade) : 0;
   const nivelAso = asoAtivo ? nivelVencimento(asoAtivo.dataValidade) : null;
 
-  const kpis: Array<{ rotulo: string; valor: string; icone: ReactElement; tom: Tom; detalhe?: { texto: string; tom: Tom } }> = [
+  const kpis: Array<{
+    rotulo: string;
+    valor: string;
+    icone: ReactElement;
+    tom: Tom;
+    detalhe?: { texto: string; tom: Tom };
+    abaDestino?: 'epi' | 'treinamentos';
+  }> = [
     {
       rotulo: 'EPIs em posse',
       valor: `${perfil.episAtivos.length}`,
       icone: <ShieldCheckmark20Regular />,
       tom: 'info',
+      abaDestino: 'epi',
       detalhe:
         epis.vencidos + epis.vencendo > 0
-          ? { texto: `${epis.vencidos} vencido · ${epis.vencendo} vencendo`, tom: epis.vencidos > 0 ? 'alerta' : 'atencao' }
+          ? { texto: `${epis.vencidos} pendente · ${epis.vencendo} a renovar`, tom: epis.vencidos > 0 ? 'alerta' : 'atencao' }
           : { texto: 'Todos em dia', tom: 'ok' },
     },
     {
@@ -138,6 +152,7 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
       valor: percentualDds === null ? '—' : `${percentualDds}%`,
       icone: <People20Regular />,
       tom: 'ok',
+      abaDestino: 'treinamentos',
       detalhe:
         percentualDds === null
           ? undefined
@@ -148,6 +163,7 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
       valor: `${trocasNoAno}`,
       icone: <ArrowSync20Regular />,
       tom: 'atencao',
+      abaDestino: 'epi',
       detalhe: { texto: trocasNoAno === 1 ? '1 solicitação' : `${trocasNoAno} solicitações`, tom: 'neutro' },
     },
     {
@@ -155,6 +171,7 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
       valor: `${treinamentosValidos.length}`,
       icone: <DocumentCheckmark20Regular />,
       tom: treinamentosBloqueando > 0 ? 'atencao' : 'ok',
+      abaDestino: 'treinamentos',
       detalhe: { texto: `de ${perfil.treinamentos.length} registradas`, tom: 'neutro' },
     },
   ];
@@ -173,6 +190,7 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
             destaque={i === 0}
             detalhe={kpi.detalhe?.texto}
             tomDetalhe={kpi.detalhe?.tom}
+            aoClicar={kpi.abaDestino && aoIrParaAba ? () => aoIrParaAba(kpi.abaDestino!) : undefined}
           />
         ))}
       </div>
@@ -188,7 +206,7 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
               fracao={Math.max(0, diasAso) / DIAS_CICLO_ASO}
               tom={nivelAso ? tomDeVencimento(nivelAso) : 'neutro'}
               centro={Math.max(0, diasAso)}
-              legenda={diasAso < 0 ? 'ASO vencido' : 'dias de validade'}
+              legenda={diasAso < 0 ? 'Renovação pendente' : 'dias de validade'}
               aria-label={`ASO ${textoPrazo(diasAso)}`}
             />
             <div style={{ flex: '1 1 260px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: tokensUi.espaco.md }}>
@@ -226,7 +244,7 @@ export function PerfilGeralTab({ perfil }: { perfil: PerfilCompletoTrabalhador }
               <div style={{ paddingTop: tokensUi.espaco.md, borderTop: `1px solid ${designTokens.colorCardBorder}` }}>
                 <Legenda>
                   {diasAso < 0
-                    ? `Vencido em ${dataBr(asoAtivo.dataValidade)} — novo exame necessário`
+                    ? `Validade encerrada em ${dataBr(asoAtivo.dataValidade)} — novo exame necessário`
                     : `Próximo exame até ${dataBr(asoAtivo.dataValidade)}`}
                 </Legenda>
               </div>

@@ -6,7 +6,7 @@ export function SuporteIaPage() {
     <div>
       <PageHeader
         titulo="Central de Suporte IA"
-        subtitulo="Triagem governada para dúvidas, bugs, melhorias e demandas técnicas do SST."
+        subtitulo="Triagem governada para dúvidas, bugs, melhorias e demandas técnicas do G-SST."
       />
       <SuporteIaTab />
     </div>

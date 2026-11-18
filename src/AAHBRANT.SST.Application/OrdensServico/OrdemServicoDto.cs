@@ -25,7 +25,10 @@ public class MinutaOrdemServicoDto
     public AsoOsDto? Aso { get; set; }
     public List<PoliticaOsDto> Politicas { get; set; } = new();
     public List<PendenciaOsDto> Pendencias { get; set; } = new();
+    public TecnicoOsDto? TecnicoResponsavel { get; set; }
 }
+
+public record TecnicoOsDto(string Nome, string? Funcao, string? Registro);
 
 public class ObraOsDto
 {
@@ -34,6 +37,9 @@ public class ObraOsDto
     public string? Cliente { get; set; }
     public string? Cnpj { get; set; }
     public string? Endereco { get; set; }
+    public string? Cep { get; set; }
+    public string? Cnae { get; set; }
+    public int? GrauRisco { get; set; }
 }
 
 public class TrabalhadorOsDto
@@ -91,4 +97,7 @@ public record AsoOsDto(ResultadoAso Resultado, DateTime? Validade, bool Valido);
 public record PoliticaOsDto(string Titulo, string? Codigo, string? Revisao, string? FormaConsulta);
 
 // QuemResolve: "SST" ou "RH". Destino/DestinoId: onde corrigir (ex.: "pgr" + pgrId, "treinamentos").
-public record PendenciaOsDto(string Tipo, string Titulo, string PorQueBloqueia, string QuemResolve, string? Destino, Guid? DestinoId);
+// AtividadeIds (17/11/2026): nas pendências agrupadas por tipo, as atividades afetadas — o front abre direto
+// nelas (Inventário) ou resolve em lote (procedimentos, sugestões da IA) sem sair da OS.
+public record PendenciaOsDto(string Tipo, string Titulo, string PorQueBloqueia, string QuemResolve, string? Destino, Guid? DestinoId,
+    List<Guid>? AtividadeIds = null);

@@ -79,14 +79,34 @@ public class CriarSessaoTreinamentoCommandHandler : IRequestHandler<CriarSessaoT
         if (cargaHoraria <= 0)
             throw new InvalidOperationException("Informe a carga horária da turma.");
 
+        Guid? instrutorTrabalhadorId = null;
+        string? instrutorFixoNome = null;
+        string? instrutorFixoRegistro = null;
+        if (!string.IsNullOrWhiteSpace(request.AzureAdObjectId))
+        {
+            var usuarioLogado = await _db.Usuarios.AsNoTracking()
+                .Where(u => u.AzureAdObjectId == request.AzureAdObjectId && u.Ativo && u.Status == Domain.Enums.StatusUsuario.Ativo)
+                .Select(u => new { u.Nome, u.TrabalhadorId })
+                .FirstOrDefaultAsync(ct);
+            if (usuarioLogado?.TrabalhadorId is { } tid && await _db.PerfisInstrutor.AnyAsync(p => p.TrabalhadorId == tid, ct))
+            {
+                instrutorTrabalhadorId = tid;
+                instrutorFixoNome = await _db.Trabalhadores.IgnoreQueryFilters().Where(t => t.Id == tid).Select(t => t.Nome).FirstOrDefaultAsync(ct) ?? usuarioLogado.Nome;
+                var perfil = await _db.PerfisInstrutor.AsNoTracking().FirstOrDefaultAsync(p => p.TrabalhadorId == tid, ct);
+                if (perfil is not null)
+                    instrutorFixoRegistro = AAHBRANT.SST.Application.Instrutores.DescricaoInstrutor.Registro(perfil.Conselho, perfil.NumeroRegistro, perfil.UfRegistro);
+            }
+        }
+
         var sessao = new SessaoTreinamento
         {
             ObraId = request.ObraId,
             CursoTreinamentoId = request.CursoTreinamentoId,
             DataRealizacao = request.DataRealizacao,
             CargaHorariaRealizada = cargaHoraria,
-            InstituicaoInstrutor = podeEditar ? Limpar(request.InstituicaoInstrutor) : null,
-            InstrutorRegistroProfissional = podeEditar ? Limpar(request.InstrutorRegistroProfissional) : null,
+            InstrutorTrabalhadorId = instrutorTrabalhadorId,
+            InstituicaoInstrutor = instrutorFixoNome ?? (podeEditar ? Limpar(request.InstituicaoInstrutor) : null),
+            InstrutorRegistroProfissional = instrutorFixoRegistro ?? (podeEditar ? Limpar(request.InstrutorRegistroProfissional) : null),
             ConteudoProgramatico = podeEditar ? Limpar(request.ConteudoProgramatico) ?? padrao.ConteudoProgramatico : padrao.ConteudoProgramatico,
             Local = podeEditar ? Limpar(request.Local) ?? padrao.Local : padrao.Local,
             ValidadeEmMeses = podeEditar && request.ValidadeEmMeses is > 0 ? request.ValidadeEmMeses.Value : padrao.ValidadeEmMeses,

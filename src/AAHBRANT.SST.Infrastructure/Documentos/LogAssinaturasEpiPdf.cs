@@ -38,7 +38,7 @@ internal static class LogAssinaturasEpiPdf
             $"Ficha de EPI · {modelo.TrabalhadorNome}",
             log.IdRegistro,
             log.EmitidoEmUtc,
-            $"Sistema SST · {modelo.ObraNome}",
+            $"G-SST · {modelo.ObraNome}",
             modelo.ConteudoHash,
             pendente,
             itens,

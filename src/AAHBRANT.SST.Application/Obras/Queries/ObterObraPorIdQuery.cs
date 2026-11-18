@@ -29,7 +29,10 @@ public class ObterObraPorIdQueryHandler : IRequestHandler<ObterObraPorIdQuery, O
                 Endereco = o.Endereco,
                 Cidade = o.Cidade,
                 Uf = o.Uf,
+                Cep = o.Cep,
                 Cnpj = o.Cnpj,
+                Cnae = o.Cnae,
+                GrauRisco = o.GrauRisco,
                 TemLogo = o.LogoConteudo != null,
                 MetodosAssinatura = o.MetodosAutenticacaoHabilitados
             })

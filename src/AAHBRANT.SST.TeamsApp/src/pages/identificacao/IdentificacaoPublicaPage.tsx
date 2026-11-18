@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { Avatar, Card, designTokens, Legenda, Spinner, StatusChip, Text, type Tom } from '@ui';
 import { ShieldError24Regular } from '@fluentui/react-icons';
 import { api, ehEquipamentoPublico, StatusArea, tipoAreaLabel, statusAreaLabel, type RecursoPublico } from '../../lib/api';
+import { dataBr } from '../../lib/datas';
 import { EquipamentoPublicoCard } from './EquipamentoPublicoCard';
 
 const raiz: CSSProperties = {
@@ -45,8 +46,8 @@ function diasAte(data: string): number {
 function statusEpi(dataValidade?: string | null): { rotulo: string; tom: Tom } {
   if (!dataValidade) return { rotulo: 'Em dia', tom: 'ok' };
   const dias = diasAte(dataValidade);
-  if (dias < 0) return { rotulo: 'Vencido', tom: 'alerta' };
-  if (dias <= DIAS_ALERTA_VENCIMENTO_EPI) return { rotulo: 'Vencendo', tom: 'atencao' };
+  if (dias < 0) return { rotulo: 'Renovação pendente', tom: 'alerta' };
+  if (dias <= DIAS_ALERTA_VENCIMENTO_EPI) return { rotulo: 'A renovar', tom: 'atencao' };
   return { rotulo: 'Em dia', tom: 'ok' };
 }
 
@@ -232,7 +233,7 @@ export function IdentificacaoPublicaPage() {
                           {t.cursoNome}
                         </Text>
                         <Legenda>
-                          {valido ? 'Válido até' : 'Vencido em'} {t.dataValidade.slice(0, 10)}
+                          {valido ? 'Válido até' : 'Prazo em'} {dataBr(t.dataValidade)}
                         </Legenda>
                       </div>
                       <StatusChip tom={valido ? 'ok' : 'alerta'}>{valido ? 'APTO' : 'BLOQUEADO'}</StatusChip>
@@ -254,7 +255,7 @@ export function IdentificacaoPublicaPage() {
                         {d.tema ?? 'DDS do dia'}
                       </Text>
                       <Legenda>
-                        {d.data.slice(0, 10)} · {d.obraNome}
+                        {dataBr(d.data)} · {d.obraNome}
                       </Legenda>
                     </div>
                   </div>

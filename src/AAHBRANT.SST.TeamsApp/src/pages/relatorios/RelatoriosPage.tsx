@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BotaoAcao,
   Card,
@@ -12,21 +12,24 @@ import {
   type Coluna,
 } from '@ui';
 import { Document24Regular, Image24Regular } from '@fluentui/react-icons';
-import { api, tipoRelatorioLabel, TipoRelatorio, type RelatorioLista } from '../../lib/api';
+import { api, tipoRelatorioLabel, TipoRelatorio, type Obra, type RelatorioLista } from '../../lib/api';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
 
 function formatarDataHora(iso: string): string {
   return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' });
 }
 
 function nomeBase(r: RelatorioLista): string {
-  const data = new Date(r.geradoEm).toISOString().slice(0, 10);
+  const data = new Date(r.geradoEm).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
   return `${tipoRelatorioLabel[r.tipo] ?? 'Relatorio'}_${data}`.replace(/\s+/g, '-');
 }
 
 // Histórico dos relatórios gerados pelo sistema (lista de presença às 08:00, boletim semanal, ocorrência). Cada um
 // tem a imagem que foi ao Telegram e, quando existe, o PDF de detalhe. Quem não tem acesso à obra não vê o relatório.
 export function RelatoriosPage() {
+  const [obraId, setObraId] = useFiltroObra();
+  const [obras, setObras] = useState<Obra[]>([]);
   const [lista, setLista] = useState<RelatorioLista[]>([]);
   const [tipo, setTipo] = useState('');
   const [carregando, setCarregando] = useState(true);
@@ -37,7 +40,12 @@ export function RelatoriosPage() {
     setCarregando(true);
     setErro(null);
     try {
-      setLista(await api.relatorios.listar(tipo ? Number(tipo) : undefined));
+      const [relatorios, listaObras] = await Promise.all([
+        api.relatorios.listar(tipo ? Number(tipo) : undefined),
+        api.obras.listar().catch(() => [] as Obra[]),
+      ]);
+      setLista(relatorios);
+      setObras(listaObras);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível carregar os relatórios.');
     } finally {
@@ -48,6 +56,11 @@ export function RelatoriosPage() {
   useEffect(() => {
     void carregar();
   }, [carregar]);
+
+  const listaFiltrada = useMemo(
+    () => (obraId ? lista.filter((r) => !r.obraId || r.obraId === obraId) : lista),
+    [lista, obraId],
+  );
 
   const colunas: Coluna<RelatorioLista>[] = [
     { chave: 'quando', rotulo: 'Gerado em', render: (r) => formatarDataHora(r.geradoEm) },
@@ -76,20 +89,34 @@ export function RelatoriosPage() {
               A lista de presença sai todo dia às 08:00 e o boletim semanal toda segunda às 07:00. Cada relatório fica aqui com a
               imagem e o PDF.
             </Legenda>
-            <div style={{ maxWidth: 260 }}>
-              <Field label="Tipo">
-                <Select value={tipo} onChange={(_, d) => setTipo(d.value)}>
-                  <option value="">Todos</option>
-                  <option value={TipoRelatorio.ListaPresencaDds}>{tipoRelatorioLabel[TipoRelatorio.ListaPresencaDds]}</option>
-                  <option value={TipoRelatorio.BoletimSemanal}>{tipoRelatorioLabel[TipoRelatorio.BoletimSemanal]}</option>
-                  <option value={TipoRelatorio.Ocorrencia}>{tipoRelatorioLabel[TipoRelatorio.Ocorrencia]}</option>
-                </Select>
-              </Field>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ minWidth: 220 }}>
+                <Field label="Obra">
+                  <Select value={obraId} onChange={(_, d) => setObraId(d.value)}>
+                    <option value="">Todas as obras</option>
+                    {obras.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.nome}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div style={{ minWidth: 220 }}>
+                <Field label="Tipo">
+                  <Select value={tipo} onChange={(_, d) => setTipo(d.value)}>
+                    <option value="">Todos</option>
+                    <option value={TipoRelatorio.ListaPresencaDds}>{tipoRelatorioLabel[TipoRelatorio.ListaPresencaDds]}</option>
+                    <option value={TipoRelatorio.BoletimSemanal}>{tipoRelatorioLabel[TipoRelatorio.BoletimSemanal]}</option>
+                    <option value={TipoRelatorio.Ocorrencia}>{tipoRelatorioLabel[TipoRelatorio.Ocorrencia]}</option>
+                  </Select>
+                </Field>
+              </div>
             </div>
             <DataTable
               aria-label="Relatórios gerados"
               colunas={colunas}
-              linhas={lista}
+              linhas={listaFiltrada}
               chaveLinha={(r) => r.id}
               carregando={carregando}
               vazio={{

@@ -75,6 +75,8 @@ public class AtualizarTrabalhadorCommandHandler : IRequestHandler<AtualizarTraba
         trabalhador.DataDemissao = request.DataDemissao;
         trabalhador.Turno = request.Turno;
 
+        HistoricoFuncao.Registrar(_db, trabalhador.Id, funcaoAnteriorId, trabalhador.FuncaoId);
+
         await TratamentoCpfDuplicado.SalvarAsync(_db, ct);
 
         if (obraAnteriorId != trabalhador.ObraId && trabalhador.AzureFacePersonId is not null)

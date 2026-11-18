@@ -44,6 +44,7 @@ const passaNoFiltro: Record<Filtro, (m: MaterialApoio) => boolean> = {
 };
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 function formatarTamanho(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -92,6 +93,7 @@ export function MateriaisApoioTab() {
 
   const { confirmar, dialogElement } = useConfirmar();
   const { visualizar: abrirVisualizador, dialogoVisualizador } = useVisualizadorPdf();
+  const souAdministrador = useSouAdministrador();
   const sucessoToast = useSucessoToast();
 
   async function carregar() {
@@ -388,15 +390,17 @@ export function MateriaisApoioTab() {
                 disabled={baixandoId === m.id}
                 aria-label="Baixar"
               />
-              <BotaoAcao
-                tom="excluir"
-                icon={<Delete24Regular />}
-                onClick={(evento) => {
-                  evento.stopPropagation();
-                  excluir(m);
-                }}
-                aria-label="Excluir"
-              />
+              {souAdministrador && (
+                <BotaoAcao
+                  tom="excluir"
+                  icon={<Delete24Regular />}
+                  onClick={(evento) => {
+                    evento.stopPropagation();
+                    excluir(m);
+                  }}
+                  aria-label="Excluir"
+                />
+              )}
             </div>
           )}
         />

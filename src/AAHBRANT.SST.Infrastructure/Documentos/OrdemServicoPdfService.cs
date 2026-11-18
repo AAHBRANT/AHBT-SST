@@ -56,9 +56,22 @@ public class OrdemServicoPdfService : IOrdemServicoPdfService
 
                     Secao(col, 1, "Identificação da empresa e da obra");
                     Linha(col, "Obra / Contrato", c.Obra.Nome);
-                    Linha(col, "Cliente", c.Obra.Cliente);
                     Linha(col, "CNPJ", c.Obra.Cnpj);
-                    Linha(col, "Endereço da obra", c.Obra.Endereco);
+                    if (!string.IsNullOrWhiteSpace(c.Obra.Cnae) || c.Obra.GrauRisco is not null)
+                    {
+                        var enquadramento = string.Join("  •  ", new[]
+                        {
+                            c.Obra.Cnae,
+                            c.Obra.GrauRisco is { } gr ? $"Grau de risco {gr} (NR-04)" : null,
+                        }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                        Linha(col, "CNAE / Grau de risco", enquadramento);
+                    }
+                    var enderecoObra = string.Join("  •  ", new[]
+                    {
+                        c.Obra.Endereco,
+                        string.IsNullOrWhiteSpace(c.Obra.Cep) ? null : $"CEP {c.Obra.Cep}",
+                    }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                    Linha(col, "Endereço da obra", enderecoObra);
 
                     Secao(col, 2, "Identificação do trabalhador");
                     Linha(col, "Nome", c.Trabalhador.Nome);
@@ -116,8 +129,10 @@ public class OrdemServicoPdfService : IOrdemServicoPdfService
                         linha.RelativeItem().Element(e => AssinaturaPdfPadrao.Bloco(e, "TRABALHADOR(A)",
                             modelo.Funcionario?.Nome ?? c.Trabalhador.Nome, c.Trabalhador.Funcao,
                             modelo.Funcionario?.AssinadoEm, modelo.Funcionario?.Metodo));
-                        linha.RelativeItem().Element(e => AssinaturaPdfPadrao.Bloco(e, "TÉCNICO DE SEGURANÇA DO TRABALHO",
-                            modelo.Tecnico?.Nome, modelo.Tecnico?.Funcao,
+                        var tecnicoNome = modelo.Tecnico?.Nome ?? c.TecnicoResponsavel?.Nome;
+                        var tecnicoFuncao = modelo.Tecnico?.Funcao ?? FormatarFuncaoTecnico(c.TecnicoResponsavel);
+                        linha.RelativeItem().Element(e => AssinaturaPdfPadrao.Bloco(e, "TÉCNICO DE SEGURANÇA DO TRABALHO / INSTRUTOR",
+                            tecnicoNome, tecnicoFuncao,
                             modelo.Tecnico?.AssinadoEm, modelo.Tecnico?.Metodo));
                     });
 
@@ -128,6 +143,9 @@ public class OrdemServicoPdfService : IOrdemServicoPdfService
                     coluna, "Ordem de Serviço", modelo.Numero, modelo.Revisao, modelo.ConteudoHash, modelo.UrlValidacaoPublica,
                     modelo.QrCodePng, modelo.Funcionario is not null || modelo.Tecnico is not null));
             });
+
+            if (modelo.Certificado is { } certificado)
+                CertificadoAssinaturasPdf.Adicionar(container, certificado);
         }).GeneratePdf();
     }
 
@@ -135,30 +153,37 @@ public class OrdemServicoPdfService : IOrdemServicoPdfService
     {
         container.Border(0.5f).BorderColor(Colors.Grey.Lighten1).Column(col =>
         {
-            col.Item().Background(Bege).Padding(4).Text(a.Nome).SemiBold();
-            col.Item().Padding(4).Column(corpo =>
+            col.Item().Background(Bege).PaddingVertical(4).PaddingHorizontal(6).Text(a.Nome).SemiBold();
+            col.Item().Padding(6).Column(corpo =>
             {
-                corpo.Spacing(2);
-                Campo(corpo, "Condições", a.Condicoes);
+                corpo.Spacing(3);
+                Campo(corpo, "Condições de execução", a.Condicoes);
                 foreach (var r in a.Riscos)
                 {
-                    corpo.Item().PaddingTop(3).Text(t =>
+                    corpo.Item().PaddingTop(4).Border(0.5f).BorderColor(Colors.Grey.Lighten2).Background("#fafafa").Padding(4).Column(blocoRisco =>
                     {
-                        t.Span($"[{Nivel(r.Nivel)}] ").SemiBold().FontColor(CorMarca);
-                        t.Span(r.Perigo).SemiBold();
-                        if (!string.IsNullOrWhiteSpace(r.Consequencia)) t.Span($" — {r.Consequencia}");
+                        blocoRisco.Spacing(2);
+                        blocoRisco.Item().Text(t =>
+                        {
+                            t.Span($"[{Nivel(r.Nivel)}] ").SemiBold().FontColor(CorMarca);
+                            t.Span(r.Perigo).SemiBold();
+                            if (!string.IsNullOrWhiteSpace(r.Consequencia)) t.Span($" — {r.Consequencia}");
+                        });
+                        Fase(blocoRisco, "Antes do trabalho", r.Antes);
+                        Fase(blocoRisco, "Durante o trabalho", r.Durante);
+                        Fase(blocoRisco, "Após o trabalho", r.Apos);
                     });
-                    Fase(corpo, "Antes do trabalho", r.Antes);
-                    Fase(corpo, "Durante o trabalho", r.Durante);
-                    Fase(corpo, "Após o trabalho", r.Apos);
                 }
-                Campo(corpo, "Ferramentas e equipamentos", Juntar(a.Ferramentas));
-                Campo(corpo, "EPCs", Juntar(a.Epcs));
+                if (a.Ferramentas.Count > 0) Campo(corpo, "Ferramentas e equipamentos", Juntar(a.Ferramentas));
+                if (a.Epcs.Count > 0) Campo(corpo, "EPCs", Juntar(a.Epcs));
                 Campo(corpo, "Procedimentos aplicáveis", Juntar(a.Procedimentos, "; "));
-                Campo(corpo, "Interromper a atividade e comunicar a liderança quando", Juntar(a.InterromperQuando, "; "));
-                Campo(corpo, "Não executar sem capacitação, autorização ou liberação",
-                    Juntar(a.Restricoes.Select(r => r.Requisito is null ? r.Texto : $"{r.Texto} → {r.Requisito}"), "; "));
-                Campo(corpo, "Autorizações exigidas", Juntar(a.Autorizacoes, "; "));
+                if (a.InterromperQuando.Count > 0)
+                    Campo(corpo, "Interromper a atividade e comunicar a liderança quando", Juntar(a.InterromperQuando, "; "));
+                if (a.Restricoes.Count > 0)
+                    Campo(corpo, "Não executar sem capacitação, autorização ou liberação",
+                        Juntar(a.Restricoes.Select(r => r.Requisito is null ? r.Texto : $"{r.Texto} → {r.Requisito}"), "; "));
+                if (a.Autorizacoes.Count > 0)
+                    Campo(corpo, "Autorizações exigidas", Juntar(a.Autorizacoes, "; "));
             });
         });
     }
@@ -207,6 +232,13 @@ public class OrdemServicoPdfService : IOrdemServicoPdfService
     {
         var lista = itens.ToList();
         return lista.Count == 0 ? "—" : string.Join(separador, lista);
+    }
+
+    private static string? FormatarFuncaoTecnico(TecnicoOsDto? tecnico)
+    {
+        if (tecnico is null) return "Técnico de Segurança do Trabalho";
+        var funcao = string.IsNullOrWhiteSpace(tecnico.Funcao) ? "Técnico de Segurança do Trabalho" : tecnico.Funcao.Trim();
+        return string.IsNullOrWhiteSpace(tecnico.Registro) ? funcao : $"{funcao} • {tecnico.Registro.Trim()}";
     }
 
     private static string Data(DateTime? data) => data?.ToString("dd/MM/yyyy") ?? "—";

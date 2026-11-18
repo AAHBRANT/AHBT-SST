@@ -88,8 +88,21 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
         // Selos das linhas (05/11): funcionário = função · CBO; responsável (técnico logado) = registro
         // do perfil de instrutor (MTE/CREA).
         var cboFuncao = string.IsNullOrWhiteSpace(trabalhador.Funcao?.CboCodigo) ? null : Cbo.CodigoCbo.Formatar(trabalhador.Funcao!.CboCodigo!);
-        var registroEmpregado = trabalhador.Funcao is null ? null
-            : cboFuncao is null ? trabalhador.Funcao.Nome : $"{trabalhador.Funcao.Nome} · CBO {cboFuncao}";
+        // O selo de cada assinatura traz a função que o trabalhador exercia quando assinou, e não a
+        // atual: quem trocou de função continua com as entregas antigas registradas na função da época.
+        var trocasFuncao = await Trabalhadores.HistoricoFuncao.CarregarAsync(_db, new[] { trabalhador.Id }, ct);
+        var idsFuncoesDoPeriodo = trocasFuncao.Select(t => t.FuncaoAnteriorId).Append(trabalhador.FuncaoId).Distinct().ToList();
+        var funcoesDoPeriodo = await _db.Funcoes.AsNoTracking().IgnoreQueryFilters()
+            .Where(f => idsFuncoesDoPeriodo.Contains(f.Id))
+            .Select(f => new { f.Id, f.Nome, f.CboCodigo })
+            .ToDictionaryAsync(f => f.Id, ct);
+        string? RegistroEmpregadoEm(DateTime data)
+        {
+            var funcaoId = Trabalhadores.HistoricoFuncao.FuncaoNaData(trocasFuncao, trabalhador.Id, trabalhador.FuncaoId, data);
+            if (!funcoesDoPeriodo.TryGetValue(funcaoId, out var funcao)) return null;
+            var cbo = string.IsNullOrWhiteSpace(funcao.CboCodigo) ? null : Cbo.CodigoCbo.Formatar(funcao.CboCodigo!);
+            return cbo is null ? funcao.Nome : $"{funcao.Nome} · CBO {cbo}";
+        }
         var idsResponsaveis = documentos.SelectMany(d => d.Signatarios)
             .Where(s => s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada)
             .Select(s => s.TrabalhadorId).Distinct().ToList();
@@ -110,7 +123,7 @@ public class ExportarFichaEpiTrabalhadorQueryHandler : IRequestHandler<ExportarF
             });
 
         SeloAssinaturaPdf? SeloEmpregado(Domain.Entidades.DocumentoSignatario? s) =>
-            s is null ? null : new SeloAssinaturaPdf(trabalhador.Nome, registroEmpregado, CodigoAssinatura(s));
+            s is null ? null : new SeloAssinaturaPdf(trabalhador.Nome, RegistroEmpregadoEm(s.AssinadoEm), CodigoAssinatura(s));
         SeloAssinaturaPdf? SeloResponsavel(Domain.Entidades.DocumentoSignatario? s) =>
             s is null ? null : new SeloAssinaturaPdf(
                 nomesResponsaveis.GetValueOrDefault(s.TrabalhadorId) ?? "Responsável",

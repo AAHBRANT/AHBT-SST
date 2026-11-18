@@ -30,6 +30,7 @@ import {
 import { api, tipoCameraLabel, type CameraResumo } from '../../lib/api';
 import { useAgentesCamera, useCameras, useEquipamentosCamera, useObras } from '../../lib/consultas';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { escolherObraInicial } from '../../hooks/useObraLembrada';
 import {
@@ -95,7 +96,7 @@ export function MosaicoCamerasTab() {
   const { lista: obras } = useObras();
 
   const [visao, setVisao] = useState<Visao>(lerVisao);
-  const [obraFiltro, setObraFiltro] = useState('');
+  const [obraFiltro, setObraFiltro] = useFiltroObra();
   const [painel, setPainel] = useState<PainelAberto | null>(null);
   const [painelAberto, setPainelAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);

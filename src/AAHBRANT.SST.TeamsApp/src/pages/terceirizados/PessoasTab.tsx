@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, DataTable, StatusChip, FeedbackInline, type Coluna } from '@ui';
-import { api, type PessoaTerceirizada } from '../../lib/api';
+import { api, type Contrato, type PessoaTerceirizada } from '../../lib/api';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
 
 export function PessoasTab() {
+  const navigate = useNavigate();
+  const [obraId] = useFiltroObra();
   const [pessoas, setPessoas] = useState<PessoaTerceirizada[]>([]);
+  const [contratos, setContratos] = useState<Contrato[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -11,7 +16,15 @@ export function PessoasTab() {
     (async () => {
       try {
         setErro(null);
-        setPessoas(await api.terceirizados.pessoas.listar());
+        const [listaPessoas, listaEmpresas] = await Promise.all([
+          api.terceirizados.pessoas.listar(),
+          api.terceirizados.empresas.listar(),
+        ]);
+        const contratosPorEmpresa = await Promise.all(
+          listaEmpresas.map((e) => api.terceirizados.contratos.listarPorEmpresa(e.id).catch(() => [] as Contrato[])),
+        );
+        setPessoas(listaPessoas);
+        setContratos(contratosPorEmpresa.flat());
       } catch (e) {
         setErro(e instanceof Error ? e.message : 'Falha ao carregar pessoas terceirizadas.');
       } finally {
@@ -19,6 +32,12 @@ export function PessoasTab() {
       }
     })();
   }, []);
+
+  const pessoasFiltradas = useMemo(() => {
+    if (!obraId) return pessoas;
+    const idsContratosNaObra = new Set(contratos.filter((c) => c.obraId === obraId).map((c) => c.id));
+    return pessoas.filter((p) => idsContratosNaObra.has(p.contratoId));
+  }, [pessoas, contratos, obraId]);
 
   const colunas: Coluna<PessoaTerceirizada>[] = [
     { chave: 'nome', rotulo: 'Nome' },
@@ -43,9 +62,10 @@ export function PessoasTab() {
       <DataTable
         aria-label="Pessoas terceirizadas"
         colunas={colunas}
-        linhas={pessoas}
+        linhas={pessoasFiltradas}
         chaveLinha={(p) => p.trabalhadorId}
         carregando={carregando}
+        aoClicarLinha={(p) => navigate(`/pessoas/${p.trabalhadorId}`)}
         vazio={{ titulo: 'Nenhuma pessoa terceirizada cadastrada ainda' }}
       />
     </Card>

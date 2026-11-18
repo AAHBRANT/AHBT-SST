@@ -91,6 +91,8 @@ public class EscopoPorObraMiddleware
     public static bool RestringeEscopo(string politica) => politica is not (
         PoliticasAutorizacao.SomenteAdministrador
         or PoliticasAutorizacao.SomenteEngenheiroSeguranca
+        or PoliticasAutorizacao.TecnicoOuEngenheiroSeguranca
+        or PoliticasAutorizacao.DecisorDeSugestoes
         or PoliticasAutorizacao.QualquerUsuarioAutenticado
         or PoliticasAutorizacao.CamerasPiloto
         or "suporte-ia:usar"

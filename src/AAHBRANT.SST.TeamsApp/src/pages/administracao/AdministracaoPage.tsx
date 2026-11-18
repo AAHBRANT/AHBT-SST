@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Abas, PageHeader, useAbaNaUrl } from '@ui';
 import { ObrasPage } from '../ObrasPage';
 import { ControleAcessoTab } from './ControleAcessoTab';
@@ -12,22 +14,66 @@ import { LeitoresDigitalTab } from './LeitoresDigitalTab';
 import { DestinatariosRelatoriosTab } from './DestinatariosRelatoriosTab';
 import { PendenciasAutomaticasTab } from './PendenciasAutomaticasTab';
 
-const ABAS_VALIDAS = ['obras', 'acesso', 'auditoria', 'assinaturas', 'grh', 'gsupri', 'tags', 'leitor', 'leitoresDigital', 'destinatarios', 'pendencias', 'novidades'] as const;
-type AbaAdministracao = (typeof ABAS_VALIDAS)[number];
+const ABAS_PILAR = ['obras', 'acesso', 'integracoes', 'dispositivos', 'notificacoes', 'novidades'] as const;
+type AbaPilarAdministracao = (typeof ABAS_PILAR)[number];
 
-// Obras virou aba daqui (pedido do usuário, 01/09) — antes era aba de Operação (ver App.tsx pro
-// redirecionamento legado). Administração deixou de ser grupo expansível na sidebar (ver
-// AppShell.tsx) e virou item único, então essa página concentra tudo — mesmo padrão de
-// PillarLayout, só que com abas controladas por estado local em vez de sub-rotas, já que nenhuma
-// dessas telas precisa de URL própria. "Configurações" chegou a existir como aba/rota própria mas
-// foi removida (pedido do usuário, 01/09) por não ter conteúdo real ainda — sem gaveta vazia.
-//
-// Onda 2 Task 17 (camada ui/): `?aba=` (usado pelos redirecionamentos legados de /operacao/obras e
-// /obras, ver App.tsx) já era lido na montagem via useState — vira `useAbaNaUrl` para sincronizar
-// nos dois sentidos (spec §3), mesmo padrão de PessoasPage/EpiPage. Página de rota única (não é
-// aninhada em outra página-pilar), então o PageHeader "Administração" é sempre renderizado.
+type SubAcesso = 'acesso' | 'auditoria' | 'assinaturas';
+type SubIntegracoes = 'grh' | 'gsupri';
+type SubDispositivos = 'tags' | 'leitor' | 'leitoresDigital';
+type SubNotificacoes = 'destinatarios' | 'pendencias';
+
+const MAPA_ABA_LEGADA: Record<string, { aba: AbaPilarAdministracao; sub: string }> = {
+  auditoria: { aba: 'acesso', sub: 'auditoria' },
+  assinaturas: { aba: 'acesso', sub: 'assinaturas' },
+  grh: { aba: 'integracoes', sub: 'grh' },
+  gsupri: { aba: 'integracoes', sub: 'gsupri' },
+  tags: { aba: 'dispositivos', sub: 'tags' },
+  leitor: { aba: 'dispositivos', sub: 'leitor' },
+  leitoresDigital: { aba: 'dispositivos', sub: 'leitoresDigital' },
+  destinatarios: { aba: 'notificacoes', sub: 'destinatarios' },
+  pendencias: { aba: 'notificacoes', sub: 'pendencias' },
+};
+
+// Consolidação das 12 abas horizontais em 6 grupos temáticos de 1º nível + sub-abas internas,
+// mantendo compatibilidade total com links diretos antigos (?aba=auditoria, ?aba=grh, etc.).
 export function AdministracaoPage() {
-  const [aba, setAba] = useAbaNaUrl<AbaAdministracao>('aba', ABAS_VALIDAS, 'obras');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const abaBruta = searchParams.get('aba') ?? '';
+  const subNaUrl = searchParams.get('sub') ?? '';
+
+  useEffect(() => {
+    const mapeada = MAPA_ABA_LEGADA[abaBruta];
+    if (mapeada) {
+      setSearchParams(
+        (p) => {
+          const novo = new URLSearchParams(p);
+          novo.set('aba', mapeada.aba);
+          novo.set('sub', mapeada.sub);
+          return novo;
+        },
+        { replace: true },
+      );
+    }
+  }, [abaBruta, setSearchParams]);
+
+  const [aba, setAba] = useAbaNaUrl<AbaPilarAdministracao>('aba', ABAS_PILAR, 'obras');
+
+  const mudarSub = (valor: string) =>
+    setSearchParams(
+      (p) => {
+        const novo = new URLSearchParams(p);
+        novo.set('sub', valor);
+        return novo;
+      },
+      { replace: true },
+    );
+
+  const subAcesso: SubAcesso =
+    subNaUrl === 'auditoria' || subNaUrl === 'assinaturas' ? subNaUrl : 'acesso';
+  const subIntegracoes: SubIntegracoes = subNaUrl === 'gsupri' ? 'gsupri' : 'grh';
+  const subDispositivos: SubDispositivos =
+    subNaUrl === 'leitor' || subNaUrl === 'leitoresDigital' ? subNaUrl : 'tags';
+  const subNotificacoes: SubNotificacoes = subNaUrl === 'pendencias' ? 'pendencias' : 'destinatarios';
 
   return (
     <div>
@@ -40,31 +86,88 @@ export function AdministracaoPage() {
         aria-label="Seções de Administração"
         abas={[
           { valor: 'obras', rotulo: 'Obras' },
-          { valor: 'acesso', rotulo: 'Controle de Acesso' },
-          { valor: 'auditoria', rotulo: 'Trilha de Auditoria' },
-          { valor: 'assinaturas', rotulo: 'Assinaturas' },
-          { valor: 'grh', rotulo: 'Integração G-RH' },
-          { valor: 'gsupri', rotulo: 'Integração G-SUPRI' },
-          { valor: 'tags', rotulo: 'Tags (NFC/QR)' },
-          { valor: 'leitor', rotulo: 'Leitor / Teste NFC' },
-          { valor: 'leitoresDigital', rotulo: 'Leitores de digital' },
-          { valor: 'destinatarios', rotulo: 'Destinatários dos relatórios' },
-          { valor: 'pendencias', rotulo: 'Pendências automáticas' },
+          { valor: 'acesso', rotulo: 'Acesso & Auditoria' },
+          { valor: 'integracoes', rotulo: 'Integrações (G-RH / G-SUPRI)' },
+          { valor: 'dispositivos', rotulo: 'Tags & Biometria' },
+          { valor: 'notificacoes', rotulo: 'Relatórios & Pendências' },
           { valor: 'novidades', rotulo: 'Novidades da versão' },
         ]}
       />
 
       {aba === 'obras' && <ObrasPage />}
-      {aba === 'acesso' && <ControleAcessoTab />}
-      {aba === 'auditoria' && <TrilhaAuditoriaTab />}
-      {aba === 'assinaturas' && <PainelAssinaturasTab />}
-      {aba === 'grh' && <IntegracaoGrhTab />}
-      {aba === 'gsupri' && <IntegracaoGsupriTab />}
-      {aba === 'tags' && <TagsIdentificacaoTab />}
-      {aba === 'leitor' && <LeitorNfcTab />}
-      {aba === 'leitoresDigital' && <LeitoresDigitalTab />}
-      {aba === 'destinatarios' && <DestinatariosRelatoriosTab />}
-      {aba === 'pendencias' && <PendenciasAutomaticasTab />}
+
+      {aba === 'acesso' && (
+        <>
+          <Abas
+            nivel="interno"
+            valor={subAcesso}
+            aoMudar={mudarSub}
+            aria-label="Acesso e Auditoria"
+            abas={[
+              { valor: 'acesso', rotulo: 'Controle de Acesso' },
+              { valor: 'auditoria', rotulo: 'Trilha de Auditoria' },
+              { valor: 'assinaturas', rotulo: 'Assinaturas' },
+            ]}
+          />
+          {subAcesso === 'acesso' && <ControleAcessoTab />}
+          {subAcesso === 'auditoria' && <TrilhaAuditoriaTab />}
+          {subAcesso === 'assinaturas' && <PainelAssinaturasTab />}
+        </>
+      )}
+
+      {aba === 'integracoes' && (
+        <>
+          <Abas
+            nivel="interno"
+            valor={subIntegracoes}
+            aoMudar={mudarSub}
+            aria-label="Integrações externas"
+            abas={[
+              { valor: 'grh', rotulo: 'Integração G-RH' },
+              { valor: 'gsupri', rotulo: 'Integração G-SUPRI' },
+            ]}
+          />
+          {subIntegracoes === 'grh' && <IntegracaoGrhTab />}
+          {subIntegracoes === 'gsupri' && <IntegracaoGsupriTab />}
+        </>
+      )}
+
+      {aba === 'dispositivos' && (
+        <>
+          <Abas
+            nivel="interno"
+            valor={subDispositivos}
+            aoMudar={mudarSub}
+            aria-label="Tags e Leitores Biométricos"
+            abas={[
+              { valor: 'tags', rotulo: 'Tags (NFC/QR)' },
+              { valor: 'leitor', rotulo: 'Leitor / Teste NFC' },
+              { valor: 'leitoresDigital', rotulo: 'Leitores de digital' },
+            ]}
+          />
+          {subDispositivos === 'tags' && <TagsIdentificacaoTab />}
+          {subDispositivos === 'leitor' && <LeitorNfcTab />}
+          {subDispositivos === 'leitoresDigital' && <LeitoresDigitalTab />}
+        </>
+      )}
+
+      {aba === 'notificacoes' && (
+        <>
+          <Abas
+            nivel="interno"
+            valor={subNotificacoes}
+            aoMudar={mudarSub}
+            aria-label="Relatórios e Pendências Automáticas"
+            abas={[
+              { valor: 'destinatarios', rotulo: 'Destinatários dos relatórios' },
+              { valor: 'pendencias', rotulo: 'Pendências automáticas' },
+            ]}
+          />
+          {subNotificacoes === 'destinatarios' && <DestinatariosRelatoriosTab />}
+          {subNotificacoes === 'pendencias' && <PendenciasAutomaticasTab />}
+        </>
+      )}
+
       {aba === 'novidades' && <NovidadesTab />}
     </div>
   );

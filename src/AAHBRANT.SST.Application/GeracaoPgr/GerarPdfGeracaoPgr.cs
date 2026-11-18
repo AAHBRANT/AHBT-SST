@@ -54,7 +54,10 @@ public record DadosPgrPdf(
     bool Rascunho = false,
     // Relação de EPIs por função (NR-06 e NR-18, 30/10/2026): EPIs citados nas medidas dos riscos dos GHEs da função,
     // um por linha, com a especificação técnica. Não usa catálogo nem matriz do cadastro: o PGR manda.
-    IReadOnlyList<LinhaEpiFuncaoPdf>? EpisPorFuncao = null);
+    IReadOnlyList<LinhaEpiFuncaoPdf>? EpisPorFuncao = null,
+    string? ObraCep = null,
+    string? ObraCnae = null,
+    int? ObraGrauRisco = null);
 
 // Um EPI de uma função: em quais GHEs ela está, o EPI, a especificação técnica e os perigos que o exigem.
 public record LinhaEpiFuncaoPdf(string Funcao, string Ghes, string Epi, string Especificacao, string Riscos);
@@ -104,7 +107,7 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
             throw new InvalidOperationException("O PDF do PGR só é gerado depois da aprovação do Engenheiro de Segurança.");
 
         var obra = await _db.Obras.Where(o => o.Id == g.ObraId)
-            .Select(o => new { o.Nome, o.Cnpj, o.Endereco, o.Cidade, o.Uf, o.LogoConteudo })
+            .Select(o => new { o.Nome, o.Cnpj, o.Endereco, o.Cidade, o.Uf, o.Cep, o.Cnae, o.GrauRisco, o.LogoConteudo })
             .FirstOrDefaultAsync(ct) ?? throw new KeyNotFoundException("Obra não encontrada.");
         var estrutura = SerializacaoGeracao.Ler(g.EstruturaJson);
         var rascunho = request.Minuta && g.Status is StatusGeracaoPgrEap.Rascunho or StatusGeracaoPgrEap.Devolvido;
@@ -207,7 +210,10 @@ public class GerarPdfGeracaoPgrEapQueryHandler : IRequestHandler<GerarPdfGeracao
             verificacao,
             request.Minuta,
             rascunho,
-            episPorFuncao);
+            episPorFuncao,
+            obra.Cep,
+            obra.Cnae,
+            obra.GrauRisco);
 
         return new ArquivoPgrPdf(_pdf.Gerar(dados, obra.LogoConteudo), nomeArquivo);
     }

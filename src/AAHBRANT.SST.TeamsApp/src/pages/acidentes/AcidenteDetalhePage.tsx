@@ -37,15 +37,25 @@ import {
 import { ArrowDownload24Regular, Eye24Regular, Save24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { MapaCorporal } from '../../components/mapaCorporal/MapaCorporal';
 import { CartaoReuniaoAnalise } from './CartaoReuniaoAnalise';
+import { LembreteProvidenciasObito } from './BlocoPessoasExternas';
+import { formatarCpf } from '../../lib/cpf';
+import { formatarTelefone } from './pessoaExterna';
+import { podeNaObra, useUsuarioLogado } from '../../lib/UsuarioLogadoContext';
 import { CampoComoSeResolve, payloadResolucao, pendenciaResolucao, resolucaoVazia, type ResolucaoEmEdicao } from './CampoComoSeResolve';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { dataBr } from '../../lib/datas';
 import {
   api,
   metodologiaInvestigacaoLabel,
   prioridadeAcaoLabel,
   statusAcaoPlanoLabel,
   statusAcidenteLabel,
+  GravidadeAcidente,
+  resultadoPessoaExternaLabel,
+  ResultadoPessoaExterna,
+  vinculoPessoaExternaLabel,
+  VinculoPessoaExterna,
   tipoAcaoPlanoLabel,
   tipoOcorrenciaLabel,
   StatusAcaoPlano,
@@ -71,6 +81,13 @@ const tomPorStatusAcidente: Record<number, Tom> = {
   [StatusAcidente.Registrado]: 'neutro',
   [StatusAcidente.EmInvestigacao]: 'atencao',
   [StatusAcidente.Concluido]: 'ok',
+  [StatusAcidente.AguardandoLaudo]: 'info',
+};
+
+const tomPorResultadoPessoaExterna: Record<number, Tom> = {
+  [ResultadoPessoaExterna.SemLesao]: 'neutro',
+  [ResultadoPessoaExterna.Lesao]: 'atencao',
+  [ResultadoPessoaExterna.Obito]: 'alerta',
 };
 
 // AcaoPlano reaproveita o enum de StatusControleRisco (Pendente/EmAndamento/Concluido/Vencido, ver
@@ -98,6 +115,12 @@ export function AcidenteDetalhePage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [metodologia, setMetodologia] = useState<string>('');
   const [causas, setCausas] = useState<string>('');
+  // Justificativa para concluir sem ação do plano: o servidor decide se é obrigatória e devolve a mensagem.
+  const [conclusao, setConclusao] = useState<string>('');
+  const [observacaoLaudo, setObservacaoLaudo] = useState('');
+  // CPF/telefone em claro, só em memória (nunca em localStorage) e só depois de "Mostrar".
+  const [dadosClaros, setDadosClaros] = useState<Record<string, { cpf?: string | null; telefone?: string | null }>>({});
+  const { usuario } = useUsuarioLogado();
   const [regioesCorpo, setRegioesCorpo] = useState<string[]>([]);
   const [novaAcao, setNovaAcao] = useState(novaAcaoInicial());
   // Reabrir desfaz uma conclusão feita por engano. Não existe mais conclusão manual (24/10/2026): a ação
@@ -139,6 +162,8 @@ export function AcidenteDetalhePage() {
       setUsuarios(listaUsuarios);
       setMetodologia(det.acidente.metodologiaInvestigacao ? String(det.acidente.metodologiaInvestigacao) : '');
       setCausas(det.acidente.causas ?? '');
+      setConclusao(det.acidente.conclusaoInvestigacao ?? '');
+      setDadosClaros({});
       setRegioesCorpo(det.acidente.regioesCorpo ?? []);
       // Só ocorrência concluída pode ser assinada. Sem documento ainda também conta como "falta assinar":
       // a tela de assinatura cria o documento ao abrir.
@@ -224,7 +249,7 @@ export function AcidenteDetalhePage() {
     try {
       setProcessando(true);
       setErro(null);
-      await api.acidentes.avancarStatus(id);
+      await api.acidentes.avancarStatus(id, conclusao);
       await carregar();
     } catch (e) {
       setErro(
@@ -236,6 +261,67 @@ export function AcidenteDetalhePage() {
     } finally {
       setProcessando(false);
     }
+  }
+
+  async function aguardarLaudo() {
+    if (!id) return false;
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.acidentes.aguardarLaudo(id, observacaoLaudo);
+      setObservacaoLaudo('');
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao deixar a investigação aguardando o laudo.');
+      return false;
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function retomarInvestigacao() {
+    if (!id) return false;
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.acidentes.retomarInvestigacao(id);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao retomar a investigação.');
+      return false;
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function alternarProvidencia(codigo: string, concluida: boolean) {
+    if (!id) return;
+    try {
+      setProcessando(true);
+      setErro(null);
+      await api.acidentes.atualizarProvidenciasObito(id, [{ codigo, concluida }]);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao atualizar as providências do óbito.');
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  // "Mostrar" só existe para quem tem acidente:ver_dados_pessoais; cada consulta fica auditada no servidor.
+  async function mostrarDadosPessoais(pessoaId: string) {
+    if (!id) return;
+    try {
+      setErro(null);
+      const dados = await api.acidentes.obterDadosPessoaisPessoaExterna(id, pessoaId);
+      setDadosClaros((atual) => ({ ...atual, [pessoaId]: { cpf: dados.cpf, telefone: dados.telefone } }));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível mostrar os dados pessoais.');
+    }
+  }
+
+  function ocultarDadosPessoais(pessoaId: string) {
+    setDadosClaros((atual) => Object.fromEntries(Object.entries(atual).filter(([chave]) => chave !== pessoaId)));
   }
 
   async function criarAcao() {
@@ -425,18 +511,32 @@ export function AcidenteDetalhePage() {
   }
 
   const a = detalhe.acidente;
-  // Acidentes/Incidentes/Quase-acidentes viraram abas de OcorrenciasPage (02/09) — volta pra aba
-  // que corresponde ao tipo do registro aberto, não sempre pra "Acidentes".
-  const secaoOcorrencia = a.tipo === 2 ? 'incidentes' : a.tipo === 3 ? 'quase-acidentes' : 'acidentes';
+  const secaoOcorrencia = 'acidentes';
+
+  const fotosObrigatorias = a.exigeTresFotos === true;
+  const pessoasExternas = a.pessoasExternas ?? [];
+  const testemunhas = a.testemunhas ?? [];
+  const temObito = a.gravidade === GravidadeAcidente.Obito || pessoasExternas.some((p) => p.resultado === ResultadoPessoaExterna.Obito);
+  const podeEditarProvidencias = a.status !== StatusAcidente.Concluido && podeNaObra(usuario, 'acidente:editar', a.obraId);
+  const podeVerDadosPessoais = podeNaObra(usuario, 'acidente:ver_dados_pessoais', a.obraId);
 
   const acoes: AcaoWorkflow[] = [];
-  if (a.status !== StatusAcidente.Concluido) {
+  if (a.status === StatusAcidente.AguardandoLaudo) {
+    acoes.push({
+      chave: 'retomar-investigacao',
+      rotulo: 'Retomar investigação',
+      descricao: 'O laudo chegou ou a investigação pode seguir: a ocorrência volta para Em investigação.',
+      tom: 'primario',
+      habilitada: true,
+      aoExecutar: retomarInvestigacao,
+    });
+  } else if (a.status !== StatusAcidente.Concluido) {
     acoes.push({
       chave: 'avancar-status',
       rotulo: a.status === StatusAcidente.EmInvestigacao ? 'Finalizar investigação do acidente' : 'Iniciar investigação',
       finalizacao: a.status === StatusAcidente.EmInvestigacao,
       pendencias: a.status === StatusAcidente.EmInvestigacao ? [
-        ...(a.tipo === 1 ? pendenciasGrade(detalhe.fotos ?? []) : []),
+        ...(fotosObrigatorias ? pendenciasGrade(detalhe.fotos ?? []) : []),
         ...(detalhe.reuniao?.realizadaEm ? [] : ['Registre a reunião de análise como realizada.']),
         ...(detalhe.acoesPlano.some(acao => acao.status !== StatusAcaoPlano.Concluido) ? ['Conclua as ações do plano que estão pendentes.'] : []),
       ] : [],
@@ -445,6 +545,28 @@ export function AcidenteDetalhePage() {
       habilitada: true,
       aoExecutar: avancarStatus,
     });
+    if (a.status === StatusAcidente.EmInvestigacao) {
+      acoes.push({
+        chave: 'aguardar-laudo',
+        rotulo: 'Aguardar laudo',
+        descricao: 'Pausa a investigação à espera do laudo oficial (por exemplo, em caso de óbito).',
+        tom: 'neutro',
+        habilitada: true,
+        rotuloExecutar: 'Aguardar laudo',
+        formulario: (
+          <Field label="Observação (opcional)">
+            <Textarea
+              value={observacaoLaudo}
+              maxLength={500}
+              rows={3}
+              placeholder="Ex.: laudo solicitado ao órgão competente."
+              onChange={(_, d) => setObservacaoLaudo(d.value)}
+            />
+          </Field>
+        ),
+        aoExecutar: aguardarLaudo,
+      });
+    }
   }
 
   const colunasAcoes: Coluna<AcaoPlano>[] = [
@@ -479,7 +601,7 @@ export function AcidenteDetalhePage() {
     },
     { chave: 'responsavel', rotulo: 'Responsável', render: (acao) => acao.responsavelUsuarioNome ?? '—' },
     { chave: 'prioridade', rotulo: 'Prioridade', render: (acao) => prioridadeAcaoLabel[acao.prioridade] },
-    { chave: 'prazo', rotulo: 'Prazo', render: (acao) => acao.prazo?.slice(0, 10) ?? '—' },
+    { chave: 'prazo', rotulo: 'Prazo', render: (acao) => dataBr(acao.prazo) },
     {
       chave: 'status',
       rotulo: 'Status',
@@ -552,6 +674,13 @@ export function AcidenteDetalhePage() {
                   </Field>
                 </Campo>
               )}
+              {testemunhas.length > 0 && (
+                <Campo span={12}>
+                  <Field label={`Testemunhas (${testemunhas.length})`}>
+                    <Textarea value={testemunhas.map((t) => t.nome).join('\n')} readOnly rows={Math.min(testemunhas.length, 6)} />
+                  </Field>
+                </Campo>
+              )}
               {a.atividadeNome && (
                 <Campo span={12}>
                   <Field label="Atividade">
@@ -561,7 +690,7 @@ export function AcidenteDetalhePage() {
               )}
               <Campo span={12}>
                 <Field label="Data">
-                  <Input value={a.data?.slice(0, 10) ?? ''} readOnly />
+                  <Input value={dataBr(a.data)} readOnly />
                 </Field>
               </Campo>
               {a.lesao && (
@@ -601,6 +730,73 @@ export function AcidenteDetalhePage() {
               )}
             </FormGrid>
           </Card>
+          {pessoasExternas.length > 0 && (
+            <Card densidade="compacta" titulo={`Pessoas externas envolvidas (${pessoasExternas.length})`}>
+              <div style={{ display: 'grid', gap: 16 }}>
+                {pessoasExternas.map((p) => {
+                  const claros = dadosClaros[p.id];
+                  return (
+                    <div key={p.id} style={{ display: 'grid', gap: 8 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                        {p.nome}
+                        <StatusChip tom={tomPorResultadoPessoaExterna[p.resultado] ?? 'neutro'}>
+                          {resultadoPessoaExternaLabel[p.resultado]}
+                        </StatusChip>
+                      </div>
+                      <dl style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 120px) 1fr', gap: '6px 12px', margin: 0, fontSize: 13 }}>
+                        <dt>Vínculo</dt>
+                        <dd style={{ margin: 0 }}>{vinculoPessoaExternaLabel[p.vinculo]}</dd>
+                        {p.vinculo === VinculoPessoaExterna.Terceiro && p.empresa && (<><dt>Empresa</dt><dd style={{ margin: 0 }}>{p.empresa}</dd></>)}
+                        {p.idade != null && (<><dt>Idade</dt><dd style={{ margin: 0 }}>{p.idade} anos</dd></>)}
+                        {p.lesao && (<><dt>Situação</dt><dd style={{ margin: 0 }}>{p.lesao}</dd></>)}
+                        {p.atendimento && (<><dt>Atendimento</dt><dd style={{ margin: 0 }}>{p.atendimento}</dd></>)}
+                        {p.cpfMascarado && (
+                          <>
+                            <dt>CPF</dt>
+                            <dd style={{ margin: 0 }}>
+                              {claros ? formatarCpf(claros.cpf ?? '') || '—' : <span style={{ letterSpacing: '0.08em' }}>{p.cpfMascarado}</span>}
+                            </dd>
+                          </>
+                        )}
+                        {p.telefoneMascarado && (
+                          <>
+                            <dt>Contato</dt>
+                            <dd style={{ margin: 0 }}>
+                              {claros ? (claros.telefone ? formatarTelefone(claros.telefone) : '—') : <span style={{ letterSpacing: '0.08em' }}>{p.telefoneMascarado}</span>}
+                            </dd>
+                          </>
+                        )}
+                      </dl>
+                      {(p.cpfMascarado || p.telefoneMascarado) && podeVerDadosPessoais && (
+                        <div>
+                          {claros ? (
+                            <Button size="small" appearance="subtle" onClick={() => ocultarDadosPessoais(p.id)}>
+                              Ocultar dados pessoais
+                            </Button>
+                          ) : (
+                            <>
+                              <Button size="small" appearance="secondary" onClick={() => void mostrarDadosPessoais(p.id)}>
+                                Mostrar CPF e contato
+                              </Button>
+                              <Legenda>O acesso fica registrado.</Legenda>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <Legenda>Não gera CAT nem entra nos indicadores NBR 14280.</Legenda>
+              </div>
+            </Card>
+          )}
+          {temObito && (
+            <LembreteProvidenciasObito
+              itens={a.providenciasObito}
+              aoAlternar={a.providenciasObito ? (codigo, concluida) => void alternarProvidencia(codigo, concluida) : undefined}
+              desabilitado={processando || !podeEditarProvidencias}
+            />
+          )}
           {acoes.length > 0 && (
             <Card densidade="compacta" titulo="Ações disponíveis">
               <WorkflowActions acoes={acoes} processando={processando} erro={erro} />
@@ -641,8 +837,8 @@ export function AcidenteDetalhePage() {
       />
 
       <Card titulo={a.tipo === 1 ? 'Fotos do local do acidente' : 'Fotos do local'}>
-        <GradeFotosEvidencia titulo={a.tipo === 1 ? 'Três fotos obrigatórias' : 'Até três fotos (opcionais)'} total={3}
-          opcional={a.tipo !== 1}
+        <GradeFotosEvidencia titulo={fotosObrigatorias ? 'Três fotos obrigatórias' : 'Até três fotos (opcionais)'} total={3}
+          opcional={!fotosObrigatorias}
           subtitulo="Registre a visão geral, o ponto da ocorrência e um detalhe relevante. Confira os dados antes de sair do local."
           contextoFoto={{ registroId: a.id, obraId: a.obraId, obraNome: a.obraNome ?? '', local: a.local }}
           fotos={(detalhe.fotos ?? []).map(f => ({ ...f, url: fotoUrls[f.id] }))}
@@ -694,6 +890,24 @@ export function AcidenteDetalhePage() {
                 <Textarea value={causas} onChange={(_, d) => setCausas(d.value)} />
               </Field>
             </Campo>
+            {a.status !== StatusAcidente.Concluido ? (
+              <Campo span={12}>
+                <Field
+                  label="Conclusão da investigação"
+                  hint="Obrigatória para finalizar quando a investigação não gera ações no plano. A justificativa escrita aqui segue junto ao finalizar."
+                >
+                  <Textarea value={conclusao} maxLength={4000} rows={3} onChange={(_, d) => setConclusao(d.value)} />
+                </Field>
+              </Campo>
+            ) : (
+              a.conclusaoInvestigacao && (
+                <Campo span={12}>
+                  <Field label="Conclusão da investigação">
+                    <Textarea value={a.conclusaoInvestigacao} readOnly rows={3} />
+                  </Field>
+                </Campo>
+              )
+            )}
           </FormGrid>
         </FormSection>
         <FormRodape>

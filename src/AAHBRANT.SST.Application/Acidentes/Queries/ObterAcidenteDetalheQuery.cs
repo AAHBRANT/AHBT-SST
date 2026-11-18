@@ -49,12 +49,25 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
                 Causas = a.Causas,
                 Status = a.Status,
                 DataConclusaoInvestigacao = a.DataConclusaoInvestigacao,
+                ConclusaoInvestigacao = a.ConclusaoInvestigacao,
+                LaudoObservacao = a.LaudoObservacao,
+                AguardandoLaudoDesde = a.AguardandoLaudoDesde,
             })
             .FirstOrDefaultAsync(ct)
             ?? throw new KeyNotFoundException($"Acidente {request.Id} não encontrado.");
 
         var envolvidos = await AcidenteEnvolvidosSync.CarregarAsync(_db, new[] { request.Id }, ct);
         acidente.Envolvidos = envolvidos.GetValueOrDefault(request.Id) ?? new();
+        var testemunhas = await AcidenteEnvolvidosSync.CarregarTestemunhasAsync(_db, new[] { request.Id }, ct);
+        acidente.Testemunhas = testemunhas.GetValueOrDefault(request.Id) ?? new();
+        var criadoEm = await _db.Acidentes.Where(a => a.Id == request.Id).Select(a => a.CreatedAtUtc).FirstAsync(ct);
+        acidente.ExigeTresFotos = Commands.AvancarStatusAcidenteCommandHandler.ExigeTresFotos(acidente.Tipo, criadoEm);
+        // CPF/telefone da pessoa externa saem sempre mascarados (ver AcidentePessoaExternaDto).
+        var pessoasExternas = await AcidentePessoasExternasSync.CarregarAsync(_db, new[] { request.Id }, ct);
+        acidente.PessoasExternas = pessoasExternas.GetValueOrDefault(request.Id) ?? new();
+        var providenciasJson = await _db.Acidentes.Where(a => a.Id == request.Id)
+            .Select(a => a.ProvidenciasObitoJson).FirstOrDefaultAsync(ct);
+        acidente.ProvidenciasObito = ProvidenciasObitoAcidente.Ler(providenciasJson);
 
         // Recupera conclusões automáticas que ainda não rodaram (ex.: entrega de EPI assinada, que não
         // tem gancho próprio) — idempotente; só grava quando há o que concluir.

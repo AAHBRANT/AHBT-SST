@@ -42,6 +42,9 @@ public class EscopoPcmsoPdfService : IEscopoPcmsoPdfService
                         Campo(t, "Obra", e.ObraNome);
                         Campo(t, "CNPJ", e.Cnpj);
                         Campo(t, "Trabalhadores ativos", e.TrabalhadoresAtivos.ToString());
+                        Campo(t, "CNAE", e.Cnae);
+                        Campo(t, "Grau de risco (NR-04)", e.GrauRisco?.ToString());
+                        Campo(t, "CEP", e.Cep);
                         Campo(t, "Endereço", e.Endereco);
                         Campo(t, "Início", e.DataInicio?.ToString("dd/MM/yyyy"));
                         Campo(t, "Previsão de término", e.DataPrevisaoTermino?.ToString("dd/MM/yyyy"));
@@ -75,7 +78,7 @@ public class EscopoPcmsoPdfService : IEscopoPcmsoPdfService
 
                 pagina.Footer().AlignCenter().Text(t =>
                 {
-                    t.Span("AAHBRANT SST · Escopo para elaboração do PCMSO · página ").FontSize(7);
+                    t.Span("G-SST · AAHBRANT · Escopo para elaboração do PCMSO · página ").FontSize(7);
                     t.CurrentPageNumber().FontSize(7);
                     t.Span(" de ").FontSize(7);
                     t.TotalPages().FontSize(7);

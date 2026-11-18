@@ -53,12 +53,15 @@ import {
 import { designTokens } from '@ui';
 import { useThemeMode } from '../theme/ThemeModeContext';
 import { useTeamsContext } from '../teams/useTeamsContext';
-import { useAcessoCameras } from '../lib/consultas';
+import { useUsuarioLogado } from '../lib/UsuarioLogadoContext';
+import { obterContaNavegadorAtiva } from '../lib/browserAuth';
+import { useAcessoCameras, useObras } from '../lib/consultas';
 import {
   api,
   FrequenciaPendenciaAutomatica,
   StatusAlerta,
   type NovidadeVersao,
+  type Obra,
   type PendenciaAutomatica,
   type PlanoIntegracao,
 } from '../lib/api';
@@ -78,7 +81,7 @@ import { AvisoErroModal } from '../components/avisos/AvisoErroModal';
 const LARGURA_RAIL_COLAPSADO = '64px';
 const LARGURA_RAIL_EXPANDIDO = '240px';
 const CHAVE_RAIL_EXPANDIDO = 'sst.railExpandido';
-const VERSAO_APP = '5.10.0';
+const VERSAO_APP = '5.183.0';
 const TAMANHO_MAXIMO_FOTO_PERFIL_BYTES = 8 * 1024 * 1024;
 const DIMENSAO_MAXIMA_FOTO_PERFIL = 256;
 
@@ -347,7 +350,7 @@ const useStyles = makeStyles({
     fontWeight: 700,
     color: designTokens.colorNeutralDark,
     whiteSpace: 'nowrap',
-    maxWidth: '180px',
+    maxWidth: '240px',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
   },
@@ -383,7 +386,7 @@ const useStyles = makeStyles({
     fontSize: '12px',
     lineHeight: '16px',
     color: designTokens.colorNeutralMedium,
-    maxWidth: '180px',
+    maxWidth: '260px',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
@@ -830,19 +833,36 @@ function ItemRail({
 export function AppShell({ children }: { children: ReactNode }) {
   const estilos = useStyles();
   const acessoCameras = useAcessoCameras();
+  const { data: obrasAcessiveis = [] } = useObras();
   const location = useLocation();
   const navigate = useNavigate();
   const { carregando, dentroDoTeams, contexto } = useTeamsContext();
+  const { usuario: usuarioLogado } = useUsuarioLogado();
   const { modo, alternarModo } = useThemeMode();
-  // `??` só cobre null/undefined — o Teams client já retornou displayName como string vazia em
-  // produção (achado ao testar o pop-up de novidades, 18/09), então precisa tratar vazio também.
-  const nomeUsuario = contexto?.user?.displayName?.trim() || 'Usuário';
-  const emailUsuario = contexto?.user?.userPrincipalName ?? contexto?.user?.loginHint ?? '';
+  const contaMsal = obterContaNavegadorAtiva();
+  const nomeApi = usuarioLogado?.nome?.trim();
+  const nomeTeams = contexto?.user?.displayName?.trim();
+  const nomeMsal = contaMsal?.nome?.trim();
+  const nomeUsuario =
+    (nomeApi && nomeApi !== 'Usuário' ? nomeApi : null) ||
+    nomeTeams ||
+    nomeMsal ||
+    nomeApi ||
+    'Usuário';
+  const emailUsuario =
+    usuarioLogado?.email?.trim() ||
+    contexto?.user?.userPrincipalName ||
+    contexto?.user?.loginHint ||
+    contaMsal?.email ||
+    '';
   const identidadeUsuario = emailUsuario || nomeUsuario;
   const chaveFotoUsuario = `sst.fotoPerfil.${identidadeUsuario}`;
   const chaveNomeUsuario = `sst.nomePerfil.${identidadeUsuario}`;
   const [fotoPerfil, setFotoPerfil] = useState<string | null>(() => localStorage.getItem(chaveFotoUsuario));
-  const [nomePerfil, setNomePerfil] = useState(() => localStorage.getItem(chaveNomeUsuario) ?? nomeUsuario);
+  const [nomePerfil, setNomePerfil] = useState(() => {
+    const salvo = localStorage.getItem(chaveNomeUsuario)?.trim();
+    return salvo && salvo !== 'Usuário' ? salvo : nomeUsuario;
+  });
   const [menuPerfilAberto, setMenuPerfilAberto] = useState(false);
   const [perfilAberto, setPerfilAberto] = useState(false);
   const [alertasAbertos, setAlertasAbertos] = useState<number | null>(null);
@@ -862,7 +882,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setFotoPerfil(localStorage.getItem(chaveFotoUsuario));
-    setNomePerfil(localStorage.getItem(chaveNomeUsuario) ?? nomeUsuario);
+    const salvo = localStorage.getItem(chaveNomeUsuario)?.trim();
+    setNomePerfil(salvo && salvo !== 'Usuário' ? salvo : nomeUsuario);
   }, [chaveFotoUsuario, chaveNomeUsuario, nomeUsuario]);
 
   const iniciaisPerfil = obterIniciais(nomePerfil);
@@ -915,9 +936,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     setPerfilAberto(false);
   }
 
-  function abrirSuporteIa() {
+  function abrirAtualizacoes() {
     setMenuPerfilAberto(false);
-    navigate('/suporte-ia');
+    navigate('/administracao?aba=novidades');
   }
 
   useEffect(() => {
@@ -1093,7 +1114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="gs-marca-divisor" aria-hidden />
             <span className={estilos.marcaTexto}>
               <span className={estilos.marcaNome}>G-SST</span>
-              <span className={estilos.marcaSubtitulo}>Hub Gênesis SST</span>
+              <span className={estilos.marcaSubtitulo}>AAHBRANT · SST</span>
             </span>
           </NavLink>
         </div>
@@ -1192,17 +1213,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <button className={estilos.menuItem} type="button" role="menuitem" onClick={abrirMeuPerfil}>
                   Meu perfil
                 </button>
-                <button className={estilos.menuItem} type="button" role="menuitem" onClick={() => setMenuPerfilAberto(false)}>
-                  Atualizações
-                </button>
-                <button className={estilos.menuItem} type="button" role="menuitem" onClick={abrirSuporteIa}>
-                  Suporte técnico
-                </button>
-                <button className={estilos.menuItem} type="button" role="menuitem" onClick={() => setMenuPerfilAberto(false)}>
-                  Termos de uso
-                </button>
-                <button className={mergeClasses(estilos.menuItem, estilos.menuItemSair)} type="button" role="menuitem">
-                  Sair do sistema
+                <button className={estilos.menuItem} type="button" role="menuitem" onClick={abrirAtualizacoes}>
+                  Novidades da versão
                 </button>
               </div>
             )}
@@ -1263,8 +1275,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <div className={estilos.perfilCardTitulo}>Minha assinatura biométrica</div>
                   <div className={estilos.perfilCardCorpo}>
                     <Text size={200} className={estilos.biometriaTexto}>
-                      Cada usuário assina documentos com a própria biometria cadastrada: reconhecimento facial
-                      ou digital do indicador.
+                      Cada usuário assina documentos com a própria biometria cadastrada na ficha do trabalhador:
+                      reconhecimento facial ou digital do indicador.
                     </Text>
                     <div className={estilos.biometriaGrade}>
                       <div className={estilos.biometriaMetodo}>
@@ -1272,16 +1284,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                           <PersonAvailable24Regular />
                           <span>Facial</span>
                         </div>
-                        <div className={estilos.biometriaStatus}>Vinculada ao usuário logado.</div>
-                        <Button appearance="secondary" disabled>Gerenciar face</Button>
+                        <div className={estilos.biometriaStatus}>Vinculada ao perfil do trabalhador.</div>
                       </div>
                       <div className={estilos.biometriaMetodo}>
                         <div className={estilos.biometriaMetodoTopo}>
                           <Fingerprint24Regular />
                           <span>Indicador</span>
                         </div>
-                        <div className={estilos.biometriaStatus}>Vinculada ao usuário logado.</div>
-                        <Button appearance="secondary" disabled>Gerenciar digital</Button>
+                        <div className={estilos.biometriaStatus}>Vinculada ao perfil do trabalhador.</div>
                       </div>
                     </div>
                   </div>
@@ -1290,10 +1300,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <section className={estilos.perfilCard}>
                   <div className={estilos.perfilCardTitulo}>Obras que tenho acesso</div>
                   <div className={estilos.perfilCardCorpo}>
-                    <ul className={estilos.empresasLista}>
-                      <li>Ponte Rio Cuiá</li>
-                      <li>Obra principal SST</li>
-                    </ul>
+                    {obrasAcessiveis.length === 0 ? (
+                      <Text size={200} className={estilos.biometriaStatus}>Nenhuma obra vinculada no momento.</Text>
+                    ) : (
+                      <ul className={estilos.empresasLista}>
+                        {obrasAcessiveis.map((obra: Obra) => (
+                          <li key={obra.id}>{obra.nome}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </section>
               </div>

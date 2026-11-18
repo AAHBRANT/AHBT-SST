@@ -14,10 +14,11 @@ import {
   Campo,
   FeedbackInline,
   Legenda,
+  Select,
+  Textarea,
   useConfirmar,
   type Coluna,
 } from '@ui';
-import { Textarea } from '@fluentui/react-components';
 import { Add24Regular, Delete24Regular, Edit24Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -27,6 +28,8 @@ import {
   type NovaNovidadeVersao,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { dataBr, hojeIso } from '../../lib/datas';
 
 const categoriaLabel: Record<number, string> = {
   [CategoriaNovidade.Correcao]: 'Correção',
@@ -34,14 +37,10 @@ const categoriaLabel: Record<number, string> = {
   [CategoriaNovidade.Novidade]: 'Novidade',
 };
 
-function hoje() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 const itemVazio: NovidadeVersaoItemInput = { categoria: CategoriaNovidade.Melhoria, descricao: '', antes: '', agora: '' };
 
 function formularioVazio(): NovaNovidadeVersao {
-  return { titulo: '', versao: '', dataPublicacao: hoje(), itens: [{ ...itemVazio }] };
+  return { titulo: '', versao: '', dataPublicacao: hojeIso(), itens: [{ ...itemVazio }] };
 }
 
 // Tela de cadastro do pop-up de novidades (requisito do usuário, 18/09) — mesmo padrão de
@@ -49,6 +48,7 @@ function formularioVazio(): NovaNovidadeVersao {
 // (decisão do usuário ao aprovar o design): não há tela de aprovação nem rascunho, o que é salvo já
 // fica visível no pop-up de todo mundo que ainda não viu.
 export function NovidadesTab() {
+  const souAdmin = useSouAdministrador();
   const [novidades, setNovidades] = useState<NovidadeVersao[]>([]);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -172,7 +172,7 @@ export function NovidadesTab() {
     {
       chave: 'dataPublicacao',
       rotulo: 'Publicado em',
-      render: (n) => new Date(n.dataPublicacao).toLocaleDateString('pt-BR'),
+      render: (n) => dataBr(n.dataPublicacao),
     },
     { chave: 'itens', rotulo: 'Itens', render: (n) => String(n.itens.length) },
   ];
@@ -247,17 +247,16 @@ export function NovidadesTab() {
                 <FormGrid>
                   <Campo span={3}>
                     <Field label="Categoria">
-                      <select
-                        value={item.categoria}
-                        onChange={(e) => atualizarItem(indice, { categoria: Number(e.target.value) })}
-                        style={{ height: 32, borderRadius: 6 }}
+                      <Select
+                        value={String(item.categoria)}
+                        onChange={(_, d) => atualizarItem(indice, { categoria: Number(d.value) })}
                       >
                         {Object.entries(categoriaLabel).map(([valor, rotulo]) => (
                           <option key={valor} value={valor}>
                             {rotulo}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </Field>
                   </Campo>
                   <Campo span={8}>
@@ -332,7 +331,9 @@ export function NovidadesTab() {
           acoesLinha={(n) => (
             <>
               <BotaoAcao tom="ver" icon={<Edit24Regular />} onClick={() => abrirParaEditar(n)} aria-label="Editar" />
-              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(n.id)} aria-label="Excluir" />
+              {souAdmin && (
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(n.id)} aria-label="Excluir" />
+              )}
             </>
           )}
         />

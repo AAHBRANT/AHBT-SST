@@ -8,6 +8,8 @@ public class EscopoPorObraPoliticaTests
     // Caso real (05/11/2026): engenheiro aprovando o PGR da Beira Rio ficava sem obra nenhuma e a assinatura falhava.
     [Theory]
     [InlineData(PoliticasAutorizacao.SomenteEngenheiroSeguranca)]
+    [InlineData(PoliticasAutorizacao.TecnicoOuEngenheiroSeguranca)]
+    [InlineData(PoliticasAutorizacao.DecisorDeSugestoes)]
     [InlineData(PoliticasAutorizacao.SomenteAdministrador)]
     [InlineData(PoliticasAutorizacao.QualquerUsuarioAutenticado)]
     public void PoliticaDePerfilNaoRestringeAsObras(string politica)

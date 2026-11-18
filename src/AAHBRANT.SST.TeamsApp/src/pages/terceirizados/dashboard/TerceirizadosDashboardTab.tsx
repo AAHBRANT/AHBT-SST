@@ -25,11 +25,12 @@ import {
   type PessoaTerceirizada,
 } from '../../../lib/api';
 import { FeedCardPainel, PainelModulo, dataCurtaPainel, hojeIsoPainel } from '../../../components/dashboard/PainelModulo';
+import { useFiltroObra } from '../../../lib/ObraAtivaContext';
 
 function maisDias(iso: string, dias: number): string {
-  const d = new Date(iso);
-  d.setDate(d.getDate() + dias);
-  return d.toISOString().slice(0, 10);
+  const [ano, mes, dia] = iso.slice(0, 10).split('-').map(Number);
+  const d = new Date(ano, mes - 1, dia + dias);
+  return d.toLocaleDateString('sv-SE');
 }
 
 const painelVazio: PainelPendenciasTerceirizado = {
@@ -43,7 +44,7 @@ const painelVazio: PainelPendenciasTerceirizado = {
 // obra atua pelos contratos (empresa, pessoa e pendência entram se ligadas a um contrato da obra).
 export function TerceirizadosDashboardTab() {
   const paleta = usePaletaGraficos();
-  const [obraId, setObraId] = useState('');
+  const [obraId, setObraId] = useFiltroObra();
 
   const [obras, setObras] = useState<Obra[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -113,7 +114,7 @@ export function TerceirizadosDashboardTab() {
     const dias = (c: Contrato) => Math.round((new Date(c.dataFimVigencia.slice(0, 10)).getTime() - new Date(hojeISO).getTime()) / 86_400_000);
     const ativos = contratosEscopo.filter((c) => c.status === 'Validado');
     return [
-      { rotulo: 'Vencidos', valor: ativos.filter((c) => dias(c) < 0).length },
+      { rotulo: 'Renovação pendente', valor: ativos.filter((c) => dias(c) < 0).length },
       { rotulo: 'Até 30 dias', valor: ativos.filter((c) => dias(c) >= 0 && dias(c) <= 30).length },
       { rotulo: '31 a 60', valor: ativos.filter((c) => dias(c) > 30 && dias(c) <= 60).length },
       { rotulo: '61 a 90', valor: ativos.filter((c) => dias(c) > 60 && dias(c) <= 90).length },
@@ -209,7 +210,7 @@ export function TerceirizadosDashboardTab() {
         { rotulo: 'Pendências abertas', valor: pendenciasIndisponiveis ? '—' : pendenciasAbertas, tom: pendenciasIndisponiveis ? 'neutro' : 'alerta', icone: <Warning24Regular /> },
       ]}
       largo={
-        <Card titulo="Contratos por prazo de vencimento" subtitulo="Contratos validados agrupados pelos dias até o fim da vigência">
+        <Card titulo="Contratos por prazo de vigência" subtitulo="Contratos validados agrupados pelos dias até o fim da vigência">
           <TrendBarChart dados={faixasPrazo} cor={paleta.marca} rotuloSerie="Contratos" />
         </Card>
       }
@@ -227,10 +228,10 @@ export function TerceirizadosDashboardTab() {
         </Card>,
         <FeedCardPainel
           key="avencer"
-          titulo="Contratos a vencer"
+          titulo="Contratos a renovar"
           subtitulo="Contratos vigentes que terminam em até 60 dias"
           itens={contratosAVencer}
-          vazio="Nenhum contrato vencendo."
+          vazio="Nenhum contrato a renovar."
         />,
         <FeedCardPainel
           key="pendencia"

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Trabalhadores;
 using AAHBRANT.SST.Application.Trabalhadores.Queries;
 using AAHBRANT.SST.Domain.Enums;
@@ -16,6 +17,14 @@ namespace AAHBRANT.SST.Infrastructure.Trabalhadores;
 public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
 {
     private const string CorMarca = "#670000";
+
+    // Linha do bloco "Ocorrências". Testemunha aparece com o rótulo e sem gravidade/afastamento: ela não
+    // sofreu a ocorrência, então esses dados (da ocorrência em si) não são dela.
+    public static string LinhaOcorrencia(OcorrenciaDto o) =>
+        o.Papel == PapelEnvolvido.Testemunha
+            ? $"• {o.Data:dd/MM/yyyy} — {o.Tipo} (Testemunha)"
+            : $"• {o.Data:dd/MM/yyyy} — {o.Tipo}, gravidade {o.Gravidade}"
+                + (o.HouveAfastamento ? $", {o.DiasAfastamento ?? 0} dia(s) de afastamento" : "");
 
     public byte[] Gerar(PerfilCompletoTrabalhadorDto perfil, IdentificacaoRelatorioFiscalizacao? identificacao = null)
     {
@@ -89,7 +98,7 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
                         coluna.Item().Text("Nenhuma ocorrência registrada.").Italic();
                     else
                         foreach (var ocorrencia in perfil.Ocorrencias)
-                            coluna.Item().Text($"• {ocorrencia.Data:dd/MM/yyyy} — {ocorrencia.Tipo}, gravidade {ocorrencia.Gravidade}" + (ocorrencia.HouveAfastamento ? $", {ocorrencia.DiasAfastamento ?? 0} dia(s) de afastamento" : ""));
+                            coluna.Item().Text(LinhaOcorrencia(ocorrencia));
 
                     coluna.Item().PaddingTop(6).EnsureSpace(80).Text("Cofre de assinaturas").FontSize(13).Bold().FontColor(CorMarca);
                     // Faixa de sigilo (29/10): a seção traz biometria, IP e hash de quem assinou.
@@ -117,8 +126,12 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
 
                 pagina.Footer().AlignCenter().Text(t =>
                 {
-                    t.Span("Gerado em ").FontSize(9);
-                    t.Span(HorarioBrasilia.Agora.ToString("dd/MM/yyyy HH:mm")).FontSize(9);
+                    t.Span("G-SST · Gerado em ").FontSize(8.5f);
+                    t.Span(HorarioBrasilia.Agora.ToString("dd/MM/yyyy HH:mm")).FontSize(8.5f);
+                    t.Span(" · Página ").FontSize(8.5f);
+                    t.CurrentPageNumber().FontSize(8.5f);
+                    t.Span(" de ").FontSize(8.5f);
+                    t.TotalPages().FontSize(8.5f);
                 });
             });
         });
@@ -143,6 +156,14 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
         _ => resultado.ToString(),
     };
 
+    private static string DescreverMetodoAssinatura(MetodoAutenticacaoAssinatura metodo) => metodo switch
+    {
+        MetodoAutenticacaoAssinatura.Biometria => "Biometria (digital)",
+        MetodoAutenticacaoAssinatura.ReconhecimentoFacial => "Reconhecimento facial",
+        MetodoAutenticacaoAssinatura.SessaoLogada => "Sessão autenticada",
+        _ => DescricaoMetodoAssinatura.Texto(metodo),
+    };
+
     private static void DesenharAssinaturaCofre(IContainer container, AssinaturaPerfilDto assinatura, byte[]? referencia)
     {
         container.PaddingBottom(6).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingBottom(5).Row(row =>
@@ -153,10 +174,10 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
                 coluna.Item().Text(t =>
                 {
                     t.Span("• ").FontSize(9);
-                    t.Span(assinatura.EntidadeTipo).SemiBold().FontSize(9);
+                    t.Span(TipoDocumentoAssinatura.Rotulo(assinatura.EntidadeTipo)).SemiBold().FontSize(9);
                     t.Span($" — {HorarioBrasilia.De(assinatura.AssinadoEm):dd/MM/yyyy HH:mm} - Horário de Brasília").FontSize(9);
                 });
-                coluna.Item().Text($"Método: {assinatura.Metodo} · IP {assinatura.IpAddress ?? "não registrado"}").FontSize(8);
+                coluna.Item().Text($"Método: {DescreverMetodoAssinatura(assinatura.Metodo)} · IP {assinatura.IpAddress ?? "não registrado"}").FontSize(8);
 
                 if (!string.IsNullOrWhiteSpace(assinatura.FotoEvidenciaHash))
                     coluna.Item().Text($"SHA-256 da foto: {assinatura.FotoEvidenciaHash}").FontSize(7).FontColor(Colors.Grey.Darken1);
@@ -166,23 +187,28 @@ public class RelatorioFiscalizacaoPdfService : IRelatorioFiscalizacaoPdfService
             {
                 // 05/11: comparação lado a lado, como na Ficha de EPI — biometria cadastrada (vigente na data)
                 // × captura da assinatura. Facial em 3×4 em pé (antigas deitadas cortadas no centro só na
-                // exibição); digital em pé como veio do leitor.
+                // exibição); digital em pé como veio do leitor. Marca d'água "CONFIDENCIAL" + data/hora (LGPD),
+                // idêntica ao CertificadoAssinaturasPdf.
                 var digital = assinatura.Metodo == MetodoAutenticacaoAssinatura.Biometria;
+                var dataHora = HorarioBrasilia.De(assinatura.AssinadoEm).ToString("dd/MM/yyyy HH:mm");
                 row.ConstantItem(70).PaddingRight(6).Element(c => FotoComparacao(c, referencia,
-                    digital ? "Digital cadastrada" : "Facial cadastrada", cortar34: !digital));
+                    digital ? "Digital cadastrada" : "Facial cadastrada", dataHora, cortar34: !digital));
                 row.ConstantItem(64).Element(c => FotoComparacao(c, assinatura.FotoEvidenciaConteudo,
-                    digital ? "Digital da assinatura" : "Facial da assinatura", cortar34: !digital));
+                    digital ? "Digital da assinatura" : "Facial da assinatura", dataHora, cortar34: !digital));
             }
         });
     }
 
-    private static void FotoComparacao(IContainer container, byte[]? foto, string legenda, bool cortar34)
+    private static void FotoComparacao(IContainer container, byte[]? foto, string legenda, string dataHora, bool cortar34)
     {
         container.Column(c =>
         {
             var caixa = c.Item().Width(64).Height(85).Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(2);
-            if (foto is { Length: > 0 })
-                caixa.Image(cortar34 ? FotoRetrato34.Cortar(foto) : foto).FitArea();
+            if (foto is { Length: > 0 } && AAHBRANT.SST.Infrastructure.Imagens.ImagemSegura.EhValida(foto))
+            {
+                var img = cortar34 ? FotoRetrato34.Cortar(foto) : foto;
+                caixa.Element(x => CertificadoAssinaturasPdf.ImagemComMarca(x, img, dataHora, compacto: true));
+            }
             else
                 caixa.AlignCenter().AlignMiddle().Text("Cadastro não localizado").FontSize(6.5f).FontColor(Colors.Grey.Darken1).AlignCenter();
             c.Item().Width(64).AlignCenter().Text(legenda).FontSize(7).FontColor(Colors.Grey.Darken1);

@@ -20,6 +20,7 @@ import {
 import { Add24Regular, Delete24Regular, Edit24Regular } from '@fluentui/react-icons';
 import { api, type CatalogoTemaDds } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 // Catálogo de temas livres de DDS (ex.: "Outubro Amarelo") — administração própria, separada da
 // tela de conduzir o DDS do dia (DdsSemanalDetalhePage só lista/seleciona um tema já cadastrado).
@@ -39,6 +40,7 @@ export function CatalogoTemasDdsPage() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -200,7 +202,9 @@ export function CatalogoTemasDdsPage() {
           acoesLinha={(t) => (
             <>
               <BotaoAcao tom="ver" icon={<Edit24Regular />} onClick={() => iniciarEdicao(t)} aria-label="Editar" />
-              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(t.id)} aria-label="Excluir" />
+              {souAdministrador && (
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(t.id)} aria-label="Excluir" />
+              )}
             </>
           )}
         />

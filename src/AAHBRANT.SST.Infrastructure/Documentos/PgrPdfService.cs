@@ -133,21 +133,29 @@ public class PgrPdfService : IPgrPdfService
 
                 // 1. Informações gerais
                 Titulo(c, Secoes[0]);
+                var cidadeUf = string.Join(" / ", new[] { d.ObraCidade, d.ObraUf }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                var cep = !string.IsNullOrWhiteSpace(d.ObraCep) ? d.ObraCep : comp.Cep;
+                var cnae = !string.IsNullOrWhiteSpace(d.ObraCnae) ? d.ObraCnae : comp.Cnae;
+                var grauRisco = d.ObraGrauRisco ?? comp.GrauRisco;
+                var registroResponsavel = !string.IsNullOrWhiteSpace(comp.Engenheiro?.Registro)
+                    ? comp.Engenheiro!.Registro
+                    : comp.ResponsavelTecnicoRegistro;
                 c.Item().Table(t =>
                 {
                     t.ColumnsDefinition(cd => { cd.RelativeColumn(); cd.RelativeColumn(); });
                     Campo(t, "Empresa / unidade", d.ObraNome);
                     Campo(t, "CNPJ", d.ObraCnpj);
                     Campo(t, "Endereço", d.ObraEndereco);
-                    Campo(t, "CEP", comp.Cep);
-                    Campo(t, "CNAE", comp.Cnae);
-                    Campo(t, "Grau de risco (NR-04)", comp.GrauRisco?.ToString());
+                    Campo(t, "Cidade / UF", cidadeUf.Length > 0 ? cidadeUf : null);
+                    Campo(t, "CEP", cep);
+                    Campo(t, "CNAE", cnae);
+                    Campo(t, "Grau de risco (NR-04)", grauRisco?.ToString());
                     Campo(t, "Revisão atual", (d.Revisoes is { Count: > 0 } revisoes ? revisoes.Max(r => r.Numero) : 0).ToString("00"));
                     Campo(t, "Início da vigência", d.DataElaboracao.ToString("dd/MM/yyyy"));
                     Campo(t, "Revisão prevista", d.DataProximaRevisao?.ToString("dd/MM/yyyy"));
                     Campo(t, "Término da vigência", d.Estrutura.DataTermino?.ToString("dd/MM/yyyy"));
-                    Campo(t, "Responsável técnico", d.AprovadoPorNome);
-                    Campo(t, "Registro profissional (CREA)", comp.ResponsavelTecnicoRegistro);
+                    Campo(t, "Responsável técnico", d.AprovadoPorNome ?? comp.Engenheiro?.Nome);
+                    Campo(t, "Registro profissional (CREA)", registroResponsavel);
                     Campo(t, "Elaborado por", d.ElaboradoPorNome);
                 });
                 Subtitulo(c, "Controle de revisões");

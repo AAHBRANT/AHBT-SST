@@ -80,39 +80,17 @@ export function TreinamentosPage({ mostrarTitulo = true }: { mostrarTitulo?: boo
       {aba === 'obrigatorios' && <CursosObrigatoriosObraTab />}
       {aba === 'configuracoes' && souAdmin && (
         <>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '4px 0 16px' }} role="tablist" aria-label="Configurações de treinamento">
-            {(
-              [
-                ['cursos', 'Catálogo de Cursos'],
-                ['regras', 'Regras por NR'],
-                ['matriz', 'Matriz por Função (obra sem PGR)'],
-              ] as [AbaConfiguracao, string][]
-            ).map(([valor, rotulo]) => {
-              const ativo = config === valor;
-              return (
-                <button
-                  key={valor}
-                  type="button"
-                  role="tab"
-                  aria-selected={ativo}
-                  onClick={() => setConfig(valor)}
-                  style={{
-                    padding: '6px 16px',
-                    borderRadius: 999,
-                    border: `1px solid ${ativo ? '#670000' : '#d1d5db'}`,
-                    background: ativo ? '#670000' : '#fff',
-                    color: ativo ? '#fff' : '#374151',
-                    fontWeight: 600,
-                    fontSize: 13,
-                    cursor: 'pointer',
-                    font: 'inherit',
-                  }}
-                >
-                  {rotulo}
-                </button>
-              );
-            })}
-          </div>
+          <Abas
+            nivel="interno"
+            valor={config}
+            aoMudar={setConfig}
+            aria-label="Configurações de treinamento"
+            abas={[
+              { valor: 'cursos', rotulo: 'Catálogo de Cursos' },
+              { valor: 'regras', rotulo: 'Regras por NR' },
+              { valor: 'matriz', rotulo: 'Matriz por Função (obra sem PGR)' },
+            ]}
+          />
           {config === 'cursos' && <CursosTreinamentoTab />}
           {config === 'regras' && <RegrasCursoObrigatorioTab />}
           {config === 'matriz' && <MatrizTreinamentoTab />}

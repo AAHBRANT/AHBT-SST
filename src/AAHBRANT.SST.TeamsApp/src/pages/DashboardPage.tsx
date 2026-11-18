@@ -152,33 +152,6 @@ export function DashboardPage() {
     const obraId = obraSelecionadaId || undefined;
     let cancelado = false;
 
-    api.atividades
-      .listar(obraId)
-      .then((resp) => {
-        if (!cancelado) setAtividades(resp);
-      })
-      .catch(() => {
-        if (!cancelado) setAtividades([]);
-      });
-
-    api.trabalhadores
-      .liberacao(obraId)
-      .then((resp) => {
-        if (!cancelado) setLiberacao(resp);
-      })
-      .catch(() => {
-        if (!cancelado) setLiberacao(null);
-      });
-
-    api.cursosTreinamento
-      .aptidao(obraId)
-      .then((resp) => {
-        if (!cancelado) setAptidaoCursos(resp);
-      })
-      .catch(() => {
-        if (!cancelado) setAptidaoCursos([]);
-      });
-
     Promise.all([
       api.obras.listar(),
       api.trabalhadores.listar(obraId),
@@ -191,6 +164,9 @@ export function DashboardPage() {
       api.registrosHht.listar({ obraId }),
       api.dds.listar(obraId),
       api.inspecoes.listar(obraId),
+      api.atividades.listar(obraId).catch(() => [] as Atividade[]),
+      api.trabalhadores.liberacao(obraId).catch(() => null),
+      api.cursosTreinamento.aptidao(obraId).catch(() => [] as AptidaoCurso[]),
     ])
       .then(
         ([
@@ -205,6 +181,9 @@ export function DashboardPage() {
           registrosHhtResp,
           ddsResp,
           inspecoesResp,
+          atividadesResp,
+          liberacaoResp,
+          aptidaoResp,
         ]) => {
           if (cancelado) return;
           setObras(obrasResp);
@@ -218,6 +197,9 @@ export function DashboardPage() {
           setRegistrosHht(registrosHhtResp);
           setDds(ddsResp);
           setInspecoes(inspecoesResp);
+          setAtividades(atividadesResp);
+          setLiberacao(liberacaoResp);
+          setAptidaoCursos(aptidaoResp);
           setAtualizadoEm(Date.now());
           setAgora(Date.now());
         },
@@ -235,18 +217,19 @@ export function DashboardPage() {
     return obras.find((o) => o.id === id)?.nome ?? id;
   }
 
-  const hojeISO = new Date().toISOString().slice(0, 10);
-  // "Hoje" no fuso do usuário (DDS de hoje, EPIs entregues hoje): à noite, o toISOString já está no
-  // dia seguinte em UTC e zeraria os dois indicadores.
+  // "Hoje" sempre no fuso local do usuário: à noite (após 21h em Brasília), toISOString() já avança
+  // para o dia seguinte em UTC e distorceria DDS, entregas de EPI, validade de ASO e filtro de período.
   const hojeLocal = new Date().toLocaleDateString('sv-SE');
+  const hojeISO = hojeLocal;
   const inicioPeriodoISO = useMemo(() => {
     if (periodoSelecionado === 'tudo') return null;
-    const data = new Date(hojeISO);
+    const [ano, mes, dia] = hojeLocal.split('-').map(Number);
+    const data = new Date(ano, mes - 1, dia);
     if (periodoSelecionado === 'semana') data.setDate(data.getDate() - 7);
     if (periodoSelecionado === 'mes') data.setMonth(data.getMonth() - 1);
     if (periodoSelecionado === 'ano') data.setFullYear(data.getFullYear() - 1);
-    return data.toISOString().slice(0, 10);
-  }, [hojeISO, periodoSelecionado]);
+    return data.toLocaleDateString('sv-SE');
+  }, [hojeLocal, periodoSelecionado]);
   const noPeriodoSelecionado = (dataISO?: string | null) => !!dataISO && (!inicioPeriodoISO || dataISO >= inicioPeriodoISO);
   const obraSelecionada = obras.find((obra) => obra.id === obraSelecionadaId);
   const escopoIndicadores = obraSelecionada?.nome ?? 'todas as obras';
@@ -346,6 +329,7 @@ export function DashboardPage() {
       { chave: 'condicaoInsegura', tipo: TipoOcorrencia.CondicaoInsegura, rotulo: 'Condições inseguras', cor: paleta.info },
       { chave: 'atoInseguro', tipo: TipoOcorrencia.AtoInseguro, rotulo: 'Atos inseguros', cor: paleta.ok },
       { chave: 'doencaOcupacional', tipo: TipoOcorrencia.DoencaOcupacional, rotulo: 'Doenças ocupacionais', cor: paleta.neutro },
+      { chave: 'pessoaExterna', tipo: TipoOcorrencia.PessoaExterna, rotulo: 'Pessoas externas', cor: paleta.pessoaExterna },
     ],
     [paleta],
   );
@@ -484,7 +468,9 @@ export function DashboardPage() {
     const asoMaisRecente = asoVigentePorTrabalhador(asos);
     const linhas: ConformidadeObra[] = [];
     for (const obra of obrasAtivas) {
-      const ativos = trabalhadores.filter((t) => t.obraId === obra.id && !t.dataDemissao);
+      const ativos = trabalhadores.filter(
+        (t) => t.obraId === obra.id && !t.dataDemissao && t.vinculo !== TipoVinculo.PrestadorServico,
+      );
       const ids = new Set(ativos.map((t) => t.id));
       const entregas = entregasEpi.filter((e) => ids.has(e.trabalhadorId) && !e.dataDevolucao);
       const epi = pct(entregas.filter((e) => !(e.dataValidade && e.dataValidade < hojeISO)).length, entregas.length);
@@ -523,7 +509,7 @@ export function DashboardPage() {
     TipoOcorrencia.AtoInseguro,
     TipoOcorrencia.CondicaoInsegura,
   ].map(nivel);
-  const foraDaPiramide: NivelPiramide[] = [nivel(TipoOcorrencia.DoencaOcupacional)];
+  const foraDaPiramide: NivelPiramide[] = [nivel(TipoOcorrencia.DoencaOcupacional), nivel(TipoOcorrencia.PessoaExterna)];
 
   // ---------- Agenda de renovações (alertas em aberto, antes "Próximos vencimentos") ----------
 
@@ -542,11 +528,16 @@ export function DashboardPage() {
     switch (alerta.entidadeOrigemTipo) {
       case 'NaoConformidade':
         return `/nao-conformidades/${id}`;
+      case 'AcidenteObito':
+      case 'AcidenteLaudo':
+        return `/acidentes/${id}`;
       case 'Pcmso':
         return `/operacao/saude-ocupacional/pcmso/${id}`;
       case 'PgrRevisao':
       case 'PgrTermino':
         return `/prevencao/pgr/${id}`;
+      case 'Contrato':
+        return `/terceirizados/contratos/${id}`;
       case 'EntregaEpi':
         return alerta.trabalhadorId ? `/pessoas/${alerta.trabalhadorId}` : '/operacao?secao=epi&aba=entregas';
       default:
@@ -784,8 +775,8 @@ export function DashboardPage() {
           className={`${dashEstilos.cardAcionavel} ${dashEstilos.coluna4Larga}`}
           role="button"
           tabIndex={0}
-          onClick={() => navigate('/operacao/saude-ocupacional?aba=aso')}
-          onKeyDown={(evento) => abrirComTeclado(evento, '/operacao/saude-ocupacional?aba=aso')}
+          onClick={() => navigate('/gestao-sst?secao=pcmso&aba=aso')}
+          onKeyDown={(evento) => abrirComTeclado(evento, '/gestao-sst?secao=pcmso&aba=aso')}
           aria-label="Abrir os ASOs"
         >
           <AsoRoscaCard fatias={fatiasAso} ordemNaRosca={ordemAsoNaRosca} />

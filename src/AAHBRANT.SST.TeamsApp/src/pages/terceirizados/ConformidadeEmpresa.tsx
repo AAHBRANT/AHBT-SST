@@ -33,6 +33,7 @@ import {
   type SituacaoItemConformidade,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 // Perfil de adequação da empresa terceirizada (especificação 21/10/2026, etapa 7): rosca com o
@@ -55,8 +56,8 @@ const tomFaixa: Record<FaixaConformidade, Tom> = {
 
 const rotuloSituacao: Record<SituacaoItemConformidade, string> = {
   ok: 'Em dia',
-  vence: 'Vence em breve',
-  vencido: 'Vencido',
+  vence: 'A renovar',
+  vencido: 'Renovação pendente',
   pendente: 'Pendente',
 };
 
@@ -137,6 +138,7 @@ interface EnvioDocumento {
 
 export function CardConformidade({ empresaId, podeEditar }: { empresaId: string; podeEditar: boolean }) {
   const navigate = useNavigate();
+  const souAdmin = useSouAdministrador();
   const sucessoToast = useSucessoToast();
   const { confirmar, dialogElement } = useConfirmar();
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
@@ -340,7 +342,7 @@ export function CardConformidade({ empresaId, podeEditar }: { empresaId: string;
                         aria-label={item.documentoId ? `Substituir ${item.titulo}` : `Enviar ${item.titulo}`}
                       />
                     )}
-                    {item.nivel === 'empresa' && item.documentoId && podeEditar && (
+                    {item.nivel === 'empresa' && item.documentoId && podeEditar && souAdmin && (
                       <BotaoAcao
                         tom="excluir"
                         icon={<Delete24Regular />}

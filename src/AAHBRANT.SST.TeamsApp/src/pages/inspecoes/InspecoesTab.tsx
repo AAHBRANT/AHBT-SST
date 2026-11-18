@@ -22,7 +22,7 @@ import {
 } from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
-import { hojeIso } from '../../lib/datas';
+import { dataBr, hojeIso } from '../../lib/datas';
 import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { assinarMudancasSync } from '../../lib/offline/syncEngine';
 import { criarInspecaoCampo, mesclarInspecoesLocais, obterPreparacaoInspecoes, prepararInspecoesOffline, type InspecaoCampo } from '../../lib/offline/inspecoes';
@@ -163,7 +163,7 @@ export function InspecoesTab() {
       rotulo: 'Checklist',
       render: (i) => `${i.checklistModeloNome} (v${i.checklistModeloVersao})`,
     },
-    { chave: 'data', rotulo: 'Data', render: (i) => i.data?.slice(0, 10) ?? '' },
+    { chave: 'data', rotulo: 'Data', render: (i) => dataBr(i.data) },
     { chave: 'responsavelUsuarioNome', rotulo: 'Responsável' },
     {
       chave: 'progresso',

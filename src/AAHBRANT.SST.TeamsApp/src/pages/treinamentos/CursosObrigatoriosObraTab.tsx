@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { escolherObraInicial, useObraLembrada } from '../../hooks/useObraLembrada';
+import { useUsuarioLogado } from '../../lib/UsuarioLogadoContext';
+import { podeDecidirSugestoesNaObra } from '../../lib/decisaoSugestoes';
 import {
   Button,
   Card,
@@ -33,8 +35,8 @@ import {
 } from '../../lib/api';
 
 // Cursos obrigatórios por função a partir do PGR (21/10, desenho aprovado pelo usuário): o sistema
-// leu o PGR da obra e sugeriu os cursos pelas NRs; o Engenheiro de Segurança aprova ou recusa (com
-// justificativa). Só o aprovado entra na aptidão do Início. Regerar nunca apaga — só acrescenta.
+// leu o PGR da obra e sugeriu os cursos pelas NRs; o técnico, o engenheiro de segurança ou o administrador da obra aprova ou recusa (com
+// justificativa; desde 17/11/2026, não só o engenheiro; técnico e administrador também). A coluna de decisão mostra quem decidiu pelo nome. Só o aprovado entra na aptidão do Início. Regerar nunca apaga — só acrescenta.
 const statusInfo: Record<number, { rotulo: string; tom: Tom }> = {
   [StatusCursoObrigatorio.Sugerido]: { rotulo: 'Sugerido', tom: 'atencao' },
   [StatusCursoObrigatorio.Aprovado]: { rotulo: 'Aprovado', tom: 'ok' },
@@ -48,6 +50,9 @@ function formatarData(iso?: string | null) {
 export function CursosObrigatoriosObraTab() {
   const [obras, setObras] = useState<Obra[]>([]);
   const [obraId, setObraId] = useObraLembrada();
+  const { usuario } = useUsuarioLogado();
+  // O servidor decide de verdade (403/404); aqui só não oferecemos o que será recusado.
+  const podeDecidir = podeDecidirSugestoesNaObra(usuario, obraId);
   const [dados, setDados] = useState<CursosObrigatoriosObra | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [ocupado, setOcupado] = useState(false);
@@ -222,7 +227,7 @@ export function CursosObrigatoriosObraTab() {
           </Field>
         }
         acoes={
-          obraId ? (
+          obraId && podeDecidir ? (
             <>
               <Button appearance="primary" onClick={aprovarTodas} disabled={ocupado || sugeridos === 0}>
                 Aprovar todas as sugestões
@@ -262,15 +267,15 @@ export function CursosObrigatoriosObraTab() {
                   : 'A obra ainda não tem PGR com GHE e funções. Gere o PGR pela EAP primeiro.',
               }}
               acoesLinha={(i) =>
-                i.status === StatusCursoObrigatorio.Sugerido ? (
+                i.status === StatusCursoObrigatorio.Sugerido ? (!podeDecidir ? null : (
                   <div style={{ display: 'flex', gap: 8 }}>
                     <Button size="small" appearance="primary" onClick={() => aprovar(i)} disabled={ocupado}>Aprovar</Button>
                     <Button size="small" onClick={() => { setJustificativa(''); setRecusando(i); }} disabled={ocupado}>Recusar</Button>
                   </div>
-                ) : (
+                )) : (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <Text size={200}>{[i.decididoPorNome, formatarData(i.decididoEmUtc)].filter(Boolean).join(' · ')}</Text>
-                    {i.status === StatusCursoObrigatorio.Recusado && (
+                    {podeDecidir && i.status === StatusCursoObrigatorio.Recusado && (
                       <Button size="small" onClick={() => aprovar(i)} disabled={ocupado}>Aprovar</Button>
                     )}
                   </div>
@@ -280,7 +285,11 @@ export function CursosObrigatoriosObraTab() {
           </Card>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginTop: 12 }}>
             <Text size={200}>Curso adicionado à mão continua valendo — a regeração nunca apaga nada, só sugere.</Text>
-            <Button appearance="subtle" onClick={abrirAdicionar} disabled={ocupado}>+ Adicionar curso manualmente</Button>
+            {podeDecidir ? (
+              <Button appearance="subtle" onClick={abrirAdicionar} disabled={ocupado}>+ Adicionar curso manualmente</Button>
+            ) : (
+              <Text size={200}>Só o técnico, o engenheiro de segurança ou o administrador desta obra decide os cursos.</Text>
+            )}
           </div>
         </>
       )}

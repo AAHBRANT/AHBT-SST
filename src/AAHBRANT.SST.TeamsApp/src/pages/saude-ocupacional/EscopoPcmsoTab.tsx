@@ -180,7 +180,10 @@ export function EscopoPcmsoTab() {
               {[
                 ['Obra', escopo.obraNome],
                 ['CNPJ', escopo.cnpj],
+                ['CNAE', escopo.cnae],
+                ['Grau de risco (NR-04)', escopo.grauRisco != null ? String(escopo.grauRisco) : null],
                 ['Endereço', escopo.endereco],
+                ['CEP', escopo.cep],
                 ['Período', [data(escopo.dataInicio), data(escopo.dataPrevisaoTermino)].filter(Boolean).join(' a ') || null],
                 ['Trabalhadores ativos', String(escopo.trabalhadoresAtivos)],
               ].map(([rotulo, valor]) => (

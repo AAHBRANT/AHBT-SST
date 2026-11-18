@@ -33,7 +33,10 @@ export interface Obra {
   endereco?: string | null;
   cidade?: string | null;
   uf?: string | null;
+  cep?: string | null;
   cnpj?: string | null;
+  cnae?: string | null;
+  grauRisco?: number | null;
   temLogo: boolean;
   // Flags de MetodoAutenticacaoObra (ver MetodoAssinaturaObra abaixo).
   metodosAssinatura: number;
@@ -603,10 +606,19 @@ export interface UsuarioLogado {
   // Administrador é o único que pode excluir registro operacional (regra fixa no servidor, não
   // configurável pela matriz de permissões — ver PoliticasAutorizacao no backend).
   ehAdministrador: boolean;
-  // Só o Engenheiro de Segurança confirma atividades por função: global ou nas obras da lista.
+  // Perfil de Engenheiro de Segurança (aprovar/devolver o PGR continua só dele): global ou nas obras da lista.
   ehEngenheiroSeguranca?: boolean;
   engenheiroSegurancaGlobal?: boolean;
   obrasEngenheiroSeguranca?: string[];
+  // Técnico, Engenheiro de Segurança OU Administrador aprovam cursos obrigatórios e atividades por função (17/11/2026):
+  // global ou nas obras da lista. Ausente = servidor antigo (a tela cai na regra do engenheiro).
+  podeDecidirSugestoes?: boolean;
+  podeDecidirSugestoesGlobal?: boolean;
+  obrasPodeDecidirSugestoes?: string[];
+  trabalhadorId?: string | null;
+  ehInstrutor?: boolean;
+  registroInstrutor?: string | null;
+  formacaoInstrutor?: string | null;
   permissoes: string[];
   // Onde cada permissão vale (Responsável x Supervisão, 06/11/2026). global = todas as obras;
   // obras = obras atribuídas. Ausente = servidor antigo ou acesso total.
@@ -649,7 +661,7 @@ export interface PadraoNr {
 // Trabalhadores ativos que precisam do curso (pela matriz de função) e a situação de cada um.
 // "Apto" = treinamento válido hoje = emDia + vencemEm30Dias.
 // Cursos obrigatórios por função a partir do PGR (21/10): por obra, sugeridos pelas regras e
-// aprovados/recusados pelo Engenheiro de Segurança. Só Aprovado conta para a aptidão.
+// aprovados/recusados pelo técnico, engenheiro de segurança ou administrador da obra. Só Aprovado conta para a aptidão.
 export const StatusCursoObrigatorio = { Sugerido: 1, Aprovado: 2, Recusado: 3 } as const;
 export const OrigemCursoObrigatorio = { Pgr: 1, Manual: 2 } as const;
 
@@ -717,6 +729,9 @@ export interface EscopoPcmso {
   obraNome: string;
   cnpj?: string | null;
   endereco?: string | null;
+  cep?: string | null;
+  cnae?: string | null;
+  grauRisco?: number | null;
   dataInicio?: string | null;
   dataPrevisaoTermino?: string | null;
   trabalhadoresAtivos: number;
@@ -899,6 +914,9 @@ export interface PadraoTurmaTreinamento {
   conteudoProgramatico: string | null;
   local: string | null;
   podeEditar: boolean;
+  instrutorTrabalhadorId?: string | null;
+  instrutorNome?: string | null;
+  instrutorRegistro?: string | null;
 }
 
 export interface ParticipanteSessaoTreinamento {
@@ -1551,7 +1569,7 @@ export interface Ghe {
   riscos: GheRisco[];
 }
 
-// Atividades por função na OS (Entrega 4, 10/11/2026): a IA sugere, o Engenheiro de Segurança confirma.
+// Atividades por função na OS (Entrega 4, 10/11/2026): a IA sugere, o técnico, o engenheiro de segurança ou o administrador da obra confirma.
 export type EstadoAtividadeFuncao = 'SemDecisao' | 'Pendente' | 'Validada' | 'Descartada';
 export interface FuncaoMatrizAtividades {
   funcaoId: string; nome: string; descricaoNoPgr?: string | null;
@@ -3404,6 +3422,26 @@ export interface PendenciaOs {
   quemResolve: 'SST' | 'RH';
   destino?: 'pgr' | 'treinamentos' | 'aso' | null;
   destinoId?: string | null;
+  // Pendências agrupadas por tipo (17/11/2026): atividades afetadas, para abrir direto ou resolver em lote.
+  atividadeIds?: string[] | null;
+}
+
+export interface ProcedimentosAtividade {
+  atividadeId: string;
+  atividadeNome: string;
+  documentoIds: string[];
+}
+
+// origem: 1 = medida de prevenção por fase, 2 = item da OS (interromper / não executar sem / autorização).
+export interface SugestaoPendenteOs {
+  id: string;
+  origem: 1 | 2;
+  atividadeId: string;
+  atividadeNome: string;
+  perigo?: string | null;
+  categoria: string;
+  texto: string;
+  requisito?: string | null;
 }
 
 export interface RiscoOs {
@@ -3455,7 +3493,7 @@ export interface OrdemServicoEmitida {
 export interface MinutaOrdemServico {
   trabalhadorId: string;
   podeEmitir: boolean;
-  obra: { id: string; nome: string; cliente?: string | null; cnpj?: string | null; endereco?: string | null };
+  obra: { id: string; nome: string; cliente?: string | null; cnpj?: string | null; endereco?: string | null; cep?: string | null; cnae?: string | null; grauRisco?: number | null };
   trabalhador: { nome: string; matricula?: string | null; cpf?: string | null; cpfMascarado: string; funcao: string; cbo?: string | null; dataAdmissao: string };
   pgr?: { id: string; nome: string; dataElaboracao: string; revisao?: number | null } | null;
   ghes: { numero: number; descricaoAtividades?: string | null }[];
@@ -3467,6 +3505,7 @@ export interface MinutaOrdemServico {
   pendencias: PendenciaOs[];
   // false = prévia (função sem confirmação do engenheiro ou decisão parcial). Ausente em servidor antigo.
   atividadesDaFuncaoConfirmadas?: boolean;
+  tecnicoResponsavel?: { nome: string; funcao?: string | null; registro?: string | null } | null;
 }
 
 // Gerador de PGR pela EAP (21/10/2026). Status: 1 Rascunho, 2 Aguardando aprovação, 3 Aprovado, 4 Devolvido.
@@ -3486,6 +3525,8 @@ export interface ExposicaoRisco { criterio: 'Qualitativo' | 'Quantitativo'; perf
 export interface RiscoGerado {
   id: string; tipo: string; perigo: string; danos?: string | null; probabilidade: number; severidade: number;
   base: string[]; medidas: MedidaGerada[]; revisado: boolean; excluido: boolean;
+  // Risco acrescentado à mão pelo técnico (botão "Adicionar risco"); "Gerar de novo" nunca o descarta.
+  incluidoPeloTecnico?: boolean;
   exposicao: ExposicaoRisco;
 }
 export interface AtividadeGerada { codigoEap: string; nome: string; riscosGerados: boolean; riscos: RiscoGerado[]; herdada?: boolean }
@@ -3495,7 +3536,11 @@ export interface FuncaoGerada {
   cbo?: string | null; cboTitulo?: string | null; cboSugeridoPelaIa?: boolean;
 }
 export interface ResultadoBuscaCbo { codigo: string; codigoFormatado: string; titulo: string; sinonimo?: string | null }
-export interface GheGerado { numero: number; nome: string; ambiente?: string | null; jornada?: string | null; funcoes: FuncaoGerada[]; atividades: AtividadeGerada[] }
+export interface GheGerado {
+  numero: number; nome: string; ambiente?: string | null; jornada?: string | null; funcoes: FuncaoGerada[]; atividades: AtividadeGerada[];
+  // Chave das funções e atividades do GHE quando o técnico respondeu "Não se aplica" ao aviso de trabalho em altura.
+  alturaNaoSeAplicaChave?: string | null;
+}
 export interface AcaoPlanoGerada {
   descricao: string; responsavelUsuarioId?: string | null; responsavelNome?: string | null; inicio?: string | null; prazo?: string | null;
   // Acompanhamento e aferição (NR-01, item 1.5.5.2). acompanhamentoSugeridoPelaIa fica verdadeiro até alguém conferir.
@@ -3560,7 +3605,7 @@ export interface GeracaoPgrEap {
   id: string; obraId: string; obraNome: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null;
   elaboradoPorNome?: string | null; nomeArquivoEap: string; status: 1 | 2 | 3 | 4; passo: number; motivoDevolucao?: string | null;
   aprovadoPorNome?: string | null; aprovadoEmUtc?: string | null; pgrId?: string | null; estrutura: EstruturaGeracaoPgr;
-  pendenciasAprovacao: string[]; funcoesCadastradas: { id: string; nome: string }[]; maxProbabilidade: number; maxSeveridade: number;
+  pendenciasAprovacao: string[]; faltandoCadastroObra?: string[]; funcoesCadastradas: { id: string; nome: string }[]; maxProbabilidade: number; maxSeveridade: number;
   // Células da matriz vigente: nível (NivelRisco, 1 a 5) de cada combinação de probabilidade e severidade.
   matriz?: { probabilidade: number; severidade: number; nivel: number }[];
 }
@@ -4166,6 +4211,9 @@ export const TipoOcorrencia = {
   CondicaoInsegura: 4,
   AtoInseguro: 5,
   DoencaOcupacional: 6,
+  // Vítima que não é funcionária (terceiro, visitante, transeunte). Só existe na criação: não entra no
+  // CAT nem nos indicadores de frequência/gravidade da NBR 14280.
+  PessoaExterna: 7,
 } as const;
 
 export const tipoOcorrenciaLabel: Record<number, string> = {
@@ -4175,7 +4223,22 @@ export const tipoOcorrenciaLabel: Record<number, string> = {
   4: 'Condição insegura',
   5: 'Ato inseguro',
   6: 'Doença ocupacional',
+  7: 'Ocorrência com pessoa externa',
 };
+
+// Vínculo da pessoa externa com a obra, resultado para ela e papel do funcionário na ocorrência.
+export const VinculoPessoaExterna = { Terceiro: 1, Visitante: 2, Transeunte: 3, Outro: 4 } as const;
+export const vinculoPessoaExternaLabel: Record<number, string> = {
+  1: 'Terceiro / prestador',
+  2: 'Visitante',
+  3: 'Transeunte / público externo',
+  4: 'Outro',
+};
+export const ResultadoPessoaExterna = { SemLesao: 1, Lesao: 2, Obito: 3 } as const;
+export const resultadoPessoaExternaLabel: Record<number, string> = { 1: 'Sem lesão', 2: 'Lesão', 3: 'Óbito' };
+export const PapelEnvolvido = { Envolvido: 1, Testemunha: 2 } as const;
+
+export const MAXIMO_PESSOAS_EXTERNAS = 20;
 
 // Seção 28 da Base de Conhecimento — vocabulário literal de metodologias de investigação.
 export const MetodologiaInvestigacao = {
@@ -4200,12 +4263,15 @@ export const StatusAcidente = {
   Registrado: 1,
   EmInvestigacao: 2,
   Concluido: 3,
+  // Investigação pausada à espera do laudo oficial (ex.: óbito). Volta para "Em investigação" ao retomar.
+  AguardandoLaudo: 4,
 } as const;
 
 export const statusAcidenteLabel: Record<number, string> = {
   1: 'Registrado',
   2: 'Em investigação',
   3: 'Concluído',
+  4: 'Aguardando laudo',
 };
 
 // Classificação de gravidade do acidente, usada para calcular Dias Debitados na Taxa de
@@ -4227,6 +4293,56 @@ export const gravidadeAcidenteLabel: Record<number, string> = {
   5: 'Óbito',
 };
 
+// CPF e telefone chegam sempre mascarados; o valor em claro só por api.acidentes.obterDadosPessoaisPessoaExterna.
+export interface PessoaExternaAcidente {
+  id: string;
+  nome: string;
+  vinculo: number;
+  empresa?: string | null;
+  cpfMascarado?: string | null;
+  telefoneMascarado?: string | null;
+  idade?: number | null;
+  lesao?: string | null;
+  atendimento?: string | null;
+  resultado: number;
+}
+
+export interface FuncionarioNaOcorrencia {
+  trabalhadorId: string;
+  nome: string;
+  papel?: number;
+}
+
+export interface ProvidenciaObito {
+  codigo: string;
+  descricao: string;
+  concluida: boolean;
+  concluidaEm?: string | null;
+  observacao?: string | null;
+}
+
+// Pessoa externa enviada no registro/atualização. `id` preenchido atualiza a linha; vazio cria. cpf/telefone:
+// ausente ou valor mascarado = mantém o gravado; "" = apaga; dígitos novos = substitui.
+export interface PessoaExternaPayload {
+  id?: string | null;
+  nome: string;
+  vinculo: number;
+  empresa?: string | null;
+  cpf?: string | null;
+  telefone?: string | null;
+  idade?: number | null;
+  lesao?: string | null;
+  atendimento?: string | null;
+  resultado: number;
+}
+
+export interface DadosPessoaisPessoaExterna {
+  id: string;
+  nome: string;
+  cpf?: string | null;
+  telefone?: string | null;
+}
+
 export interface Acidente {
   id: string;
   tipo: number;
@@ -4234,7 +4350,17 @@ export interface Acidente {
   obraNome?: string | null;
   trabalhadorId?: string | null;
   trabalhadorNome?: string | null;
-  envolvidos: { trabalhadorId: string; nome: string }[];
+  // Só funcionários com papel Envolvido; quem presenciou vem em `testemunhas`.
+  envolvidos: FuncionarioNaOcorrencia[];
+  testemunhas?: FuncionarioNaOcorrencia[];
+  pessoasExternas?: PessoaExternaAcidente[];
+  // Só no detalhe.
+  providenciasObito?: ProvidenciaObito[];
+  conclusaoInvestigacao?: string | null;
+  laudoObservacao?: string | null;
+  aguardandoLaudoDesde?: string | null;
+  // Calculado no servidor com a regra real das 3 fotos. Ausente = false (fotos opcionais).
+  exigeTresFotos?: boolean;
   atividadeId?: string | null;
   atividadeNome?: string | null;
   local: string;
@@ -4284,6 +4410,14 @@ export interface RelatoOcorrenciaSugestao {
   trabalhadoresIds: string[];
   perguntas: PerguntaRelatoOcorrencia[];
   avisos: string[];
+  // Pessoas citadas no relato que não são funcionárias. Ausente em servidor antigo: tratar como lista vazia.
+  pessoasExternasSugeridas?: PessoaExternaSugerida[];
+}
+
+export interface PessoaExternaSugerida {
+  nome: string;
+  vinculo: number;
+  trecho?: string | null;
 }
 
 export interface RelatoOcorrenciaResposta {
@@ -4396,6 +4530,10 @@ export interface NovoAcidente {
   trabalhadorId?: string | null;
   // Funcionários envolvidos; o primeiro vira o principal (trabalhadorId) no backend.
   trabalhadoresIds?: string[];
+  // Pessoas que não são funcionárias. Na atualização, omitir mantém as gravadas; lista (mesmo vazia) substitui.
+  pessoasExternas?: PessoaExternaPayload[];
+  // Funcionários que presenciaram (papel Testemunha). Omitir mantém as gravadas.
+  testemunhas?: string[];
   atividadeId?: string | null;
   local: string;
   data: string;
@@ -4564,6 +4702,9 @@ export const tipoAlertaLabel: Record<number, string> = {
   34: 'EPI abaixo do mínimo',
   35: 'Documento de terceirizado vencendo',
   36: 'Documento de terceirizado vencido',
+  38: 'Óbito: providências pendentes',
+  39: 'Ocorrência aguardando laudo',
+  40: 'Troca de função sem ASO de mudança de risco',
 };
 
 export const SeveridadeAlerta = {
@@ -4606,6 +4747,8 @@ export const categoriaAlertaLabel: Record<string, string> = {
   AtivoSst: 'Ativos (Extintores/Equipamentos)',
   NaoConformidade: 'Ocorrências de inspeção',
   AcaoPlano: 'Ações do plano',
+  AcidenteObito: 'Ocorrências (óbito)',
+  AcidenteLaudo: 'Ocorrências (laudo)',
 };
 
 export function categoriaAlertaRotulo(entidadeOrigemTipo: string): string {
@@ -4778,6 +4921,10 @@ export const TipoModuloAlerta = {
   Pcmso: 15,
   // Documentos da empresa terceirizada (DocumentoEmpresaTerceirizadaAlertaProvider).
   DocumentoTerceirizado: 16,
+  // Ocorrências: providências de óbito e laudo em espera (AcidenteAlertaProvider).
+  Acidente: 17,
+  // Troca de função sem ASO de mudança de risco (TrocaFuncaoSemAsoAlertaProvider).
+  TrocaFuncao: 18,
 } as const;
 
 export const moduloAlertaLabel: Record<number, string> = {
@@ -4797,6 +4944,8 @@ export const moduloAlertaLabel: Record<number, string> = {
   14: 'Cadastro facial',
   15: 'PCMSO',
   16: 'Documentos de terceirizados',
+  17: 'Ocorrências',
+  18: 'Troca de função (ASO de mudança de risco)',
 };
 
 export interface RegraAlerta {
@@ -4856,6 +5005,8 @@ export interface OcorrenciaPerfil {
   houveAfastamento: boolean;
   diasAfastamento?: number | null;
   status: number;
+  // 2 = Testemunha. Ausente (servidor antigo) = envolvido.
+  papel?: number;
 }
 
 export interface AssinaturaPerfil {
@@ -5954,7 +6105,10 @@ export const api = {
       if (obra.endereco) formData.append('Endereco', obra.endereco);
       if (obra.cidade) formData.append('Cidade', obra.cidade);
       if (obra.uf) formData.append('Uf', obra.uf);
+      if (obra.cep) formData.append('Cep', obra.cep);
       if (obra.cnpj) formData.append('Cnpj', obra.cnpj);
+      if (obra.cnae) formData.append('Cnae', obra.cnae);
+      if (obra.grauRisco != null) formData.append('GrauRisco', String(obra.grauRisco));
       formData.append('Logo', logo);
       const response = await fetch(`${API_BASE_URL}/api/obras`, {
         method: 'POST',
@@ -5970,8 +6124,6 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/obras/${id}`, { method: 'DELETE' }),
     atualizarMetodosAssinatura: (id: string, metodos: { biometria: boolean; reconhecimentoFacial: boolean }) =>
       request<void>(`/api/obras/${id}/metodos-assinatura`, { method: 'PUT', body: JSON.stringify(metodos) }),
-    // CNPJ não entra aqui de propósito — o endpoint de edição (AtualizarObraCommand) não o inclui;
-    // trocar de CNPJ é raro o bastante que ficou de fora da primeira versão desta tela.
     atualizar: (id: string, obra: NovaObra & { dataTerminoReal?: string | null }) =>
       request<void>(`/api/obras/${id}`, {
         method: 'PUT',
@@ -5987,6 +6139,10 @@ export const api = {
           endereco: obra.endereco || null,
           cidade: obra.cidade || null,
           uf: obra.uf || null,
+          cep: obra.cep || null,
+          cnpj: obra.cnpj || null,
+          cnae: obra.cnae || null,
+          grauRisco: obra.grauRisco ?? null,
         }),
       }),
     anexarLogo: async (id: string, arquivo: File) => {
@@ -6799,7 +6955,7 @@ export const api = {
     listar: () => request<MatrizRiscoConfig[]>('/api/matrizrisco'),
     // A matriz que classifica os riscos hoje; undefined enquanto a empresa não cadastrou a primeira.
     vigente: () => request<MatrizRiscoConfig | undefined>('/api/matrizrisco/vigente'),
-    // Cria a primeira matriz ou uma nova versão que substitui a vigente (só o Engenheiro de Segurança).
+    // Cria a primeira matriz ou uma nova versão que substitui a vigente (técnico ou engenheiro de segurança; o servidor recusa os demais, inclusive o administrador).
     novaVersao: (matriz: NovaVersaoMatrizRisco) =>
       request<{ id: string }>('/api/matrizrisco', { method: 'POST', body: JSON.stringify(matriz) }),
   },
@@ -6829,6 +6985,18 @@ export const api = {
       request<void>(`/api/medidas-prevencao/${medidaId}/decidir`, {
         method: 'POST',
         body: JSON.stringify({ aceitar, textoEditado: textoEditado ?? null }),
+      }),
+    // Resolução das pendências da OS em lote (17/11/2026).
+    obterProcedimentosAtividades: (atividadeIds: string[]) =>
+      request<ProcedimentosAtividade[]>(`/api/atividades/procedimentos-os?${atividadeIds.map((id) => `ids=${encodeURIComponent(id)}`).join('&')}`),
+    vincularProcedimentosEmLote: (vinculos: { atividadeId: string; documentoIds: string[] }[]) =>
+      request<void>('/api/atividades/procedimentos-os', { method: 'PUT', body: JSON.stringify({ vinculos }) }),
+    listarSugestoesPendentes: (atividadeIds: string[]) =>
+      request<SugestaoPendenteOs[]>(`/api/atividades/sugestoes-ia-pendentes?${atividadeIds.map((id) => `ids=${encodeURIComponent(id)}`).join('&')}`),
+    decidirSugestoesEmLote: (medidaIds: string[], itemIds: string[], aceitar: boolean) =>
+      request<{ decididas: number }>('/api/sugestoes-ia/decidir-em-lote', {
+        method: 'POST',
+        body: JSON.stringify({ medidaIds, itemIds, aceitar }),
       }),
     importarLote: (obraId: string, itens: RiscoLoteItem[]) =>
       request<ImportarRiscosLoteResultado>('/api/riscos/importar-lote', {
@@ -8050,7 +8218,23 @@ export const api = {
     atualizar: (id: string, acidente: AtualizarAcidentePayload) =>
       request<void>(`/api/acidentes/${id}`, { method: 'PUT', body: JSON.stringify(acidente) }),
     excluir: (id: string) => request<void>(`/api/acidentes/${id}`, { method: 'DELETE' }),
-    avancarStatus: (id: string) => request<void>(`/api/acidentes/${id}/avancar-status`, { method: 'POST' }),
+    // conclusaoInvestigacao: obrigatória ao concluir uma ocorrência sem ação do plano (o servidor decide).
+    avancarStatus: (id: string, conclusaoInvestigacao?: string | null) =>
+      request<void>(`/api/acidentes/${id}/avancar-status`, {
+        method: 'POST',
+        body: JSON.stringify({ conclusaoInvestigacao: conclusaoInvestigacao?.trim() || null }),
+      }),
+    aguardarLaudo: (id: string, observacao?: string | null) =>
+      request<void>(`/api/acidentes/${id}/aguardar-laudo`, {
+        method: 'POST',
+        body: JSON.stringify({ observacao: observacao?.trim() || null }),
+      }),
+    retomarInvestigacao: (id: string) => request<void>(`/api/acidentes/${id}/retomar-investigacao`, { method: 'POST' }),
+    atualizarProvidenciasObito: (id: string, itens: { codigo: string; concluida: boolean; observacao?: string | null }[]) =>
+      request<void>(`/api/acidentes/${id}/providencias-obito`, { method: 'PUT', body: JSON.stringify({ itens }) }),
+    // CPF/telefone em claro: exige acidente:ver_dados_pessoais e cada consulta fica auditada no servidor.
+    obterDadosPessoaisPessoaExterna: (id: string, pessoaId: string) =>
+      request<DadosPessoaisPessoaExterna>(`/api/acidentes/${id}/pessoas-externas/${pessoaId}/dados-pessoais`),
     // Ações do plano da ocorrência: concluir com descrição (quem conclui vem do login) e reabrir.
     concluirAcao: (acaoId: string, descricaoConclusao: string) =>
       request<void>(`/api/acidentes/acoes-plano/${acaoId}/concluir`, { method: 'POST', body: JSON.stringify({ descricaoConclusao }) }),
@@ -8230,22 +8414,6 @@ export const api = {
       }),
     retirarParticipante: (id: string, trabalhadorId: string) =>
       request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/participantes/${trabalhadorId}`, { method: 'DELETE' }),
-    registrarPeriodo: (id: string, etapaId: string, periodo: { data: string; inicio: string; fim: string }) =>
-      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/periodos`, {
-        method: 'POST',
-        body: JSON.stringify(periodo),
-      }),
-    // Ajustar horário em UMA transação: SUBSTITUI todos os períodos da etapa pelos informados (se falhar, nada muda).
-    // 400 {erro}: início antes da abertura, fim futuro, mais de 12 h por período ou sobreposição.
-    ajustarPeriodos: (id: string, etapaId: string, periodos: Array<{ data: string; inicio: string; fim: string }>) =>
-      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/periodos/ajustar`, {
-        method: 'POST',
-        body: JSON.stringify({ periodos }),
-      }),
-    removerPeriodo: (id: string, etapaId: string, periodoId: string) =>
-      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/periodos/${periodoId}`, {
-        method: 'DELETE',
-      }),
     // 409 devolve { erro, faltas[] } (instrutor, carga, fotos, assinaturas). etapaOrdem torna o reenvio idempotente.
     avancar: (id: string, etapaOrdem: number) =>
       request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapa-atual/avancar`, {

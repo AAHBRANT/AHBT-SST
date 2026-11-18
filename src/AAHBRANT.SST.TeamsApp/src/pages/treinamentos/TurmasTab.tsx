@@ -37,7 +37,7 @@ import {
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { hoje } from '../../lib/valoresPadrao';
-import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { useSouAdministrador, useUsuarioLogado } from '../../lib/UsuarioLogadoContext';
 import { ExcluirTurmaDialog, type AlvoExclusaoTurma } from '../../components/treinamentos/ExcluirTurmaDialog';
 
 // Limite do servidor por exclusão em lote (ExcluirSessoesTreinamentoLoteCommandValidator.MaximoPorLote).
@@ -93,6 +93,7 @@ export function TurmasTab() {
   const sucessoToast = useSucessoToast();
   // Selecao em massa para exclusao definitiva (mockup turma-excluir-2026-11-10): so Administrador.
   const souAdministrador = useSouAdministrador();
+  const { usuario } = useUsuarioLogado();
   const [selecionando, setSelecionando] = useState(false);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [alvoExclusao, setAlvoExclusao] = useState<AlvoExclusaoTurma | null>(null);
@@ -175,7 +176,8 @@ export function TurmasTab() {
           validadeEmMeses: p.validadeEmMeses,
           conteudoProgramatico: p.conteudoProgramatico ?? '',
           local: p.local ?? '',
-          instituicaoInstrutor: p.podeEditar ? atual.instituicaoInstrutor || nomeUsuario : '',
+          instituicaoInstrutor: p.instrutorNome || usuario?.nome || nomeUsuario || atual.instituicaoInstrutor || '',
+          instrutorRegistroProfissional: p.instrutorRegistro || usuario?.registroInstrutor || atual.instrutorRegistroProfissional || '',
         }));
       })
       .catch(() => {
@@ -439,11 +441,11 @@ export function TurmasTab() {
               </Field>
             </Campo>
             <Campo span={6}>
-              <Field label="Instrutor (Técnico de Segurança)">
+              <Field label="Instrutor (fixo no usuário logado)">
                 <Input
-                  disabled={!podeEditar}
-                  value={novaTurma.instituicaoInstrutor ?? ''}
-                  onChange={(_, d) => setNovaTurma({ ...novaTurma, instituicaoInstrutor: d.value })}
+                  disabled
+                  readOnly
+                  value={novaTurma.instituicaoInstrutor || usuario?.nome || nomeUsuario}
                 />
               </Field>
             </Campo>
@@ -451,7 +453,7 @@ export function TurmasTab() {
               <Field label="Registro profissional">
                 <Input
                   placeholder="Ex.: MTE 12345/PB"
-                  disabled={!podeEditar}
+                  disabled={!podeEditar || !!padrao?.instrutorRegistro || !!usuario?.registroInstrutor}
                   value={novaTurma.instrutorRegistroProfissional ?? ''}
                   onChange={(_, d) => setNovaTurma({ ...novaTurma, instrutorRegistroProfissional: d.value })}
                 />

@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.AcoesPlano.Commands;
+using AAHBRANT.SST.Application.Acidentes;
 using AAHBRANT.SST.Application.Acidentes.Commands;
 using AAHBRANT.SST.Application.Acidentes.RelatoIa;
 using AAHBRANT.SST.Application.Acidentes.Queries;
@@ -231,7 +232,8 @@ public class AcidentesController : ControllerBase
             id, body.Tipo, body.ObraId, body.TrabalhadorId, body.AtividadeId, body.Local, body.Data,
             body.Hora, body.Descricao, body.Lesao, body.Consequencia, body.Atendimento,
             body.HouveAfastamento, body.DiasAfastamento, body.NumeroCat, body.MetodologiaInvestigacao,
-            body.Causas, body.Gravidade, body.DiasDebitadosInformados, body.TrabalhadoresIds, body.RegioesCorpo), ct);
+            body.Causas, body.Gravidade, body.DiasDebitadosInformados, body.TrabalhadoresIds, body.RegioesCorpo,
+            body.PessoasExternas, body.Testemunhas), ct);
         return NoContent();
     }
 
@@ -243,13 +245,46 @@ public class AcidentesController : ControllerBase
         return NoContent();
     }
 
+    // Corpo opcional: { conclusaoInvestigacao } — obrigatória ao concluir sem ação do plano vinculada.
     [Authorize(Policy = "acidente:avancar_status")]
     [HttpPost("{id:guid}/avancar-status")]
-    public async Task<IActionResult> AvancarStatus(Guid id, CancellationToken ct)
+    public async Task<IActionResult> AvancarStatus(Guid id, [FromBody] AvancarStatusAcidenteBody? body, CancellationToken ct)
     {
-        await _mediator.Send(new AvancarStatusAcidenteCommand(id), ct);
+        await _mediator.Send(new AvancarStatusAcidenteCommand(id, body?.ConclusaoInvestigacao), ct);
         return NoContent();
     }
+
+    // Pausa a investigação à espera do laudo (ex.: óbito) e a retoma depois.
+    [Authorize(Policy = "acidente:avancar_status")]
+    [HttpPost("{id:guid}/aguardar-laudo")]
+    public async Task<IActionResult> AguardarLaudo(Guid id, [FromBody] AguardarLaudoBody? body, CancellationToken ct)
+    {
+        await _mediator.Send(new AguardarLaudoCommand(id, body?.Observacao), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "acidente:avancar_status")]
+    [HttpPost("{id:guid}/retomar-investigacao")]
+    public async Task<IActionResult> RetomarInvestigacao(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new RetomarInvestigacaoCommand(id), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "acidente:editar")]
+    [HttpPut("{id:guid}/providencias-obito")]
+    public async Task<IActionResult> AtualizarProvidenciasObito(Guid id, AtualizarProvidenciasObitoBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new AtualizarProvidenciasObitoCommand(id, body.Itens ?? new List<ProvidenciaObitoEntrada>()), ct);
+        return NoContent();
+    }
+
+    // CPF e telefone em claro da pessoa externa: permissão própria e cada consulta é auditada.
+    // A identidade de quem consultou vem do token.
+    [Authorize(Policy = "acidente:ver_dados_pessoais")]
+    [HttpGet("{id:guid}/pessoas-externas/{pessoaId:guid}/dados-pessoais")]
+    public async Task<IActionResult> ObterDadosPessoaisPessoaExterna(Guid id, Guid pessoaId, CancellationToken ct)
+        => Ok(await _mediator.Send(new ObterDadosPessoaisPessoaExternaQuery(id, pessoaId, await UsuarioAtualIdAsync(ct)), ct));
 
     [Authorize(Policy = "acidente:editar")]
     [HttpPost("{id:guid}/fotos")]
@@ -306,7 +341,15 @@ public record AtualizarAcidenteRequestBody(
     GravidadeAcidente Gravidade,
     int? DiasDebitadosInformados,
     List<Guid>? TrabalhadoresIds = null,
-    List<string>? RegioesCorpo = null);
+    List<string>? RegioesCorpo = null,
+    List<PessoaExternaEntrada>? PessoasExternas = null,
+    List<Guid>? Testemunhas = null);
+
+public record AvancarStatusAcidenteBody(string? ConclusaoInvestigacao);
+
+public record AguardarLaudoBody(string? Observacao);
+
+public record AtualizarProvidenciasObitoBody(List<ProvidenciaObitoEntrada>? Itens);
 
 public class RelatoTextoOcorrenciaBody
 {

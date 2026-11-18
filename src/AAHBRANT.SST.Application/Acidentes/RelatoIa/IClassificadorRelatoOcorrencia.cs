@@ -35,4 +35,8 @@ public record OcorrenciaSugeridaIa(
     int? DiasAfastamento,
     string? Atividade,
     IReadOnlyList<string> NomesCitados,
-    IReadOnlyList<PerguntaRelatoOcorrencia> Perguntas);
+    IReadOnlyList<PerguntaRelatoOcorrencia> Perguntas,
+    IReadOnlyList<PessoaExternaCitadaIa>? PessoasExternasCitadas = null);
+
+/// <summary>Pessoa citada no relato que a IA entende não ser funcionário da obra (vínculo como texto livre).</summary>
+public record PessoaExternaCitadaIa(string? Nome, string? VinculoProvavel, string? Trecho);

@@ -25,6 +25,7 @@ import {
 import { API_BASE_URL } from '../../lib/apiBase';
 import { api, type DispositivoAgente, type Obra, type RegistroDispositivoAgente } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 import { lerInstanteUtc } from '../../components/assinatura/assinaturaDigital';
 
 // Sincronizou nos últimos 10 min = agente conectado (ele sincroniza a cada 2 min por padrão).
@@ -97,6 +98,7 @@ function LinhaCopiavel({ rotulo, valor, multilinha }: { rotulo: string; valor: s
 // Registro dos agentes de biometria (um por PC de obra com leitor Futronic). O segredo do dispositivo
 // só existe na resposta do registro — no banco fica o hash —, por isso o diálogo o mostra uma única vez.
 export function LeitoresDigitalTab() {
+  const souAdmin = useSouAdministrador();
   const [obras, setObras] = useState<Obra[]>([]);
   const [dispositivos, setDispositivos] = useState<DispositivoAgente[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -225,17 +227,19 @@ export function LeitoresDigitalTab() {
           chaveLinha={(d) => d.id}
           carregando={carregando}
           vazio={{ titulo: 'Nenhum leitor registrado ainda.', descricao: 'Registre o primeiro leitor acima.' }}
-          acoesLinha={(d) => (
-            <BotaoAcao
-              tom="excluir"
-              icon={<Delete24Regular />}
-              onClick={(evento) => {
-                evento.stopPropagation();
-                void revogar(d);
-              }}
-              aria-label={`Revogar ${d.nome}`}
-            />
-          )}
+          acoesLinha={(d) =>
+            souAdmin ? (
+              <BotaoAcao
+                tom="excluir"
+                icon={<Delete24Regular />}
+                onClick={(evento) => {
+                  evento.stopPropagation();
+                  void revogar(d);
+                }}
+                aria-label={`Revogar ${d.nome}`}
+              />
+            ) : null
+          }
         />
       </Card>
 

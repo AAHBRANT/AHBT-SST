@@ -111,7 +111,7 @@ export function OcorrenciasDashboardTab() {
   const naoConformidadesFiltradas = useMemo(
     () =>
       naoConformidades.filter(
-        (nc) => obraId === '' || (!!nc.atividadeId && idsAtividadesObra.has(nc.atividadeId)),
+        (nc) => obraId === '' || nc.obraId === obraId || (!!nc.atividadeId && idsAtividadesObra.has(nc.atividadeId)),
       ),
     [naoConformidades, obraId, idsAtividadesObra],
   );
@@ -119,7 +119,8 @@ export function OcorrenciasDashboardTab() {
   const totalAcidentes = acidentesFiltrados.filter((a) => a.tipo === TipoOcorrencia.Acidente).length;
   const totalIncidentes = acidentesFiltrados.filter((a) => a.tipo === TipoOcorrencia.Incidente).length;
   const totalQuaseAcidentes = acidentesFiltrados.filter((a) => a.tipo === TipoOcorrencia.QuaseAcidente).length;
-  const comAfastamento = acidentesFiltrados.filter((a) => a.houveAfastamento).length;
+  // Pessoa externa não entra nos indicadores de afastamento (NBR 14280).
+  const comAfastamento = acidentesFiltrados.filter((a) => a.houveAfastamento && a.tipo !== TipoOcorrencia.PessoaExterna).length;
   const naoConformidadesAbertas = naoConformidadesFiltradas.filter(
     (nc) => nc.status !== StatusNaoConformidade.Encerrada,
   ).length;
@@ -132,6 +133,7 @@ export function OcorrenciasDashboardTab() {
       [TipoOcorrencia.CondicaoInsegura]: paleta.neutro,
       [TipoOcorrencia.AtoInseguro]: paleta.neutro,
       [TipoOcorrencia.DoencaOcupacional]: paleta.ok,
+      [TipoOcorrencia.PessoaExterna]: paleta.pessoaExterna,
     }),
     [paleta],
   );
@@ -182,8 +184,8 @@ export function OcorrenciasDashboardTab() {
       ultimosSeisMeses().map(({ ano, mes, rotulo }) => ({
         rotulo,
         valor: acidentesFiltrados.filter((a) => {
-          const data = new Date(a.data);
-          return data.getFullYear() === ano && data.getMonth() + 1 === mes;
+          const [anoData, mesData] = (a.data ?? '').slice(0, 10).split('-').map(Number);
+          return anoData === ano && mesData === mes;
         }).length,
       })),
     [acidentesFiltrados],

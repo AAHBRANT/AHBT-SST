@@ -15,7 +15,10 @@ public class ObraDto
     public string? Endereco { get; set; }
     public string? Cidade { get; set; }
     public string? Uf { get; set; }
+    public string? Cep { get; set; }
     public string? Cnpj { get; set; }
+    public string? Cnae { get; set; }
+    public int? GrauRisco { get; set; }
     public bool TemLogo { get; set; }
 
     // Flags de MetodoAutenticacaoObra: quais métodos de assinatura eletrônica a obra aceita.

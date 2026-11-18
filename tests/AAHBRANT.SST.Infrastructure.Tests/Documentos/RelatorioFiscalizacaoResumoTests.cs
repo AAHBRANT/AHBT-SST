@@ -143,6 +143,86 @@ public class RelatorioFiscalizacaoResumoTests
         Assert.True(pdf.Length > 1000);
     }
 
+    [Fact]
+    public void LinhaOcorrencia_Testemunha_MostraRotuloSemGravidadeNemAfastamento()
+    {
+        var data = new DateTime(2026, 10, 5);
+        var testemunha = new OcorrenciaDto(Guid.NewGuid(), TipoOcorrencia.Acidente, data, "Bloco A", "d",
+            GravidadeAcidente.ComAfastamento, true, 12, StatusAcidente.Concluido, PapelEnvolvido.Testemunha);
+        var envolvido = testemunha with { Papel = PapelEnvolvido.Envolvido };
+
+        var linhaTestemunha = RelatorioFiscalizacaoPdfService.LinhaOcorrencia(testemunha);
+        var linhaEnvolvido = RelatorioFiscalizacaoPdfService.LinhaOcorrencia(envolvido);
+
+        Assert.Contains("Testemunha", linhaTestemunha);
+        Assert.DoesNotContain("gravidade", linhaTestemunha);
+        Assert.DoesNotContain("afastamento", linhaTestemunha);
+        Assert.Contains("gravidade ComAfastamento", linhaEnvolvido);
+        Assert.Contains("12 dia(s) de afastamento", linhaEnvolvido);
+    }
+
+    [Fact]
+    public void Gerar_ComOcorrenciaDeTestemunha_GeraPdf()
+    {
+        var perfil = CriarPerfil() with
+        {
+            Ocorrencias = new List<OcorrenciaDto>
+            {
+                new(Guid.NewGuid(), TipoOcorrencia.Acidente, new DateTime(2026, 10, 5), "Bloco A", "d",
+                    GravidadeAcidente.ComAfastamento, true, 12, StatusAcidente.Concluido, PapelEnvolvido.Testemunha),
+            },
+        };
+
+        var pdf = new RelatorioFiscalizacaoPdfService().Gerar(perfil, identificacao: null);
+
+        Assert.True(pdf.Length > 1000);
+    }
+
+    [Fact]
+    public void Gerar_ComAssinaturaComFoto_AplicaMarcaConfidencialNasDuasFotos()
+    {
+        var sigId = Guid.NewGuid();
+        var foto = FotoDeTeste();
+        var perfil = CriarPerfil() with
+        {
+            Assinaturas = new List<AssinaturaPerfilDto>
+            {
+                new(sigId, Guid.NewGuid(), "EntregaEpi", Guid.NewGuid(), MetodoAutenticacaoAssinatura.ReconhecimentoFacial,
+                    new DateTime(2026, 11, 5, 14, 30, 0, DateTimeKind.Utc), "10.0.0.1", true, true, "ABC123HASH", foto, "image/jpeg"),
+            },
+        };
+        var identificacao = new AAHBRANT.SST.Application.Trabalhadores.IdentificacaoRelatorioFiscalizacao(
+            foto, "CONSORCIO PONTE RIO CUIA", "57.622.394/0001-37",
+            new Dictionary<Guid, byte[]> { [sigId] = foto });
+
+        var pdf = new RelatorioFiscalizacaoPdfService().Gerar(perfil, identificacao);
+
+        using var doc = UglyToad.PdfPig.PdfDocument.Open(pdf);
+        var texto = string.Join("\n", doc.GetPages().Select(p => p.Text));
+        // Faixa de sigilo + 2 fotos (cadastrada e assinatura), cada uma com sombra + frente de "CONFIDENCIAL".
+        var ocorrencias = texto.Split("CONFIDENCIAL").Length - 1;
+        Assert.True(ocorrencias >= 3, $"Esperado 'CONFIDENCIAL' na faixa e sobre as fotos; encontrado {ocorrencias} vez(es).");
+        Assert.Contains("Entrega de EPI", texto);
+        Assert.Contains("Reconhecimento facial", texto);
+        Assert.DoesNotContain("EntregaEpi", texto);
+        Assert.DoesNotContain("ReconhecimentoFacial", texto);
+        Assert.Contains("G-SST", texto);
+    }
+
+    [Fact]
+    public void EstamparConfidencial_FotoValida_DevolveJpegComMarca()
+    {
+        var foto = FotoDeTeste();
+        var estampada = AAHBRANT.SST.Infrastructure.Documentos.CertificadoAssinaturasPdf.EstamparConfidencial(
+            foto, new DateTime(2026, 11, 5, 14, 30, 0, DateTimeKind.Utc), retrato34: true);
+
+        Assert.NotNull(estampada);
+        Assert.True(estampada.Length > 500);
+        // Cabeçalho JPEG (FF D8)
+        Assert.Equal(0xFF, estampada[0]);
+        Assert.Equal(0xD8, estampada[1]);
+    }
+
     private static EntregaEpiDto Epi(DateTime? validade) => new(
         Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Hoje.AddDays(-60), null, validade, 1, null, null, null, null, null, null, null);
 

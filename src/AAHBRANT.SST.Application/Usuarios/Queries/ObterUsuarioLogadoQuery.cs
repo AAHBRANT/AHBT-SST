@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +13,11 @@ namespace AAHBRANT.SST.Application.Usuarios.Queries;
 //
 // A identidade NUNCA vem da rota nem do corpo: o controller resolve pelo claim do token e passa
 // aqui. Sem isso, qualquer um consultaria (e exibiria) o perfil de outra pessoa.
-public record ObterUsuarioLogadoQuery(string? AzureAdObjectId, bool AutenticacaoHabilitada)
+public record ObterUsuarioLogadoQuery(
+    string? AzureAdObjectId,
+    bool AutenticacaoHabilitada,
+    string? NomeToken = null,
+    string? EmailToken = null)
     : IRequest<UsuarioLogadoDto>;
 
 public record UsuarioLogadoDto(
@@ -32,7 +37,17 @@ public record UsuarioLogadoDto(
     // Vínculo global (sem obra): vale em todas as obras.
     bool EngenheiroSegurancaGlobal = false,
     // Obras em que ele é engenheiro por vínculo de obra. Vazio quando só é global ou não é engenheiro.
-    List<Guid>? ObrasEngenheiroSeguranca = null);
+    List<Guid>? ObrasEngenheiroSeguranca = null,
+    // Aprovar cursos obrigatórios e atividades por função (17/11/2026): Técnico, Engenheiro de Segurança OU
+    // Administrador. Verdadeiro com vínculo ativo de um deles em alguma obra ou global; a tela cruza com a obra aberta.
+    // Entra desligado (dev) = verdadeiro e global, como Admin.
+    bool PodeDecidirSugestoes = false,
+    bool PodeDecidirSugestoesGlobal = false,
+    List<Guid>? ObrasPodeDecidirSugestoes = null,
+    Guid? TrabalhadorId = null,
+    bool EhInstrutor = false,
+    string? RegistroInstrutor = null,
+    string? FormacaoInstrutor = null);
 
 public record AlcancePermissaoDto(bool Global, List<Guid> Obras);
 
@@ -48,22 +63,46 @@ public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogado
         // total. Responder "não é administrador" aqui esconderia na tela botões que o servidor
         // aceitaria — o pior dos dois mundos para quem está desenvolvendo.
         if (!request.AutenticacaoHabilitada)
-            return new UsuarioLogadoDto("Usuário", null, EhAdministrador: true, new List<string>(),
-                EhEngenheiroSeguranca: true, EngenheiroSegurancaGlobal: true, ObrasEngenheiroSeguranca: new List<Guid>());
+        {
+            var usuarioDev = await _db.Usuarios
+                .AsNoTracking()
+                .Where(u => u.Ativo && u.Status == StatusUsuario.Ativo)
+                .OrderBy(u => u.CreatedAtUtc)
+                .Select(u => new { u.Nome, u.Email })
+                .FirstOrDefaultAsync(ct);
+            var nomeDev = !string.IsNullOrWhiteSpace(usuarioDev?.Nome)
+                ? usuarioDev.Nome
+                : (!string.IsNullOrWhiteSpace(request.NomeToken) ? request.NomeToken : "Usuário");
+            return new UsuarioLogadoDto(nomeDev, usuarioDev?.Email ?? request.EmailToken, EhAdministrador: true, new List<string>(),
+                EhEngenheiroSeguranca: true, EngenheiroSegurancaGlobal: true, ObrasEngenheiroSeguranca: new List<Guid>(),
+                PodeDecidirSugestoes: true, PodeDecidirSugestoesGlobal: true, ObrasPodeDecidirSugestoes: new List<Guid>());
+        }
 
-        if (string.IsNullOrWhiteSpace(request.AzureAdObjectId))
-            return new UsuarioLogadoDto(string.Empty, null, EhAdministrador: false, new List<string>());
+        if (string.IsNullOrWhiteSpace(request.AzureAdObjectId) && string.IsNullOrWhiteSpace(request.EmailToken))
+            return new UsuarioLogadoDto(request.NomeToken ?? string.Empty, request.EmailToken, EhAdministrador: false, new List<string>());
 
-        var usuario = await _db.Usuarios
-            .AsNoTracking()
-            .Where(u => u.Ativo && u.AzureAdObjectId == request.AzureAdObjectId && u.Status == StatusUsuario.Ativo)
-            .Select(u => new { u.Id, u.Nome, u.Email })
-            .FirstOrDefaultAsync(ct);
+        var usuario = !string.IsNullOrWhiteSpace(request.AzureAdObjectId)
+            ? await _db.Usuarios
+                .AsNoTracking()
+                .Where(u => u.Ativo && u.AzureAdObjectId == request.AzureAdObjectId && u.Status == StatusUsuario.Ativo)
+                .Select(u => new { u.Id, u.Nome, u.Email, u.TrabalhadorId })
+                .FirstOrDefaultAsync(ct)
+            : null;
+
+        if (usuario is null && !string.IsNullOrWhiteSpace(request.EmailToken))
+        {
+            var emailBusca = request.EmailToken.Trim().ToLower();
+            usuario = await _db.Usuarios
+                .AsNoTracking()
+                .Where(u => u.Ativo && u.Status == StatusUsuario.Ativo && u.Email != null && u.Email.ToLower() == emailBusca)
+                .Select(u => new { u.Id, u.Nome, u.Email, u.TrabalhadorId })
+                .FirstOrDefaultAsync(ct);
+        }
 
         // Autenticado no Entra, mas sem cadastro de Usuario ativo aqui: não é administrador e não
-        // tem permissão nenhuma — as telas tratam isso como visitante.
+        // tem permissão nenhuma — as telas tratam isso como visitante, preservando o nome do token se houver.
         if (usuario is null)
-            return new UsuarioLogadoDto(string.Empty, null, EhAdministrador: false, new List<string>());
+            return new UsuarioLogadoDto(request.NomeToken ?? string.Empty, request.EmailToken, EhAdministrador: false, new List<string>());
 
         var perfis = await _db.UsuariosPerfilObra
             .AsNoTracking()
@@ -99,9 +138,30 @@ public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogado
 
         var engenheiro = perfis.Where(p => p.Tipo == TipoPerfilAcesso.EngenheiroSeguranca).ToList();
         var obrasEngenheiro = engenheiro.Where(p => p.ObraId is not null).Select(p => p.ObraId!.Value).Distinct().ToList();
+        var decidem = perfis.Where(p => p.Tipo is { } t && DecisaoTecnicaNaObra.PerfilPodeDecidir(t)).ToList();
+        string? registroInstrutor = null;
+        string? formacaoInstrutor = null;
+        var ehInstrutor = false;
+        if (usuario.TrabalhadorId is { } trabId)
+        {
+            var perfilInstrutor = await _db.PerfisInstrutor.AsNoTracking().FirstOrDefaultAsync(p => p.TrabalhadorId == trabId, ct);
+            if (perfilInstrutor is not null)
+            {
+                ehInstrutor = true;
+                registroInstrutor = AAHBRANT.SST.Application.Instrutores.DescricaoInstrutor.Registro(perfilInstrutor.Conselho, perfilInstrutor.NumeroRegistro, perfilInstrutor.UfRegistro);
+                formacaoInstrutor = AAHBRANT.SST.Application.Instrutores.DescricaoInstrutor.Formacao(perfilInstrutor.Formacao);
+            }
+        }
         return new UsuarioLogadoDto(usuario.Nome, usuario.Email, ehAdministrador, permissoes, alcance,
             EhEngenheiroSeguranca: engenheiro.Count > 0,
             EngenheiroSegurancaGlobal: engenheiro.Any(p => p.ObraId is null),
-            ObrasEngenheiroSeguranca: obrasEngenheiro);
+            ObrasEngenheiroSeguranca: obrasEngenheiro,
+            PodeDecidirSugestoes: decidem.Count > 0,
+            PodeDecidirSugestoesGlobal: decidem.Any(p => p.ObraId is null),
+            ObrasPodeDecidirSugestoes: decidem.Where(p => p.ObraId is not null).Select(p => p.ObraId!.Value).Distinct().ToList(),
+            TrabalhadorId: usuario.TrabalhadorId,
+            EhInstrutor: ehInstrutor,
+            RegistroInstrutor: registroInstrutor,
+            FormacaoInstrutor: formacaoInstrutor);
     }
 }

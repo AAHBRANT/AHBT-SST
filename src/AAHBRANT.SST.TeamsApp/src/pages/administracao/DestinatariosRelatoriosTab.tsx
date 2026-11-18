@@ -5,7 +5,6 @@ import {
   Card,
   Checkbox,
   DataTable,
-  EstadoVazio,
   FeedbackInline,
   Field,
   Legenda,
@@ -16,6 +15,7 @@ import {
 } from '@ui';
 import { Add24Regular, Delete24Regular, PersonAdd24Regular } from '@fluentui/react-icons';
 import { api, StatusUsuario, type DestinatarioRelatorio, type Obra, type Usuario } from '../../lib/api';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 const TODAS_AS_OBRAS = '';
 
@@ -37,6 +37,7 @@ function mensagemDoErro(e: unknown, fallback: string): string {
 // recebe quais relatórios de quais obras. Obra em branco = todas as obras (diretoria, consolidado). Só Administrador.
 // "Sugerir pelos perfis" pré-preenche com os Técnicos e Engenheiros de Segurança de cada obra.
 export function DestinatariosRelatoriosTab() {
+  const souAdmin = useSouAdministrador();
   const [lista, setLista] = useState<DestinatarioRelatorio[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -263,13 +264,14 @@ export function DestinatariosRelatoriosTab() {
             titulo: 'Ninguém cadastrado ainda',
             descricao: 'Use Sugerir pelos perfis para começar com os técnicos e engenheiros de segurança de cada obra.',
           }}
-          acoesLinha={(d) => (
-            <BotaoAcao tom="excluir" size="small" icon={<Delete24Regular />} aria-label={`Remover ${d.usuarioNome}`} onClick={() => void remover(d)}>
-              Remover
-            </BotaoAcao>
-          )}
+          acoesLinha={(d) =>
+            souAdmin ? (
+              <BotaoAcao tom="excluir" size="small" icon={<Delete24Regular />} aria-label={`Remover ${d.usuarioNome}`} onClick={() => void remover(d)}>
+                Remover
+              </BotaoAcao>
+            ) : null
+          }
         />
-        {!carregando && lista.length === 0 && <EstadoVazio titulo="Ninguém recebe os relatórios por enquanto" />}
       </Card>
       {dialogElement}
     </div>

@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PGR pela EAP - Adicionar risco e aviso de altura</title>
+<style>
+:root{
+  --vinho:#670000;--vinho-ativo:#96110d;--bege:#ebe9ad;
+  --pagina:#f6f5f2;--card:#fff;--borda:#e0e0e0;--borda2:#d1d1d1;--txt:#242424;--mut:#616161;
+  --ok-t:#16a34a;--ok-f:#eaf7ee;--at-t:#d97706;--at-f:#fdf3e3;--info-t:#2563eb;--info-f:#eaf1fe;--neu-t:#6d6d6d;--neu-f:#f0f0f2;
+  --amarelo-nr:#fffbe6;
+  --av-bg:#fff9f5;--av-borda:#fdcfb4;--av-ico:#bc4b09;
+  --acidente:#1565c0;
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 "Segoe UI",system-ui,sans-serif;color:var(--txt);background:var(--pagina);padding:20px 16px 48px}
+h1{font-size:18px;color:var(--vinho);margin:0 0 4px}
+.sub{color:var(--mut);margin:0 0 20px;max-width:900px}
+.estado{max-width:1180px;margin:0 auto 36px}
+.estado>h2{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);margin:0 0 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.estado>h2 span.n{background:var(--vinho);color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;letter-spacing:0}
+.par{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+.rot{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px}
+.desk,.fone{background:var(--pagina);border:1px solid var(--borda2);border-radius:10px;padding:14px;min-width:0}
+.fone{border-radius:22px;border-width:2px;padding:12px 10px}
+.fone .card{padding:10px}
+.fone .rbloco{padding:8px}
+
+/* componentes do app */
+.card{background:var(--card);border:1px solid var(--borda);border-radius:8px;padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.card>.ct{font-weight:600;font-size:15px;margin:0 0 10px}
+.modo{display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap;font-size:12px}
+.btn{font:inherit;font-size:13px;min-height:32px;padding:4px 12px;border-radius:4px;border:1px solid var(--borda2);background:#fff;color:var(--txt);cursor:pointer;font-weight:600}
+.btn.sm{min-height:32px;padding:4px 10px;font-size:12px}
+.btn.pri{background:var(--vinho);border-color:var(--vinho);color:#fff}
+.btn.txt{border-color:transparent;background:transparent;color:var(--vinho)}
+.fone .btn{min-height:44px;font-size:14px}
+.chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.chip:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.chip.ok{color:var(--ok-t);background:var(--ok-f)}.chip.at{color:var(--at-t);background:var(--at-f)}
+.chip.info{color:var(--info-t);background:var(--info-f)}.chip.neu{color:var(--neu-t);background:var(--neu-f)}
+.linha{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mut{color:var(--mut);font-size:12px}
+
+/* FeedbackInline aviso (MessageBar warning) */
+.aviso{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;background:var(--av-bg);border:1px solid var(--av-borda);border-radius:6px;padding:10px 12px;margin-bottom:12px}
+.aviso .ic{color:var(--av-ico);font-size:18px;line-height:20px}
+.aviso .tx{font-size:13px}
+.aviso .acoes{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fone .aviso{grid-template-columns:auto minmax(0,1fr)}
+.fone .aviso .acoes{grid-column:1/-1}
+.fone .aviso .acoes .btn{flex:1 1 140px}
+
+/* atividade */
+.ativ{margin-bottom:16px}
+.ativ-cab{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.ativ-cab b{font-weight:600}
+
+/* RiscoEditor */
+.risco{border:1px solid var(--borda);border-left:6px solid var(--acidente);border-radius:6px;padding:10px;margin-top:8px;background:#fff}
+.risco.pend{background:var(--amarelo-nr)}
+.grid5{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;align-items:end}
+.f label{display:block;font-size:12px;font-weight:600;margin-bottom:2px}
+.f .dica{font-size:11px;color:var(--mut);margin-top:2px}
+.f input,.f select{width:100%;font:inherit;font-size:13px;min-height:32px;padding:3px 8px;border:1px solid var(--borda2);border-bottom-color:#616161;border-radius:4px;background:#fff;color:var(--txt)}
+.fone .f input,.fone .f select{min-height:44px;font-size:14px}
+.med{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.med input,.med select{font:inherit;font-size:12px;min-height:32px;padding:2px 6px;border:1px solid var(--borda2);border-radius:4px;background:#fff}
+.med input{flex:1 1 140px;min-width:0}
+.fone .med input,.fone .med select{min-height:44px}
+.vazio{font-size:12px;color:var(--mut);margin-top:6px}
+
+/* formulario Adicionar risco */
+.novo{border:1px dashed var(--vinho);border-radius:8px;padding:12px;margin-top:10px;background:#fff}
+.novo h4{margin:0 0 8px;font-size:14px;color:var(--vinho)}
+.sug{border:1px solid var(--borda2);border-radius:4px;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.14);margin-top:2px;max-height:150px;overflow:hidden;font-size:13px}
+.sug div{padding:6px 10px;min-height:32px;display:flex;align-items:center}
+.sug div.sel{background:var(--info-f)}
+.sug div.livre{border-top:1px solid var(--borda);color:var(--mut)}
+.checks{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.checks label{display:flex;gap:8px;align-items:center;min-height:32px;font-size:13px;font-weight:400}
+.fone .checks label{min-height:44px;font-size:14px}
+.checks input{width:18px;height:18px;min-height:0;accent-color:var(--vinho)}
+.rod{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+.fone .rod .btn{flex:1 1 120px}
+
+/* por perigo */
+.perigo{border:1px solid var(--borda);border-radius:8px;margin-bottom:10px}
+.perigo .ph{display:flex;gap:8px;padding:10px 12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.perigo details{border-top:1px solid var(--borda);padding:8px 12px;font-size:12px}
+.perigo summary{cursor:pointer}
+
+.legenda{max-width:1180px;margin:0 auto 24px;background:var(--bege);border-radius:8px;padding:12px 16px;font-size:13px}
+.legenda ul{margin:6px 0 0;padding-left:18px}
+.tres{max-width:1180px;margin:0 auto}
+.tres h3{font-size:14px;color:var(--vinho);margin:16px 0 4px}
+.tres ul{margin:0;padding-left:18px}
+
+@media (max-width:900px){.par{grid-template-columns:minmax(0,1fr)}.fone{max-width:380px;margin:0 auto;width:100%}}
+@media (max-width:480px){body{padding:16px}.aviso{grid-template-columns:auto minmax(0,1fr)}.aviso .acoes{grid-column:1/-1}}
+</style></head><body>
+
+<div class="estado" style="margin-bottom:12px">
+<h1>PGR pela EAP, passo 4 Inventário de riscos: incluir risco manualmente</h1>
+<p class="sub">Proposta para aprovação, sem código alterado. Obra Beira Rio, GHE 05. Duas adições: aviso de altura no card do GHE e botão "Adicionar risco" por atividade e no modo "Por perigo". Só aparecem com o rascunho editável. Os dados são de exemplo.</p>
+</div>
+
+<!-- ESTADO 1 -->
+<div class="estado">
+<h2><span class="n">1</span> Aviso visível no card do GHE (modo Por atividade)</h2>
+<div class="par">
+<div><p class="rot">Desktop</p><div class="desk">
+  <div class="modo">Revisar: <button class="btn sm">Por perigo</button><button class="btn sm pri">Por atividade</button></div>
+  <div class="card">
+    <div class="ct">GHE 05 · Paisagismo, urbanismo e parque linear</div>
+    <div class="aviso" role="alert">
+      <span class="ic">&#9888;</span>
+      <div class="tx"><b>Confirme se há trabalho em altura.</b> Pedreiro, Carpinteiro, Armador, Pintor e Serralheiro costumam trabalhar em altura, mas nenhuma atividade deste GHE tem Queda de altura. Confirme com o engenheiro se há trabalho acima de 2 m (NR-35).</div>
+      <div class="acoes"><button class="btn sm pri">Adicionar Queda de altura</button><button class="btn sm">Não se aplica</button></div>
+    </div>
+    <div class="ativ">
+      <div class="ativ-cab"><b>5.1 Civil</b><span class="linha"><button class="btn sm">Adicionar risco</button><button class="btn sm">Gerar de novo</button></span></div>
+      <div class="risco" style="border-left-color:#f9a825"><div class="linha"><b>Postura inadequada</b><span class="chip neu">Ergonômico</span><span class="chip at">P × S = 6 · Moderado</span><span class="chip ok">Revisado</span></div></div>
+      <div class="risco" style="border-left-color:#2e7d32"><div class="linha"><b>Ruído contínuo</b><span class="chip neu">Físico</span><span class="chip at">P × S = 6 · Moderado</span><span class="chip ok">Revisado</span></div></div>
+    </div>
+    <div class="ativ">
+      <div class="ativ-cab"><b>5.2 Equip. Urbanísticos</b><span class="linha"><button class="btn sm">Adicionar risco</button><button class="btn sm">Gerar de novo</button></span></div>
+      <div class="risco" style="border-left-color:#1565c0"><div class="linha"><b>Soterramento</b><span class="chip neu">Acidente</span><span class="chip at">P × S = 8 · Alto</span><span class="chip ok">Revisado</span></div></div>
+    </div>
+    <div class="mut">Funções do GHE: Encarregado de Obras, Pedreiro, Carpinteiro, Armador, Serralheiro, Pintor, Jardineiro, Ajudante Geral.</div>
+  </div>
+</div></div>
+<div><p class="rot">Celular</p><div class="fone">
+  <div class="card">
+    <div class="ct">GHE 05 · Paisagismo, urbanismo e parque linear</div>
+    <div class="aviso" role="alert">
+      <span class="ic">&#9888;</span>
+      <div class="tx"><b>Confirme se há trabalho em altura.</b> Pedreiro, Carpinteiro, Armador, Pintor e Serralheiro costumam trabalhar em altura, mas nenhuma atividade deste GHE tem Queda de altura. Confirme com o engenheiro (NR-35, acima de 2 m).</div>
+      <div class="acoes"><button class="btn pri">Adicionar Queda de altura</button><button class="btn">Não se aplica</button></div>
+    </div>
+    <div class="ativ">
+      <div class="ativ-cab"><b>5.1 Civil</b></div>
+      <div class="linha" style="margin-top:6px"><button class="btn" style="flex:1">Adicionar risco</button><button class="btn" style="flex:1">Gerar de novo</button></div>
+    </div>
+  </div>
+</div></div>
+</div>
+<p class="mut" style="margin-top:8px">"Não se aplica" some com o aviso e registra a decisão (quem, quando) no rascunho; o aviso não volta para este GHE enquanto nenhuma atividade ou função mudar. Linguagem sem alarme: é uma confirmação, não um erro.</p>
+</div>
+
+<!-- ESTADO 2 -->
+<div class="estado">
+<h2><span class="n">2</span> Formulário aberto (por "Adicionar Queda de altura" ou "Adicionar risco")</h2>
+<div class="par">
+<div><p class="rot">Desktop</p><div class="desk">
+  <div class="card">
+    <div class="ct">GHE 05 · Paisagismo, urbanismo e parque linear</div>
+    <div class="ativ">
+      <div class="ativ-cab"><b>5.1 Civil</b><span class="linha"><button class="btn sm" disabled style="opacity:.5">Adicionar risco</button><button class="btn sm">Gerar de novo</button></span></div>
+      <div class="novo">
+        <h4>Adicionar risco em 5.1 Civil</h4>
+        <div class="grid5">
+          <div class="f" style="grid-column:span 2"><label>Perigo</label>
+            <input value="Queda de altura" aria-label="Perigo">
+            <div class="sug"><div class="sel">Queda de altura</div><div>Queda de mesmo nível</div><div>Queda de objetos</div><div class="livre">Usar texto digitado: "Queda de alt…"</div></div>
+            <div class="dica">Escolha um perigo padrão ou digite o seu.</div></div>
+          <div class="f"><label>Tipo</label><select><option>Acidente</option></select><div class="dica">Grupo 5 · Azul</div></div>
+          <div class="f" style="grid-column:span 2"><label>Danos</label><input value="Fraturas, traumatismo craniano, óbito"></div>
+          <div class="f"><label>Probabilidade</label><select><option>3</option></select></div>
+          <div class="f"><label>Severidade</label><select><option>4</option></select></div>
+        </div>
+        <div class="linha" style="margin-top:8px"><span class="chip at">P × S = 12 · Alto</span><span class="mut">calculado pela matriz da obra</span></div>
+        <div class="f" style="margin-top:10px"><label>Atividades onde se aplica</label>
+          <div class="checks"><label><input type="checkbox" checked> 5.1 Civil <span class="mut">(atual)</span></label><label><input type="checkbox" checked> 5.2 Equip. Urbanísticos</label><label><input type="checkbox"> 5.3 Paisagismo</label><label><input type="checkbox"> 5.4 Irrigação</label></div></div>
+        <div class="rod"><button class="btn">Cancelar</button><button class="btn pri">Adicionar</button></div>
+      </div>
+    </div>
+  </div>
+</div></div>
+<div><p class="rot">Celular</p><div class="fone">
+  <div class="card">
+    <div class="novo" style="margin-top:0">
+      <h4>Adicionar risco em 5.1 Civil</h4>
+      <div class="f"><label>Perigo</label><input value="Queda de altura"><div class="sug"><div class="sel">Queda de altura</div><div>Queda de mesmo nível</div><div class="livre">Usar texto digitado</div></div></div>
+      <div class="f" style="margin-top:8px"><label>Tipo</label><select><option>Acidente</option></select><div class="dica">Grupo 5 · Azul</div></div>
+      <div class="f" style="margin-top:8px"><label>Danos</label><input value="Fraturas, traumatismo craniano, óbito"></div>
+      <div class="grid5" style="margin-top:8px;grid-template-columns:1fr 1fr"><div class="f"><label>Probabilidade</label><select><option>3</option></select></div><div class="f"><label>Severidade</label><select><option>4</option></select></div></div>
+      <div class="linha" style="margin-top:8px"><span class="chip at">P × S = 12 · Alto</span></div>
+      <div class="f" style="margin-top:8px"><label>Atividades onde se aplica</label>
+        <div class="checks"><label><input type="checkbox" checked> 5.1 Civil (atual)</label><label><input type="checkbox" checked> 5.2 Equip. Urbanísticos</label><label><input type="checkbox"> 5.3 Paisagismo</label></div></div>
+      <div class="rod"><button class="btn">Cancelar</button><button class="btn pri">Adicionar</button></div>
+    </div>
+  </div>
+</div></div>
+</div>
+<p class="mut" style="margin-top:8px">Se o formulário abrir pelo aviso, já vem com Perigo "Queda de altura", Tipo Acidente e as atividades de obra civil marcadas; o técnico ajusta Probabilidade e Severidade.</p>
+</div>
+
+<!-- ESTADO 3 -->
+<div class="estado">
+<h2><span class="n">3</span> Risco já adicionado (aviso some) e modo "Por perigo"</h2>
+<div class="par">
+<div><p class="rot">Desktop, Por atividade</p><div class="desk">
+  <div class="card">
+    <div class="ct">GHE 05 · Paisagismo, urbanismo e parque linear</div>
+    <div class="ativ">
+      <div class="ativ-cab"><b>5.1 Civil</b><span class="linha"><button class="btn sm">Adicionar risco</button><button class="btn sm">Gerar de novo</button></span></div>
+      <div class="risco">
+        <div class="grid5">
+          <div class="f"><label>Perigo</label><input value="Queda de altura"></div>
+          <div class="f"><label>Tipo</label><select><option>Acidente</option></select><div class="dica">Grupo 5 · Azul</div></div>
+          <div class="f"><label>Danos</label><input value="Fraturas, traumatismo craniano, óbito"></div>
+          <div class="f"><label>Probabilidade</label><select><option>3</option></select></div>
+          <div class="f"><label>Severidade</label><select><option>4</option></select></div>
+        </div>
+        <div class="linha" style="margin-top:6px"><span class="chip at">P × S = 12 · Alto</span><span class="chip info">Incluído pelo técnico</span><label class="linha" style="font-size:13px"><input type="checkbox" checked style="width:18px;height:18px;accent-color:var(--vinho)"> Revisado</label><button class="btn sm">Excluir risco</button></div>
+        <div class="vazio">Nenhuma medida ainda. Inclua pelo "Nova medida" abaixo.</div>
+        <div class="med"><select><option>Durante</option></select><select><option>Classificar…</option></select><input placeholder="Nova medida"><button class="btn sm">Adicionar</button></div>
+      </div>
+      <div class="risco" style="border-left-color:#f9a825"><div class="linha"><b>Postura inadequada</b><span class="chip neu">Ergonômico</span><span class="chip ok">Revisado</span></div></div>
+    </div>
+    <div class="ativ">
+      <div class="ativ-cab"><b>5.2 Equip. Urbanísticos</b><span class="linha"><button class="btn sm">Adicionar risco</button><button class="btn sm">Gerar de novo</button></span></div>
+      <div class="risco"><div class="linha"><b>Queda de altura</b><span class="chip neu">Acidente</span><span class="chip info">Incluído pelo técnico</span><span class="chip ok">Revisado</span></div></div>
+    </div>
+  </div>
+  <p class="rot" style="margin-top:14px">Desktop, Por perigo</p>
+  <div class="card">
+    <div class="ct">GHE 05 · Paisagismo, urbanismo e parque linear</div>
+    <div class="linha" style="margin-bottom:8px"><span class="mut">5 perigos em 4 atividades.</span><button class="btn sm">Adicionar risco</button></div>
+    <div class="perigo">
+      <div class="ph"><div><b>Queda de altura</b> <span class="chip neu">Acidente</span>
+        <div class="linha" style="margin-top:4px"><span class="mut">em 2 atividades</span><span class="chip at">P × S = 12 · Alto</span><span class="chip info">Incluído pelo técnico</span><span class="chip ok">Revisado</span></div></div></div>
+      <details><summary>Medidas padrão (0) · atividade 5.1</summary></details>
+      <details><summary>Atividades onde aparece (2)</summary></details>
+    </div>
+  </div>
+</div></div>
+<div><p class="rot">Celular</p><div class="fone">
+  <div class="card">
+    <div class="ativ-cab"><b>5.1 Civil</b></div>
+    <div class="linha" style="margin:6px 0"><button class="btn" style="flex:1">Adicionar risco</button><button class="btn" style="flex:1">Gerar de novo</button></div>
+    <div class="risco">
+      <div class="f"><label>Perigo</label><input value="Queda de altura"></div>
+      <div class="f" style="margin-top:6px"><label>Tipo</label><select><option>Acidente</option></select></div>
+      <div class="linha" style="margin-top:8px"><span class="chip at">P × S = 12 · Alto</span><span class="chip info">Incluído pelo técnico</span></div>
+      <div class="linha" style="margin-top:6px"><label class="linha" style="font-size:14px"><input type="checkbox" checked style="width:20px;height:20px;accent-color:var(--vinho)"> Revisado</label><button class="btn">Excluir risco</button></div>
+      <div class="vazio">Nenhuma medida ainda. Inclua pelo "Nova medida".</div>
+      <div class="med"><select><option>Durante</option></select><select><option>Classificar…</option></select><input placeholder="Nova medida"><button class="btn" style="flex:1 1 100%">Adicionar</button></div>
+    </div>
+  </div>
+</div></div>
+</div>
+<p class="mut" style="margin-top:8px">O risco entra já marcado como Revisado (foi o técnico quem decidiu) e sem medidas; o aviso de altura desaparece porque o GHE passa a ter Queda de altura.</p>
+</div>
+
+<div class="legenda tres">
+<b>O que muda na tela</b>
+<h3>Novo</h3><ul>
+<li>Aviso no topo do card do GHE quando há função que costuma trabalhar em altura e nenhuma atividade tem Queda de altura, com as ações "Adicionar Queda de altura" e "Não se aplica".</li>
+<li>Botão "Adicionar risco" em cada atividade (Por atividade) e no cabeçalho do GHE (Por perigo), com formulário inline: Perigo (lista padrão + texto livre), Tipo, Danos, Probabilidade, Severidade e Atividades onde se aplica.</li>
+<li>Chip "Incluído pelo técnico" nos riscos criados à mão.</li></ul>
+<h3>Muda</h3><ul>
+<li>A barra de ações de cada atividade ganha o botão "Adicionar risco" ao lado de "Gerar de novo".</li>
+<li>No modo Por perigo, o cabeçalho de cada GHE ganha o mesmo botão.</li></ul>
+<h3>Some</h3><ul><li>Nada. Tudo o que existe hoje (KPIs, Por perigo/Por atividade, Gerar de novo, Revisar todos, RiscoEditor, Excluir risco, Nova medida, Vigência, Plano de ação) permanece igual.</li></ul>
+</div>
+</body></html>

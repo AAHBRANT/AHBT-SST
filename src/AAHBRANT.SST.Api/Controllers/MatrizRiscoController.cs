@@ -53,7 +53,7 @@ public class MatrizRiscoController : ControllerBase
     }
 
     // Cria a primeira matriz (versão 1) ou uma nova versão que substitui a vigente. Quem revisa e o motivo ficam registrados.
-    [Authorize(Policy = PoliticasAutorizacao.SomenteEngenheiroSeguranca)]
+    [Authorize(Policy = PoliticasAutorizacao.TecnicoOuEngenheiroSeguranca)]
     [HttpPost]
     public async Task<IActionResult> NovaVersao(NovaVersaoRequest corpo, CancellationToken ct)
     {

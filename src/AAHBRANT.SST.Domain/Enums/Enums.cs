@@ -155,7 +155,13 @@ public enum TipoAlerta
     DocumentoTerceirizadoVencido = 36,
     // ASO desativado porque sumiu do G-RH (aviso ao Técnico de Segurança da obra, 26/10/2026). Criado no ato pela
     // sincronização, não pelo Motor Central de Alertas periódico.
-    AsoDesativadoGrh = 37
+    AsoDesativadoGrh = 37,
+    // Ocorrência com óbito e providências em aberto / ocorrência aguardando laudo (AcidenteAlertaProvider).
+    ObitoProvidenciasPendentes = 38,
+    OcorrenciaAguardandoLaudo = 39,
+    // Troca de função sem ASO de mudança de risco (TrocaFuncaoSemAsoAlertaProvider), 12/11/2026. Só avisa
+    // o SESMT; não bloqueia.
+    TrocaFuncaoSemAsoMudancaRisco = 40
 }
 
 public enum SeveridadeAlerta
@@ -192,7 +198,11 @@ public enum TipoModuloAlerta
     // Validade do PCMSO (PcmsoAlertaProvider), 16/10/2026.
     Pcmso = 15,
     // Documentos da empresa terceirizada (DocumentoEmpresaTerceirizadaAlertaProvider), 21/10/2026.
-    DocumentoTerceirizado = 16
+    DocumentoTerceirizado = 16,
+    // Ocorrências (acidentes): providências de óbito e laudo em espera (AcidenteAlertaProvider).
+    Acidente = 17,
+    // Troca de função sem ASO de mudança de risco (TrocaFuncaoSemAsoAlertaProvider), 12/11/2026.
+    TrocaFuncao = 18
 }
 
 public enum StatusAlerta
@@ -703,7 +713,34 @@ public enum TipoOcorrencia
     QuaseAcidente = 3,
     CondicaoInsegura = 4,
     AtoInseguro = 5,
-    DoencaOcupacional = 6
+    DoencaOcupacional = 6,
+    // Ocorrência cuja(s) vítima(s) não são funcionários (terceiro, visitante, transeunte...). Exige
+    // pelo menos uma pessoa externa (AcidentePessoaExterna) e nenhum funcionário com papel Envolvido.
+    OcorrenciaComPessoaExterna = 7
+}
+
+// Vínculo da pessoa externa com a obra/empresa.
+public enum VinculoPessoaExterna
+{
+    Terceiro = 1,
+    Visitante = 2,
+    Transeunte = 3,
+    Outro = 4
+}
+
+// Desfecho da ocorrência para a pessoa externa.
+public enum ResultadoPessoaExterna
+{
+    SemLesao = 1,
+    Lesao = 2,
+    Obito = 3
+}
+
+// Papel do funcionário na ocorrência. Testemunha não entra no G-RH nem na taxa de gravidade.
+public enum PapelEnvolvido
+{
+    Envolvido = 1,
+    Testemunha = 2
 }
 
 // Seção 28 da Base de Conhecimento (linhas 702-708) — vocabulário literal de metodologias de
@@ -725,7 +762,9 @@ public enum StatusAcidente
 {
     Registrado = 1,
     EmInvestigacao = 2,
-    Concluido = 3
+    Concluido = 3,
+    // Investigação pausada à espera de laudo (ex.: óbito). Anexado ao fim: não renumerar.
+    AguardandoLaudo = 4
 }
 
 // Classificação de gravidade do acidente, usada para calcular Dias Debitados na Taxa de

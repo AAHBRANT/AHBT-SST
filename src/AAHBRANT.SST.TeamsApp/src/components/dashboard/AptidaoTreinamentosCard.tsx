@@ -136,8 +136,8 @@ function Detalhe({ curso, corDaFaixa, corOk, corAviso, corAlerta, corNeutra }: D
   const pct = curso.exigidos > 0 ? Math.round((aptos / curso.exigidos) * 100) : 0;
   const faixas = [
     { rotulo: 'Em dia', valor: curso.emDia, cor: corOk },
-    { rotulo: 'Vencem em 30 dias', valor: curso.vencemEm30Dias, cor: corAviso },
-    { rotulo: 'Vencidos', valor: curso.vencidos, cor: corAlerta },
+    { rotulo: 'Renovar em 30 dias', valor: curso.vencemEm30Dias, cor: corAviso },
+    { rotulo: 'Renovação pendente', valor: curso.vencidos, cor: corAlerta },
     { rotulo: 'Sem o curso', valor: curso.semCurso, cor: corNeutra },
   ];
 
@@ -154,7 +154,7 @@ function Detalhe({ curso, corDaFaixa, corOk, corAviso, corAlerta, corNeutra }: D
       <div
         className={estilos.barra}
         role="img"
-        aria-label={`${curso.nome}: ${aptos} aptos de ${curso.exigidos}. ${curso.vencidos} vencidos e ${curso.semCurso} sem o curso.`}
+        aria-label={`${curso.nome}: ${aptos} aptos de ${curso.exigidos}. ${curso.vencidos} com renovação pendente e ${curso.semCurso} sem o curso.`}
       >
         {faixas.map((faixa) => (
           <span

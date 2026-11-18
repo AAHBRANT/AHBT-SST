@@ -20,8 +20,10 @@ import {
   ResultadoAso,
   tipoExameAsoLabel,
   type Aso,
+  type Obra,
   type Trabalhador,
 } from '../../lib/api';
+import { gravar, lerLembrada } from '../../hooks/useObraLembrada';
 
 // ResultadoAso: Apto=1, AptoComRestricao=2, Inapto=3, Pendente=4 — mesmo enum reaproveitado por
 // AptidoesTab.tsx, mesma tabela de tons.
@@ -56,13 +58,13 @@ function situacaoHoje(aso: Aso): { tom: Tom; rotulo: string; detalhe?: string } 
     };
   const dias = diasAteValidade(aso.dataValidade);
   if (dias < 0)
-    return { tom: 'alerta', rotulo: 'Vencido', detalhe: `Refazer exame · venceu há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}` };
+    return { tom: 'alerta', rotulo: 'Renovação pendente', detalhe: `Refazer exame · há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}` };
   if (aso.resultadoStatus === ResultadoAso.Inapto)
     return { tom: 'alerta', rotulo: 'Não liberado', detalhe: 'Inapto no exame' };
   if (aso.resultadoStatus === ResultadoAso.Pendente)
     return { tom: 'atencao', rotulo: 'Sem parecer', detalhe: 'Lançar o resultado no G-RH ou editar o ASO' };
   if (dias <= LIMIAR_ALERTA_DIAS)
-    return { tom: 'atencao', rotulo: dias === 0 ? 'Vence hoje' : `Vence em ${dias} ${dias === 1 ? 'dia' : 'dias'}`, detalhe: 'Agendar periódico' };
+    return { tom: 'atencao', rotulo: dias === 0 ? 'Renovar hoje' : `A renovar em ${dias} ${dias === 1 ? 'dia' : 'dias'}`, detalhe: 'Agendar periódico' };
   if (aso.resultadoStatus === ResultadoAso.AptoComRestricao) return { tom: 'atencao', rotulo: 'Liberado com restrição' };
   return { tom: 'ok', rotulo: 'Liberado' };
 }
@@ -99,6 +101,12 @@ type FiltroSituacao = 'todas' | 'liberado' | 'vence' | 'sem-parecer' | 'nao-libe
 export function AsosTab() {
   const [asos, setAsos] = useState<AsoAgrupado[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
+  const [obras, setObras] = useState<Obra[]>([]);
+  const [obraFiltro, setObraFiltroBase] = useState(() => lerLembrada());
+  const setObraFiltro = (id: string) => {
+    setObraFiltroBase(id);
+    gravar(id);
+  };
   const [erro, setErro] = useState<string | null>(null);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [busca, setBusca] = useState('');
@@ -108,9 +116,14 @@ export function AsosTab() {
   useEffect(() => {
     (async () => {
       try {
-        const [lista, listaTrabalhadores] = await Promise.all([api.asos.listar(), api.trabalhadores.listar()]);
+        const [lista, listaTrabalhadores, listaObras] = await Promise.all([
+          api.asos.listar(),
+          api.trabalhadores.listar(),
+          api.obras.listar(),
+        ]);
         setAsos(agruparRepetidos(lista));
         setTrabalhadores(listaTrabalhadores);
+        setObras(listaObras);
       } catch (e) {
         setErro(e instanceof Error ? e.message : 'Falha ao carregar ASOs.');
       } finally {
@@ -125,15 +138,16 @@ export function AsosTab() {
   const termo = busca.trim().toLowerCase();
   const linhas = asos.filter((a) => {
     if (soVigentes && a.vigente === false) return false;
+    const t = porId.get(a.trabalhadorId);
+    if (obraFiltro && t?.obraId !== obraFiltro) return false;
     if (termo) {
-      const t = porId.get(a.trabalhadorId);
       const texto = `${t?.nome ?? ''} ${t?.matricula ?? ''}`.toLowerCase();
       if (!texto.includes(termo)) return false;
     }
     if (filtro === 'todas') return true;
     const sit = situacaoHoje(a).rotulo;
     if (filtro === 'liberado') return sit === 'Liberado' || sit === 'Liberado com restrição';
-    if (filtro === 'vence') return sit.startsWith('Vence') || sit === 'Vencido';
+    if (filtro === 'vence') return sit.startsWith('A renovar') || sit === 'Renovar hoje' || sit === 'Renovação pendente';
     if (filtro === 'sem-parecer') return sit === 'Sem parecer';
     return sit === 'Não liberado';
   });
@@ -194,6 +208,16 @@ export function AsosTab() {
       )}
       <Card titulo="ASOs" subtitulo="Recebidos automaticamente do G-RH. Para corrigir um ASO, ajuste no G-RH: a próxima importação atualiza aqui.">
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 12 }}>
+          <Field label="Obra" style={{ minWidth: 220 }}>
+            <Select value={obraFiltro} onChange={(_, d) => setObraFiltro(d.value)}>
+              <option value="">Todas as obras</option>
+              {obras.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
           <Field label="Buscar" style={{ minWidth: 240 }}>
             <Input value={busca} onChange={(_, d) => setBusca(d.value)} placeholder="Nome ou matrícula" />
           </Field>
@@ -201,7 +225,7 @@ export function AsosTab() {
             <Select value={filtro} onChange={(_, d) => setFiltro(d.value as FiltroSituacao)}>
               <option value="todas">Todas</option>
               <option value="liberado">Liberados</option>
-              <option value="vence">Vencendo ou vencidos</option>
+              <option value="vence">A renovar ou renovação pendente</option>
               <option value="sem-parecer">Sem parecer</option>
               <option value="nao-liberado">Não liberados</option>
             </Select>
@@ -214,7 +238,7 @@ export function AsosTab() {
           linhas={linhas}
           chaveLinha={(a) => a.id}
           carregando={carregandoLista}
-          vazio={{ titulo: busca || filtro !== 'todas' ? 'Nenhum ASO com esse filtro.' : 'Nenhum ASO recebido do G-RH ainda.' }}
+          vazio={{ titulo: busca || obraFiltro || filtro !== 'todas' ? 'Nenhum ASO com esse filtro.' : 'Nenhum ASO recebido do G-RH ainda.' }}
         />
         <Text size={200} style={{ color: designTokens.colorNeutralMedium, display: 'block', marginTop: 8 }}>
           {linhas.length} ASO(s) na lista.

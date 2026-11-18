@@ -18,6 +18,8 @@ public class ObraConfiguracao : IEntityTypeConfiguration<Obra>
         builder.Property(o => o.MetodosAutenticacaoHabilitados).IsRequired();
 
         builder.Property(o => o.Cnpj).HasMaxLength(18);
+        builder.Property(o => o.Cep).HasMaxLength(10);
+        builder.Property(o => o.Cnae).HasMaxLength(200);
         builder.Property(o => o.LogoContentType).HasMaxLength(100);
         builder.Property(o => o.AzureFacePersonGroupId).HasMaxLength(64);
 

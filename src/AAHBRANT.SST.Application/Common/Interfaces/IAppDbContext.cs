@@ -156,6 +156,7 @@ public interface IAppDbContext
     DbSet<Acidente> Acidentes { get; }
     DbSet<AcidenteFoto> AcidentesFotos { get; }
     DbSet<AcidenteEnvolvido> AcidentesEnvolvidos { get; }
+    DbSet<AcidentePessoaExterna> AcidentesPessoasExternas { get; }
     DbSet<RegistroHhtMensal> RegistrosHhtMensais { get; }
 
     DbSet<AtivoSst> AtivosSst { get; }
@@ -167,6 +168,7 @@ public interface IAppDbContext
     DbSet<TemplateBiometricoFutronic> TemplatesBiometricoFutronic { get; }
     DbSet<PerfilInstrutor> PerfisInstrutor { get; }
     DbSet<FotoCadastroFacial> FotosCadastroFacial { get; }
+    DbSet<HistoricoFuncaoTrabalhador> HistoricosFuncaoTrabalhador { get; }
     DbSet<FalhaReconhecimentoFacial> FalhasReconhecimentoFacial { get; }
     DbSet<RelatorioGerado> RelatoriosGerados { get; }
     DbSet<RelatorioEnvio> RelatorioEnvios { get; }

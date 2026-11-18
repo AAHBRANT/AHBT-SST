@@ -1,3 +1,5 @@
+using AAHBRANT.SST.Application.Common;
+
 namespace AAHBRANT.SST.Application.GeracaoPgr;
 
 // Nomes fixos de perigo usados pela IA no passo 4. Sem isso ela redige o mesmo perigo de formas diferentes
@@ -37,18 +39,51 @@ public static class PerigosPadrao
         ("Psicossocial", "Pressão por prazo e jornada extensa"),
     };
 
-    // Mantém os de maior P×S até o teto, preservando a ordem original entre os escolhidos.
+    public const string QuedaDeAltura = "Queda de altura";
+
+    // Perigos que podem matar e nunca saem pelo teto de 5: no PGR da Beira Rio (17/11/2026) "Queda de altura"
+    // perdia a vaga para calor, esforço físico e corte, que têm P×S parecido mas não matam.
+    private static readonly HashSet<string> Graves = new[]
+    {
+        QuedaDeAltura,
+        "Soterramento e desmoronamento em escavações e valas",
+        "Choque elétrico",
+        "Atropelamento e esmagamento por máquinas e veículos",
+    }.Select(FuncaoSstClassifier.Normalizar).ToHashSet();
+
+    public static bool EhGrave(string? perigo) =>
+        !string.IsNullOrWhiteSpace(perigo) && Graves.Contains(FuncaoSstClassifier.Normalizar(perigo));
+
+    // Ofícios que, em obra, costumam trabalhar acima de 2 m (fôrma, armação, alvenaria, pintura, estrutura metálica,
+    // poste, cobertura, andaime). Serve de alerta, não de regra: quem confirma é o engenheiro (NR-35).
+    private static readonly string[] OficiosEmAltura =
+    {
+        "pedreiro", "carpinteiro", "armador", "pintor", "serralheiro", "eletricista", "montador", "telhadista",
+        "andaime", "soldador", "impermeabilizador", "gesseiro", "vidraceiro",
+    };
+
+    // Ajudante de um ofício (ajudante de eletricista) também sobe; o Ajudante Geral só auxilia e fica de fora.
+    public static bool CostumaTrabalharEmAltura(string? funcao)
+    {
+        if (string.IsNullOrWhiteSpace(funcao)) return false;
+        var palavras = FuncaoSstClassifier.Normalizar(funcao).Split(' ', '/', '-');
+        return OficiosEmAltura.Any(palavras.Contains);
+    }
+
+    // Os graves ficam sempre, mesmo passando do teto (ou sem vaga, quando o técnico já fixou 5 riscos);
+    // os demais entram por maior P×S nas vagas que sobrarem. Preserva a ordem original entre os escolhidos.
     public static List<RiscoGerado> LimitarPorAtividade(IReadOnlyList<RiscoGerado> riscos, int vagas)
     {
-        if (vagas <= 0) return new();
-        if (riscos.Count <= vagas) return riscos.ToList();
-        var escolhidos = riscos
+        if (riscos.Count <= Math.Max(vagas, 0)) return riscos.ToList();
+        var graves = riscos.Select((r, i) => (r, i)).Where(x => EhGrave(x.r.Perigo)).Select(x => x.i).ToHashSet();
+        var demais = riscos
             .Select((r, i) => (r, i))
+            .Where(x => !graves.Contains(x.i))
             .OrderByDescending(x => x.r.Probabilidade * x.r.Severidade)
             .ThenBy(x => x.i)
-            .Take(vagas)
-            .Select(x => x.i)
-            .ToHashSet();
-        return riscos.Where((_, i) => escolhidos.Contains(i)).ToList();
+            .Take(Math.Max(vagas - graves.Count, 0))
+            .Select(x => x.i);
+        graves.UnionWith(demais);
+        return riscos.Where((_, i) => graves.Contains(i)).ToList();
     }
 }

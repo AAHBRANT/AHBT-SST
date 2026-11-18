@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Card, Legenda, StatusChip, Text, designTokens, tokensUi, type Tom } from '@ui';
-import { Checkmark16Regular, Fingerprint24Regular, Person24Regular } from '@fluentui/react-icons';
+import { Button, Card, FeedbackInline, Legenda, StatusChip, Text, designTokens, tokensUi, type Tom } from '@ui';
+import { Checkmark16Regular, CheckmarkCircle20Regular, Fingerprint24Regular, Person24Regular } from '@fluentui/react-icons';
 import { api, DedoBiometria, type StatusCadastroBiometrico } from '../../lib/api';
 import { CadastroDigitalDialog } from '../../components/pessoas/CadastroDigitalDialog';
+import { RevogarConsentimentoBiometriaDialog } from '../../components/pessoas/RevogarConsentimentoBiometriaDialog';
 import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
 import { useGuiaCadastroFacial } from '../../components/pessoas/GuiaCadastroFacialDialog';
@@ -50,7 +51,28 @@ export function BiometriaDigitalCartao({
   const [erro, setErro] = useState(false);
   const [dedoAlvo, setDedoAlvo] = useState<DedoBiometria | null>(null);
   const [erroFacial, setErroFacial] = useState<string | null>(null);
+  const [confirmandoAceite, setConfirmandoAceite] = useState(false);
+  const [erroAceite, setErroAceite] = useState<string | null>(null);
+  const [aceiteConfirmado, setAceiteConfirmado] = useState(false);
+  const [revogandoConsentimento, setRevogandoConsentimento] = useState(false);
   const { guia: guiaFacial, pedirGuia } = useGuiaCadastroFacial();
+
+  async function confirmarAceite() {
+    try {
+      setConfirmandoAceite(true);
+      setErroAceite(null);
+      setAceiteConfirmado(false);
+      await api.trabalhadores.registrarTermoAceiteAssinatura(trabalhadorId);
+      await api.trabalhadores.registrarConsentimentoBiometria(trabalhadorId);
+      setAceiteConfirmado(true);
+      await carregar();
+      aoAlterar?.();
+    } catch (e) {
+      setErroAceite(extrairMensagemErro(e, 'Falha ao confirmar o aceite.'));
+    } finally {
+      setConfirmandoAceite(false);
+    }
+  }
 
   // 03/11 (pedido do usuário): a captura facial saiu da aba Assinaturas e veio para este card, abaixo
   // dos indicadores — um lugar só para cadastrar biometria. Sem botão de refazer aqui: cadastrado uma
@@ -248,8 +270,64 @@ export function BiometriaDigitalCartao({
           />
         )}
       </div>
+      <div
+        style={{
+          marginTop: tokensUi.espaco.md,
+          paddingTop: tokensUi.espaco.md,
+          borderTop: `1px solid ${designTokens.colorCardBorder}`,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: tokensUi.espaco.xs,
+        }}
+      >
+        <Legenda>
+          {status?.consentimentoBiometriaEm
+            ? `Consentimento LGPD ativo desde ${new Date(status.consentimentoBiometriaEm).toLocaleDateString('pt-BR')}${status.consentimentoBiometriaVersao ? ` (v${status.consentimentoBiometriaVersao})` : ''}.`
+            : consentimentoRevogado
+              ? `Consentimento LGPD revogado em ${dataBr(status?.consentimentoBiometriaRevogadoEm)}.`
+              : 'Termo de Aceite e Consentimento LGPD necessários para captura.'}
+        </Legenda>
+        {erroAceite && (
+          <FeedbackInline tom="erro" aoFechar={() => setErroAceite(null)}>
+            {erroAceite}
+          </FeedbackInline>
+        )}
+        {aceiteConfirmado && (
+          <FeedbackInline tom="sucesso" aoFechar={() => setAceiteConfirmado(false)}>
+            Consentimento biométrico confirmado.
+          </FeedbackInline>
+        )}
+        <div style={{ display: 'flex', gap: tokensUi.espaco.xs, flexWrap: 'wrap', marginTop: 4 }}>
+          {!termosRegistrados && (
+            <Button
+              size="small"
+              icon={<CheckmarkCircle20Regular />}
+              onClick={confirmarAceite}
+              disabled={confirmandoAceite}
+            >
+              Confirmar consentimento LGPD
+            </Button>
+          )}
+          {termosRegistrados && (
+            <Button size="small" appearance="subtle" onClick={() => setRevogandoConsentimento(true)}>
+              Revogar consentimento
+            </Button>
+          )}
+        </div>
+      </div>
+
       {guiaFacial}
       <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
+      <RevogarConsentimentoBiometriaDialog
+        trabalhadorId={trabalhadorId}
+        aberto={revogandoConsentimento}
+        aoFechar={() => setRevogandoConsentimento(false)}
+        aoRevogar={() => {
+          setRevogandoConsentimento(false);
+          void carregar();
+          aoAlterar?.();
+        }}
+      />
 
       <CadastroDigitalDialog
         trabalhadorId={dedoAlvo !== null ? trabalhadorId : null}

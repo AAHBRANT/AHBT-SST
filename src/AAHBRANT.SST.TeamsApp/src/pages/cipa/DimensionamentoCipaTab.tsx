@@ -19,8 +19,10 @@ import {
   type Coluna,
 } from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
-import { api, nivelRiscoLabel, type DimensionamentoCipa, type NovoDimensionamentoCipa, type Obra, type SituacaoCipaObra } from '../../lib/api';
+import { api, type DimensionamentoCipa, type NovoDimensionamentoCipa, type Obra, type SituacaoCipaObra } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { dataBr } from '../../lib/datas';
 
 function vazio(): NovoDimensionamentoCipa {
   return { obraId: '', cnae: '', grauRisco: 1, numeroFuncionarios: 0, numeroTitulares: 0, numeroSuplentes: 0, observacoes: '' };
@@ -44,6 +46,7 @@ export function DimensionamentoCipaTab() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
+  const souAdministrador = useSouAdministrador();
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -108,11 +111,11 @@ export function DimensionamentoCipaTab() {
   const colunas: Coluna<DimensionamentoCipa>[] = [
     { chave: 'obra', rotulo: 'Obra', render: (d) => nomeObra(d.obraId) },
     { chave: 'cnae', rotulo: 'CNAE' },
-    { chave: 'grauRisco', rotulo: 'Grau de risco', render: (d) => nivelRiscoLabel[d.grauRisco] },
+    { chave: 'grauRisco', rotulo: 'Grau de risco (NR-04)', render: (d) => `Grau ${d.grauRisco}` },
     { chave: 'numeroFuncionarios', rotulo: 'Funcionários' },
     { chave: 'numeroTitulares', rotulo: 'Titulares' },
     { chave: 'numeroSuplentes', rotulo: 'Suplentes' },
-    { chave: 'dataCalculo', rotulo: 'Data do cálculo', render: (d) => d.dataCalculo?.slice(0, 10) ?? '' },
+    { chave: 'dataCalculo', rotulo: 'Data do cálculo', render: (d) => dataBr(d.dataCalculo) },
   ];
 
   return (
@@ -151,8 +154,16 @@ export function DimensionamentoCipaTab() {
                   <Select
                     value={novo.obraId}
                     onChange={(_, d) => {
+                      const obraSel = obras.find((o) => o.id === d.value);
                       const contagem = situacoes.find((s) => s.obraId === d.value)?.empregadosAtivos;
-                      setNovo({ ...novo, obraId: d.value, numeroFuncionarios: contagem ?? novo.numeroFuncionarios });
+                      const codigoCnae = obraSel?.cnae ? obraSel.cnae.split(/\s+[—–-]\s+/)[0].trim().slice(0, 20) : '';
+                      setNovo({
+                        ...novo,
+                        obraId: d.value,
+                        cnae: codigoCnae || novo.cnae,
+                        grauRisco: obraSel?.grauRisco ?? novo.grauRisco,
+                        numeroFuncionarios: contagem ?? novo.numeroFuncionarios,
+                      });
                     }}
                   >
                     <option value="">Selecione</option>
@@ -166,15 +177,15 @@ export function DimensionamentoCipaTab() {
               </Campo>
               <Campo span={2}>
                 <Field label="CNAE" required>
-                  <Input value={novo.cnae} onChange={(_, d) => setNovo({ ...novo, cnae: d.value })} />
+                  <Input value={novo.cnae} maxLength={20} onChange={(_, d) => setNovo({ ...novo, cnae: d.value })} />
                 </Field>
               </Campo>
               <Campo span={3}>
-                <Field label="Grau de risco">
+                <Field label="Grau de risco (NR-04)">
                   <Select value={String(novo.grauRisco)} onChange={(_, d) => setNovo({ ...novo, grauRisco: Number(d.value) })}>
-                    {Object.entries(nivelRiscoLabel).map(([valor, rotulo]) => (
-                      <option key={valor} value={valor}>
-                        {rotulo}
+                    {[1, 2, 3, 4].map((grau) => (
+                      <option key={grau} value={grau}>
+                        Grau {grau}
                       </option>
                     ))}
                   </Select>
@@ -233,9 +244,11 @@ export function DimensionamentoCipaTab() {
             titulo: 'Nenhum dimensionamento cadastrado ainda',
             acao: { rotulo: 'Adicionar dimensionamento', aoClicar: () => setPainelAberto(true) },
           }}
-          acoesLinha={(d) => (
-            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(d.id)} aria-label="Excluir" />
-          )}
+          acoesLinha={
+            souAdministrador
+              ? (d) => <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(d.id)} aria-label="Excluir" />
+              : undefined
+          }
         />
       </Card>
     </div>

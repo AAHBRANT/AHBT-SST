@@ -65,6 +65,7 @@ export function FuncoesTab() {
   const [quadroCoresAberto, setQuadroCoresAberto] = useState(false);
   // Mudar a cor de uma função existente usa o mesmo acesso de edição do servidor (organizacional:editar).
   const { usuario } = useUsuarioLogado();
+  const souAdministrador = !!usuario?.ehAdministrador;
   const podeEditar = !!usuario && (usuario.ehAdministrador || usuario.permissoes.includes('organizacional:editar'));
   const [editandoCor, setEditandoCor] = useState<Funcao | null>(null);
   const [corEditada, setCorEditada] = useState(0);
@@ -136,10 +137,11 @@ export function FuncoesTab() {
   }
 
   useEffect(() => {
+    if (!souAdministrador) return;
     carregarDuplicadas();
     carregarOrfas();
     carregarInativasComTrabalhador();
-  }, []);
+  }, [souAdministrador]);
 
   // Pedido do usuário (22/09): diferente do card "Funções sem uso" acima (só o subconjunto seguro
   // pra exclusão automática — sem CBO e sem nenhuma matriz), aqui aparece QUALQUER função sem
@@ -344,9 +346,11 @@ export function FuncoesTab() {
         titulo="Funções cadastradas"
         acoes={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Button onClick={carregarSemTrabalhador} disabled={carregandoSemTrabalhador}>
-              {semTrabalhador !== null ? 'Ocultar' : 'Ver'} funções sem trabalhador vinculado
-            </Button>
+            {souAdministrador && (
+              <Button onClick={carregarSemTrabalhador} disabled={carregandoSemTrabalhador}>
+                {semTrabalhador !== null ? 'Ocultar' : 'Ver'} funções sem trabalhador vinculado
+              </Button>
+            )}
             {podeEditar && (
               <Button
                 icon={<Color24Regular />}
@@ -646,9 +650,11 @@ export function FuncoesTab() {
             titulo: 'Nenhuma função cadastrada ainda',
             acao: { rotulo: 'Adicionar função', aoClicar: () => setPainelAberto(true) },
           }}
-          acoesLinha={(f) => (
-            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(f.id)} aria-label="Excluir" />
-          )}
+          acoesLinha={
+            souAdministrador
+              ? (f) => <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(f.id)} aria-label="Excluir" />
+              : undefined
+          }
         />
       </Card>
     </div>

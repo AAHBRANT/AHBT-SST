@@ -130,7 +130,7 @@ export function PgrsTab() {
       if (c.proximaRevisao) novo.dataProximaRevisao = dataCampo(c.proximaRevisao);
       if (c.termino) novo.dataTermino = dataCampo(c.termino);
       // Vigente quando hoje está dentro da vigência escrita no documento.
-      const hoje = new Date().toISOString().slice(0, 10);
+      const hoje = new Date().toLocaleDateString('sv-SE');
       if (c.dataElaboracao && dataCampo(c.dataElaboracao) <= hoje && (!c.termino || dataCampo(c.termino) >= hoje))
         novo.status = StatusPgr.Vigente;
       setNovoPgr((atual) => ({ ...atual, ...novo }));
@@ -449,7 +449,9 @@ export function PgrsTab() {
           }
           acoesLinha={(l) =>
             l.tipo === 'pgr' ? (
-              <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(l.pgr.id)} aria-label="Excluir" />
+              souAdministrador ? (
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(l.pgr.id)} aria-label="Excluir" />
+              ) : null
             ) : souAdministrador && l.geracao.status === 1 ? (
               <BotaoAcao
                 tom="excluir"

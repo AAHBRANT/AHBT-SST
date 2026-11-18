@@ -36,12 +36,14 @@ const SECOES_VALIDAS: SecaoOperacao[] = ['apr', 'pt', 'inspecoes', 'cipa', 'epi'
 // migradas (piloto 1) como filhas, só a casca da própria página-pilar faltava.
 export function OperacaoPage() {
   const [secao, setSecao] = useAbaNaUrl<SecaoOperacao>('secao', SECOES_VALIDAS, 'apr');
+  const emEquipamentos = secao === 'epi' || secao === 'uniforme' || secao === 'epc';
+  const secaoPilar = emEquipamentos ? 'epi' : secao;
 
   return (
     <div>
       <Abas
         nivel="pilar"
-        valor={secao}
+        valor={secaoPilar}
         aoMudar={setSecao}
         aria-label="Seções de Operação"
         abas={[
@@ -49,13 +51,25 @@ export function OperacaoPage() {
           { valor: 'pt', rotulo: 'PT', icone: <DocumentLock24Regular /> },
           { valor: 'inspecoes', rotulo: 'Inspeções', icone: <ClipboardTaskListLtr24Regular /> },
           { valor: 'cipa', rotulo: 'CIPA', icone: <PeopleCommunity24Regular /> },
-          { valor: 'epi', rotulo: 'EPI', icone: <ShieldCheckmark24Regular /> },
-          { valor: 'uniforme', rotulo: 'Uniforme', icone: <Box24Regular /> },
-          { valor: 'epc', rotulo: 'EPC', icone: <Home24Regular /> },
+          { valor: 'epi', rotulo: 'EPI, Uniforme & EPC', icone: <ShieldCheckmark24Regular /> },
           { valor: 'dds', rotulo: 'DDS', icone: <VehicleTruckProfile24Regular /> },
-          { valor: 'identificacao', rotulo: 'Outros controles operacionais', icone: <Tag24Regular /> },
+          { valor: 'identificacao', rotulo: 'Áreas de SST', icone: <Tag24Regular /> },
         ]}
       />
+
+      {emEquipamentos && (
+        <Abas
+          nivel="interno"
+          valor={secao}
+          aoMudar={setSecao}
+          aria-label="Equipamentos e Vestimenta"
+          abas={[
+            { valor: 'epi', rotulo: 'EPI (Proteção Individual)', icone: <ShieldCheckmark24Regular /> },
+            { valor: 'uniforme', rotulo: 'Uniforme & Vestimenta', icone: <Box24Regular /> },
+            { valor: 'epc', rotulo: 'EPC (Proteção Coletiva)', icone: <Home24Regular /> },
+          ]}
+        />
+      )}
 
       {secao === 'apr' && <AprsPage mostrarTitulo={false} />}
       {secao === 'pt' && <PermissoesTrabalhoPage mostrarTitulo={false} />}

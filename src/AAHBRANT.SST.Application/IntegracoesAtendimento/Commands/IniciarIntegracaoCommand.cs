@@ -59,8 +59,10 @@ public class IniciarIntegracaoCommandHandler : IRequestHandler<IniciarIntegracao
         if (trabalhadores.Count != ids.Count)
             throw new InvalidOperationException("Há pessoas que não estão ativas nesta obra (ou não participam da integração). Atualize a lista e tente de novo.");
 
-        var instrutorId = request.InstrutorTrabalhadorId
-            ?? await InstrutorDoUsuarioAsync(request, ct)
+        // Se o usuário logado é um instrutor cadastrado, ele fica fixo nele mesmo (não pode iniciar em nome de outro instrutor).
+        var instrutorLogadoId = await InstrutorDoUsuarioAsync(request, ct);
+        var instrutorId = instrutorLogadoId
+            ?? request.InstrutorTrabalhadorId
             ?? throw new InvalidOperationException("Escolha o instrutor da integração.");
         await GarantirInstrutorAsync(instrutorId, request.ObraId, ct);
         await GarantirBiometriaDoInstrutorAsync(instrutorId, ct);

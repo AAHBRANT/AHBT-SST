@@ -2,16 +2,14 @@ import { useState } from 'react';
 import { BotaoAcao, Card, DataTable, FeedbackInline, type Coluna } from '@ui';
 import { ArrowDownload24Regular, Eye24Regular, Image24Regular } from '@fluentui/react-icons';
 import { api, metodoAutenticacaoAssinaturaLabel, type AssinaturaPerfil } from '../../lib/api';
-import { formatarDataHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
-import { AssinaturaTab } from './AssinaturaTab';
+import { formatarDataHoraBrasilia, rotuloTipoDocumentoAssinatura } from '../../components/assinatura/assinaturaDigital';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 
 interface CofreAssinaturasTabProps {
-  trabalhadorId: string;
   assinaturas: AssinaturaPerfil[];
 }
 
-export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinaturasTabProps) {
+export function CofreAssinaturasTab({ assinaturas }: CofreAssinaturasTabProps) {
   const [erro, setErro] = useState<string | null>(null);
   const [baixandoId, setBaixandoId] = useState<string | null>(null);
   const [abrindoFotoId, setAbrindoFotoId] = useState<string | null>(null);
@@ -32,7 +30,7 @@ export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinat
   // Mesmo comprovante do "Baixar", aberto na janela de visualização.
   function visualizarComprovante(a: AssinaturaPerfil) {
     void visualizar({
-      titulo: `Comprovante de assinatura — ${a.entidadeTipo}`,
+      titulo: `Comprovante de assinatura — ${rotuloTipoDocumentoAssinatura(a.entidadeTipo)}`,
       nomeArquivo: `comprovante-assinatura-${a.documentoAssinaturaId}.pdf`,
       obter: () => api.assinatura.baixarPdf(a.documentoAssinaturaId),
     });
@@ -54,7 +52,7 @@ export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinat
   }
 
   const colunas: Coluna<AssinaturaPerfil>[] = [
-    { chave: 'documento', rotulo: 'Documento', render: (a) => a.entidadeTipo },
+    { chave: 'documento', rotulo: 'Documento', render: (a) => rotuloTipoDocumentoAssinatura(a.entidadeTipo) },
     { chave: 'metodo', rotulo: 'Método', render: (a) => metodoAutenticacaoAssinaturaLabel[a.metodo] },
     { chave: 'dataHora', rotulo: 'Data/Hora', render: (a) => formatarDataHoraBrasilia(a.assinadoEm) },
     { chave: 'ip', rotulo: 'IP', render: (a) => a.ipAddress ?? 'Não registrado' },
@@ -109,8 +107,6 @@ export function CofreAssinaturasTab({ trabalhadorId, assinaturas }: CofreAssinat
           )}
         />
       </Card>
-
-      <AssinaturaTab trabalhadorId={trabalhadorId} />
     </div>
   );
 }

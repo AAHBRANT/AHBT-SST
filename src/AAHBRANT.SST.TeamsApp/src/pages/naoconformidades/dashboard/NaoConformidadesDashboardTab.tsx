@@ -25,8 +25,7 @@ import {
 import { NaoConformidadesCriticasPanel } from './NaoConformidadesCriticasPanel';
 import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
 import { useFiltroObra } from '../../../lib/ObraAtivaContext';
-
-const hojeISO = new Date().toISOString().slice(0, 10);
+import { hojeIso } from '../../../lib/datas';
 
 // Onda 2 Task 15 (camada ui/): dashboard de Não Conformidades — mesmo padrão de AprDashboardTab.tsx
 // (Task 11)/PgrDashboardTab.tsx (Task 8): KpiCard (tom em vez de cor), gráficos com cor de
@@ -34,6 +33,7 @@ const hojeISO = new Date().toISOString().slice(0, 10);
 // §4.4, sem componente de grade próprio). A lógica de agregação no cliente não muda nesta frente.
 export function NaoConformidadesDashboardTab() {
   const paleta = usePaletaGraficos();
+  const hojeISO = hojeIso();
 
   const [obras, setObras] = useState<Obra[]>([]);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -75,7 +75,7 @@ export function NaoConformidadesDashboardTab() {
     () =>
       naoConformidades.filter(
         (nc) =>
-          (obraId === '' || (!!nc.atividadeId && idsAtividadesObra.has(nc.atividadeId))) &&
+          (obraId === '' || nc.obraId === obraId || (!!nc.atividadeId && idsAtividadesObra.has(nc.atividadeId))) &&
           (origemFiltro === '' || nc.origemDeteccao === Number(origemFiltro)) &&
           (statusFiltro === '' || nc.status === Number(statusFiltro)),
       ),
@@ -180,7 +180,7 @@ export function NaoConformidadesDashboardTab() {
         <KpiCard rotulo="Total de NCs" valor={naoConformidadesFiltradas.length} tom="info" indice={0} icone={<DocumentError24Regular />} />
         <KpiCard rotulo="Abertas" valor={abertas} tom="alerta" indice={1} icone={<Warning24Regular />} />
         <KpiCard rotulo="Em tratamento" valor={emTratamento} tom="atencao" indice={2} icone={<ArrowSync24Regular />} />
-        <KpiCard rotulo="Com prazo vencido" valor={prazoVencido} tom="alerta" indice={3} icone={<Alert24Regular />} />
+        <KpiCard rotulo="Prazo em atraso" valor={prazoVencido} tom="alerta" indice={3} icone={<Alert24Regular />} />
       </FaixaKpis>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 16 }}>

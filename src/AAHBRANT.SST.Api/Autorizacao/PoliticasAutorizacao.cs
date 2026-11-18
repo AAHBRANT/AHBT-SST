@@ -23,6 +23,17 @@ public static class PoliticasAutorizacao
     // Regra fixa por PerfilAcesso.Tipo, pelo mesmo motivo de SomenteAdministrador.
     public const string SomenteEngenheiroSeguranca = "perfil:engenheiro-seguranca";
 
+    // Nova versão da matriz de risco: Técnico OU Engenheiro de Segurança (decisão do usuário, 17/11/2026).
+    // Administrador NÃO entra aqui. Aprovar/devolver o PGR continua só do Engenheiro. Regra fixa por
+    // PerfilAcesso.Tipo, em qualquer obra (a matriz é global).
+    public const string TecnicoOuEngenheiroSeguranca = "perfil:tecnico-ou-engenheiro-seguranca";
+
+    // Cursos obrigatórios por função e atividades por função na OS: Técnico, Engenheiro de Segurança OU
+    // Administrador (decisão do usuário, 17/11/2026). Policy separada da anterior de propósito, para não
+    // dar Administrador à matriz de risco. A checagem da OBRA do item fica no handler do caso de uso
+    // (esta policy olha o perfil em qualquer obra).
+    public const string DecisorDeSugestoes = "perfil:decisor-sugestoes";
+
     // Módulo Câmeras (detecção de EPI) em piloto: só Administrador cujo e-mail esteja em
     // Cameras:UsuariosPiloto (appsettings), por decisão do usuário em 09/11/2026. Não é um
     // Permissao.Codigo — regra fixa resolvida por PermissaoAuthorizationHandler; lista vazia ou

@@ -35,6 +35,7 @@ import {
 } from '../../lib/api';
 import { DICA_IA, dataCampo, sugerirObra, sugerirPorNome } from '../../components/leitura-ia/EnvioPdfComIa';
 import { formatarCpf } from '../../lib/cpf';
+import { hojeIso } from '../../lib/datas';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 
 // Importação da pasta da terceirizada (23/10/2026, desenho aprovado pelo usuário). A pasta chega
@@ -368,7 +369,7 @@ export function ImportarPastaTerceirizado({ aoCancelar, aoConcluir }: { aoCancel
       setInicio(dataCampo(contrato.dataInicioVigencia));
       setFim(dataCampo(contrato.dataFimVigencia));
     }
-    const dataInicio = dataCampo(contrato?.dataInicioVigencia ?? null) || new Date().toISOString().slice(0, 10);
+    const dataInicio = dataCampo(contrato?.dataInicioVigencia ?? null) || hojeIso();
 
     let pessoasEmpresa: { trabalhadorId: string; nome: string; funcaoId: string }[] = [];
     let contratosExistentes: Contrato[] = [];

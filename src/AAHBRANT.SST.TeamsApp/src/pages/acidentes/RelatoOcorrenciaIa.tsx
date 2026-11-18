@@ -6,7 +6,9 @@ import {
   type PerguntaRelatoOcorrencia,
   type RespostaPerguntaRelato,
   type RelatoOcorrenciaResposta,
+  type PessoaExternaSugerida,
   type RelatoOcorrenciaSugestao,
+  vinculoPessoaExternaLabel,
 } from '../../lib/api';
 import { IndicadorGravacao } from '../../components/voz/IndicadorGravacao';
 import { useGravacaoVoz } from '../../components/voz/useGravacaoVoz';
@@ -266,6 +268,59 @@ export function RelatoOcorrenciaIa({ obraId, desabilitado, aoSugerir, aoSoTransc
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+const cartaoPessoaSugerida = {
+  display: 'grid',
+  gap: tokensUi.espaco.sm,
+  padding: tokensUi.espaco.lg,
+  borderRadius: tokensUi.raio.md,
+  border: `1px solid ${designTokens.colorPrimary}`,
+  backgroundColor: designTokens.colorSurface,
+} as const;
+
+const botaoGrande = { minHeight: 48, flex: '1 1 auto', fontWeight: 700 } as const;
+
+// A IA citou no relato alguém que não é funcionário. Ela nunca grava sozinha: o técnico escolhe entre
+// adicionar como pessoa externa (abre o cartão já preenchido para conferir), apontar que é funcionário
+// (o aviso amarelo de "não encontrado" continua só para quem é funcionário) ou ignorar.
+export function CartaoPessoaExternaSugerida({
+  sugestao,
+  aoAdicionar,
+  aoEscolherFuncionario,
+  aoIgnorar,
+}: {
+  sugestao: PessoaExternaSugerida;
+  aoAdicionar: () => void;
+  aoEscolherFuncionario: () => void;
+  aoIgnorar: () => void;
+}) {
+  const vinculo = vinculoPessoaExternaLabel[sugestao.vinculo];
+  return (
+    <div style={cartaoPessoaSugerida} role="group" aria-label="Pessoa que não é funcionária identificada pela IA">
+      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: designTokens.colorPrimary }}>
+        A IA identificou uma pessoa que não é funcionária
+      </div>
+      <div style={{ fontSize: 18, fontWeight: 700 }}>{sugestao.nome}</div>
+      {(vinculo || sugestao.trecho) && (
+        <div style={{ color: designTokens.colorNeutralMedium }}>
+          {vinculo && <>Parece ser {vinculo.toLowerCase()}. </>}
+          {sugestao.trecho && <>Trecho do relato: &ldquo;{sugestao.trecho}&rdquo;</>}
+        </div>
+      )}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokensUi.espaco.sm, marginTop: tokensUi.espaco.sm }}>
+        <Button appearance="primary" style={botaoGrande} onClick={aoAdicionar}>
+          Adicionar como pessoa externa
+        </Button>
+        <Button style={botaoGrande} onClick={aoEscolherFuncionario}>
+          É funcionário, escolher na lista
+        </Button>
+        <Button appearance="subtle" style={botaoGrande} onClick={aoIgnorar}>
+          Ignorar
+        </Button>
+      </div>
     </div>
   );
 }

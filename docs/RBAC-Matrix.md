@@ -190,3 +190,6 @@ SQL quando o banco de produção for provisionado).
   aprovada, conceder as permissões aos perfis definidos pela tela "Perfis & Matriz de Permissões"
   — hoje nenhum perfil tem essas 3 permissões atribuídas (mesmo estado de todo módulo já existente
   no sistema até que alguém configure pela tela; ver disclosure em `RbacSeeder.cs`).
+- Validar a permissão `acidente:ver_dados_pessoais` (CPF/telefone de pessoa externa envolvida em ocorrência; cada
+  consulta é auditada). Entra só no catálogo, sem nenhum perfil por padrão. Proposta: Administrador, Gestor
+  QSMS, Engenheiro de Segurança e Técnico de Segurança — o Admin libera em "Perfis & Matriz de Permissões".

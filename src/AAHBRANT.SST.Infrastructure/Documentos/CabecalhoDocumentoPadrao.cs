@@ -22,23 +22,28 @@ internal static class CabecalhoDocumentoPadrao
     // lados mesmo vazio deixava o título espremido num miolo de ~127pt e qualquer nome de obra
     // realista quebrava em 2-3 linhas (achado revisando os documentos, 10/09).
     private const float LarguraLateral = 200;
-    private const float LarguraLateralSemMetadados = 50;
+    private const float LarguraLateralDireitaCompacta = 140;
+    private const float LarguraLateralSemMetadados = 84;
 
     public static void Desenhar(ColumnDescriptor coluna, string tituloDocumento, string? obraNome, byte[]? logoConteudo,
         IReadOnlyList<string>? linhasCabecalhoDireita = null, IReadOnlyList<string>? linhasCabecalhoEsquerda = null)
     {
-        var larguraEsquerda = linhasCabecalhoEsquerda is { Count: > 0 } ? LarguraLateral : LarguraLateralSemMetadados;
-        var larguraDireita = linhasCabecalhoDireita is { Count: > 0 } ? LarguraLateral : LarguraLateralSemMetadados;
-        // Com metadados dos dois lados o miolo central fica bem mais estreito (~127pt contra ~427pt
-        // sem eles) — usa a tabela de fonte mais agressiva pra esse caso (só a APR hoje).
-        var colunaEstreita = linhasCabecalhoEsquerda is { Count: > 0 } || linhasCabecalhoDireita is { Count: > 0 };
+        var temEsquerda = linhasCabecalhoEsquerda is { Count: > 0 };
+        var temDireita = linhasCabecalhoDireita is { Count: > 0 };
+        // Mantém largura simétrica nos dois lados para o título central ficar exatamente no meio da página.
+        var larguraLateral = temEsquerda ? LarguraLateral : temDireita ? LarguraLateralDireitaCompacta : LarguraLateralSemMetadados;
+        var larguraEsquerda = larguraLateral;
+        var larguraDireita = larguraLateral;
+        // Com metadados dos dois lados o miolo central fica bem mais estreito (~127pt contra ~350pt
+        // quando só há metadados curtos à direita) — usa a tabela de fonte mais agressiva pra esse caso.
+        var colunaEstreita = temEsquerda && temDireita;
         var nomeObra = obraNome ?? "Obra não identificada";
 
         coluna.Item().Row(linha =>
         {
-            linha.ConstantItem(larguraEsquerda).Row(ladoEsquerdo =>
+            linha.ConstantItem(larguraEsquerda).AlignMiddle().Row(ladoEsquerdo =>
             {
-                ladoEsquerdo.ConstantItem(50).Height(50).Element(c =>
+                ladoEsquerdo.ConstantItem(80).Height(52).AlignMiddle().Element(c =>
                 {
                     if (logoConteudo is not null) c.Image(logoConteudo).FitArea();
                 });

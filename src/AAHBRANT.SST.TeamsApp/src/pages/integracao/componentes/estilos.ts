@@ -451,18 +451,6 @@ export const useEstilosIntegracao = makeStyles({
   barraTrilho: { height: '10px', borderRadius: '99px', backgroundColor: tokensUi.status.neutro.fundo, overflow: 'hidden', marginTop: '8px' },
   // O preenchimento recebe useEstilosEsmeralda.vidro (mesmo estilo do KpiCard `destaque`).
   barraPreench: { height: '100%', borderRadius: '99px', transitionProperty: 'width', transitionDuration: tokensUi.duracao.normal },
-  avisoAjuste: {
-    display: 'flex',
-    gap: '10px',
-    alignItems: 'flex-start',
-    padding: '12px 14px',
-    borderRadius: '8px',
-    fontSize: '13px',
-    lineHeight: '19px',
-    backgroundColor: tokensUi.status.atencao.fundo,
-    color: tokensUi.status.atencao.tinta,
-  },
-  ajusteGrade: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', margin: '12px 0' },
   acoesLivres: { display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px' },
   // Seção para onde uma pendência leva (rola até ela, foca e destaca por um instante).
   secaoAlvo: { outline: 'none', scrollMarginTop: '72px', borderRadius: tokensUi.raio.lg },

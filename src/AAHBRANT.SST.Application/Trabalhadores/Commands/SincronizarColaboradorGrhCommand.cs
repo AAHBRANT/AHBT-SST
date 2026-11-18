@@ -210,6 +210,9 @@ public class SincronizarColaboradorGrhCommandHandler : IRequestHandler<Sincroniz
         if (request.Situacao == SituacaoTrabalhador.Desligado)
             trabalhador.Ativo = false;
 
+        if (funcaoAnteriorId is { } funcaoAnterior)
+            HistoricoFuncao.Registrar(_db, trabalhador.Id, funcaoAnterior, trabalhador.FuncaoId);
+
         await TratamentoCpfDuplicado.SalvarAsync(_db, ct);
 
         if (request.Situacao == SituacaoTrabalhador.Desligado)

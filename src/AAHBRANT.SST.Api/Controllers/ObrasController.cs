@@ -60,7 +60,10 @@ public class ObrasController : ControllerBase
             body.Uf,
             body.Cnpj,
             stream.ToArray(),
-            body.Logo.ContentType);
+            body.Logo.ContentType,
+            body.Cep,
+            body.Cnae,
+            body.GrauRisco);
 
         var id = await _mediator.Send(command, ct);
         return CreatedAtAction(nameof(ObterPorId), new { id }, new { id });
@@ -169,6 +172,9 @@ public class CriarObraRequestBody
     public string? Endereco { get; set; }
     public string? Cidade { get; set; }
     public string? Uf { get; set; }
+    public string? Cep { get; set; }
     public string? Cnpj { get; set; }
+    public string? Cnae { get; set; }
+    public int? GrauRisco { get; set; }
     public IFormFile Logo { get; set; } = null!;
 }

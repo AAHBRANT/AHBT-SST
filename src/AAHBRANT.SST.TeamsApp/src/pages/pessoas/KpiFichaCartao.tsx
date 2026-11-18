@@ -44,13 +44,14 @@ export interface KpiFichaCartaoProps {
   icone: ReactElement;
   indice?: number;
   destaque?: boolean;
+  aoClicar?: () => void;
 }
 
 // Indicador da ficha do trabalhador no formato e na animação aprovados no protótipo (21/10): rótulo e
 // ícone em cima, número grande que conta até o valor, linha de detalhe embaixo, luz que acompanha o
 // cursor, borda de luz girando no hover e o primeiro card em gradiente. Fica em pages/pessoas porque só
 // a ficha usa este formato; o KpiCard de @ui continua igual nas outras telas.
-export function KpiFichaCartao({ rotulo, valor, detalhe, tom, tomDetalhe = 'neutro', icone, indice = 0, destaque = false }: KpiFichaCartaoProps) {
+export function KpiFichaCartao({ rotulo, valor, detalhe, tom, tomDetalhe = 'neutro', icone, indice = 0, destaque = false, aoClicar }: KpiFichaCartaoProps) {
   const reduzirMovimento = useReducedMotion() ?? false;
   const [sobre, setSobre] = useState(false);
   const [luz, setLuz] = useState<{ x: number; y: number } | null>(null);
@@ -78,10 +79,24 @@ export function KpiFichaCartao({ rotulo, valor, detalhe, tom, tomDetalhe = 'neut
         setLuz(null);
       }}
       onMouseMove={moverLuz}
+      onClick={aoClicar}
+      role={aoClicar ? 'button' : undefined}
+      tabIndex={aoClicar ? 0 : undefined}
+      onKeyDown={
+        aoClicar
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                aoClicar();
+              }
+            }
+          : undefined
+      }
       style={{
         position: 'relative',
         overflow: 'hidden',
         borderRadius: tokensUi.raio.lg,
+        cursor: aoClicar ? 'pointer' : undefined,
         // A borda é o próprio fundo do contêiner aparecendo 1px em volta do miolo — é por ela que a
         // luz girando passa.
         padding: 1,

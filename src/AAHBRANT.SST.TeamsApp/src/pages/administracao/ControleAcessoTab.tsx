@@ -4,6 +4,7 @@ import {
   Button,
   Campo,
   Card,
+  Checkbox,
   DataTable,
   Field,
   FeedbackInline,
@@ -56,6 +57,7 @@ import {
   type UsuarioPerfilObra,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 const usuarioVazio: NovoUsuario = { email: '', nome: '', trabalhadorId: '' };
 // Opção do "Funcionário vinculado" para quem não é funcionário (engenheiro ou instrutor PJ, 04/11/2026): ao salvar,
@@ -85,6 +87,7 @@ function chave(permissaoId: string, escopo: number) {
 // dashboard de 2 colunas (não o template §4.2 "Lista"), e mover os dois formulários para gaveta
 // dobraria a complexidade de estado sem estar no escopo pedido — julgamento documentado, não omissão.
 export function ControleAcessoTab() {
+  const souAdmin = useSouAdministrador();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -498,14 +501,16 @@ export function ControleAcessoTab() {
             carregando={carregandoLista}
             vazio={{ titulo: 'Nenhum usuário cadastrado ainda.' }}
             aoClicarLinha={selecionarUsuario}
-            acoesLinha={(usuario) => (
-              <BotaoAcao
-                tom="excluir"
-                icon={<Delete24Regular />}
-                onClick={() => excluirUsuario(usuario.id)}
-                aria-label="Excluir"
-              />
-            )}
+            acoesLinha={(usuario) =>
+              souAdmin ? (
+                <BotaoAcao
+                  tom="excluir"
+                  icon={<Delete24Regular />}
+                  onClick={() => excluirUsuario(usuario.id)}
+                  aria-label="Excluir"
+                />
+              ) : null
+            }
           />
         </Card>
 
@@ -643,15 +648,14 @@ export function ControleAcessoTab() {
                     </Field>
                   </Campo>
                 </FormGrid>
-                <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-                  <input
-                    type="checkbox"
+                <div style={{ marginTop: 8 }}>
+                  <Checkbox
+                    label="Pode assinar como instrutor em outras obras (libera a digital dele nos leitores das outras obras)"
                     checked={registro.outrasObras}
                     disabled={!trabalhadorIdEdicao}
-                    onChange={(e) => setRegistro({ ...registro, outrasObras: e.target.checked })}
+                    onChange={(_, d) => setRegistro({ ...registro, outrasObras: !!d.checked })}
                   />
-                  <Text size={300}>Pode assinar como instrutor em outras obras (libera a digital dele nos leitores das outras obras)</Text>
-                </label>
+                </div>
                 <FormRodape>
                   <Button appearance="primary" icon={<Save24Regular />} onClick={salvarEdicaoUsuario}>
                     Salvar
@@ -668,14 +672,16 @@ export function ControleAcessoTab() {
                 linhas={usuarioSelecionado.perfisPorObra}
                 chaveLinha={(v) => v.id}
                 vazio={{ titulo: 'Nenhum perfil atribuído ainda.' }}
-                acoesLinha={(vinculo) => (
-                  <BotaoAcao
-                    tom="excluir"
-                    icon={<Delete24Regular />}
-                    onClick={() => removerPerfilObra(vinculo.id)}
-                    aria-label="Remover"
-                  />
-                )}
+                acoesLinha={(vinculo) =>
+                  souAdmin ? (
+                    <BotaoAcao
+                      tom="excluir"
+                      icon={<Delete24Regular />}
+                      onClick={() => removerPerfilObra(vinculo.id)}
+                      aria-label="Remover"
+                    />
+                  ) : null
+                }
               />
 
               <FormSection titulo="Atribuir Perfil">
@@ -761,7 +767,7 @@ export function ControleAcessoTab() {
               vazio={{ titulo: 'Nenhum perfil de acesso cadastrado ainda.' }}
               aoClicarLinha={selecionarPerfil}
               acoesLinha={(perfil) =>
-                !perfil.ehSistema ? (
+                !perfil.ehSistema && souAdmin ? (
                   <BotaoAcao
                     tom="excluir"
                     icon={<Delete24Regular />}

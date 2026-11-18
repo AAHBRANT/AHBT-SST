@@ -47,7 +47,7 @@ public class MarcarNaoAssinouEtapaIntegracaoCommandHandler : IRequestHandler<Mar
         if (motivo.Length < 5) throw new InvalidOperationException("Informe o motivo (ao menos 5 caracteres).");
         if (motivo.Length > 300) motivo = motivo[..300];
 
-        var etapa = await RegistrarPeriodoEtapaIntegracaoCommandHandler.EtapaDeCursoEmAndamentoAsync(_db, at, request.EtapaId, ct);
+        var etapa = await EtapaIntegracaoCurso.EmAndamentoAsync(_db, at, request.EtapaId, ct);
         var sessaoId = etapa.SessaoTreinamentoId
             ?? throw new InvalidOperationException("A turma desta etapa não foi encontrada.");
         if (await _db.NaoAssinouEtapasIntegracao.AnyAsync(n => n.IntegracaoEtapaId == etapa.Id && n.TrabalhadorId == request.TrabalhadorId, ct))
@@ -95,7 +95,7 @@ public class DesfazerNaoAssinouEtapaIntegracaoCommandHandler : IRequestHandler<D
     public async Task<IntegracaoAtendimentoDto> Handle(DesfazerNaoAssinouEtapaIntegracaoCommand request, CancellationToken ct)
     {
         var (at, responsavel) = await AutorizacaoIntegracaoAtendimento.CarregarAsync(_db, request.IntegracaoId, request.AzureAdObjectId, request.AutenticacaoHabilitada, ct);
-        var etapa = await RegistrarPeriodoEtapaIntegracaoCommandHandler.EtapaDeCursoEmAndamentoAsync(_db, at, request.EtapaId, ct);
+        var etapa = await EtapaIntegracaoCurso.EmAndamentoAsync(_db, at, request.EtapaId, ct);
         var marca = await _db.NaoAssinouEtapasIntegracao
             .FirstOrDefaultAsync(n => n.IntegracaoEtapaId == etapa.Id && n.TrabalhadorId == request.TrabalhadorId, ct)
             ?? throw new KeyNotFoundException("Esta pessoa não está marcada como \"Não assinou\" nesta etapa.");
@@ -113,5 +113,20 @@ public class DesfazerNaoAssinouEtapaIntegracaoCommandHandler : IRequestHandler<D
                 request.TrabalhadorId, new { at.Numero, etapa.Ordem }, ct);
         await _db.SaveChangesAsync(ct);
         return await MontadorIntegracaoAtendimento.MontarAsync(_db, at.Id, ct) ?? throw new KeyNotFoundException("Integração não encontrada.");
+    }
+}
+
+// Etapa de curso em andamento de um atendimento em andamento (usada pelas marcações de "Não assinou").
+internal static class EtapaIntegracaoCurso
+{
+    internal static async Task<IntegracaoEtapa> EmAndamentoAsync(IAppDbContext db, IntegracaoAtendimento at, Guid etapaId, CancellationToken ct)
+    {
+        var etapa = await db.IntegracaoEtapas.FirstOrDefaultAsync(e => e.Id == etapaId && e.IntegracaoAtendimentoId == at.Id, ct)
+            ?? throw new KeyNotFoundException("Etapa não encontrada nesta integração.");
+        if (at.Status != StatusIntegracaoAtendimento.EmAndamento || etapa.Status != StatusEtapaIntegracao.EmAndamento)
+            throw new InvalidOperationException("Só dá para alterar a etapa de curso em andamento.");
+        if (etapa.Tipo == TipoEtapaIntegracao.OrdemServico)
+            throw new InvalidOperationException("A etapa da Ordem de Serviço não tem presença nem curso.");
+        return etapa;
     }
 }

@@ -97,6 +97,40 @@ public class MedidasPrevencaoController : ControllerBase
     public async Task<IActionResult> SugerirItensOs(Guid atividadeId, CancellationToken ct)
         => Ok(new { itens = await _mediator.Send(new SugerirItensAtividadeOsCommand(atividadeId), ct) });
 
+    // ---- Resolução em lote pela Ordem de Serviço (17/11/2026) ----
+
+    public record VincularProcedimentosEmLoteRequest(List<VinculoProcedimentosAtividade> Vinculos);
+
+    public record DecidirSugestoesEmLoteRequest(List<Guid> MedidaIds, List<Guid> ItemIds, bool Aceitar);
+
+    [Authorize(Policy = "risco:ver")]
+    [HttpGet("atividades/procedimentos-os")]
+    public async Task<IActionResult> ObterProcedimentosAtividades([FromQuery] List<Guid> ids, CancellationToken ct)
+        => Ok(await _mediator.Send(new ObterProcedimentosAtividadesQuery(ids), ct));
+
+    [Authorize(Policy = "risco:editar")]
+    [HttpPut("atividades/procedimentos-os")]
+    public async Task<IActionResult> VincularProcedimentosEmLote(VincularProcedimentosEmLoteRequest corpo, CancellationToken ct)
+    {
+        await _mediator.Send(new VincularProcedimentosEmLoteCommand(corpo.Vinculos), ct);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "risco:ver")]
+    [HttpGet("atividades/sugestoes-ia-pendentes")]
+    public async Task<IActionResult> ListarSugestoesPendentes([FromQuery] List<Guid> ids, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarSugestoesPendentesOsQuery(ids), ct));
+
+    [Authorize(Policy = "risco:editar")]
+    [HttpPost("sugestoes-ia/decidir-em-lote")]
+    public async Task<IActionResult> DecidirSugestoesEmLote(DecidirSugestoesEmLoteRequest corpo, CancellationToken ct)
+    {
+        var usuarioId = await _usuarioAtual.ObterIdAsync(User, ct);
+        var decididas = await _mediator.Send(new DecidirSugestoesOsEmLoteCommand(
+            corpo.MedidaIds ?? new(), corpo.ItemIds ?? new(), corpo.Aceitar, usuarioId, User.FindFirst("name")?.Value), ct);
+        return Ok(new { decididas });
+    }
+
     [Authorize(Policy = "risco:editar")]
     [HttpPost("itens-os/{id:guid}/decidir")]
     public async Task<IActionResult> DecidirItemOs(Guid id, DecidirItemOsRequest corpo, CancellationToken ct)

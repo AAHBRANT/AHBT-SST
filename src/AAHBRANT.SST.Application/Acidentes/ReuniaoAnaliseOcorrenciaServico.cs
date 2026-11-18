@@ -107,6 +107,7 @@ public static class TipoOcorrenciaRotulo
         TipoOcorrencia.CondicaoInsegura => "Condição insegura",
         TipoOcorrencia.AtoInseguro => "Ato inseguro",
         TipoOcorrencia.DoencaOcupacional => "Doença ocupacional",
+        TipoOcorrencia.OcorrenciaComPessoaExterna => "Ocorrência com pessoa externa",
         _ => tipo.ToString(),
     };
 }

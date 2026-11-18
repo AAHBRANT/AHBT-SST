@@ -21,14 +21,10 @@ import { PersonAdd24Regular, Edit24Regular, DocumentDismiss24Regular, DocumentPd
 import { api, type ContratoDetalhe, type Funcao, type VagaFuncao } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { formatarCpf } from '../../lib/cpf';
+import { hojeIso } from '../../lib/datas';
 import { FormularioContrato } from './FormularioContrato';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { paraDadosContrato, type ValorFormularioContrato } from './valorFormularioContrato';
-
-function hojeIso() {
-  const agora = new Date();
-  return new Date(agora.getTime() - agora.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-}
 
 const novaPessoaVazia = { nome: '', matricula: '', cpf: '', dataAdmissao: '' };
 

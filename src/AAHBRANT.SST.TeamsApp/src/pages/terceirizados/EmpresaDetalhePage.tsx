@@ -22,6 +22,7 @@ import {
 import { Open24Regular, Edit24Regular, DocumentAdd24Regular, DocumentPdf24Regular, ArrowUpload24Regular } from '@fluentui/react-icons';
 import { api, type Empresa, type Contrato, type AtualizarEmpresa, type Obra, type Funcao } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { dataBr } from '../../lib/datas';
 import { FormularioContrato } from './FormularioContrato';
 import { CadastroPorContratoPdf } from './CadastroPorContratoPdf';
 import { CardConformidade } from './ConformidadeEmpresa';
@@ -154,7 +155,7 @@ export function EmpresaDetalhePage() {
     { chave: 'numeroContrato', rotulo: 'Nº do contrato' },
     { chave: 'obraNome', rotulo: 'Obra' },
     { chave: 'origem', rotulo: 'Origem', render: (c) => (c.origemGJuri ? 'G-Juri' : 'Cadastro manual') },
-    { chave: 'vigencia', rotulo: 'Vigência', render: (c) => `${c.dataInicioVigencia} a ${c.dataFimVigencia}` },
+    { chave: 'vigencia', rotulo: 'Vigência', render: (c) => `${dataBr(c.dataInicioVigencia)} a ${dataBr(c.dataFimVigencia)}` },
     {
       chave: 'status',
       rotulo: 'Status',
@@ -351,6 +352,7 @@ export function EmpresaDetalhePage() {
           linhas={contratos}
           chaveLinha={(c) => c.id}
           carregando={carregando}
+          aoClicarLinha={(c) => navigate(`/terceirizados/contratos/${c.id}`)}
           vazio={{ titulo: 'Nenhum contrato cadastrado para esta empresa', descricao: 'Use "Subir contrato (PDF)" para a IA preencher tudo, ou "Novo contrato" para cadastrar à mão.' }}
           acoesLinha={(c) => (
             <>

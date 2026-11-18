@@ -18,6 +18,8 @@ import {
 import { AddCircle24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { api, type NovoRegistroHhtMensal, type Obra, type RegistroHhtMensal } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
 
 const nomesMes = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -31,6 +33,8 @@ function novoInicial(): NovoRegistroHhtMensal {
 
 // Onda 2 Task 20 (camada ui/): lançamento + histórico de HHT mensal por obra, aba de AcidentesPage.
 export function HhtMensalTab({ obras }: { obras: Obra[] }) {
+  const souAdministrador = useSouAdministrador();
+  const [obraFiltro] = useFiltroObra();
   const [registros, setRegistros] = useState<RegistroHhtMensal[]>([]);
   const [novo, setNovo] = useState<NovoRegistroHhtMensal>(novoInicial());
   const [erro, setErro] = useState<string | null>(null);
@@ -155,13 +159,15 @@ export function HhtMensalTab({ obras }: { obras: Obra[] }) {
         <DataTable
           aria-label="Histórico de HHT por obra"
           colunas={colunas}
-          linhas={registros}
+          linhas={obraFiltro ? registros.filter((r) => r.obraId === obraFiltro) : registros}
           chaveLinha={(r) => r.id}
           carregando={carregandoLista}
           vazio={{ titulo: 'Nenhum registro de HHT cadastrado ainda.' }}
-          acoesLinha={(r) => (
-            <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(r.id)} aria-label="Excluir" />
-          )}
+          acoesLinha={
+            souAdministrador
+              ? (r) => <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(r.id)} aria-label="Excluir" />
+              : undefined
+          }
         />
       </Card>
     </div>

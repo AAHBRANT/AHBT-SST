@@ -8,9 +8,10 @@ import {
 } from '@fluentui/react-icons';
 import { api, type CelulaMatriz, type Ghe, type MatrizAtividadesFuncao } from '../../lib/api';
 import { podeNaObra, useUsuarioLogado } from '../../lib/UsuarioLogadoContext';
+import { podeDecidirSugestoesNaObra } from '../../lib/decisaoSugestoes';
 
 // Aba "Atividades por função" do PGR (mockup aprovado 10/11/2026): a IA sugere quais atividades do GHE
-// cada função executa e o Engenheiro de Segurança confirma; a OS passa a listar só as confirmadas.
+// cada função executa e o técnico, o engenheiro de segurança ou o administrador da obra confirma; a OS passa a listar só as confirmadas.
 
 const chave = (atividadeId: string, funcaoId: string) => `${atividadeId}|${funcaoId}`;
 const executaNaBase = (c?: CelulaMatriz) => c?.estado === 'Validada' || c?.estado === 'Pendente';
@@ -117,11 +118,11 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
   const [sugerindo, setSugerindo] = useState(false);
   const [recusado, setRecusado] = useState(false);
 
-  // Só o Engenheiro de Segurança desta obra confirma (global ou com a obra na lista). O servidor decide de
-  // verdade; a recusa (403) também é tratada abaixo.
+  // Só o técnico, o engenheiro de segurança ou o administrador desta obra confirma (global ou com a obra na lista). O
+  // servidor decide de verdade; a recusa (403/404) também é tratada abaixo.
+  // ATENÇÃO legal: confirmar libera a Ordem de Serviço; abrir ao técnico e ao administrador foi decisão do usuário (17/11/2026).
   const podeEditarRiscos = podeNaObra(usuario, 'risco:editar', obraId);
-  const podeDecidir = !recusado
-    && !!usuario && (usuario.engenheiroSegurancaGlobal === true || (usuario.obrasEngenheiroSeguranca ?? []).includes(obraId));
+  const podeDecidir = !recusado && podeDecidirSugestoesNaObra(usuario, obraId);
   // Trava contra duplo clique: o estado só atualiza no próximo render, a ref vale na hora.
   const emAndamento = useRef(false);
   const consultaAtual = useRef(0);
@@ -221,7 +222,7 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
     .filter((c) => c.validadoEmUtc && c.validadoPorNome)
     .sort((a, b) => (b.validadoEmUtc ?? '').localeCompare(a.validadoEmUtc ?? ''))[0];
 
-  // Só salva linhas que o engenheiro alterou ou confirmou explicitamente.
+  // Só salva linhas que a pessoa alterou ou confirmou explicitamente.
   const linhasParaSalvar = rascunho;
   const alteracoes = Object.keys(linhasParaSalvar).length;
   const nomeFuncao = (fId: string) => funcoes.find((f) => f.funcaoId === fId)?.nome ?? '';
@@ -275,9 +276,9 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
       setSucesso('Salvo. A OS passa a listar só as atividades confirmadas.');
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Não foi possível salvar.';
-      if (/\(403\)|Forbidden|Só o Engenheiro de Segurança desta obra/i.test(msg)) {
+      if (/\(403\)|Forbidden|Só o técnico, o engenheiro de segurança ou o administrador desta obra/i.test(msg)) {
         setRecusado(true);
-        setErro('Só o Engenheiro de Segurança desta obra pode confirmar as atividades da função.');
+        setErro('Só o técnico, o engenheiro de segurança ou o administrador desta obra pode confirmar as atividades da função.');
       } else if (!(await tratarConflito(msg))) {
         setErro(msg);
       }
@@ -304,9 +305,9 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
   const motivoDe = (c: CelulaMatriz | undefined, on: boolean, editada: boolean) => {
     if (editada) return on ? 'Marcada para confirmar. Salve para valer na OS.' : 'Desmarcada. Ao salvar, fica como "Não executa" e sai da OS desta função.';
     if (!c || c.estado === 'SemDecisao') return 'Ainda não avaliada para esta função';
-    if (c.estado === 'Pendente') return c.justificativaIa ? `IA: ${c.justificativaIa}` : 'Sugerida pela IA, aguardando o engenheiro';
-    if (c.estado === 'Validada') return c.justificativaIa ?? (c.origem === 'Pgr' ? 'Atividade descrita no PGR' : 'Confirmada pelo engenheiro');
-    return c.justificativaIa ? `IA: ${c.justificativaIa}` : 'Desmarcada pelo engenheiro';
+    if (c.estado === 'Pendente') return c.justificativaIa ? `IA: ${c.justificativaIa}` : 'Sugerida pela IA, aguardando a aprovação';
+    if (c.estado === 'Validada') return c.justificativaIa ?? (c.origem === 'Pgr' ? 'Atividade descrita no PGR' : 'Confirmada');
+    return c.justificativaIa ? `IA: ${c.justificativaIa}` : 'Desmarcada';
   };
 
   const nomesDe = (lista: { nome: string }[]) => lista.map((f) => f.nome).join(', ');
@@ -317,7 +318,7 @@ export function AtividadesPorFuncaoTab({ obraId, ghes, aoAlterar, aoVincularProc
     <div>
       {!podeDecidir && (
         <Aviso tom="info">
-          <b>Somente leitura.</b> Só o Engenheiro de Segurança desta obra confirma as atividades da função. Você pode consultar o que está definido.
+          <b>Somente leitura.</b> Só o técnico, o engenheiro de segurança ou o administrador desta obra confirma as atividades da função. Você pode consultar o que está definido.
         </Aviso>
       )}
       {matriz && nuncaAvaliado && (

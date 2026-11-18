@@ -37,6 +37,8 @@ public class GeracaoPgrEapDto
     public Guid? PgrId { get; set; }
     public EstruturaGeracaoPgr Estrutura { get; set; } = new();
     public List<string> PendenciasAprovacao { get; set; } = new();
+    // Campos de identificação/enquadramento ainda não preenchidos no cadastro da obra (Administração › Obras).
+    public List<string> FaltandoCadastroObra { get; set; } = new();
     public List<FuncaoCadastroDto> FuncoesCadastradas { get; set; } = new();
     public int MaxProbabilidade { get; set; }
     public int MaxSeveridade { get; set; }
@@ -93,9 +95,23 @@ internal static class SerializacaoGeracao
     }
 }
 
+public record DadosObraPgr(string? Cnae, int? GrauRisco, string? Cep = null, string? Cnpj = null, string? Endereco = null);
+
 // O que ainda impede a aprovação. A tela mostra a lista; o botão Aprovar só libera com ela vazia.
 public static class PendenciasGeracaoPgr
 {
+    public static List<string> FaltandoNaObra(DadosObraPgr? obra)
+    {
+        var f = new List<string>();
+        if (obra is null) return f;
+        if (string.IsNullOrWhiteSpace(obra.Cnpj)) f.Add("CNPJ");
+        if (string.IsNullOrWhiteSpace(obra.Endereco)) f.Add("Endereço");
+        if (string.IsNullOrWhiteSpace(obra.Cep)) f.Add("CEP");
+        if (string.IsNullOrWhiteSpace(obra.Cnae)) f.Add("CNAE");
+        if (obra.GrauRisco is not (>= 1 and <= 4)) f.Add("Grau de risco (NR-04)");
+        return f;
+    }
+
     // Itens da EAP marcados que entram nos GHEs (mesma regra da sugestão de GHEs). Item incluído à mão entra
     // mesmo como pacote: não tem atividade abaixo dele que o represente (29/10/2026).
     public static List<ItemEapGerado> AtividadesDaEap(EstruturaGeracaoPgr e)
@@ -116,16 +132,36 @@ public static class PendenciasGeracaoPgr
     }
 
     // epis: EPIs do catálogo usados nas medidas, para conferir o CA (NR-06). Sem o dicionário, o CA não é conferido.
-    public static List<string> Calcular(EstruturaGeracaoPgr e, int maxP, int maxS, IReadOnlyDictionary<Guid, CatalogoEpiInfo>? epis = null)
+    // obra: dados centralizados no cadastro da obra; rascunhos antigos mantêm fallback para Complementares.
+    public static List<string> Calcular(
+        EstruturaGeracaoPgr e,
+        int maxP,
+        int maxS,
+        IReadOnlyDictionary<Guid, CatalogoEpiInfo>? epis = null,
+        DadosObraPgr? obra = null)
     {
         var hoje = DateTime.UtcNow.Date;
         var p = new List<string>();
         if (e.DataTermino is null) p.Add("Informe o término da vigência do PGR.");
         var comp = e.Complementares;
-        if (string.IsNullOrWhiteSpace(comp.Cnae)) p.Add("Informe o CNAE da obra.");
-        if (comp.GrauRisco is not (>= 1 and <= 4)) p.Add("Informe o grau de risco da obra (1 a 4, NR-04).");
-        if (string.IsNullOrWhiteSpace(comp.ResponsavelTecnicoRegistro)) p.Add("Informe o registro profissional (CREA) do responsável técnico.");
-        if (string.IsNullOrWhiteSpace(comp.ResponsavelImplantacaoNome)) p.Add("Informe o responsável pela implantação do PGR.");
+        var cnae = !string.IsNullOrWhiteSpace(obra?.Cnae) ? obra!.Cnae : comp.Cnae;
+        var grauRisco = obra?.GrauRisco ?? comp.GrauRisco;
+        if (string.IsNullOrWhiteSpace(cnae)) p.Add("Cadastre o CNAE da obra em Administração › Obras.");
+        if (grauRisco is not (>= 1 and <= 4)) p.Add("Cadastre o grau de risco da obra (1 a 4, NR-04) em Administração › Obras.");
+
+        if (comp.Engenheiro is not { AMao: true })
+        {
+            var crea = !string.IsNullOrWhiteSpace(comp.Engenheiro?.Registro) ? comp.Engenheiro!.Registro : comp.ResponsavelTecnicoRegistro;
+            if (string.IsNullOrWhiteSpace(crea))
+                p.Add("Informe o registro profissional (CREA) do responsável técnico no cartão Quem assina.");
+        }
+
+        var temResponsavelImplantacao = comp.Tecnico is { AMao: true }
+            || comp.Tecnico?.UsuarioId is not null
+            || !string.IsNullOrWhiteSpace(comp.Tecnico?.Nome)
+            || !string.IsNullOrWhiteSpace(comp.ResponsavelImplantacaoNome);
+        if (!temResponsavelImplantacao)
+            p.Add("Escolha o responsável pela implantação do PGR (técnico de segurança da obra) no cartão Quem assina.");
         foreach (var a in e.AcoesPlano.Where(a => !string.IsNullOrWhiteSpace(a.Descricao)))
         {
             var resumo = a.Descricao.Length <= 40 ? a.Descricao : a.Descricao[..40] + "…";
@@ -221,14 +257,19 @@ public class ObterGeracaoPgrEapQueryHandler : IRequestHandler<ObterGeracaoPgrEap
         await AjudanteGeral.UnificarAsync(_db, estrutura, ct);
         var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
         await CboFuncoesGeracao.CompletarAsync(_db, estrutura, catalogo, ct);
-        var pendencias = PendenciasGeracaoPgr.Calcular(estrutura, maxP, maxS, await SerializacaoGeracao.CarregarEpisAsync(_db, estrutura, ct));
+        var obra = await _db.Obras.Where(o => o.Id == g.ObraId)
+            .Select(o => new { o.Nome, o.Cnae, o.GrauRisco, o.Cep, o.Cnpj, o.Endereco })
+            .FirstOrDefaultAsync(ct);
+        var dadosObra = obra is null ? null : new DadosObraPgr(obra.Cnae, obra.GrauRisco, obra.Cep, obra.Cnpj, obra.Endereco);
+        var pendencias = PendenciasGeracaoPgr.Calcular(
+            estrutura, maxP, maxS, await SerializacaoGeracao.CarregarEpisAsync(_db, estrutura, ct), dadosObra);
         pendencias.AddRange(CboFuncoesGeracao.Pendencias(estrutura, catalogo));
 
         return new GeracaoPgrEapDto
         {
             Id = g.Id,
             ObraId = g.ObraId,
-            ObraNome = await _db.Obras.Where(o => o.Id == g.ObraId).Select(o => o.Nome).FirstOrDefaultAsync(ct) ?? string.Empty,
+            ObraNome = obra?.Nome ?? string.Empty,
             Nome = g.Nome,
             DataElaboracao = g.DataElaboracao,
             DataProximaRevisao = g.DataProximaRevisao,
@@ -242,6 +283,7 @@ public class ObterGeracaoPgrEapQueryHandler : IRequestHandler<ObterGeracaoPgrEap
             PgrId = g.PgrId,
             Estrutura = estrutura,
             PendenciasAprovacao = pendencias,
+            FaltandoCadastroObra = PendenciasGeracaoPgr.FaltandoNaObra(dadosObra),
             FuncoesCadastradas = await _db.Funcoes.OrderBy(f => f.Nome).Select(f => new FuncaoCadastroDto(f.Id, f.Nome)).ToListAsync(ct),
             MaxProbabilidade = maxP,
             MaxSeveridade = maxS,
@@ -614,8 +656,9 @@ public class GerarRiscosAtividadeGeracaoPgrCommandHandler : IRequestHandler<Gera
             r.Revisado = false;
         }
 
-        // A IA não vê o que já foi revisado e repete perigos: fica um só por perigo, o revisado ganha.
-        var mantidos = atividade.Riscos.Where(r => r.Revisado && !r.Excluido).ToList();
+        // A IA não vê o que já foi revisado e repete perigos: fica um só por perigo, o revisado ganha. O risco que o técnico
+        // incluiu à mão fica sempre, revisado ou não.
+        var mantidos = atividade.Riscos.Where(r => (r.Revisado || r.IncluidoPeloTecnico) && !r.Excluido).ToList();
         var perigosVistos = mantidos.Select(r => FuncaoSstClassifier.Normalizar(r.Perigo)).ToHashSet();
         riscos = riscos.Where(r => perigosVistos.Add(FuncaoSstClassifier.Normalizar(r.Perigo))).ToList();
         riscos = PerigosPadrao.LimitarPorAtividade(riscos, PerigosPadrao.MaxRiscosPorAtividade - mantidos.Count);
@@ -739,8 +782,11 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
         var matriz = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).VigenteMaisRecente().FirstOrDefaultAsync(ct)
             ?? throw new InvalidOperationException("Nenhuma matriz de risco cadastrada.");
         PendenciasGeracaoPgr.DesmarcarAtividadesSemGhe(e);
+        var dadosObra = await _db.Obras.Where(o => o.Id == g.ObraId)
+            .Select(o => new DadosObraPgr(o.Cnae, o.GrauRisco, o.Cep, o.Cnpj, o.Endereco))
+            .FirstOrDefaultAsync(ct);
         var pendencias = PendenciasGeracaoPgr.Calcular(e, matriz.NumNiveisProbabilidade, matriz.NumNiveisSeveridade,
-            await SerializacaoGeracao.CarregarEpisAsync(_db, e, ct));
+            await SerializacaoGeracao.CarregarEpisAsync(_db, e, ct), dadosObra);
         await AjudanteGeral.UnificarAsync(_db, e, ct);
         var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
         await CboFuncoesGeracao.CompletarAsync(_db, e, catalogo, ct);
@@ -916,6 +962,7 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
         }
 
         detalhesAnteriores.Aplicar(_db, novosGhes);
+        await PreparacaoAutomaticaOsDoPgr.AplicarNaAprovacaoAsync(_db, g.ObraId, novosGhes, request.UsuarioId, aprovador, agora, ct);
 
         // Matriz de EPI da obra a partir do PGR (04/11/2026): só liga ao catálogo que já existe; o que falta vira ação do plano.
         var episSemItem = await MatrizEpiDoPgr.AplicarAsync(_db, e, g.ObraId, funcoesDaGeracao, ct);
