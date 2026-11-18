@@ -18,11 +18,13 @@ import {
   type RelatoVozSuporteIa,
   type SuporteIaSolicitacao,
 } from '../../lib/api';
-import { Button, FeedbackInline, Input, Legenda, Spinner, StatusChip, Textarea } from '@ui';
+import { Button, FeedbackInline, Input, Legenda, Select, Spinner, StatusChip, Textarea } from '@ui';
 import { EsteiraSuporteIa } from './EsteiraSuporteIa';
 import { etapaAtivaPorStatus } from './statusEtapaSuporteIa';
 import { IndicadorGravacao } from '../../components/voz/IndicadorGravacao';
 import { useGravacaoVoz } from '../../components/voz/useGravacaoVoz';
+import { useUsuarioLogado } from '../../lib/UsuarioLogadoContext';
+import { lerInstanteUtc } from '../../components/assinatura/assinaturaDigital';
 
 type CampoChamado = 'tipo' | 'severidade' | 'titulo' | 'modulo' | 'descricao';
 
@@ -365,7 +367,8 @@ function textoOuPlaceholder(valor: string, placeholder: string) {
 }
 
 function formatarData(valor: string) {
-  return new Date(valor).toLocaleString('pt-BR', {
+  return lerInstanteUtc(valor).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
@@ -374,9 +377,19 @@ function formatarData(valor: string) {
   });
 }
 
+function iniciaisDoNome(nome: string): string {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return 'US';
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return `${partes[0][0]}${partes[partes.length - 1][0]}`.toUpperCase();
+}
+
 export function SuporteIaTab() {
   const estilos = useStyles();
   const navigate = useNavigate();
+  const { usuario } = useUsuarioLogado();
+  const nomeCliente = usuario?.nome?.trim() || 'Usuário do G-SST';
+  const iniciaisCliente = iniciaisDoNome(nomeCliente);
   const [tipo, setTipo] = useState<number>(TipoSolicitacaoSuporteIa.Duvida);
   const [severidade, setSeveridade] = useState<number>(SeveridadeSolicitacaoSuporteIa.Media);
   const [titulo, setTitulo] = useState('');
@@ -511,10 +524,10 @@ export function SuporteIaTab() {
           <div className={estilos.corpo}>
             <div className={estilos.ticket}>
               <div className={estilos.ticketTopo}>
-                <div className={estilos.avatarCliente}>CL</div>
+                <div className={estilos.avatarCliente}>{iniciaisCliente}</div>
                 <div>
-                  <p className={estilos.clienteNome}>Usuário do SST</p>
-                  <p className={estilos.clienteMeta}>Chamado aberto no sistema</p>
+                  <p className={estilos.clienteNome}>{nomeCliente}</p>
+                  <p className={estilos.clienteMeta}>Chamado aberto no G-SST</p>
                 </div>
               </div>
 
@@ -592,12 +605,12 @@ export function SuporteIaTab() {
               <div className={estilos.linha}>
                 <label className={estilos.campo}>
                   {rotuloCampo('Tipo', 'tipo')}
-                  <select
-                    className={`${estilos.select} ${camposIa.has('tipo') ? estilos.campoIa : ''}`}
-                    value={tipo}
+                  <Select
+                    className={camposIa.has('tipo') ? estilos.campoIa : undefined}
+                    value={String(tipo)}
                     disabled={ocupadoComVoz}
-                    onChange={(e) => {
-                      setTipo(Number(e.target.value));
+                    onChange={(_, d) => {
+                      setTipo(Number(d.value));
                       editadoPeloUsuario('tipo');
                     }}
                   >
@@ -606,17 +619,17 @@ export function SuporteIaTab() {
                         {rotulo}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
 
                 <label className={estilos.campo}>
                   {rotuloCampo('Severidade percebida', 'severidade')}
-                  <select
-                    className={`${estilos.select} ${camposIa.has('severidade') ? estilos.campoIa : ''}`}
-                    value={severidade}
+                  <Select
+                    className={camposIa.has('severidade') ? estilos.campoIa : undefined}
+                    value={String(severidade)}
                     disabled={ocupadoComVoz}
-                    onChange={(e) => {
-                      setSeveridade(Number(e.target.value));
+                    onChange={(_, d) => {
+                      setSeveridade(Number(d.value));
                       editadoPeloUsuario('severidade');
                     }}
                   >
@@ -625,7 +638,7 @@ export function SuporteIaTab() {
                         {rotulo}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
               </div>
 

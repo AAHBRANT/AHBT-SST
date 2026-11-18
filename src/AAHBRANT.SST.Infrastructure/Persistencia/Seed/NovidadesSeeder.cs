@@ -3182,6 +3182,21 @@ public static class NovidadesSeeder
                     "A aba Lista de Alertas e a tela de Relatórios não filtravam pela obra ativa, e os prazos de alertas apareciam em formato AAAA-MM-DD.",
                     "As listagens de Alertas e Relatórios respeitam a obra selecionada, os prazos aparecem em DD/MM/AAAA e a exclusão de alertas e regras fica restrita a Administrador."),
             }),
+        new(
+            Versao: "5.181.0",
+            Titulo: "Padronização de Câmeras e Central de Suporte IA",
+            DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Filtro de obra sincronizado entre Mosaico de Câmeras, Alertas de EPI e Equipamentos/Agentes",
+                    "Trocar de obra na aba Câmeras ou Alertas de EPI não sincronizava com as demais abas de Câmeras nem com a obra ativa do sistema.",
+                    "A obra escolhida vale simultaneamente para Câmeras, Alertas de EPI e Equipamentos e agentes."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Identificação real do solicitante e horário de Brasília na Central de Suporte IA",
+                    "O rascunho de chamado na Central de Suporte IA mostrava fixo 'CL / Usuário do SST' e as datas dos chamados podiam aparecer com fuso UTC.",
+                    "O rascunho exibe o nome e as iniciais reais do usuário logado no G-SST, com seletores padronizados e datas no horário de Brasília."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
