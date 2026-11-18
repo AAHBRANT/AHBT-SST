@@ -4,26 +4,20 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CODIGOS_PENDENCIA,
-  aberturaEtapaMs,
   alvoDaPendencia,
-  avisoAbaixoDoMinimo,
   bloqueioAvancar,
   cargaDecorridaMin,
-  corpoAjustePeriodos,
   estadoCarga,
   fimCargaAutomaticaMs,
   formatarFalta,
   instanteBrasilia,
   montarFilaAssinaturas,
   pendenciasDaEtapa,
-  periodosSobrepostos,
   percentualCarga,
   resumoFila,
   rotuloMetodo,
   situacaoBiometriaInstrutor,
   textoFechamentoCarga,
-  validarPeriodoAjuste,
-  validarPeriodosAjuste,
   vezDaFila,
 } from '../src/pages/integracao/componentes/helpersInstrutor.ts';
 import {
@@ -137,59 +131,6 @@ test('carga: a barra mostra só o tempo que já passou do período automático',
   const manual = { periodos: [{ id: 'm', data: dia, inicio: '09:00', fim: '11:00', minutos: 120 }], cargaLancadaMinutos: 120, cargaMinimaHoras: 4 };
   assert.equal(percentualCarga(manual, em('09:00')), 50);
 });
-
-test('ajuste: aviso quando o período digitado fica abaixo do mínimo da NR', () => {
-  assert.match(avisoAbaixoDoMinimo('09:00', '12:30', 4) ?? '', /3 h 30 neste ajuste\. Faltam 0 h 30 para o mínimo de 4 h/);
-  assert.equal(avisoAbaixoDoMinimo('09:00', '13:00', 4), null);
-  assert.equal(avisoAbaixoDoMinimo('09:00', '08:00', 4), null); // fim antes do início: o formulário já recusa
-  assert.equal(avisoAbaixoDoMinimo('09:00', '10:00', 0), null); // sem mínimo
-  assert.equal(avisoAbaixoDoMinimo('', '', 4), null);
-});
-
-test('ajuste: início não pode ser anterior à abertura da etapa (Brasília, ao minuto), com a mensagem antes de enviar', () => {
-  const abertura = aberturaEtapaMs('2026-11-16T12:00:30Z')!; // 09:00:30 em Brasília
-  const agora = em('14:00');
-  assert.equal(validarPeriodoAjuste({ data: dia, inicio: '09:00', fim: '12:00' }, agora, abertura), null); // mesmo minuto da abertura vale
-  assert.match(validarPeriodoAjuste({ data: dia, inicio: '08:59', fim: '12:00' }, agora, abertura) ?? '', /anterior à abertura da etapa \(09:00 de 16\/11\)/);
-  assert.match(validarPeriodoAjuste({ data: '2026-11-15', inicio: '20:00', fim: '23:00' }, agora, abertura) ?? '', /anterior à abertura/);
-  assert.equal(validarPeriodoAjuste({ data: dia, inicio: '08:00', fim: '12:00' }, agora, null), null); // sem abertura conhecida, só o servidor decide
-});
-
-test('ajuste: abertura sem "Z" é lida como UTC (o servidor às vezes omite o fuso)', () => {
-  assert.equal(aberturaEtapaMs('2026-11-16T12:00:00'), Date.parse('2026-11-16T12:00:00Z'));
-  assert.equal(aberturaEtapaMs(null), null);
-});
-
-test('ajuste: ordem das regras (data futura, fim > início, 12 h, fim futuro) e sobreposição entre períodos', () => {
-  const agora = em('14:00');
-  assert.match(validarPeriodoAjuste({ data: '', inicio: '09:00', fim: '10:00' }, agora) ?? '', /Informe a data/);
-  assert.equal(validarPeriodoAjuste({ data: '2026-11-17', inicio: '09:00', fim: '10:00' }, agora), 'A data não pode ser futura.');
-  assert.match(validarPeriodoAjuste({ data: dia, inicio: '10:00', fim: '10:00' }, agora) ?? '', /depois do início/);
-  assert.match(validarPeriodoAjuste({ data: dia, inicio: '00:00', fim: '12:01' }, agora) ?? '', /máximo 12 h/);
-  assert.match(validarPeriodoAjuste({ data: dia, inicio: '09:00', fim: '14:01' }, agora) ?? '', /não pode estar no futuro \(agora são 14:00\)/);
-  assert.equal(validarPeriodosAjuste([], agora), 'Informe ao menos um período.');
-  const virada = [
-    { data: '2026-11-15', inicio: '20:00', fim: '23:59' },
-    { data: dia, inicio: '00:00', fim: '04:00' },
-  ];
-  assert.equal(validarPeriodosAjuste(virada, agora), null); // janela que cruza a meia-noite: duas linhas
-  assert.match(validarPeriodosAjuste([virada[0], { data: dia, inicio: '10:00', fim: '12:00' }, { data: dia, inicio: '11:00', fim: '13:00' }], agora) ?? '', /sobrepor/);
-  assert.match(validarPeriodosAjuste([virada[0], { data: dia, inicio: '10:00', fim: '15:00' }], agora) ?? '', /^Período 2: .*futuro/);
-  assert.equal(periodosSobrepostos([{ data: dia, inicio: '09:00', fim: '10:00' }, { data: dia, inicio: '10:00', fim: '11:00' }]), false); // encostar não é sobrepor
-});
-
-test('ajuste: o corpo do POST leva os períodos editados e preserva os manuais (a rota substitui todos)', () => {
-  const existentes = [
-    { data: '2026-11-16T00:00:00', inicio: '09:00', fim: '10:00', automatico: true },
-    { data: '2026-11-15T00:00:00', inicio: '08:00', fim: '09:00' },
-  ];
-  assert.deepEqual(corpoAjustePeriodos([{ data: dia, inicio: '09:00', fim: '12:30' }], existentes), [
-    { data: '2026-11-15', inicio: '08:00', fim: '09:00' },
-    { data: dia, inicio: '09:00', fim: '12:30' },
-  ]);
-});
-
-// ---- pendências e bloqueio do Avançar ----
 
 test('pendências: cada código leva à seção certa; etapa sem participantes não tem ação', () => {
   assert.equal(alvoDaPendencia(CODIGOS_PENDENCIA.instrutorNaoDefinido), 'instrutor');

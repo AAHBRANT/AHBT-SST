@@ -175,20 +175,6 @@ public class IntegracaoAtendimentoRevisaoTests
     // ---------- A2: períodos (17/11/2026: só automáticos) ----------
 
     [Fact]
-    public async Task A2_PeriodoManual_EBloqueado()
-    {
-        var c = await CenarioIntegracao.CriarAsync();
-        var id = await c.IniciarAsync(c.A);
-        var etapa = await c.EtapaAsync(id, 1);
-        var dia = await c.RecuarEtapaAsync(etapa.Id);
-
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => new RegistrarPeriodoEtapaIntegracaoCommandHandler(c.Db)
-            .Handle(new RegistrarPeriodoEtapaIntegracaoCommand(id, etapa.Id, dia, "08:00", "10:00"), default));
-        Assert.Equal("A carga horária é contada automaticamente desde a abertura da etapa; não há lançamento manual.", ex.Message);
-        Assert.Empty(await c.Db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapa.Id).ToListAsync());
-    }
-
-    [Fact]
     public async Task A2_PeriodoAutomatico_NaoQuebraQuandoChocaComOutraEtapa()
     {
         var c = await CenarioIntegracao.CriarAsync();

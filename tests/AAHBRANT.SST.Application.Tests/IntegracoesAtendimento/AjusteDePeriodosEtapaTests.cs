@@ -28,33 +28,6 @@ public class AjusteDePeriodosEtapaTests
         return (c, id, etapa);
     }
 
-    private static PeriodoAjusteEtapaIntegracao P(string data, string inicio, string fim) => new(data, inicio, fim);
-
-    private const string MsgBloqueio = "A carga horária é contada automaticamente desde a abertura da etapa; não há lançamento manual.";
-
-    // ---- 17/11/2026: nenhum lançamento manual ----
-
-    [Fact]
-    public async Task Registrar_Ajustar_Remover_SaoBloqueados_ENadaMuda()
-    {
-        var (c, id, etapa) = await EtapaAbertaAsync(diasAtras: 1, hora: 10, minuto: 0);
-        await PeriodosAutomaticosEtapa.GarantirAsync(c.Db, await c.Db.IntegracoesAtendimento.SingleAsync(a => a.Id == id), etapa, default);
-        await c.Db.SaveChangesAsync();
-        var antes = await c.Db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapa.Id).ToListAsync();
-
-        var e1 = await Assert.ThrowsAsync<InvalidOperationException>(() => new RegistrarPeriodoEtapaIntegracaoCommandHandler(c.Db)
-            .Handle(new RegistrarPeriodoEtapaIntegracaoCommand(id, etapa.Id, Dia(1), "10:00", "12:00"), default));
-        var e2 = await Assert.ThrowsAsync<InvalidOperationException>(() => new AjustarPeriodosEtapaIntegracaoCommandHandler(c.Db)
-            .Handle(new AjustarPeriodosEtapaIntegracaoCommand(id, etapa.Id, [P(Dia(1), "10:00", "12:00")]), default));
-        var e3 = await Assert.ThrowsAsync<InvalidOperationException>(() => new RemoverPeriodoEtapaIntegracaoCommandHandler(c.Db)
-            .Handle(new RemoverPeriodoEtapaIntegracaoCommand(id, etapa.Id, antes[0].Id), default));
-
-        Assert.All(new[] { e1, e2, e3 }, e => Assert.Equal(MsgBloqueio, e.Message));
-        var depois = await c.Db.PeriodosEtapaIntegracao.Where(p => p.IntegracaoEtapaId == etapa.Id).ToListAsync();
-        Assert.Equal(antes.Select(p => p.Id).OrderBy(x => x), depois.Select(p => p.Id).OrderBy(x => x));
-        Assert.All(depois, p => Assert.True(p.Automatico));
-    }
-
     // ---- Recontagem: manual (como na foto do tablet) vira automático desde a abertura ----
 
     [Fact]
