@@ -9,6 +9,8 @@ export interface FeedbackInlineProps {
   tom: 'erro' | 'aviso' | 'sucesso' | 'info';
   children: ReactNode;
   acao?: { rotulo: string; aoClicar: () => void };
+  // Segunda ação, ao lado da primeira (ex.: "Não se aplica" no aviso de trabalho em altura do PGR).
+  acaoSecundaria?: { rotulo: string; aoClicar: () => void };
   aoFechar?: () => void;
 }
 
@@ -16,7 +18,7 @@ const intentPorTom = { erro: 'error', aviso: 'warning', sucesso: 'success', info
 
 // Mensagem de feedback dentro da página (spec §3). Wrapper de MessageBar do Fluent (0 usos até aqui).
 // Substitui <Text className={estilos.erro}> — erro sem ícone, sem ação e sem fechar.
-export function FeedbackInline({ tom, children, acao, aoFechar }: FeedbackInlineProps) {
+export function FeedbackInline({ tom, children, acao, acaoSecundaria, aoFechar }: FeedbackInlineProps) {
   const estilos = useStyles();
   return (
     <MessageBar
@@ -25,9 +27,10 @@ export function FeedbackInline({ tom, children, acao, aoFechar }: FeedbackInline
       role={tom === 'erro' || tom === 'aviso' ? 'alert' : 'status'}
     >
       <MessageBarBody>{children}</MessageBarBody>
-      {(acao || aoFechar) && (
+      {(acao || acaoSecundaria || aoFechar) && (
         <MessageBarActions containerAction={aoFechar && <Button appearance="transparent" icon={<DismissRegular />} aria-label="Fechar" onClick={aoFechar} />}>
           {acao && <Button size="small" onClick={acao.aoClicar}>{acao.rotulo}</Button>}
+          {acaoSecundaria && <Button size="small" onClick={acaoSecundaria.aoClicar}>{acaoSecundaria.rotulo}</Button>}
         </MessageBarActions>
       )}
     </MessageBar>

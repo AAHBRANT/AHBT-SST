@@ -6,8 +6,10 @@ import { agruparPorPerigo, compararComPadrao, nivelDe, nivelMatriz, type CelulaM
 const FASES: Record<number, string> = { 1: 'Antes', 2: 'Durante', 3: 'Após' };
 const linha = { borderTop: '1px solid var(--colorNeutralStroke2)' } as const;
 
-export function InventarioPorPerigo({ gh, gi, editavel, ocupado, matriz, alterar, gerarAtividade, renderRisco }: {
+export function InventarioPorPerigo({ gh, gi, editavel, ocupado, matriz, alterar, gerarAtividade, renderRisco, acaoAdicionar }: {
   gh: GheGerado;
+  // Botão "Adicionar risco" do cabeçalho do GHE (17/11/2026); a página decide quando mostrar.
+  acaoAdicionar?: ReactNode;
   matriz?: CelulaMatriz[];
   gi: number;
   editavel: boolean;
@@ -29,10 +31,13 @@ export function InventarioPorPerigo({ gh, gi, editavel, ocupado, matriz, alterar
 
   return (
     <>
-      <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
-        {grupos.length} perigo(s) em {gh.atividades.length} atividade(s). Revisar um perigo aceita as medidas dele em todas as atividades onde aparece;
-        as que diferem do padrão ficam marcadas e podem ser editadas uma a uma.
-      </Text>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 8 }}>
+        <Text size={200} style={{ flex: '1 1 320px' }}>
+          {grupos.length} perigo(s) em {gh.atividades.length} atividade(s). Revisar um perigo aceita as medidas dele em todas as atividades onde aparece;
+          as que diferem do padrão ficam marcadas e podem ser editadas uma a uma.
+        </Text>
+        {acaoAdicionar}
+      </div>
       {semRiscos.length > 0 && (
         <div style={{ marginBottom: 8 }}>
           <Text size={200}>Sem riscos gerados: {semRiscos.map((a) => a.codigoEap).join(', ')}. </Text>
@@ -64,6 +69,7 @@ export function InventarioPorPerigo({ gh, gi, editavel, ocupado, matriz, alterar
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
                   <Text size={200}>em {gr.itens.length} atividade(s)</Text>
                   <StatusChip tom={tom}>P × S = {min === max ? max : `${min}–${max}`}{pior.rotulo ? ` · ${pior.rotulo}` : ''}</StatusChip>
+                  {gr.itens.some((i) => i.r.incluidoPeloTecnico) && <StatusChip tom="info">Incluído pelo técnico</StatusChip>}
                   {nDif > 0 && <StatusChip tom="atencao">{nDif} fora do padrão</StatusChip>}
                   {nDif === 0 && gr.itens.length > 1 && <StatusChip tom="ok">todas iguais ao padrão</StatusChip>}
                   {!pendentes && <StatusChip tom="ok">Revisado</StatusChip>}
@@ -116,6 +122,7 @@ function LinhaAtividade({ i, dif, ehPadrao, editor }: { i: RefRisco; dif: Difere
         <Text size={200}>{i.atividade.codigoEap} {i.atividade.nome}</Text>
         <StatusChip tom="neutro">P × S = {nivelDe(i.r)}</StatusChip>
         {ehPadrao ? <Text size={200}>padrão</Text> : dif.igual ? <Text size={200}>igual ao padrão</Text> : <MotivosDiferenca dif={dif} />}
+        {i.r.incluidoPeloTecnico && <StatusChip tom="info">Incluído pelo técnico</StatusChip>}
         {i.r.revisado && <StatusChip tom="ok">Revisado</StatusChip>}
       </summary>
       {aberto && !ehPadrao && !dif.igual && <DetalheDiferenca dif={dif} />}

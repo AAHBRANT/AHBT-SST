@@ -53,12 +53,13 @@ import {
 import { designTokens } from '@ui';
 import { useThemeMode } from '../theme/ThemeModeContext';
 import { useTeamsContext } from '../teams/useTeamsContext';
-import { useAcessoCameras } from '../lib/consultas';
+import { useAcessoCameras, useObras } from '../lib/consultas';
 import {
   api,
   FrequenciaPendenciaAutomatica,
   StatusAlerta,
   type NovidadeVersao,
+  type Obra,
   type PendenciaAutomatica,
   type PlanoIntegracao,
 } from '../lib/api';
@@ -830,6 +831,7 @@ function ItemRail({
 export function AppShell({ children }: { children: ReactNode }) {
   const estilos = useStyles();
   const acessoCameras = useAcessoCameras();
+  const { data: obrasAcessiveis = [] } = useObras();
   const location = useLocation();
   const navigate = useNavigate();
   const { carregando, dentroDoTeams, contexto } = useTeamsContext();
@@ -915,9 +917,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     setPerfilAberto(false);
   }
 
-  function abrirSuporteIa() {
+  function abrirAtualizacoes() {
     setMenuPerfilAberto(false);
-    navigate('/suporte-ia');
+    navigate('/administracao?aba=novidades');
   }
 
   useEffect(() => {
@@ -1192,17 +1194,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <button className={estilos.menuItem} type="button" role="menuitem" onClick={abrirMeuPerfil}>
                   Meu perfil
                 </button>
-                <button className={estilos.menuItem} type="button" role="menuitem" onClick={() => setMenuPerfilAberto(false)}>
-                  Atualizações
-                </button>
-                <button className={estilos.menuItem} type="button" role="menuitem" onClick={abrirSuporteIa}>
-                  Suporte técnico
-                </button>
-                <button className={estilos.menuItem} type="button" role="menuitem" onClick={() => setMenuPerfilAberto(false)}>
-                  Termos de uso
-                </button>
-                <button className={mergeClasses(estilos.menuItem, estilos.menuItemSair)} type="button" role="menuitem">
-                  Sair do sistema
+                <button className={estilos.menuItem} type="button" role="menuitem" onClick={abrirAtualizacoes}>
+                  Novidades da versão
                 </button>
               </div>
             )}
@@ -1263,8 +1256,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <div className={estilos.perfilCardTitulo}>Minha assinatura biométrica</div>
                   <div className={estilos.perfilCardCorpo}>
                     <Text size={200} className={estilos.biometriaTexto}>
-                      Cada usuário assina documentos com a própria biometria cadastrada: reconhecimento facial
-                      ou digital do indicador.
+                      Cada usuário assina documentos com a própria biometria cadastrada na ficha do trabalhador:
+                      reconhecimento facial ou digital do indicador.
                     </Text>
                     <div className={estilos.biometriaGrade}>
                       <div className={estilos.biometriaMetodo}>
@@ -1272,16 +1265,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                           <PersonAvailable24Regular />
                           <span>Facial</span>
                         </div>
-                        <div className={estilos.biometriaStatus}>Vinculada ao usuário logado.</div>
-                        <Button appearance="secondary" disabled>Gerenciar face</Button>
+                        <div className={estilos.biometriaStatus}>Vinculada ao perfil do trabalhador.</div>
                       </div>
                       <div className={estilos.biometriaMetodo}>
                         <div className={estilos.biometriaMetodoTopo}>
                           <Fingerprint24Regular />
                           <span>Indicador</span>
                         </div>
-                        <div className={estilos.biometriaStatus}>Vinculada ao usuário logado.</div>
-                        <Button appearance="secondary" disabled>Gerenciar digital</Button>
+                        <div className={estilos.biometriaStatus}>Vinculada ao perfil do trabalhador.</div>
                       </div>
                     </div>
                   </div>
@@ -1290,10 +1281,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <section className={estilos.perfilCard}>
                   <div className={estilos.perfilCardTitulo}>Obras que tenho acesso</div>
                   <div className={estilos.perfilCardCorpo}>
-                    <ul className={estilos.empresasLista}>
-                      <li>Ponte Rio Cuiá</li>
-                      <li>Obra principal SST</li>
-                    </ul>
+                    {obrasAcessiveis.length === 0 ? (
+                      <Text size={200} className={estilos.biometriaStatus}>Nenhuma obra vinculada no momento.</Text>
+                    ) : (
+                      <ul className={estilos.empresasLista}>
+                        {obrasAcessiveis.map((obra: Obra) => (
+                          <li key={obra.id}>{obra.nome}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </section>
               </div>

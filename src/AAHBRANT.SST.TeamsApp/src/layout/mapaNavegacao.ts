@@ -38,7 +38,7 @@ export const modulosNav: Record<string, ModuloNav> = {
       { valor: 'uniforme', rotulo: 'Uniforme' },
       { valor: 'epc', rotulo: 'EPC' },
       { valor: 'dds', rotulo: 'DDS' },
-      { valor: 'identificacao', rotulo: 'Outros controles operacionais' },
+      { valor: 'identificacao', rotulo: 'Áreas de SST' },
     ],
   },
   ocorrencias: {

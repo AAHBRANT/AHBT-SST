@@ -3459,6 +3459,8 @@ export interface ExposicaoRisco { criterio: 'Qualitativo' | 'Quantitativo'; perf
 export interface RiscoGerado {
   id: string; tipo: string; perigo: string; danos?: string | null; probabilidade: number; severidade: number;
   base: string[]; medidas: MedidaGerada[]; revisado: boolean; excluido: boolean;
+  // Risco acrescentado à mão pelo técnico (botão "Adicionar risco"); "Gerar de novo" nunca o descarta.
+  incluidoPeloTecnico?: boolean;
   exposicao: ExposicaoRisco;
 }
 export interface AtividadeGerada { codigoEap: string; nome: string; riscosGerados: boolean; riscos: RiscoGerado[]; herdada?: boolean }
@@ -3468,7 +3470,11 @@ export interface FuncaoGerada {
   cbo?: string | null; cboTitulo?: string | null; cboSugeridoPelaIa?: boolean;
 }
 export interface ResultadoBuscaCbo { codigo: string; codigoFormatado: string; titulo: string; sinonimo?: string | null }
-export interface GheGerado { numero: number; nome: string; ambiente?: string | null; jornada?: string | null; funcoes: FuncaoGerada[]; atividades: AtividadeGerada[] }
+export interface GheGerado {
+  numero: number; nome: string; ambiente?: string | null; jornada?: string | null; funcoes: FuncaoGerada[]; atividades: AtividadeGerada[];
+  // Chave das funções e atividades do GHE quando o técnico respondeu "Não se aplica" ao aviso de trabalho em altura.
+  alturaNaoSeAplicaChave?: string | null;
+}
 export interface AcaoPlanoGerada {
   descricao: string; responsavelUsuarioId?: string | null; responsavelNome?: string | null; inicio?: string | null; prazo?: string | null;
   // Acompanhamento e aferição (NR-01, item 1.5.5.2). acompanhamentoSugeridoPelaIa fica verdadeiro até alguém conferir.

@@ -13,7 +13,7 @@ const ROTULO_NIVEL: Record<number, { rotulo: string; tom: 'alerta' | 'atencao' |
   2: { rotulo: 'Baixo', tom: 'ok' },
   1: { rotulo: 'Trivial', tom: 'ok' },
 };
-export function nivelMatriz(matriz: CelulaMatriz[] | undefined, r: RiscoGerado) {
+export function nivelMatriz(matriz: CelulaMatriz[] | undefined, r: Pick<RiscoGerado, 'probabilidade' | 'severidade'>) {
   const c = matriz?.find((x) => x.probabilidade === r.probabilidade && x.severidade === r.severidade);
   const info = c ? ROTULO_NIVEL[c.nivel] : undefined;
   return { ordem: c?.nivel ?? 0, rotulo: info?.rotulo, tom: info?.tom ?? ('neutro' as const) };

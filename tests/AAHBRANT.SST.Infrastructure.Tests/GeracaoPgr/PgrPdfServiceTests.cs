@@ -73,6 +73,22 @@ public class PgrPdfServiceTests
         Assert.True(paginas >= 3, $"esperava ao menos 3 páginas, veio {paginas}");
     }
 
+    // Risco incluído à mão pelo técnico nasce sem medidas (17/11/2026): a ficha sai igual, sem quebrar.
+    [Fact]
+    public void Gerar_ComRiscoIncluidoPeloTecnicoSemMedidas_DevolvePdfValido()
+    {
+        var dados = DadosCompletos();
+        dados.Estrutura.Ghes[0].Atividades[0].Riscos.Add(new RiscoGerado
+        {
+            Tipo = "Acidente", Perigo = "Choque elétrico", Probabilidade = 2, Severidade = 5, Revisado = true, IncluidoPeloTecnico = true,
+        });
+
+        var pdf = new PgrPdfService().Gerar(dados, null);
+
+        Assert.True(pdf.Length > 1000);
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+    }
+
     [Fact]
     public void Gerar_ComExposicaoEpiComCaECronogramaDeDoisAnos_DevolvePdfValido()
     {
