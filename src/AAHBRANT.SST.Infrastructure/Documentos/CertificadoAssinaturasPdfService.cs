@@ -7,4 +7,7 @@ public class CertificadoAssinaturasPdfService : ICertificadoAssinaturasPdfServic
 {
     public byte[] Gerar(CertificadoAssinaturasModelo modelo) =>
         Document.Create(container => CertificadoAssinaturasPdf.Adicionar(container, modelo)).GeneratePdf();
+
+    public byte[] EstamparFotoConfidencial(byte[] imagem, DateTime assinadoEmUtc, bool retrato34) =>
+        CertificadoAssinaturasPdf.EstamparConfidencial(imagem, assinadoEmUtc, retrato34);
 }

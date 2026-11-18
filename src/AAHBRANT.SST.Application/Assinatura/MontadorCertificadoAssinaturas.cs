@@ -83,7 +83,7 @@ public static class MontadorCertificadoAssinaturas
         }).ToList();
 
         return new CertificadoAssinaturasModelo(
-            nomeDocumento, subtitulo, rastreio.DocumentoId.ToString(), DateTime.UtcNow, $"Sistema SST · {obraNome}",
+            nomeDocumento, subtitulo, rastreio.DocumentoId.ToString(), DateTime.UtcNow, $"G-SST · {obraNome}",
             rastreio.ConteudoHash, documento.Status != StatusDocumentoAssinatura.Finalizado, itens,
             obraNome, obraLogo, rastreio.UrlValidacaoPublica, rastreio.QrCodePng, compacto, painelGeral);
     }

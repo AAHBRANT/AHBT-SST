@@ -128,6 +128,9 @@ public class OrdemServicoPdfService : IOrdemServicoPdfService
                     coluna, "Ordem de Serviço", modelo.Numero, modelo.Revisao, modelo.ConteudoHash, modelo.UrlValidacaoPublica,
                     modelo.QrCodePng, modelo.Funcionario is not null || modelo.Tecnico is not null));
             });
+
+            if (modelo.Certificado is { } certificado)
+                CertificadoAssinaturasPdf.Adicionar(container, certificado);
         }).GeneratePdf();
     }
 
