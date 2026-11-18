@@ -36,6 +36,7 @@ import {
 } from '../../../lib/api';
 import { FaixaKpis } from '../../../components/dashboard/FaixaKpis';
 import { useFiltroObra } from '../../../lib/ObraAtivaContext';
+import { dataBr } from '../../../lib/datas';
 
 // Mesmo mapa de tons de AlertasListaTab.tsx/AlertasConfiguracaoTab.tsx (Guia de conversão item 5) —
 // as três telas do módulo leem severidade igual (status não vira StatusChip nesta tela, só texto
@@ -239,7 +240,7 @@ export function AlertasDashboardTab() {
                 <Legenda>
                   {categoriaAlertaRotulo(alerta.entidadeOrigemTipo)} · {statusAlertaLabel[alerta.status]}
                   {alerta.obraNome ? ` · ${alerta.obraNome}` : ''}
-                  {alerta.dataLimiteTratamento ? ` · prazo ${alerta.dataLimiteTratamento.slice(0, 10)}` : ''}
+                  {alerta.dataLimiteTratamento ? ` · prazo ${dataBr(alerta.dataLimiteTratamento)}` : ''}
                 </Legenda>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>

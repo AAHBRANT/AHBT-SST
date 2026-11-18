@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   BotaoAcao,
   Button,
@@ -35,6 +35,9 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useFiltroObra } from '../../lib/ObraAtivaContext';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { dataBr } from '../../lib/datas';
 
 function novaInicial(): NovoAlerta {
   return {
@@ -78,6 +81,8 @@ const tomPorStatus: Record<number, Tom> = {
 // formulário de "Novo alerta manual" agora cresce acima da lista, sem cobrir a tela com uma gaveta.
 
 export function AlertasListaTab() {
+  const [obraId] = useFiltroObra();
+  const souAdmin = useSouAdministrador();
   const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
@@ -179,6 +184,11 @@ export function AlertasListaTab() {
     await executar((alertaId) => api.alertas.excluir(alertaId), id, 'Falha ao excluir alerta.', 'Alerta excluído com sucesso.');
   }
 
+  const alertasFiltrados = useMemo(
+    () => (obraId ? alertas.filter((a) => a.obraId === obraId) : alertas),
+    [alertas, obraId],
+  );
+
   const colunas: Coluna<Alerta>[] = [
     { chave: 'categoria', rotulo: 'Categoria', render: (a) => categoriaAlertaRotulo(a.entidadeOrigemTipo) },
     { chave: 'tipo', rotulo: 'Tipo', render: (a) => tipoAlertaLabel[a.tipo] },
@@ -194,7 +204,7 @@ export function AlertasListaTab() {
       render: (a) => <StatusChip tom={tomPorStatus[a.status] ?? 'neutro'}>{statusAlertaLabel[a.status]}</StatusChip>,
     },
     { chave: 'destinatario', rotulo: 'Destinatário', render: (a) => a.destinatarioUsuarioNome ?? '—' },
-    { chave: 'prazo', rotulo: 'Prazo', render: (a) => a.dataLimiteTratamento?.slice(0, 10) ?? '—' },
+    { chave: 'prazo', rotulo: 'Prazo', render: (a) => dataBr(a.dataLimiteTratamento) },
   ];
 
   return (
@@ -362,7 +372,7 @@ export function AlertasListaTab() {
         <DataTable
           aria-label="Alertas"
           colunas={colunas}
-          linhas={alertas}
+          linhas={alertasFiltrados}
           chaveLinha={(a) => a.id}
           carregando={carregandoLista}
           vazio={{
@@ -406,7 +416,9 @@ export function AlertasListaTab() {
                   }
                 />
               )}
-              <BotaoAcao tom="excluir" icon={<Delete24Regular />} aria-label="Excluir" onClick={() => excluir(alerta.id)} />
+              {souAdmin && (
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} aria-label="Excluir" onClick={() => excluir(alerta.id)} />
+              )}
             </div>
           )}
         />

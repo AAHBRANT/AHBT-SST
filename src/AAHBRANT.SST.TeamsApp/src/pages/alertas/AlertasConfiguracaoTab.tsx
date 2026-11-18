@@ -29,6 +29,7 @@ import {
   type Usuario,
 } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
+import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
 
 // Tela de administração do Motor Central de Alertas (requisito do usuário, 2026-08-25): antes só
 // dava para ajustar RegraAlerta.DiasAntecedencia/Severidade direto no banco. Um card por módulo
@@ -55,6 +56,7 @@ function rascunhoInicial(modulo: number): NovaRegraAlerta {
 }
 
 export function AlertasConfiguracaoTab() {
+  const souAdmin = useSouAdministrador();
   const [regras, setRegras] = useState<RegraAlerta[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -176,7 +178,7 @@ export function AlertasConfiguracaoTab() {
       <p>
         Defina, por módulo, os limiares de antecedência (em dias) que disparam cada nível de
         severidade. O motor de alertas escolhe sempre a regra mais urgente cujo limiar cobre os dias
-        restantes até o vencimento; um item já vencido gera severidade Crítico automaticamente,
+        restantes até o prazo; um item com renovação pendente gera severidade Crítico automaticamente,
         mesmo sem regra cadastrada.
       </p>
 
@@ -343,13 +345,15 @@ export function AlertasConfiguracaoTab() {
                       disabled={carregando}
                       onClick={() => salvar(regra)}
                     />
-                    <Button
-                      appearance="subtle"
-                      icon={<Delete24Regular />}
-                      title="Excluir"
-                      disabled={carregando}
-                      onClick={() => excluir(regra.id)}
-                    />
+                    {souAdmin && (
+                      <Button
+                        appearance="subtle"
+                        icon={<Delete24Regular />}
+                        title="Excluir"
+                        disabled={carregando}
+                        onClick={() => excluir(regra.id)}
+                      />
+                    )}
                   </div>
                 )}
               />

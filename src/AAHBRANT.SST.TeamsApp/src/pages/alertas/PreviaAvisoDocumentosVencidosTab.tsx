@@ -140,7 +140,7 @@ export function PreviaAvisoDocumentosVencidosTab() {
         }}
       >
         <KpiCard indice={0} tom="info" icone={<Mail24Regular />} rotulo="Destinatários" valor={destinatarios.length} carregando={carregando} />
-        <KpiCard indice={1} tom="alerta" icone={<DocumentError24Regular />} rotulo="Itens vencidos" valor={totalItens} carregando={carregando} />
+        <KpiCard indice={1} tom="alerta" icone={<DocumentError24Regular />} rotulo="Renovação pendente" valor={totalItens} carregando={carregando} />
         <KpiCard
           indice={2}
           tom={semSininho > 0 ? 'atencao' : 'ok'}
@@ -172,7 +172,7 @@ export function PreviaAvisoDocumentosVencidosTab() {
         }
       >
         <DataTable
-          aria-label="Destinatários do aviso de itens vencidos"
+          aria-label="Destinatários do aviso de itens com renovação pendente"
           densidade="compacta"
           colunas={colunas}
           linhas={destinatarios}
@@ -180,7 +180,7 @@ export function PreviaAvisoDocumentosVencidosTab() {
           carregando={carregando}
           vazio={{
             titulo: 'Ninguém recebe aviso no próximo envio',
-            descricao: 'Não há item vencido (PGR, PCMSO, ASO, treinamento, EPI...) em obra ativa, ou as obras com item vencido não têm técnico, engenheiro ou gestor vinculado.',
+            descricao: 'Não há item com renovação pendente (PGR, PCMSO, ASO, treinamento, EPI...) em obra ativa, ou as obras não têm técnico, engenheiro ou gestor vinculado.',
           }}
           aoClicarLinha={(d) => setExpandido((atual) => (atual === d.email ? null : d.email))}
           expansivel={{
@@ -201,7 +201,7 @@ export function PreviaAvisoDocumentosVencidosTab() {
                     { chave: 'tipo', rotulo: 'Tipo', largura: '140px', render: (doc) => <strong>{doc.tipo}</strong> },
                     { chave: 'nome', rotulo: 'Item' },
                     { chave: 'obra', rotulo: 'Obra' },
-                    { chave: 'vencimento', rotulo: 'Venceu em', largura: '120px', render: (doc) => formatarData(doc.vencimento) },
+                    { chave: 'vencimento', rotulo: 'Prazo', largura: '120px', render: (doc) => formatarData(doc.vencimento) },
                     {
                       chave: 'diasVencido',
                       rotulo: 'Atraso',

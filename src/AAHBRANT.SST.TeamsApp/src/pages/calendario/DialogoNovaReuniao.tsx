@@ -19,6 +19,7 @@ import {
 } from '@ui';
 import { Dismiss16Regular, Mail16Regular, Video24Regular } from '@fluentui/react-icons';
 import { api, type ConvidavelReuniao, type Obra, type ReuniaoCalendarioCriada } from '../../lib/api';
+import { hojeIso } from '../../lib/datas';
 
 // "Nova reunião" no Calendário (pedido do usuário em 09/11/2026; desenho aprovado em
 // docs/mockups/2026-11-09-calendario-nova-reuniao.html). Cria uma reunião do Teams na agenda de quem
@@ -244,7 +245,7 @@ export function DialogoNovaReuniao({
                 >
                   {REPETICOES.map((r) => (
                     <option key={r.valor} value={r.valor}>
-                      {r.rotulo(new Date(`${data || new Date().toISOString().slice(0, 10)}T12:00:00`))}
+                      {r.rotulo(new Date(`${data || hojeIso()}T12:00:00`))}
                     </option>
                   ))}
                 </Select>
@@ -342,8 +343,8 @@ export function DialogoNovaReuniao({
                 display: 'flex',
                 gap: 10,
                 alignItems: 'center',
-                background: '#f1f1fb',
-                border: '1px solid #d9daf3',
+                background: designTokens.colorInfoWash,
+                border: `1px solid ${designTokens.colorCardBorder}`,
                 borderRadius: 8,
                 padding: '10px 12px',
               }}
