@@ -14,7 +14,7 @@ public class ObterTagIdentificacaoPorIdQueryHandler : IRequestHandler<ObterTagId
 
     public async Task<TagIdentificacaoDto?> Handle(ObterTagIdentificacaoPorIdQuery request, CancellationToken ct)
     {
-        return await _db.TagsIdentificacao
+        var tag = await _db.TagsIdentificacao
             .NoEscopoDaObra(_db)
             .Where(t => t.Id == request.Id)
             .Select(t => new TagIdentificacaoDto
@@ -27,5 +27,10 @@ public class ObterTagIdentificacaoPorIdQueryHandler : IRequestHandler<ObterTagId
                 EntidadeVinculadaId = t.EntidadeVinculadaId
             })
             .FirstOrDefaultAsync(ct);
+
+        if (tag is { EntidadeVinculadaId: { } id, EntidadeVinculadaTipo: { } tipo } && NomeEntidadeVinculada.EhObjetoDeInspecao(tipo))
+            tag.EntidadeVinculadaNome = await NomeEntidadeVinculada.ObterAsync(_db, tipo, id, ct);
+
+        return tag;
     }
 }

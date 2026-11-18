@@ -46,6 +46,10 @@ public class ResolverTagPorUidQueryHandler : IRequestHandler<ResolverTagPorUidQu
                 .Select(a => a.Descricao + " — " + a.Identificacao)
                 .FirstOrDefaultAsync(ct);
         }
+        else if (NomeEntidadeVinculada.EhObjetoDeInspecao(tag.EntidadeVinculadaTipo) && tag.EntidadeVinculadaId.HasValue)
+        {
+            nomeEntidade = await NomeEntidadeVinculada.ObterAsync(_db, tag.EntidadeVinculadaTipo!.Value, tag.EntidadeVinculadaId.Value, ct);
+        }
 
         return new ResolverTagDto
         {

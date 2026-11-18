@@ -401,7 +401,25 @@ public enum TipoEntidadeVinculada
 {
     Area = 1,
     Ativo = 2,
-    Trabalhador = 3
+    Trabalhador = 3,
+    // Adesivo de inspeção (17/11/2026): QR colado no objeto físico inspecionado. Gravados como inteiro,
+    // então os valores dos existentes não mudam. Veículo/ItemInspecionavel/Alojamento só entram aqui para
+    // a rota pública de situação do equipamento (ResolverEquipamentoPublicoQuery).
+    Veiculo = 4,
+    ItemInspecionavel = 5,
+    Alojamento = 6,
+    // Adesivo de inspeção sem objeto físico (18/11/2026): o QR aponta para a própria inspeção.
+    Inspecao = 7
+}
+
+// Qual selo o adesivo recebe quando a inspeção Concluída não tem item Não Conforme. Com item Não Conforme
+// o adesivo é sempre NÃO LIBERADO, independente do modelo. Gravado como inteiro (default Liberado = 1).
+public enum ModeloAdesivoInspecao
+{
+    // Objeto de uso/operação (andaime, escada, máquina, içamento): "Liberado para uso".
+    Liberado = 1,
+    // Local ou dispositivo (extintor, proteção coletiva, instalação elétrica): "Inspeção realizada".
+    Inspecionado = 2
 }
 
 // NTAG.md §2 — sst_areas.type: comentário do documento lista 'WORK_AREA', 'RISK_ZONE', 'STORAGE'.

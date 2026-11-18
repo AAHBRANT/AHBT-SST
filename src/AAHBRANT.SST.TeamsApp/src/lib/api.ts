@@ -2038,12 +2038,20 @@ export const TipoEntidadeVinculada = {
   Area: 1,
   Ativo: 2,
   Trabalhador: 3,
+  Veiculo: 4,
+  ItemInspecionavel: 5,
+  Alojamento: 6,
+  Inspecao: 7,
 } as const;
 
 export const tipoEntidadeVinculadaLabel: Record<number, string> = {
   1: 'Área',
   2: 'Ativo',
   3: 'Funcionário',
+  4: 'Veículo',
+  5: 'Item de inspeção',
+  6: 'Alojamento',
+  7: 'Inspeção',
 };
 
 export interface TagIdentificacao {
@@ -2053,6 +2061,8 @@ export interface TagIdentificacao {
   status: number;
   entidadeVinculadaTipo?: number | null;
   entidadeVinculadaId?: string | null;
+  // Só vem preenchido para Veículo, Item de inspeção e Alojamento (os demais a tela nomeia pelas próprias listas).
+  entidadeVinculadaNome?: string | null;
 }
 
 export type NovaTagIdentificacao = { uid: string; tipo: number };
@@ -2113,7 +2123,49 @@ export interface TrabalhadorPublicoDto {
   historicoDds: DdsPublico[];
 }
 
-export type RecursoPublico = AreaPublicaDto | TrabalhadorPublicoDto;
+// Adesivo de inspeção (LIBERADO / INSPECIONADO / NÃO LIBERADO). Contrato da API: GET api/inspecoes/{id}/adesivo.
+export type SituacaoAdesivo = 'Liberado' | 'Inspecionado' | 'NaoLiberado';
+export type FormatoAdesivo = 'A4' | 'Etiqueta';
+
+export interface AdesivoInspecaoInfo {
+  disponivel: boolean;
+  motivoIndisponivel: string | null;
+  situacao: SituacaoAdesivo;
+  objetoIdentificacao: string;
+  tema: string;
+  obraNome: string;
+  proximaInspecaoEm: string | null;
+}
+
+export interface GerarAdesivoRequest {
+  formato: FormatoAdesivo;
+  /** 1..8, só no formato A4 (grade 2 colunas x 4 linhas). */
+  posicao?: number;
+}
+
+// Leitura pública do QR do adesivo (GET sst/p/{codigoOuUid}): situação ATUAL do equipamento/local, nunca
+// CPF nem o detalhe das não conformidades. O contrato chama o discriminador de `tipo: "Equipamento"`;
+// `tipoRecurso: 'equipamento'` é aceito também, por consistência com os outros recursos públicos.
+export interface EquipamentoPublicoDto {
+  tipo: 'Equipamento';
+  tipoRecurso?: 'equipamento';
+  situacao: SituacaoAdesivo;
+  objetoIdentificacao: string;
+  tema: string;
+  obraNome: string;
+  ultimaInspecaoEm: string;
+  proximaInspecaoEm?: string | null;
+  protocolo: string;
+  protocoloAtual: string;
+  inspetorNome: string;
+}
+
+export type RecursoPublico = AreaPublicaDto | TrabalhadorPublicoDto | EquipamentoPublicoDto;
+
+export function ehEquipamentoPublico(recurso: RecursoPublico | null): recurso is EquipamentoPublicoDto {
+  if (!recurso) return false;
+  return recurso.tipoRecurso === 'equipamento' || (recurso as { tipo?: unknown }).tipo === 'Equipamento';
+}
 
 export interface QrCodeTrabalhador {
   trabalhadorId: string;
@@ -7136,7 +7188,12 @@ export const api = {
     excluir: (id: string) => request<void>(`/api/tagsidentificacao/${id}`, { method: 'DELETE' }),
   },
   identificacaoPublica: {
-    resolver: (codigoOuUid: string) => request<RecursoPublico>(`/sst/p/${encodeURIComponent(codigoOuUid)}`),
+    // `protocoloAdesivo` é o ?i= do QR do adesivo: vai para o servidor, que é quem confere se é mesmo uma inspeção
+    // Concluída deste objeto. A tela nunca exibe o valor da URL, só o `protocolo` que a API devolve.
+    resolver: (codigoOuUid: string, protocoloAdesivo?: string | null) => {
+      const consulta = protocoloAdesivo ? `?i=${encodeURIComponent(protocoloAdesivo)}` : '';
+      return request<RecursoPublico>(`/sst/p/${encodeURIComponent(codigoOuUid)}${consulta}`);
+    },
     baixarFotoTrabalhador: async (uid: string) => {
       const response = await fetch(`${API_BASE_URL}/sst/p/${encodeURIComponent(uid)}/foto`, {
         headers: await montarHeadersAuth(),
@@ -7484,6 +7541,20 @@ export const api = {
       requestOnline<void>(`/api/inspecoes/contatos-email/${contatoId}`, { method: 'DELETE' }),
     // Aguardando assinatura (sem nenhuma assinatura ainda) → Em andamento, para corrigir um erro.
     reabrir: (id: string) => request<void>(`/api/inspecoes/${id}/reabrir`, { method: 'POST' }),
+    // Adesivo de inspeção: sempre online (o PDF é gerado no servidor), nunca entra na fila offline.
+    obterAdesivo: (id: string) => requestOnline<AdesivoInspecaoInfo>(`/api/inspecoes/${id}/adesivo`),
+    gerarAdesivo: async (id: string, corpo: GerarAdesivoRequest): Promise<Blob> => {
+      const response = await fetch(`${API_BASE_URL}/api/inspecoes/${id}/adesivo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await montarHeadersAuth()) },
+        body: JSON.stringify(corpo),
+      });
+      if (!response.ok) {
+        const texto = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(texto, response.status, response.statusText));
+      }
+      return response.blob();
+    },
     baixarPdf: async (id: string) => {
       const response = await fetch(`${API_BASE_URL}/api/inspecoes/${id}/pdf`, { headers: await montarHeadersAuth() });
       if (!response.ok) {

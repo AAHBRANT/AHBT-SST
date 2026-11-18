@@ -3227,6 +3227,21 @@ public static class NovidadesSeeder
                     "O técnico precisava repetir CNAE, Grau de Risco, CEP e CREA no card complementar do PGR, e a OS e o Escopo do PCMSO não traziam esse enquadramento.",
                     "O passo 4 do PGR ficou mais enxuto (usando o CREA de Quem assina), a OS e o Escopo do PCMSO exibem CNAE, Grau de Risco e CEP da obra, e o dimensionamento da CIPA já abre pré-preenchido."),
             }),
+        new(
+            Versao: "5.184.0",
+            Titulo: "Adesivo de inspeção com QR Code",
+            DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Toda inspeção concluída gera adesivo para impressão",
+                    null,
+                    "Depois de concluída e assinada, toda inspeção gera o adesivo LIBERADO, INSPECIONADO ou NÃO LIBERADO, com a logo da obra (ou da AAHBRANT, quando a obra não tem logo), o inspetor, o protocolo e a data da próxima inspeção. Em veículo, alojamento e item cadastrado o QR acompanha o objeto; nas demais inspeções aponta para a própria inspeção. Escolha entre a folha A4 (8 adesivos, imprimindo na posição que quiser) e a etiqueta avulsa."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "QR Code do adesivo mostra a situação atual",
+                    null,
+                    "Quem lê o QR Code com o celular, sem precisar de login, vê a situação mais recente do equipamento ou do local e a data da próxima inspeção. Se o adesivo for de uma inspeção anterior, a tela avisa e mostra a mais recente."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

@@ -11,6 +11,10 @@ public class TemaInspecao : AuditableEntity
 
     // Periodicidade sugerida para os itens novos deste tema (cada item pode ter a sua).
     public int? PeriodicidadeDiasPadrao { get; set; }
+
+    // Selo do adesivo de inspeção quando o item do tema passa na inspeção (17/11/2026): Liberado (objeto de
+    // uso/operação) ou Inspecionado (local/dispositivo). Com item Não Conforme o adesivo é NÃO LIBERADO.
+    public AAHBRANT.SST.Domain.Enums.ModeloAdesivoInspecao ModeloAdesivo { get; set; } = AAHBRANT.SST.Domain.Enums.ModeloAdesivoInspecao.Liberado;
 }
 
 // Item concreto a inspecionar dentro de um tema (ex.: "Andaime fachada norte"). Mudar de obra é

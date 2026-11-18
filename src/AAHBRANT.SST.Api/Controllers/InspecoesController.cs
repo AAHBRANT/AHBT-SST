@@ -1,4 +1,5 @@
-﻿using AAHBRANT.SST.Application.Inspecoes.EnvioEmail;
+﻿using AAHBRANT.SST.Application.Inspecoes.Adesivo;
+using AAHBRANT.SST.Application.Inspecoes.EnvioEmail;
 using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.Inspecoes.Commands;
 using AAHBRANT.SST.Application.Inspecoes.Queries;
@@ -157,6 +158,31 @@ public class InspecoesController : ControllerBase
         return pdf is null ? NotFound() : File(pdf, "application/pdf", $"inspecao-{id}.pdf");
     }
 
+    // Adesivo de inspeção (LIBERADO / INSPECIONADO / NÃO LIBERADO) do objeto físico da inspeção. Mesma policy de
+    // ver a inspeção; o escopo por obra vem do filtro global (inspeção de outra obra => 404).
+    [Authorize(Policy = "inspecao:ver")]
+    [HttpGet("{id:guid}/adesivo")]
+    public async Task<IActionResult> ObterAdesivo(Guid id, CancellationToken ct)
+    {
+        var info = await _mediator.Send(new ObterAdesivoInspecaoQuery(id), ct);
+        return info is null ? NotFound() : Ok(info);
+    }
+
+    [Authorize(Policy = "inspecao:ver")]
+    [HttpPost("{id:guid}/adesivo")]
+    public async Task<IActionResult> GerarAdesivo(Guid id, GerarAdesivoRequestBody? body, CancellationToken ct)
+    {
+        var formato = FormatoAdesivo.A4;
+        if (!string.IsNullOrWhiteSpace(body?.Formato)
+            && !Enum.TryParse(body.Formato.Trim(), ignoreCase: true, out formato))
+            return BadRequest(new { erro = "Formato inválido: use A4 ou Etiqueta." });
+
+        var resultado = await _mediator.Send(new GerarAdesivoInspecaoCommand(id, formato, body?.Posicao), ct);
+        if (resultado.NaoEncontrada) return NotFound();
+        if (resultado.Motivo is not null) return Conflict(new { erro = resultado.Motivo });
+        return File(resultado.Pdf!, "application/pdf", $"adesivo-inspecao-{id}.pdf");
+    }
+
     // Envio do relatório por e-mail (03/11/2026): contatos salvos (obra + meus) e histórico de envios.
     [Authorize(Policy = "inspecao:ver")]
     [HttpGet("{id:guid}/envio-email")]
@@ -206,6 +232,9 @@ public class InspecoesController : ControllerBase
         return NoContent();
     }
 }
+
+// formato: "A4" (grade 2x4, só a posição escolhida é impressa) ou "Etiqueta"; posicao 1..8 só vale no A4.
+public record GerarAdesivoRequestBody(string? Formato, int? Posicao);
 
 public record EnviarEmailInspecaoRequestBody(List<string>? Emails, string? Mensagem, List<string>? SalvarEmails, bool SalvarNaObra);
 

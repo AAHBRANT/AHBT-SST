@@ -101,7 +101,8 @@ export function TagsIdentificacaoTab() {
     if (tag.entidadeVinculadaTipo === TipoEntidadeVinculada.Trabalhador) {
       return trabalhadores.find((t) => t.id === tag.entidadeVinculadaId)?.nome ?? tag.entidadeVinculadaId;
     }
-    return tag.entidadeVinculadaId;
+    // Veículo, item de inspeção e alojamento: o nome vem da API (nunca mostrar o GUID).
+    return tag.entidadeVinculadaNome ?? '—';
   }
 
   async function criar() {

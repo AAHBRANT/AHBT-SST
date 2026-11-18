@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.AreasSst.Queries;
+using AAHBRANT.SST.Application.Inspecoes.Adesivo;
 using AAHBRANT.SST.Application.Trabalhadores.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -24,17 +25,22 @@ public class IdentificacaoPublicaController : ControllerBase
     public IdentificacaoPublicaController(IMediator mediator) => _mediator = mediator;
 
     // Tenta Área primeiro (aceita Código de negócio OU Uid de tag) e, se não achar, tenta Trabalhador
-    // (só por Uid de tag — ver ResolverTrabalhadorPublicoQuery). O discriminador TipoRecurso em cada
+    // (só por Uid de tag — ver ResolverTrabalhadorPublicoQuery) e por fim Equipamento (adesivo de inspeção). O discriminador TipoRecurso em cada
     // DTO (AreaPublicaDto/TrabalhadorPublicoDto) diz ao frontend qual card renderizar.
     [HttpGet("{codigoOuUid}")]
-    public async Task<IActionResult> Resolver(string codigoOuUid, CancellationToken ct)
+    public async Task<IActionResult> Resolver(string codigoOuUid, [FromQuery(Name = "i")] string? protocoloAdesivo, CancellationToken ct)
     {
         var area = await _mediator.Send(new ResolverAreaPublicaQuery(codigoOuUid), ct);
         if (area is not null) return Ok(area);
 
         var autenticado = User.Identity?.IsAuthenticated == true;
         var trabalhador = await _mediator.Send(new ResolverTrabalhadorPublicoQuery(codigoOuUid, autenticado), ct);
-        return trabalhador is null ? NotFound() : Ok(trabalhador);
+        if (trabalhador is not null) return Ok(trabalhador);
+
+        // Adesivo de inspeção (veículo, item de tema ou alojamento): situação ATUAL do objeto. O "?i=" do QR é o
+        // protocolo da inspeção que gerou o adesivo, usado só para a tela avisar que o adesivo ficou antigo.
+        var equipamento = await _mediator.Send(new ResolverEquipamentoPublicoQuery(codigoOuUid, protocoloAdesivo), ct);
+        return equipamento is null ? NotFound() : Ok(equipamento);
     }
 
     [HttpGet("{uid}/foto")]

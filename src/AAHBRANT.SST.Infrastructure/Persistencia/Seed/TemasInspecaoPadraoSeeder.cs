@@ -17,6 +17,29 @@ public static class TemasInspecaoPadraoSeeder
 {
     public const int MaximoItensPorTema = 20;
 
+    // Selo do adesivo de inspeção por tema padrão (17/11/2026, mapeamento a confirmar com o QSMS). Liberado =
+    // objeto de uso/operação; Inspecionado = local ou dispositivo. Tema fora desta lista (criado pela tela)
+    // fica com o default Liberado. A migration AdicionarModeloAdesivoTemaInspecao aplica o mesmo mapeamento
+    // aos temas que já existiam no banco (o seeder abaixo não reinsere tema existente).
+    public static readonly IReadOnlyDictionary<string, ModeloAdesivoInspecao> ModeloAdesivoPorTema =
+        new Dictionary<string, ModeloAdesivoInspecao>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Extintores"] = ModeloAdesivoInspecao.Inspecionado,
+            ["Andaimes"] = ModeloAdesivoInspecao.Liberado,
+            ["Escadas"] = ModeloAdesivoInspecao.Liberado,
+            ["Trabalho em Altura"] = ModeloAdesivoInspecao.Liberado,
+            ["Instalações Elétricas"] = ModeloAdesivoInspecao.Inspecionado,
+            ["Máquinas e Equipamentos"] = ModeloAdesivoInspecao.Liberado,
+            ["Ferramentas Manuais e Elétricas"] = ModeloAdesivoInspecao.Liberado,
+            ["Proteções Coletivas (EPC)"] = ModeloAdesivoInspecao.Inspecionado,
+            ["EPI"] = ModeloAdesivoInspecao.Inspecionado,
+            ["Escavações"] = ModeloAdesivoInspecao.Liberado,
+            ["Içamento de Cargas"] = ModeloAdesivoInspecao.Liberado,
+            ["Espaço Confinado"] = ModeloAdesivoInspecao.Inspecionado,
+            ["Trabalho a Quente"] = ModeloAdesivoInspecao.Liberado,
+            ["Produtos Químicos e Inflamáveis"] = ModeloAdesivoInspecao.Inspecionado,
+        };
+
     private sealed record TemaPadrao(string Nome, int? PeriodicidadeDias, (string Secao, string Descricao)[] Itens);
 
     private static TemaPadrao[] Temas() => new[]
@@ -324,7 +347,12 @@ public static class TemasInspecaoPadraoSeeder
             if (existentes.Any(n => string.Equals(n.Trim(), padrao.Nome, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
-            var tema = new TemaInspecao { Nome = padrao.Nome, PeriodicidadeDiasPadrao = padrao.PeriodicidadeDias };
+            var tema = new TemaInspecao
+            {
+                Nome = padrao.Nome,
+                PeriodicidadeDiasPadrao = padrao.PeriodicidadeDias,
+                ModeloAdesivo = ModeloAdesivoPorTema.GetValueOrDefault(padrao.Nome, ModeloAdesivoInspecao.Liberado),
+            };
             var checklist = new ChecklistModelo
             {
                 Nome = $"Checklist de {padrao.Nome}",

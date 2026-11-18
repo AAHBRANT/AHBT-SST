@@ -1,9 +1,10 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Avatar, Card, designTokens, Legenda, Spinner, StatusChip, Text, type Tom } from '@ui';
 import { ShieldError24Regular } from '@fluentui/react-icons';
-import { api, StatusArea, tipoAreaLabel, statusAreaLabel, type RecursoPublico } from '../../lib/api';
+import { api, ehEquipamentoPublico, StatusArea, tipoAreaLabel, statusAreaLabel, type RecursoPublico } from '../../lib/api';
 import { dataBr } from '../../lib/datas';
+import { EquipamentoPublicoCard } from './EquipamentoPublicoCard';
 
 const raiz: CSSProperties = {
   minHeight: '100vh',
@@ -62,6 +63,9 @@ function statusEpi(dataValidade?: string | null): { rotulo: string; tom: Tom } {
 // chamada autenticada aqui sem antes criar um endpoint público equivalente no backend.
 export function IdentificacaoPublicaPage() {
   const { codigoOuUid } = useParams<{ codigoOuUid: string }>();
+  // QR do adesivo: /#/p/{uid}?i={protocolo}. O protocolo impresso permite avisar quando o adesivo é antigo.
+  const [params] = useSearchParams();
+  const protocoloDoAdesivo = params.get('i');
   const [recurso, setRecurso] = useState<RecursoPublico | null>(null);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -73,11 +77,11 @@ export function IdentificacaoPublicaPage() {
     setNaoEncontrado(false);
     setRecurso(null);
     api.identificacaoPublica
-      .resolver(codigoOuUid)
+      .resolver(codigoOuUid, protocoloDoAdesivo)
       .then(setRecurso)
       .catch(() => setNaoEncontrado(true))
       .finally(() => setCarregando(false));
-  }, [codigoOuUid]);
+  }, [codigoOuUid, protocoloDoAdesivo]);
 
   useEffect(() => {
     if (!codigoOuUid || recurso?.tipoRecurso !== 'trabalhador' || !recurso.temFoto) return;
@@ -98,6 +102,11 @@ export function IdentificacaoPublicaPage() {
       if (urlCriada) URL.revokeObjectURL(urlCriada);
     };
   }, [codigoOuUid, recurso]);
+
+  // Equipamento/local (QR do adesivo de inspeção): página própria, com cabeçalho e coluna de 560 px.
+  if (!carregando && ehEquipamentoPublico(recurso)) {
+    return <EquipamentoPublicoCard dados={recurso} />;
+  }
 
   return (
     <div style={raiz} data-theme="light">
