@@ -8,7 +8,6 @@ import {
   ArrowLeft24Regular,
   ArrowRight24Regular,
   Add24Regular,
-  CalendarLtr24Regular,
   Location24Regular,
   Video24Regular,
   Warning24Regular,
@@ -21,9 +20,8 @@ import {
   type EventoGraphCalendario,
   type EventoSstCalendario,
 } from '../../lib/api';
-import { usePageStyles } from '../pageStyles';
 import { DialogoNovaReuniao } from './DialogoNovaReuniao';
-import { Button, CalendarioMensal, designTokens, FeedbackInline, StatusChip, Text, type Tom } from '@ui';
+import { Button, CalendarioMensal, Card, PageHeader, designTokens, FeedbackInline, StatusChip, Text, type Tom } from '@ui';
 
 const useStyles = makeStyles({
   chipEvento: {
@@ -109,7 +107,6 @@ function inicioDaSemana(data: Date): Date {
 // biblioteca de calendário (nenhuma no projeto) — grade 7x6 construída com Date nativo, mesmo
 // princípio de cálculo de data já usado em outras telas (ex.: PtDashboardTab).
 export function CalendarioPage() {
-  const estilos = usePageStyles();
   const estilosLocais = useStyles();
   const navigate = useNavigate();
 
@@ -185,42 +182,42 @@ export function CalendarioPage() {
   );
 
   const nomeMes = mesAtual.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const tituloMes = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
 
   return (
     <div>
-      <div className={estilos.toolbar}>
-        <Text size={500} weight="semibold">
-          <CalendarLtr24Regular style={{ verticalAlign: 'middle', marginRight: 8 }} />
-          {nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)}
-        </Text>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button
-            appearance="subtle"
-            icon={<ArrowLeft24Regular />}
-            onClick={() => setMesAtual((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-            aria-label="Mês anterior"
-          />
-          <Button
-            appearance="secondary"
-            onClick={() => {
-              const hoje = new Date();
-              setMesAtual(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
-              setDiaSelecionado(chaveDia(hoje));
-            }}
-          >
-            Hoje
-          </Button>
-          <Button
-            appearance="subtle"
-            icon={<ArrowRight24Regular />}
-            onClick={() => setMesAtual((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-            aria-label="Próximo mês"
-          />
-          <Button appearance="primary" icon={<Add24Regular />} onClick={() => setNovaReuniaoAberta(true)}>
-            Nova reunião
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        titulo={`Calendário — ${tituloMes}`}
+        acoes={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button
+              appearance="subtle"
+              icon={<ArrowLeft24Regular />}
+              onClick={() => setMesAtual((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+              aria-label="Mês anterior"
+            />
+            <Button
+              appearance="secondary"
+              onClick={() => {
+                const hoje = new Date();
+                setMesAtual(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+                setDiaSelecionado(chaveDia(hoje));
+              }}
+            >
+              Hoje
+            </Button>
+            <Button
+              appearance="subtle"
+              icon={<ArrowRight24Regular />}
+              onClick={() => setMesAtual((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+              aria-label="Próximo mês"
+            />
+            <Button appearance="primary" icon={<Add24Regular />} onClick={() => setNovaReuniaoAberta(true)}>
+              Nova reunião
+            </Button>
+          </div>
+        }
+      />
 
       <DialogoNovaReuniao
         aberto={novaReuniaoAberta}
@@ -251,27 +248,31 @@ export function CalendarioPage() {
       )}
 
       {calendario && !calendario.usuarioIdentificado && (
-        <div className={estilos.card} style={{ marginBottom: 16 }}>
-          <Text>
-            <Warning24Regular style={{ verticalAlign: 'middle', marginRight: 8, color: designTokens.colorWarning }} />
-            Não foi possível identificar seu usuário do Teams nesta sessão — faça login novamente para ver seu
-            calendário do Outlook/Teams e seus vencimentos do SST.
-          </Text>
+        <div style={{ marginBottom: 16 }}>
+          <Card>
+            <Text>
+              <Warning24Regular style={{ verticalAlign: 'middle', marginRight: 8, color: designTokens.colorWarning }} />
+              Não foi possível identificar seu usuário do Teams nesta sessão — faça login novamente para ver seu
+              calendário do Outlook/Teams e seus prazos do SST.
+            </Text>
+          </Card>
         </div>
       )}
 
       {calendario && calendario.usuarioIdentificado && !calendario.graphDisponivel && (
-        <div className={estilos.card} style={{ marginBottom: 16 }}>
-          <Text>
-            <Warning24Regular style={{ verticalAlign: 'middle', marginRight: 8, color: designTokens.colorWarning }} />
-            Não foi possível ler o calendário do Outlook/Teams agora — os vencimentos do SST abaixo continuam
-            atualizados normalmente.
-          </Text>
-          {calendario.mensagemErroGraph && (
-            <Text size={200} style={{ color: designTokens.colorNeutralMedium, display: 'block', marginTop: 4 }}>
-              {calendario.mensagemErroGraph}
+        <div style={{ marginBottom: 16 }}>
+          <Card>
+            <Text>
+              <Warning24Regular style={{ verticalAlign: 'middle', marginRight: 8, color: designTokens.colorWarning }} />
+              Não foi possível ler o calendário do Outlook/Teams agora — os prazos do SST abaixo continuam
+              atualizados normalmente.
             </Text>
-          )}
+            {calendario.mensagemErroGraph && (
+              <Text size={200} style={{ color: designTokens.colorNeutralMedium, display: 'block', marginTop: 4 }}>
+                {calendario.mensagemErroGraph}
+              </Text>
+            )}
+          </Card>
         </div>
       )}
 
@@ -282,15 +283,15 @@ export function CalendarioPage() {
         </div>
         <div className={estilosLocais.legendaItem}>
           <span className={estilosLocais.bolinha} style={{ backgroundColor: designTokens.colorInfo }} />
-          Vencimento SST — informativo
+          Prazo SST — informativo
         </div>
         <div className={estilosLocais.legendaItem}>
           <span className={estilosLocais.bolinha} style={{ backgroundColor: designTokens.colorWarning }} />
-          Vencimento SST — atenção
+          Prazo SST — atenção
         </div>
         <div className={estilosLocais.legendaItem}>
           <span className={estilosLocais.bolinha} style={{ backgroundColor: designTokens.colorAlert }} />
-          Vencimento SST — crítico
+          Prazo SST — crítico
         </div>
       </div>
 
@@ -310,7 +311,7 @@ export function CalendarioPage() {
 
         {!carregando && eventosDoDiaSelecionado.length === 0 && (
           <Text style={{ display: 'block', marginTop: 8, color: designTokens.colorNeutralMedium }}>
-            Nenhum evento ou vencimento neste dia.
+            Nenhum evento ou prazo neste dia.
           </Text>
         )}
 

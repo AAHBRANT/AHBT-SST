@@ -3167,6 +3167,21 @@ public static class NovidadesSeeder
                     "Botões de inativar empresa e remover documento enviado no checklist apareciam para perfis não administradores.",
                     "Apenas Administradores visualizam as ações destrutivas de inativação de empresa e exclusão de documento enviado."),
             }),
+        new(
+            Versao: "5.180.0",
+            Titulo: "Padronização de Calendário, Alertas e Relatórios",
+            DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Calendário migrado para PageHeader e Card com suporte completo ao modo escuro",
+                    "A tela de Calendário ainda usava classes antigas de barra de topo e cores fixas de fundo claro no diálogo de Nova Reunião.",
+                    "O Calendário usa o cabeçalho padrão PageHeader, tokens de tema compatíveis com o modo escuro e linguagem positiva ('Prazo SST')."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Filtro de obra sincronizado na lista de Alertas e em Relatórios, com datas em DD/MM/AAAA",
+                    "A aba Lista de Alertas e a tela de Relatórios não filtravam pela obra ativa, e os prazos de alertas apareciam em formato AAAA-MM-DD.",
+                    "As listagens de Alertas e Relatórios respeitam a obra selecionada, os prazos aparecem em DD/MM/AAAA e a exclusão de alertas e regras fica restrita a Administrador."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
