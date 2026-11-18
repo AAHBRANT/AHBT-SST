@@ -440,34 +440,36 @@ function PreviaOs({ minuta, logoObraUrl }: { minuta: MinutaOrdemServico; logoObr
       fontSize: 13, lineHeight: 1.45, border: '1px solid var(--colorNeutralStroke2)',
       borderRadius: 6, padding: '16px 20px', background: 'var(--colorNeutralBackground1)',
     }}>
-      {/* Cabeçalho institucional com a logo da obra */}
+      {/* Cabeçalho institucional com a logo da obra e bloco central 100% centralizado */}
       <div style={{
-        display: 'grid', gridTemplateColumns: '110px 1fr 165px', gap: 12, alignItems: 'center',
+        display: 'grid', gridTemplateColumns: '160px 1fr 160px', gap: 12, alignItems: 'center',
         paddingBottom: 10, borderBottom: `2px solid ${corMarca}`, marginBottom: 6,
       }}>
-        <div style={{
-          width: 100, height: 60, border: '1px solid var(--colorNeutralStroke2)', borderRadius: 4,
-          background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4,
-        }}>
-          {logoObraUrl ? (
-            <img src={logoObraUrl} alt={`Logo ${minuta.obra.nome}`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-          ) : (
-            <Text size={100} style={{ color: 'var(--colorNeutralForeground3)', textAlign: 'center' }}>{minuta.obra.nome}</Text>
-          )}
+        <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+          <div style={{
+            width: 100, height: 60, border: '1px solid var(--colorNeutralStroke2)', borderRadius: 4,
+            background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4,
+          }}>
+            {logoObraUrl ? (
+              <img src={logoObraUrl} alt={`Logo ${minuta.obra.nome}`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+            ) : (
+              <Text size={100} style={{ color: 'var(--colorNeutralForeground3)', textAlign: 'center' }}>{minuta.obra.nome}</Text>
+            )}
+          </div>
         </div>
-        <div style={{ textAlign: 'center' }}>
-          <Text weight="bold" size={400} style={{ display: 'block', color: corMarca, textTransform: 'uppercase' }}>
+        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <Text weight="bold" size={400} style={{ display: 'block', textAlign: 'center', color: corMarca, textTransform: 'uppercase' }}>
             {minuta.obra.nome}
           </Text>
-          <Text weight="semibold" size={300} style={{ display: 'block', marginTop: 2 }}>
+          <Text weight="semibold" size={300} style={{ display: 'block', textAlign: 'center', marginTop: 2 }}>
             Ordem de Serviço de Segurança e Saúde no Trabalho
           </Text>
-          <Text size={100} style={{ display: 'block', marginTop: 2, color: 'var(--colorNeutralForeground3)' }}>
+          <Text size={100} style={{ display: 'block', textAlign: 'center', marginTop: 2, color: 'var(--colorNeutralForeground3)' }}>
             NR-01, item 1.4.1, alínea &quot;c&quot; • CLT, art. 157, inciso II
           </Text>
         </div>
         <div style={{ textAlign: 'right', fontSize: 11, lineHeight: 1.35 }}>
-          <div><b>Situação:</b> {minuta.podeEmitir ? 'PRONTA' : 'MINUTA'}</div>
+          <div><b>Situação:</b> {minuta.podeEmitir ? 'VÁLIDA' : 'MINUTA'}</div>
           <div><b>Data:</b> {new Date().toLocaleDateString('pt-BR')}</div>
           {minuta.pgr && <div><b>Revisão PGR:</b> {minuta.pgr.revisao ?? 0}</div>}
         </div>

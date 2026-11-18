@@ -30,12 +30,10 @@ internal static class CabecalhoDocumentoPadrao
     {
         var temEsquerda = linhasCabecalhoEsquerda is { Count: > 0 };
         var temDireita = linhasCabecalhoDireita is { Count: > 0 };
-        var larguraEsquerda = temEsquerda ? LarguraLateral : LarguraLateralSemMetadados;
-        var larguraDireita = temEsquerda && temDireita
-            ? LarguraLateral
-            : temDireita
-                ? LarguraLateralDireitaCompacta
-                : LarguraLateralSemMetadados;
+        // Mantém largura simétrica nos dois lados para o título central ficar exatamente no meio da página.
+        var larguraLateral = temEsquerda ? LarguraLateral : temDireita ? LarguraLateralDireitaCompacta : LarguraLateralSemMetadados;
+        var larguraEsquerda = larguraLateral;
+        var larguraDireita = larguraLateral;
         // Com metadados dos dois lados o miolo central fica bem mais estreito (~127pt contra ~350pt
         // quando só há metadados curtos à direita) — usa a tabela de fonte mais agressiva pra esse caso.
         var colunaEstreita = temEsquerda && temDireita;
