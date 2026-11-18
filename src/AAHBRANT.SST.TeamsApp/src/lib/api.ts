@@ -8282,22 +8282,6 @@ export const api = {
       }),
     retirarParticipante: (id: string, trabalhadorId: string) =>
       request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/participantes/${trabalhadorId}`, { method: 'DELETE' }),
-    registrarPeriodo: (id: string, etapaId: string, periodo: { data: string; inicio: string; fim: string }) =>
-      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/periodos`, {
-        method: 'POST',
-        body: JSON.stringify(periodo),
-      }),
-    // Ajustar horário em UMA transação: SUBSTITUI todos os períodos da etapa pelos informados (se falhar, nada muda).
-    // 400 {erro}: início antes da abertura, fim futuro, mais de 12 h por período ou sobreposição.
-    ajustarPeriodos: (id: string, etapaId: string, periodos: Array<{ data: string; inicio: string; fim: string }>) =>
-      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/periodos/ajustar`, {
-        method: 'POST',
-        body: JSON.stringify({ periodos }),
-      }),
-    removerPeriodo: (id: string, etapaId: string, periodoId: string) =>
-      request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapas/${etapaId}/periodos/${periodoId}`, {
-        method: 'DELETE',
-      }),
     // 409 devolve { erro, faltas[] } (instrutor, carga, fotos, assinaturas). etapaOrdem torna o reenvio idempotente.
     avancar: (id: string, etapaOrdem: number) =>
       request<IntegracaoAtendimentoDetalhe>(`/api/integracoes-atendimento/${id}/etapa-atual/avancar`, {

@@ -102,33 +102,6 @@ public class IntegracoesAtendimentoController : ControllerBase
     public async Task<IActionResult> DesfazerNaoAssinou(Guid id, Guid etapaId, Guid trabalhadorId, CancellationToken ct)
         => Ok(await _mediator.Send(new DesfazerNaoAssinouEtapaIntegracaoCommand(id, etapaId, trabalhadorId, AzureAdObjectId, AutenticacaoHabilitada), ct));
 
-    [Authorize(Policy = "treinamento:criar")]
-    [HttpPost("{id:guid}/etapas/{etapaId:guid}/periodos")]
-    public async Task<IActionResult> RegistrarPeriodo(Guid id, Guid etapaId, PeriodoEtapaRequestBody body, CancellationToken ct)
-    {
-        await _mediator.Send(new RegistrarPeriodoEtapaIntegracaoCommand(
-            id, etapaId, body.Data ?? string.Empty, body.Inicio ?? string.Empty, body.Fim ?? string.Empty, AzureAdObjectId, AutenticacaoHabilitada), ct);
-        return Ok(await _mediator.Send(new ObterIntegracaoQuery(id, AzureAdObjectId, AutenticacaoHabilitada), ct));
-    }
-
-    // "Ajustar horário" atômico: substitui todos os períodos da etapa pelos informados (tudo ou nada).
-    [Authorize(Policy = "treinamento:criar")]
-    [HttpPost("{id:guid}/etapas/{etapaId:guid}/periodos/ajustar")]
-    public async Task<IActionResult> AjustarPeriodos(Guid id, Guid etapaId, AjustarPeriodosRequestBody body, CancellationToken ct)
-    {
-        var periodos = (body.Periodos ?? []).Select(p => new PeriodoAjusteEtapaIntegracao(p.Data, p.Inicio, p.Fim)).ToList();
-        await _mediator.Send(new AjustarPeriodosEtapaIntegracaoCommand(id, etapaId, periodos, AzureAdObjectId, AutenticacaoHabilitada), ct);
-        return Ok(await _mediator.Send(new ObterIntegracaoQuery(id, AzureAdObjectId, AutenticacaoHabilitada), ct));
-    }
-
-    [Authorize(Policy = "treinamento:criar")]
-    [HttpDelete("{id:guid}/etapas/{etapaId:guid}/periodos/{periodoId:guid}")]
-    public async Task<IActionResult> RemoverPeriodo(Guid id, Guid etapaId, Guid periodoId, CancellationToken ct)
-    {
-        await _mediator.Send(new RemoverPeriodoEtapaIntegracaoCommand(id, etapaId, periodoId, AzureAdObjectId, AutenticacaoHabilitada), ct);
-        return Ok(await _mediator.Send(new ObterIntegracaoQuery(id, AzureAdObjectId, AutenticacaoHabilitada), ct));
-    }
-
     // O instrutor assina, por digital ou facial, uma vez em cada etapa de curso em andamento (16/11/2026). Sem biometria não assina.
     // 404 sem acesso à integração; 400 se a pessoa lida não é o instrutor ou a etapa não está em andamento; 409 se já assinou.
     [Authorize(Policy = "treinamento:criar")]
@@ -220,7 +193,5 @@ public class IntegracoesAtendimentoController : ControllerBase
 
 public record IniciarIntegracaoRequestBody(Guid ObraId, List<Guid>? TrabalhadoresIds, Guid? InstrutorTrabalhadorId);
 public record ParticipantesIntegracaoRequestBody(List<Guid>? TrabalhadoresIds);
-public record PeriodoEtapaRequestBody(string? Data, string? Inicio, string? Fim);
-public record AjustarPeriodosRequestBody(List<PeriodoEtapaRequestBody>? Periodos);
 public record AvancarEtapaRequestBody(int? EtapaOrdem);
 public record NaoAssinouRequestBody(string? Motivo);
