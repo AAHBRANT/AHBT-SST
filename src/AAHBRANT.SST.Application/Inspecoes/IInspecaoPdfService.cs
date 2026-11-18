@@ -54,7 +54,8 @@ public record InspecaoPdfModelo(
     // Inspeção de Veículos: linhas de identificação (tipo, placa/prefixo, modelo, empresa) e layout
     // compacto — 1 foto por item, só nos Não Conformes, sem local/responsável/prazo por item.
     IReadOnlyList<string>? IdentificacaoVeiculo = null,
-    bool EvidenciaUnicaSoNaoConforme = false);
+    bool EvidenciaUnicaSoNaoConforme = false,
+    AAHBRANT.SST.Application.Assinatura.CertificadoAssinaturasModelo? Certificado = null);
 
 public interface IInspecaoPdfService
 {

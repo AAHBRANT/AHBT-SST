@@ -17,15 +17,19 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
     private readonly IInspecaoPdfService _pdf;
     private readonly IRegistradorRastreabilidadeService _rastreabilidade;
     private readonly ILogger<ExportarInspecaoPdfQueryHandler> _logger;
+    private readonly IImagemBiometricaCriptografia? _cripto;
+    private readonly IQrCodeDocumentoService? _qrCode;
 
     public ExportarInspecaoPdfQueryHandler(IMediator mediator, IAppDbContext db, IInspecaoPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade,
-        ILogger<ExportarInspecaoPdfQueryHandler> logger)
+        ILogger<ExportarInspecaoPdfQueryHandler> logger, IImagemBiometricaCriptografia? cripto = null, IQrCodeDocumentoService? qrCode = null)
     {
         _logger = logger;
         _mediator = mediator;
         _db = db;
         _pdf = pdf;
         _rastreabilidade = rastreabilidade;
+        _cripto = cripto;
+        _qrCode = qrCode;
     }
 
     public async Task<byte[]?> Handle(ExportarInspecaoPdfQuery request, CancellationToken ct)
@@ -100,10 +104,39 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             };
         }
 
+        var tipoDescricao = DescreverTipoInspecao(detalhe.Inspecao.TipoInspecao);
+        var docAssinatura = await _db.DocumentosAssinatura.AsNoTracking()
+            .Include(d => d.Signatarios)
+            .Where(d => d.EntidadeTipo == nameof(Inspecao) && d.EntidadeId == request.Id && d.Status != StatusDocumentoAssinatura.Cancelado)
+            .OrderByDescending(d => d.CreatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+        var assinaturasAtivas = docAssinatura?.Signatarios.Where(s => s.Ativo).ToList() ?? new List<DocumentoSignatario>();
+        var dadosSignatarios = assinaturasAtivas.Count > 0
+            ? await MontadorCertificadoAssinaturas.CarregarSignatariosAsync(_db, assinaturasAtivas.Select(s => s.TrabalhadorId), ct)
+            : new Dictionary<Guid, MontadorCertificadoAssinaturas.DadosSignatario>();
+        var painel = new PainelCertificado("Inspeção", $"Inspeção — {tipoDescricao} · {detalhe.Inspecao.Data:dd/MM/yyyy}", new List<SecaoPainelCertificado>
+        {
+            new("Inspeção", new List<LinhaPainelCertificado>
+            {
+                new("Checklist", $"{detalhe.Inspecao.ChecklistModeloNome} (v{detalhe.Inspecao.ChecklistModeloVersao})"),
+                new("Data", detalhe.Inspecao.Data.ToString("dd/MM/yyyy")),
+                new("Nº", inspecao.NumeroDocumento ?? "—"),
+                new("Responsável", detalhe.Inspecao.ResponsavelUsuarioNome),
+            }),
+        });
+        var certificado = docAssinatura is null || assinaturasAtivas.Count == 0
+            ? null
+            : await MontadorCertificadoAssinaturas.MontarAsync(
+                _db, _cripto, _qrCode, docAssinatura, assinaturasAtivas, dadosSignatarios,
+                _ => $"Inspeção — {tipoDescricao}",
+                $"Inspeção — {tipoDescricao}",
+                $"Inspeção — {tipoDescricao} · {detalhe.Inspecao.Data:dd/MM/yyyy} · {detalhe.Inspecao.ObraNome}",
+                detalhe.Inspecao.ObraNome ?? string.Empty, obraLogoConteudo, rastreio, painel, compacto: false, ct);
+
         var modelo = new InspecaoPdfModelo(
             detalhe.Inspecao.ObraNome,
             obraLogoConteudo,
-            DescreverTipoInspecao(detalhe.Inspecao.TipoInspecao),
+            tipoDescricao,
             detalhe.Inspecao.ChecklistModeloNome,
             detalhe.Inspecao.ChecklistModeloVersao,
             detalhe.Inspecao.Data,
@@ -122,7 +155,8 @@ public class ExportarInspecaoPdfQueryHandler : IRequestHandler<ExportarInspecaoP
             assinatura is not null || rastreio.TemAssinatura,
             assinatura,
             identificacaoVeiculo,
-            detalhe.Inspecao.TipoInspecao is TipoInspecao.Veiculo or TipoInspecao.Tema);
+            detalhe.Inspecao.TipoInspecao is TipoInspecao.Veiculo or TipoInspecao.Tema,
+            certificado);
 
         var pdf = _pdf.Gerar(modelo);
         // Guarda a cópia exata emitida e o SHA-256 dela — é o que permite conferir, depois,
