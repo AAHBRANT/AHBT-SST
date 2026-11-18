@@ -614,8 +614,9 @@ public class GerarRiscosAtividadeGeracaoPgrCommandHandler : IRequestHandler<Gera
             r.Revisado = false;
         }
 
-        // A IA não vê o que já foi revisado e repete perigos: fica um só por perigo, o revisado ganha.
-        var mantidos = atividade.Riscos.Where(r => r.Revisado && !r.Excluido).ToList();
+        // A IA não vê o que já foi revisado e repete perigos: fica um só por perigo, o revisado ganha. O risco que o técnico
+        // incluiu à mão fica sempre, revisado ou não.
+        var mantidos = atividade.Riscos.Where(r => (r.Revisado || r.IncluidoPeloTecnico) && !r.Excluido).ToList();
         var perigosVistos = mantidos.Select(r => FuncaoSstClassifier.Normalizar(r.Perigo)).ToHashSet();
         riscos = riscos.Where(r => perigosVistos.Add(FuncaoSstClassifier.Normalizar(r.Perigo))).ToList();
         riscos = PerigosPadrao.LimitarPorAtividade(riscos, PerigosPadrao.MaxRiscosPorAtividade - mantidos.Count);

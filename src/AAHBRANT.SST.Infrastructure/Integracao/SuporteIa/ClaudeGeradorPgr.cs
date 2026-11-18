@@ -178,6 +178,12 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
         do PGR (NR-01) para UMA atividade de obra. Responda só com o JSON.
         - Liste só os perigos realmente relevantes da atividade: no MÁXIMO 5, os mais graves e prováveis, de todos os tipos
           aplicáveis: Físico, Químico, Biológico, Ergonômico, Psicossocial, Acidente.
+        - Avalie os perigos pelas FUNÇÕES que executam a atividade, não só pelo nome dela: nomes genéricos da EAP
+          ("Civil", "Equipamentos urbanísticos", "Estrutura") escondem fôrma, armação, alvenaria, pintura, montagem de
+          estrutura metálica, poste ou cobertura. Quando a entrada indicar funções que costumam trabalhar em altura,
+          inclua "Queda de altura" sempre que a atividade puder envolver trabalho acima de 2 m do nível inferior
+          (andaime, escada, plataforma, borda, cobertura, poste, fôrma ou armação elevada). Deixe de fora só quando a
+          atividade for claramente no nível do solo.
         - Psicossocial (fatores de risco psicossociais relacionados ao trabalho, NR-01): inclua no máximo UM
           perigo desse tipo e só quando houver fator claro na atividade, como pressão por prazo, jornada
           extensa ou noturna, trabalho isolado, trabalho sob risco de vida que gere tensão constante, ou
@@ -253,6 +259,9 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
         sb.AppendLine($"GHE: {c.Ghe}");
         sb.AppendLine($"Ambiente: {c.Ambiente ?? "não informado"}");
         sb.AppendLine($"Funções: {string.Join(", ", c.Funcoes)}");
+        var emAltura = c.Funcoes.Where(PerigosPadrao.CostumaTrabalharEmAltura).ToList();
+        if (emAltura.Count > 0)
+            sb.AppendLine($"Funções que costumam trabalhar em altura: {string.Join(", ", emAltura)}. Avalie \"{PerigosPadrao.QuedaDeAltura}\".");
         sb.AppendLine($"Matriz de risco: probabilidade de 1 a {c.MaxProbabilidade}; severidade de 1 a {c.MaxSeveridade}.");
         sb.AppendLine("Perigos padrão (use o nome exato):");
         foreach (var (tipo, nome) in PerigosPadrao.Catalogo) sb.AppendLine($"- {nome} ({tipo})");
