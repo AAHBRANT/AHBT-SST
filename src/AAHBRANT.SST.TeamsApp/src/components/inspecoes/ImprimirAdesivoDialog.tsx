@@ -289,7 +289,7 @@ export function ImprimirAdesivoDialog({
   aberto, onFechar, inspecaoId, adesivo, protocolo, dataInspecao, inspetorNome, onGerado,
 }: ImprimirAdesivoDialogProps) {
   const s = useStyles();
-  const [formato, setFormato] = useState<FormatoAdesivo>('Etiqueta');
+  const [formato, setFormato] = useState<FormatoAdesivo>('A4'); // Padrão: papel adesivo A4 (decisão do usuário em 18/11/2026).
   const [posicao, setPosicao] = useState(1);
   const [gerando, setGerando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);

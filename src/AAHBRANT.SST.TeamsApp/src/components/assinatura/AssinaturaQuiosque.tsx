@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Badge,
   Button,
@@ -49,6 +49,9 @@ export interface AssinaturaQuiosqueProps {
   // Obra do trabalhador que vai assinar — necessária só pelo bloco de reconhecimento facial (o
   // Identify busca no PersonGroup da obra). Os demais métodos (Futronic/sessão logada) não usam.
   obraId: string;
+  // Chamado quando uma assinatura feita NESTA tela fecha o documento (Finalizado), depois da confirmação em
+  // tela cheia. A Inspeção usa para voltar ao detalhe já com o "Imprimir adesivo" aberto (18/11/2026).
+  aoFinalizarAssinatura?: () => void;
 }
 
 // Bloco de quiosque do Motor de Assinatura Eletrônica (docs/Motor-Assinatura-Eletronica.md §5,
@@ -59,7 +62,7 @@ export interface AssinaturaQuiosqueProps {
 // página de detalhe do módulo. Crachá/QR+PIN e WebAuthn/FIDO2 foram removidos do sistema em 31/08
 // (decisão do usuário: único método de assinatura é a digital via leitor Futronic FS80H, "para não
 // dar conflitos" com métodos alternativos) — sem o leitor local disponível não há como assinar aqui.
-export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: AssinaturaQuiosqueProps) {
+export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId, aoFinalizarAssinatura }: AssinaturaQuiosqueProps) {
   const estilos = usePageStyles();
   const [documento, setDocumento] = useState<DocumentoAssinatura | null>(null);
   const [processando, setProcessando] = useState(false);
@@ -132,6 +135,16 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
   // são finalizados sozinhos (assinatura única / encerramento do DDS) — finalizar um DDS no meio barraria
   // os participantes que ainda vão chegar, por isso o botão não aparece para eles.
   const finalizado = documento?.status === StatusDocumentoAssinatura.Finalizado;
+  // Espera a confirmação em tela cheia (2,5 s) antes de sair da tela. Só dispara com assinatura feita aqui
+  // (ultimoAssinante): abrir um documento que já estava finalizado não redireciona.
+  const aoFinalizarRef = useRef(aoFinalizarAssinatura);
+  aoFinalizarRef.current = aoFinalizarAssinatura;
+  useEffect(() => {
+    if (!finalizado || !ultimoAssinante || !aoFinalizarRef.current) return;
+    const t = window.setTimeout(() => aoFinalizarRef.current?.(), 2700);
+    return () => window.clearTimeout(t);
+  }, [finalizado, ultimoAssinante]);
+
   const podeFinalizar = !finalizado && entidadeTipo !== 'Inspecao' && entidadeTipo !== 'Dds' && entidadeTipo !== 'OrdemServico' && (documento?.signatarios.length ?? 0) > 0;
 
   async function finalizar() {

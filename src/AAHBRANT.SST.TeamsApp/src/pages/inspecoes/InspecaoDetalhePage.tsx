@@ -1,7 +1,7 @@
 import { pendenciasFoto } from '../../lib/dadosFoto';
 import { EnvioEmailInspecaoCard } from './EnvioEmailInspecaoCard';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   BotaoAcao,
   Button,
@@ -127,6 +127,10 @@ export function InspecaoDetalhePage() {
   // Adesivo de inspeção: só existe com a inspeção Concluída e depende do servidor dizer que está disponível.
   const [adesivo, setAdesivo] = useState<AdesivoInspecaoInfo | null>(null);
   const [adesivoAberto, setAdesivoAberto] = useState(false);
+  // ?adesivo=imprimir: veio da assinatura (AssinarInspecaoPage) e o diálogo abre sozinho assim que o adesivo
+  // estiver disponível; o parâmetro sai da URL para não reabrir ao recarregar.
+  const [parametros, setParametros] = useSearchParams();
+  const abrirAdesivoAoCarregar = parametros.get('adesivo') === 'imprimir';
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [fotoDepoisUrls, setFotoDepoisUrls] = useState<Record<string, string>>({});
   const [fotoAdicionalUrls, setFotoAdicionalUrls] = useState<Record<string, string>>({});
@@ -431,6 +435,14 @@ export function InspecaoDetalhePage() {
     if (!id || !detalhe) return;
     void visualizar({ titulo: 'PDF da inspeção', nomeArquivo: nomeArquivoPdf(detalhe), obter: () => api.inspecoes.baixarPdf(id) });
   }
+
+  useEffect(() => {
+    if (!abrirAdesivoAoCarregar || !adesivo) return;
+    setAdesivoAberto(true);
+    const proximos = new URLSearchParams(parametros);
+    proximos.delete('adesivo');
+    setParametros(proximos, { replace: true });
+  }, [abrirAdesivoAoCarregar, adesivo, parametros, setParametros]);
 
   // O PDF do adesivo abre no mesmo visualizador do "Visualizar PDF" (o Teams bloqueia window.open).
   function abrirAdesivoNoVisualizador(pdf: Blob) {

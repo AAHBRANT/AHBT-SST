@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FeedbackInline, PageHeader } from '@ui';
 import { api, tipoInspecaoLabel, type InspecaoDetalhe } from '../../lib/api';
 import { AssinaturaQuiosque } from '../../components/assinatura/AssinaturaQuiosque';
@@ -11,6 +11,7 @@ import { AssinaturaQuiosque } from '../../components/assinatura/AssinaturaQuiosq
 // Onda 2 Task 10 (camada ui/): PageHeader substitui o card+toolbar manual; erro vira FeedbackInline.
 export function AssinarInspecaoPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [detalhe, setDetalhe] = useState<InspecaoDetalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -43,7 +44,13 @@ export function AssinarInspecaoPage() {
         </FeedbackInline>
       )}
 
-      <AssinaturaQuiosque entidadeTipo="Inspecao" entidadeId={id} obraId={inspecao?.obraId ?? ''} />
+      {/* Assinou: volta ao detalhe com o "Imprimir adesivo" já aberto (toda inspeção sai com adesivo). */}
+      <AssinaturaQuiosque
+        entidadeTipo="Inspecao"
+        entidadeId={id}
+        obraId={inspecao?.obraId ?? ''}
+        aoFinalizarAssinatura={() => navigate(`/prevencao/inspecoes/${id}?adesivo=imprimir`, { replace: true })}
+      />
     </div>
   );
 }

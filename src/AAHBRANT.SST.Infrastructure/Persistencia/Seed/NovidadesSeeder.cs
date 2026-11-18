@@ -3236,7 +3236,7 @@ public static class NovidadesSeeder
                 new NovidadeSeedItem(CategoriaNovidade.Novidade,
                     "Toda inspeção concluída gera adesivo para impressão",
                     null,
-                    "Depois de concluída e assinada, toda inspeção gera o adesivo LIBERADO, INSPECIONADO ou NÃO LIBERADO, com a logo da obra (ou da AAHBRANT, quando a obra não tem logo), o inspetor, o protocolo e a data da próxima inspeção. Em veículo, alojamento e item cadastrado o QR acompanha o objeto; nas demais inspeções aponta para a própria inspeção. Escolha entre a folha A4 (8 adesivos, imprimindo na posição que quiser) e a etiqueta avulsa."),
+                    "Depois de concluída e assinada, toda inspeção gera o adesivo LIBERADO, INSPECIONADO ou NÃO LIBERADO, com a logo da obra (ou da AAHBRANT, quando a obra não tem logo), o inspetor, o protocolo e a data da próxima inspeção. Em veículo, alojamento e item cadastrado o QR acompanha o objeto; nas demais inspeções aponta para a própria inspeção. Assim que a inspeção é assinada, a tela de impressão abre sozinha, já na folha A4 de papel adesivo (8 adesivos, imprimindo na posição que quiser); a etiqueta avulsa continua disponível."),
                 new NovidadeSeedItem(CategoriaNovidade.Novidade,
                     "QR Code do adesivo mostra a situação atual",
                     null,
