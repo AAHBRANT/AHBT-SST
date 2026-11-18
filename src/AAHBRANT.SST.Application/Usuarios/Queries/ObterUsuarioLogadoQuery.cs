@@ -43,7 +43,11 @@ public record UsuarioLogadoDto(
     // Entra desligado (dev) = verdadeiro e global, como Admin.
     bool PodeDecidirSugestoes = false,
     bool PodeDecidirSugestoesGlobal = false,
-    List<Guid>? ObrasPodeDecidirSugestoes = null);
+    List<Guid>? ObrasPodeDecidirSugestoes = null,
+    Guid? TrabalhadorId = null,
+    bool EhInstrutor = false,
+    string? RegistroInstrutor = null,
+    string? FormacaoInstrutor = null);
 
 public record AlcancePermissaoDto(bool Global, List<Guid> Obras);
 
@@ -81,7 +85,7 @@ public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogado
             ? await _db.Usuarios
                 .AsNoTracking()
                 .Where(u => u.Ativo && u.AzureAdObjectId == request.AzureAdObjectId && u.Status == StatusUsuario.Ativo)
-                .Select(u => new { u.Id, u.Nome, u.Email })
+                .Select(u => new { u.Id, u.Nome, u.Email, u.TrabalhadorId })
                 .FirstOrDefaultAsync(ct)
             : null;
 
@@ -91,7 +95,7 @@ public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogado
             usuario = await _db.Usuarios
                 .AsNoTracking()
                 .Where(u => u.Ativo && u.Status == StatusUsuario.Ativo && u.Email != null && u.Email.ToLower() == emailBusca)
-                .Select(u => new { u.Id, u.Nome, u.Email })
+                .Select(u => new { u.Id, u.Nome, u.Email, u.TrabalhadorId })
                 .FirstOrDefaultAsync(ct);
         }
 
@@ -135,12 +139,29 @@ public class ObterUsuarioLogadoQueryHandler : IRequestHandler<ObterUsuarioLogado
         var engenheiro = perfis.Where(p => p.Tipo == TipoPerfilAcesso.EngenheiroSeguranca).ToList();
         var obrasEngenheiro = engenheiro.Where(p => p.ObraId is not null).Select(p => p.ObraId!.Value).Distinct().ToList();
         var decidem = perfis.Where(p => p.Tipo is { } t && DecisaoTecnicaNaObra.PerfilPodeDecidir(t)).ToList();
+        string? registroInstrutor = null;
+        string? formacaoInstrutor = null;
+        var ehInstrutor = false;
+        if (usuario.TrabalhadorId is { } trabId)
+        {
+            var perfilInstrutor = await _db.PerfisInstrutor.AsNoTracking().FirstOrDefaultAsync(p => p.TrabalhadorId == trabId, ct);
+            if (perfilInstrutor is not null)
+            {
+                ehInstrutor = true;
+                registroInstrutor = AAHBRANT.SST.Application.Instrutores.DescricaoInstrutor.Registro(perfilInstrutor.Conselho, perfilInstrutor.NumeroRegistro, perfilInstrutor.UfRegistro);
+                formacaoInstrutor = AAHBRANT.SST.Application.Instrutores.DescricaoInstrutor.Formacao(perfilInstrutor.Formacao);
+            }
+        }
         return new UsuarioLogadoDto(usuario.Nome, usuario.Email, ehAdministrador, permissoes, alcance,
             EhEngenheiroSeguranca: engenheiro.Count > 0,
             EngenheiroSegurancaGlobal: engenheiro.Any(p => p.ObraId is null),
             ObrasEngenheiroSeguranca: obrasEngenheiro,
             PodeDecidirSugestoes: decidem.Count > 0,
             PodeDecidirSugestoesGlobal: decidem.Any(p => p.ObraId is null),
-            ObrasPodeDecidirSugestoes: decidem.Where(p => p.ObraId is not null).Select(p => p.ObraId!.Value).Distinct().ToList());
+            ObrasPodeDecidirSugestoes: decidem.Where(p => p.ObraId is not null).Select(p => p.ObraId!.Value).Distinct().ToList(),
+            TrabalhadorId: usuario.TrabalhadorId,
+            EhInstrutor: ehInstrutor,
+            RegistroInstrutor: registroInstrutor,
+            FormacaoInstrutor: formacaoInstrutor);
     }
 }

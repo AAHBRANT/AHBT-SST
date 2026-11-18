@@ -15,7 +15,10 @@ public record PadraoTurmaTreinamentoDto(
     int ValidadeEmMeses,
     string? ConteudoProgramatico,
     string? Local,
-    bool PodeEditar);
+    bool PodeEditar,
+    Guid? InstrutorTrabalhadorId = null,
+    string? InstrutorNome = null,
+    string? InstrutorRegistro = null);
 
 public class ObterPadraoTurmaTreinamentoQueryHandler : IRequestHandler<ObterPadraoTurmaTreinamentoQuery, PadraoTurmaTreinamentoDto?>
 {
@@ -33,6 +36,31 @@ public class ObterPadraoTurmaTreinamentoQueryHandler : IRequestHandler<ObterPadr
 
         var padrao = PadraoTurmaTreinamento.De(curso, obraNome);
         var podeEditar = await PerfilTecnicoSeguranca.PodeEditarDadosTreinamentoAsync(_db, request.AzureAdObjectId, request.AutenticacaoHabilitada, ct);
-        return new PadraoTurmaTreinamentoDto(padrao.Norma, padrao.CargaHorariaMinima, padrao.ValidadeEmMeses, padrao.ConteudoProgramatico, padrao.Local, podeEditar);
+        Guid? instrutorTrabId = null;
+        string? instrutorNome = null;
+        string? instrutorRegistro = null;
+        if (!string.IsNullOrWhiteSpace(request.AzureAdObjectId))
+        {
+            var usuario = await _db.Usuarios.AsNoTracking()
+                .Where(u => u.AzureAdObjectId == request.AzureAdObjectId && u.Ativo && u.Status == Domain.Enums.StatusUsuario.Ativo)
+                .Select(u => new { u.Nome, u.TrabalhadorId })
+                .FirstOrDefaultAsync(ct);
+            if (usuario is not null)
+            {
+                instrutorNome = usuario.Nome;
+                instrutorTrabId = usuario.TrabalhadorId;
+                if (usuario.TrabalhadorId is { } tid)
+                {
+                    var trabNome = await _db.Trabalhadores.IgnoreQueryFilters().Where(t => t.Id == tid).Select(t => t.Nome).FirstOrDefaultAsync(ct);
+                    if (!string.IsNullOrWhiteSpace(trabNome)) instrutorNome = trabNome;
+                    var perfil = await _db.PerfisInstrutor.AsNoTracking().FirstOrDefaultAsync(p => p.TrabalhadorId == tid, ct);
+                    if (perfil is not null)
+                        instrutorRegistro = AAHBRANT.SST.Application.Instrutores.DescricaoInstrutor.Registro(perfil.Conselho, perfil.NumeroRegistro, perfil.UfRegistro);
+                }
+            }
+        }
+        return new PadraoTurmaTreinamentoDto(
+            padrao.Norma, padrao.CargaHorariaMinima, padrao.ValidadeEmMeses, padrao.ConteudoProgramatico, padrao.Local, podeEditar,
+            instrutorTrabId, instrutorNome, instrutorRegistro);
     }
 }

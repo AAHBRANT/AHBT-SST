@@ -155,7 +155,12 @@ export function RealizarIntegracaoPage() {
         setEntrada(r);
         // Seleção inicial junto com a carga: a primeira pintura já vem com todos marcados.
         setMarcados(new Set(elegiveisDaObra(r.candidatos).map((c) => c.trabalhadorId)));
-        setInstrutorId((atual) => (r.instrutores.some((i) => i.trabalhadorId === atual) ? atual : r.instrutores[0]?.trabalhadorId ?? ''));
+        setInstrutorId((atual) => {
+          if (usuario?.trabalhadorId && r.instrutores.some((i) => i.trabalhadorId === usuario.trabalhadorId)) {
+            return usuario.trabalhadorId;
+          }
+          return r.instrutores.some((i) => i.trabalhadorId === atual) ? atual : r.instrutores[0]?.trabalhadorId ?? '';
+        });
       } catch (err) {
         if (obraSelecionadaRef.current === alvo) setErroCarga(err instanceof Error ? err.message : 'Não foi possível consultar a obra.');
       } finally {

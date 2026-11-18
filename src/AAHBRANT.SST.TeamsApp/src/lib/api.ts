@@ -615,6 +615,10 @@ export interface UsuarioLogado {
   podeDecidirSugestoes?: boolean;
   podeDecidirSugestoesGlobal?: boolean;
   obrasPodeDecidirSugestoes?: string[];
+  trabalhadorId?: string | null;
+  ehInstrutor?: boolean;
+  registroInstrutor?: string | null;
+  formacaoInstrutor?: string | null;
   permissoes: string[];
   // Onde cada permissão vale (Responsável x Supervisão, 06/11/2026). global = todas as obras;
   // obras = obras atribuídas. Ausente = servidor antigo ou acesso total.
@@ -910,6 +914,9 @@ export interface PadraoTurmaTreinamento {
   conteudoProgramatico: string | null;
   local: string | null;
   podeEditar: boolean;
+  instrutorTrabalhadorId?: string | null;
+  instrutorNome?: string | null;
+  instrutorRegistro?: string | null;
 }
 
 export interface ParticipanteSessaoTreinamento {
@@ -3446,6 +3453,7 @@ export interface MinutaOrdemServico {
   pendencias: PendenciaOs[];
   // false = prévia (função sem confirmação do engenheiro ou decisão parcial). Ausente em servidor antigo.
   atividadesDaFuncaoConfirmadas?: boolean;
+  tecnicoResponsavel?: { nome: string; funcao?: string | null; registro?: string | null } | null;
 }
 
 // Gerador de PGR pela EAP (21/10/2026). Status: 1 Rascunho, 2 Aguardando aprovação, 3 Aprovado, 4 Devolvido.

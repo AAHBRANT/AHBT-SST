@@ -75,7 +75,7 @@ export function InicioIntegracao({ obras, obraId, aoMudarObra, entrada, marcados
       {entrada && (
         <div className={e.campo}>
           <label className={e.campoRotulo} htmlFor="integracao-instrutor">Instrutor da integração</label>
-          <Select id="integracao-instrutor" value={instrutorId} onChange={(_, d) => aoMudarInstrutor(d.value)} disabled={instrutores.length === 0}>
+          <Select id="integracao-instrutor" value={instrutorId} onChange={(_, d) => aoMudarInstrutor(d.value)} disabled={instrutores.length <= 1}>
             {instrutores.length === 0 && <option value="">Nenhum instrutor cadastrado</option>}
             {instrutores.map((i) => (
               <option key={i.trabalhadorId} value={i.trabalhadorId}>

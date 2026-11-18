@@ -129,8 +129,10 @@ public class OrdemServicoPdfService : IOrdemServicoPdfService
                         linha.RelativeItem().Element(e => AssinaturaPdfPadrao.Bloco(e, "TRABALHADOR(A)",
                             modelo.Funcionario?.Nome ?? c.Trabalhador.Nome, c.Trabalhador.Funcao,
                             modelo.Funcionario?.AssinadoEm, modelo.Funcionario?.Metodo));
-                        linha.RelativeItem().Element(e => AssinaturaPdfPadrao.Bloco(e, "TÉCNICO DE SEGURANÇA DO TRABALHO",
-                            modelo.Tecnico?.Nome, modelo.Tecnico?.Funcao,
+                        var tecnicoNome = modelo.Tecnico?.Nome ?? c.TecnicoResponsavel?.Nome;
+                        var tecnicoFuncao = modelo.Tecnico?.Funcao ?? FormatarFuncaoTecnico(c.TecnicoResponsavel);
+                        linha.RelativeItem().Element(e => AssinaturaPdfPadrao.Bloco(e, "TÉCNICO DE SEGURANÇA DO TRABALHO / INSTRUTOR",
+                            tecnicoNome, tecnicoFuncao,
                             modelo.Tecnico?.AssinadoEm, modelo.Tecnico?.Metodo));
                     });
 
@@ -230,6 +232,13 @@ public class OrdemServicoPdfService : IOrdemServicoPdfService
     {
         var lista = itens.ToList();
         return lista.Count == 0 ? "—" : string.Join(separador, lista);
+    }
+
+    private static string? FormatarFuncaoTecnico(TecnicoOsDto? tecnico)
+    {
+        if (tecnico is null) return "Técnico de Segurança do Trabalho";
+        var funcao = string.IsNullOrWhiteSpace(tecnico.Funcao) ? "Técnico de Segurança do Trabalho" : tecnico.Funcao.Trim();
+        return string.IsNullOrWhiteSpace(tecnico.Registro) ? funcao : $"{funcao} • {tecnico.Registro.Trim()}";
     }
 
     private static string Data(DateTime? data) => data?.ToString("dd/MM/yyyy") ?? "—";

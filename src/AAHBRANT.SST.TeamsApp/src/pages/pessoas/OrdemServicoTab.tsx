@@ -7,6 +7,7 @@ import {
 import { api, metodoAutenticacaoAssinaturaLabel, nivelRiscoLabel, type MinutaOrdemServico, type OrdemServicoEmitida, type PendenciaOs } from '../../lib/api';
 import { AssinaturaOrdemServicoDialog } from '../../components/assinatura/AssinaturaOrdemServicoDialog';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { useUsuarioLogado, type UsuarioLogado } from '../../lib/UsuarioLogadoContext';
 import { RevisarSugestoesIaDialog, VincularProcedimentosDialog } from './ResolverPendenciasOsDialogs';
 
 const tomPorNivel: Record<number, Tom> = { 1: 'ok', 2: 'info', 3: 'atencao', 4: 'alerta', 5: 'alerta' };
@@ -44,6 +45,7 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
   const [lote, setLote] = useState<Lote | null>(null);
   const [logoObraUrl, setLogoObraUrl] = useState<string | null>(null);
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
+  const { usuario } = useUsuarioLogado();
   const navigate = useNavigate();
 
   // abrirPop: com pendência, o pop-up explicativo abre sozinho (ao entrar na aba e ao voltar de um lote).
@@ -397,7 +399,7 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
           <DialogBody>
             <DialogTitle>{minuta.podeEmitir ? 'Prévia da Ordem de Serviço' : 'Minuta da Ordem de Serviço (não emitida)'}</DialogTitle>
             <DialogContent>
-              <PreviaOs minuta={minuta} logoObraUrl={logoObraUrl} />
+              <PreviaOs minuta={minuta} logoObraUrl={logoObraUrl} ultimaOs={emitidas[0]} usuario={usuario} />
             </DialogContent>
             <DialogActions>
               <Button appearance="primary" onClick={() => setPreviaAberta(false)}>Fechar</Button>
@@ -409,8 +411,13 @@ export function OrdemServicoTab({ trabalhadorId, aoIrParaAba }: {
   );
 }
 
-// Mesmo conteúdo e ordem do modelo aprovado (v6), com cabeçalho institucional (logo da obra), grade de campos e assinaturas.
-function PreviaOs({ minuta, logoObraUrl }: { minuta: MinutaOrdemServico; logoObraUrl?: string | null }) {
+// Mesmo conteúdo e ordem do modelo aprovado (v6), com cabeçalho institucional (logo da obra), grade de campos e selo de assinatura padrão.
+function PreviaOs({ minuta, logoObraUrl, ultimaOs, usuario }: {
+  minuta: MinutaOrdemServico;
+  logoObraUrl?: string | null;
+  ultimaOs?: OrdemServicoEmitida;
+  usuario?: UsuarioLogado | null;
+}) {
   const corMarca = designTokens.colorPrimary;
   const secao = (n: number, titulo: string) => (
     <div style={{ background: corMarca, color: designTokens.colorWhite, padding: '4px 10px', fontWeight: 700, fontSize: 12, marginTop: 14, letterSpacing: 0.3 }}>
@@ -603,16 +610,80 @@ function PreviaOs({ minuta, logoObraUrl }: { minuta: MinutaOrdemServico; logoObr
           de prevenção e os limites da minha função, e comprometo-me a cumpri-la. Estou ciente de que a recusa injustificada em observar
           as instruções de segurança e em usar os EPIs constitui ato faltoso (CLT, art. 158, parágrafo único).
         </Text>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24, marginTop: 24, paddingTop: 12 }}>
-          <div style={{ borderTop: '1px solid var(--colorNeutralStroke1)', paddingTop: 6, textAlign: 'center' }}>
-            <Text weight="semibold" size={200} style={{ display: 'block' }}>{minuta.trabalhador.nome}</Text>
-            <Text size={100} style={{ display: 'block', color: 'var(--colorNeutralForeground3)' }}>TRABALHADOR(A) • {minuta.trabalhador.funcao}</Text>
-          </div>
-          <div style={{ borderTop: '1px solid var(--colorNeutralStroke1)', paddingTop: 6, textAlign: 'center' }}>
-            <Text weight="semibold" size={200} style={{ display: 'block' }}>TÉCNICO DE SEGURANÇA DO TRABALHO</Text>
-            <Text size={100} style={{ display: 'block', color: 'var(--colorNeutralForeground3)' }}>Responsável de SST da obra</Text>
-          </div>
-        </div>
+        {(() => {
+          const funcAssinatura = ultimaOs?.funcionario;
+          const tecAssinatura = ultimaOs?.tecnico;
+          const nomeInstrutor = tecAssinatura?.nome
+            || minuta.tecnicoResponsavel?.nome
+            || (usuario?.ehInstrutor || usuario?.nome ? usuario.nome : null)
+            || 'Técnico / Instrutor de SST';
+          const cargoInstrutor = tecAssinatura?.funcao
+            || [
+              minuta.tecnicoResponsavel?.funcao || usuario?.formacaoInstrutor || 'Técnico de Segurança do Trabalho',
+              minuta.tecnicoResponsavel?.registro || usuario?.registroInstrutor || null,
+            ].filter(Boolean).join(' • ');
+
+          const blocoAssinatura = (
+            papel: string,
+            nome: string,
+            cargo: string,
+            assinadoEm?: string | null,
+            metodo?: number | null,
+          ) => (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+              <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 11, letterSpacing: 0.3, marginBottom: 6 }}>
+                {papel}
+              </div>
+              <div style={{
+                border: `1.5px solid ${corMarca}`,
+                borderRadius: 5,
+                background: '#ffffff',
+                display: 'flex',
+                overflow: 'hidden',
+                minHeight: 54,
+                margin: '0 6px',
+              }}>
+                <div style={{ width: 5, background: corMarca, flexShrink: 0 }} />
+                <div style={{ padding: '6px 10px', display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1 }}>
+                  <div style={{ color: corMarca, fontWeight: 700, fontSize: 10, letterSpacing: 0.6 }}>
+                    {assinadoEm ? 'ASSINADO DIGITALMENTE' : 'IDENTIFICAÇÃO DO SIGNATÁRIO (ASSINATURA ELETRÔNICA)'}
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 11.5, color: '#1f1f1f', textTransform: 'uppercase', marginTop: 1 }}>
+                    {nome}
+                  </div>
+                  <div style={{ fontSize: 10.5, color: '#555555', marginTop: 1 }}>
+                    {assinadoEm
+                      ? `Assinado em ${dataHora(assinadoEm)} · ${metodo ? metodoAutenticacaoAssinaturaLabel[metodo] ?? 'biometria' : 'biometria'}`
+                      : `${cargo} · Aguardando coleta biométrica na emissão`}
+                  </div>
+                </div>
+              </div>
+              <div style={{ borderTop: '1px solid #1f1f1f', marginTop: 6, paddingTop: 4, textAlign: 'center' }}>
+                <div style={{ fontWeight: 700, fontSize: 12, textTransform: 'uppercase' }}>{nome}</div>
+                <div style={{ fontSize: 11, color: 'var(--colorNeutralForeground3)' }}>{cargo}</div>
+              </div>
+            </div>
+          );
+
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24, marginTop: 20, paddingTop: 8 }}>
+              {blocoAssinatura(
+                'TRABALHADOR(A)',
+                funcAssinatura?.nome || minuta.trabalhador.nome,
+                `${minuta.trabalhador.funcao}${minuta.trabalhador.cbo ? ` • CBO ${minuta.trabalhador.cbo}` : ''}`,
+                funcAssinatura?.assinadoEm,
+                funcAssinatura?.metodo,
+              )}
+              {blocoAssinatura(
+                'TÉCNICO DE SEGURANÇA DO TRABALHO / INSTRUTOR',
+                nomeInstrutor,
+                cargoInstrutor,
+                tecAssinatura?.assinadoEm,
+                tecAssinatura?.metodo,
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
