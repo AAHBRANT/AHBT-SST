@@ -8,11 +8,12 @@ import {
   DialogSurface,
   DialogTitle,
   Field,
+  Input,
   Select,
   Switch,
   Text,
 } from '@fluentui/react-components';
-import { Camera24Regular } from '@fluentui/react-icons';
+import { Camera24Regular, DocumentArrowUp24Regular } from '@fluentui/react-icons';
 import type { UseCapturaFoto } from './useCapturaFoto';
 import { ResumoDadosFoto } from './ResumoDadosFoto';
 import { useDetectorRosto } from './useDetectorRosto';
@@ -62,6 +63,7 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
     return () => URL.revokeObjectURL(url);
   }, [captura.previa]);
   const faltas = pendenciasFoto(captura.previa?.dados);
+  const deArquivo = captura.previa?.dados.origem === 'arquivo';
   const detector = useDetectorRosto(videoRef, mostrarGuiaRosto && !!stream, captura.modoCaptura);
   const avaliacao = detector.situacao === 'ativo' ? detector.avaliacao : null;
   const corQuadrado = avaliacao ? CORES_DETECTOR[avaliacao.tom] : CORES_DETECTOR.ok;
@@ -195,6 +197,11 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
             <Button appearance="secondary" onClick={fecharCamera}>
               Cancelar
             </Button>
+            {captura.permitirArquivo && (
+              <Button icon={<DocumentArrowUp24Regular />} onClick={captura.escolherArquivo} disabled={captura.processando}>
+                Escolher arquivo
+              </Button>
+            )}
             <Button appearance="primary" icon={<Camera24Regular />} onClick={() => void capturarFoto(detector.caixa)} disabled={captura.processando || aguardandoEnquadramento}>
               Capturar
             </Button>
@@ -212,12 +219,22 @@ export function DialogoCameraFoto({ captura }: DialogoCameraFotoProps) {
               Falta registrar {faltas.join(', ')}. {captura.previa?.dados.motivoLocalizacao} Confira os dados e refaça a foto no local.
             </FeedbackInline>}
             <ResumoDadosFoto dados={captura.previa?.dados} />
+            {deArquivo && <>
+              <Field label="Local" style={{ marginTop: 8 }}>
+                <Input value={captura.previa?.dados.local ?? ''} maxLength={200} onChange={(_, d) => captura.atualizarLocalPrevia(d.value)} />
+              </Field>
+              {!captura.previa?.dados.capturadaEm && <FeedbackInline tom="aviso">
+                Esta foto não tem data nem GPS gravados (comum quando vem pelo WhatsApp). Ela entra assim mesmo, com a observação “data e local não comprovados pela foto”.
+              </FeedbackInline>}
+            </>}
           </DialogContent>
           <DialogActions>
             <Button disabled={captura.processando} onClick={captura.descartarPrevia}>Cancelar</Button>
-            <Button disabled={captura.processando} onClick={() => { captura.descartarPrevia(); void captura.abrirCamera(); }}>Refazer foto</Button>
+            {deArquivo
+              ? <Button disabled={captura.processando} onClick={() => { captura.descartarPrevia(); captura.escolherArquivo(); }}>Escolher outra</Button>
+              : <Button disabled={captura.processando} onClick={() => { captura.descartarPrevia(); void captura.abrirCamera(); }}>Refazer foto</Button>}
             <Button appearance="primary" disabled={captura.processando || !!faltas.length} onClick={() => void captura.confirmarFoto()}>
-              {captura.processando ? 'Salvando…' : 'Confirmar foto'}
+              {captura.processando ? 'Salvando…' : deArquivo ? 'Usar esta foto' : 'Confirmar foto'}
             </Button>
           </DialogActions>
         </DialogBody>

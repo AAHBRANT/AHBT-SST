@@ -26,8 +26,10 @@ export function anexarDadosFoto(form: FormData, arquivo: File) {
   if (dados) form.set('metadados', JSON.stringify(dados));
 }
 
-export function dadosEvidencia(arquivo: File, registroId: string): DadosFoto {
+export function dadosEvidencia(arquivo: File, registroId: string, opcoes?: { permitirArquivo?: boolean }): DadosFoto {
   const dados = obterDadosFoto(arquivo);
+  // Foto de arquivo (só Ocorrências): basta pertencer ao registro; data/GPS do EXIF são opcionais.
+  if (opcoes?.permitirArquivo && dados?.origem === 'arquivo' && dados.registroId === registroId) return dados;
   if (dados?.origem !== 'camera' || dados.registroId !== registroId)
     throw new Error('Tire a foto pela câmera deste registro.');
   const faltas = pendenciasFoto(dados);

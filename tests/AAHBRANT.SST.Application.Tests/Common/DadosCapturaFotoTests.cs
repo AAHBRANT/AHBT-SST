@@ -51,6 +51,39 @@ public class DadosCapturaFotoTests
         Assert.True(salvo.RecebidaEm > hora);
     }
 
+    // Ocorrências (18/11/2026): foto de arquivo aceita só quando o chamador libera, com data e GPS do próprio
+    // arquivo quando houver — e mesmo assim presa ao registro e à obra.
+    [Fact]
+    public async Task FotoDeArquivo_SoQuandoPermitida_ComRegistroEObraDoServidor()
+    {
+        using var db = CriarBanco();
+        var obra = new Obra { Nome = "Ponte", Codigo = "PON" };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+        var registro = Guid.NewGuid();
+        var hora = DateTimeOffset.UtcNow.AddDays(-2);
+        var semDados = new DadosCapturaFoto { Origem = "arquivo", RegistroId = registro, ObraId = obra.Id };
+        Task<string> Preparar(DadosCapturaFoto d, bool permitir = true) =>
+            DadosCapturaFoto.PrepararAsync(JsonSerializer.Serialize(d), registro, obra.Id, db, default, permitirArquivo: permitir);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Preparar(semDados, permitir: false));
+        foreach (var invalido in new[] { semDados with { RegistroId = Guid.NewGuid() }, semDados with { ObraId = Guid.NewGuid() },
+            semDados with { Latitude = -7, Longitude = 200 }, semDados with { Latitude = -7 },
+            semDados with { CapturadaEm = DateTimeOffset.UtcNow.AddHours(1) } })
+            await Assert.ThrowsAsync<InvalidOperationException>(() => Preparar(invalido));
+
+        var salvoSemDados = DadosCapturaFoto.Ler(await Preparar(semDados))!;
+        Assert.Equal("arquivo", salvoSemDados.Origem);
+        Assert.Null(salvoSemDados.CapturadaEm);
+        Assert.Equal(obra.Nome, salvoSemDados.ObraNome);
+        Assert.Empty(DadosCapturaFoto.Pendencias(await Preparar(semDados)));
+
+        var comExif = DadosCapturaFoto.Ler(await Preparar(semDados with { CapturadaEm = hora, Latitude = -7.15, Longitude = -34.85 }))!;
+        Assert.Equal(hora, comExif.CapturadaEm);
+        Assert.Equal(-7.15, comExif.Latitude);
+        Assert.True(comExif.RecebidaEm > hora);
+    }
+
     private static SstDbContext CriarBanco() => new(new DbContextOptionsBuilder<SstDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options, new CurrentUserService());
 

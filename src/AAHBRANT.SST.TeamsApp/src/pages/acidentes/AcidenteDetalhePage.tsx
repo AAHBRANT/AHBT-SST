@@ -839,6 +839,7 @@ export function AcidenteDetalhePage() {
       <Card titulo={a.tipo === 1 ? 'Fotos do local do acidente' : 'Fotos do local'}>
         <GradeFotosEvidencia titulo={fotosObrigatorias ? 'Três fotos obrigatórias' : 'Até três fotos (opcionais)'} total={3}
           opcional={!fotosObrigatorias}
+          permitirArquivo
           subtitulo="Registre a visão geral, o ponto da ocorrência e um detalhe relevante. Confira os dados antes de sair do local."
           contextoFoto={{ registroId: a.id, obraId: a.obraId, obraNome: a.obraNome ?? '', local: a.local }}
           fotos={(detalhe.fotos ?? []).map(f => ({ ...f, url: fotoUrls[f.id] }))}

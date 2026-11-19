@@ -3313,6 +3313,21 @@ public static class NovidadesSeeder
                     "O painel do SST IA tinha tamanho fixo e as respostas longas ficavam apertadas.",
                     "O botão de setas no topo do painel amplia a conversa para quase toda a altura da tela, e um novo clique volta ao tamanho normal. O sistema lembra a escolha. No celular o painel continua em tela cheia."),
             }),
+        new(
+            Versao: "5.191.0",
+            Titulo: "Fotos da ocorrência por arquivo e acesso dos técnicos ao detalhe",
+            DataPublicacao: new DateTime(2026, 11, 19, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Fotos do local da ocorrência também podem ser enviadas de arquivo",
+                    "As três fotos do local só podiam ser tiradas pela câmera do sistema, mesmo quando a foto do acidente tinha sido feita no celular de outra pessoa.",
+                    "A câmera ganhou o botão Escolher arquivo. A foto entra com o selo Enviada de arquivo, com data e GPS lidos da própria imagem quando houver, e o relatório de investigação indica a origem."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Detalhe da ocorrência abre para todos os perfis com acesso a ela",
+                    "Quem não tinha permissão de ver usuários recebia erro 403 ao abrir a ocorrência, a não conformidade e outras telas.",
+                    "A tela abre normalmente; só a lista de responsáveis fica vazia para quem não tem essa permissão."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

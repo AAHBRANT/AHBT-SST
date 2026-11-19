@@ -35,6 +35,8 @@ interface GradeFotosEvidenciaProps {
   exigirCamera?: boolean;
   /** Câmera aberta no quadro `ordem` (ex.: pedir o token de captura). */
   aoAbrirCamera?: (ordem: number) => void;
+  /** Aceita também foto de arquivo, com o selo "Enviada de arquivo" (só Ocorrências, 18/11/2026). */
+  permitirArquivo?: boolean;
 }
 
 // Grade de evidências fotográficas em quadros individuais (pedido do usuário, 04/09 — modelo visual
@@ -58,6 +60,7 @@ export function GradeFotosEvidencia({
   tamanhoMaximoMb = 5,
   exigirCamera = false,
   aoAbrirCamera,
+  permitirArquivo = false,
 }: GradeFotosEvidenciaProps) {
   const estilos = useEstilos();
   const porOrdem = new Map(fotos.map((f) => [f.ordem, f]));
@@ -94,6 +97,7 @@ export function GradeFotosEvidencia({
               tamanhoMaximoMb={tamanhoMaximoMb}
               exigirCamera={exigirCamera}
               aoAbrirCamera={aoAbrirCamera ? () => aoAbrirCamera(ordem) : undefined}
+              permitirArquivo={permitirArquivo}
             />
           );
         })}

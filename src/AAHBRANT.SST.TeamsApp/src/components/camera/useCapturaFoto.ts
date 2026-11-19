@@ -5,6 +5,7 @@ import { leituraParaLocalizacao, pendenciasFoto, vincularDadosFoto, type Context
 import { criarRastreadorFoto } from '../../lib/fontesLocalizacao';
 import { observarEndereco, type ObservadorEndereco } from '../../lib/carimboFoto';
 import { prepararDadosEvidencia } from '../../lib/capturaEvidencia';
+import { lerExifJpeg } from '../../lib/exifFoto';
 import type { EstadoRastreio, Rastreador } from '../../lib/rastreadorLocalizacao';
 import type { ModoCapturaRosto } from '../../lib/rosto/avaliarRosto';
 
@@ -40,6 +41,10 @@ export interface UseCapturaFotoOptions {
   modoCaptura?: ModoCapturaRosto;
   // Chamado toda vez que a câmera é aberta (ex.: pedir o token de captura da foto de evidência da integração).
   aoAbrirCamera?: () => void;
+  // Ocorrências (18/11/2026): além da câmera, aceita foto de arquivo/galeria. Ela entra com origem
+  // "arquivo", data e GPS lidos do EXIF quando houver (nada comprovado) e o selo "Enviada de arquivo".
+  // Sem câmera ou sem permissão, abre o seletor de arquivos em vez de mostrar erro.
+  permitirArquivo?: boolean;
 }
 
 // Lógica de captura/seleção de foto extraída de SeletorFotoCamera (14/09) para ser reaproveitada
@@ -86,6 +91,7 @@ export function useCapturaFoto({
   modoCaptura = 'cadastro',
   aoAbrirCamera,
   contextoFoto,
+  permitirArquivo = false,
 }: UseCapturaFotoOptions) {
   const exigirCamera = somenteCamera || !!contextoFoto;
   const [localFoto, setLocalFoto] = useState(contextoFoto?.local ?? '');
@@ -225,6 +231,8 @@ export function useCapturaFoto({
     if (!previa || processando || previa.dados.registroId !== contextoFoto?.registroId || pendenciasFoto(previa.dados).length) return;
     try {
       setProcessando(true);
+      // O local pode ter sido editado na conferência (foto de arquivo): regrava o vínculo antes do envio.
+      vincularDadosFoto(previa.arquivo, previa.dados);
       await aoSelecionarArquivo(previa.arquivo);
     } catch (erro) {
       aoErroValidacao?.(erro instanceof Error ? erro.message : 'Falha ao salvar a foto. Tente novamente.');
@@ -237,7 +245,7 @@ export function useCapturaFoto({
   function falharAbertura() {
     pararLocalizacao();
     setEstadoLocalizacao(null);
-    if (exigirCamera) {
+    if (exigirCamera && !permitirArquivo) {
       aoErroValidacao?.(
         'Não foi possível acessar a câmera. Conecte uma câmera e permita o acesso no navegador ou no Teams para tirar a foto.',
       );
@@ -378,16 +386,48 @@ export function useCapturaFoto({
     );
   }
 
+  // Fecha a câmera (se aberta) e abre o seletor de arquivos nativo.
+  function escolherArquivo() {
+    fecharCamera();
+    inputRef.current?.click();
+  }
+
+  // Foto de arquivo com contexto de obra: o EXIF sai do arquivo ORIGINAL (a compressão o descarta).
+  async function prepararFotoArquivo(arquivo: File) {
+    if (!contextoFoto) return;
+    if (!/^image\/(jpeg|png)$/.test(arquivo.type)) {
+      aoErroValidacao?.('Escolha uma foto em JPG ou PNG.');
+      return;
+    }
+    const exif = arquivo.type === 'image/jpeg' ? lerExifJpeg(await arquivo.arrayBuffer()) : {};
+    const dados: DadosFoto = {
+      origem: 'arquivo', registroId: contextoFoto.registroId, obraId: contextoFoto.obraId, obraNome: contextoFoto.obraNome,
+      local: (localFoto || contextoFoto.local || '').trim(),
+      capturadaEm: exif.capturadaEm ?? null, fusoMinutos: exif.fusoMinutos ?? null,
+      latitude: exif.latitude ?? null, longitude: exif.longitude ?? null,
+    };
+    await tratarArquivo(arquivo, dados);
+  }
+
+  function atualizarLocalPrevia(local: string) {
+    setPrevia(p => (p ? { ...p, dados: { ...p.dados, local } } : p));
+  }
+
   function onInputChange(evento: ChangeEvent<HTMLInputElement>) {
     const arquivo = evento.target.files?.[0];
     evento.target.value = '';
+    if (arquivo && permitirArquivo && contextoFoto) {
+      void prepararFotoArquivo(arquivo).catch(erro => aoErroValidacao?.(erro instanceof Error ? erro.message : 'Falha ao ler a foto.'));
+      return;
+    }
     if (exigirCamera) return;
     void tratarArquivo(arquivo).catch(erro => aoErroValidacao?.(erro instanceof Error ? erro.message : 'Falha ao salvar foto.'));
   }
 
   return {
     contextoFoto, localFoto, setLocalFoto, localizacao, localizando, estadoLocalizacao, aguardandoLocalizacao, tentarLocalizacao,
-    previa, confirmarFoto, descartarPrevia: () => setPrevia(null),
+    previa, confirmarFoto, descartarPrevia: () => setPrevia(null), atualizarLocalPrevia,
+    permitirArquivo, escolherArquivo,
     inputRef,
     videoRef,
     aoMontarVideo,
