@@ -18,7 +18,10 @@ public record InvestigacaoOcorrenciaPdfFotoModelo(
     byte[] Conteudo,
     DateTime? CapturadaEmUtc,
     double? Latitude,
-    double? Longitude);
+    double? Longitude,
+    // Foto enviada de arquivo (18/11/2026): data/GPS lidos da própria foto, não comprovados.
+    bool DeArquivo = false,
+    DateTime? RecebidaEmUtc = null);
 
 // Reunião realizada: sai data, presentes e ata. Só agendada: sai o horário e os convidados.
 public record InvestigacaoOcorrenciaPdfReuniaoModelo(

@@ -93,7 +93,7 @@ export function PermissoesTrabalhoTab() {
         api.atividades.listar(),
         api.trabalhadores.listar(),
         api.equipes.listar(),
-        api.usuarios.listar(),
+        api.usuarios.listar().catch(() => [] as Usuario[]),
       ]);
       setPermissoes(lista);
       setAtividades(ativs);

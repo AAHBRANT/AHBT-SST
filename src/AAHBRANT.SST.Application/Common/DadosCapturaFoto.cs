@@ -28,17 +28,29 @@ public record DadosCapturaFoto
     public static DadosCapturaFoto? Ler(string? json) => string.IsNullOrWhiteSpace(json)
         ? null : JsonSerializer.Deserialize<DadosCapturaFoto>(json, Json);
 
-    public static async Task<string> PrepararAsync(string? json, Guid registroId, Guid? obraId, IAppDbContext db, CancellationToken ct)
+    // permitirArquivo: só Ocorrências (18/11/2026) — a foto do acidente muitas vezes é tirada no celular de outra
+    // pessoa e enviada depois. Ela entra com origem "arquivo", data/GPS lidos do próprio arquivo quando houver
+    // (opcionais, nada comprovado) e o selo "Enviada de arquivo" na tela e no PDF.
+    public static async Task<string> PrepararAsync(string? json, Guid registroId, Guid? obraId, IAppDbContext db, CancellationToken ct,
+        bool permitirArquivo = false)
     {
         if (json?.Length > 8000) throw new InvalidOperationException("Os dados da foto excedem o limite permitido.");
         DadosCapturaFoto dados;
         try { dados = Ler(json) ?? new(); }
         catch (JsonException) { throw new InvalidOperationException("Os dados de captura da foto são inválidos."); }
-        if (dados.Origem != "camera")
+        var deArquivo = permitirArquivo && dados.Origem == "arquivo";
+        if (dados.Origem != "camera" && !deArquivo)
             throw new InvalidOperationException("Tire a foto pela câmera do sistema para registrar a evidência.");
         if (dados.RegistroId != registroId || obraId is null || dados.ObraId != obraId)
             throw new InvalidOperationException("A captura precisa pertencer a este registro e à sua obra. Abra a câmera neste registro.");
-        if (!LocalizacaoValida(dados))
+        if (deArquivo)
+        {
+            var temLat = dados.Latitude.HasValue;
+            if (temLat != dados.Longitude.HasValue || (temLat && (dados.Latitude is < -90 or > 90 || dados.Longitude is < -180 or > 180)))
+                throw new InvalidOperationException("A posição gravada na foto é inválida.");
+            dados = dados with { PrecisaoMetros = null, LocalizacaoObtidaEm = temLat ? dados.CapturadaEm : null };
+        }
+        else if (!LocalizacaoValida(dados))
             throw new InvalidOperationException("A foto precisa de data, hora e geolocalização válidas no momento da captura. Confira a permissão de localização e refaça a foto.");
         if (dados.Local?.Length > 200) throw new InvalidOperationException("Informe o local da foto com até 200 caracteres.");
         var agora = DateTimeOffset.UtcNow;

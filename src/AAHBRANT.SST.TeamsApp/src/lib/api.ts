@@ -8147,7 +8147,7 @@ export const api = {
       const form = new FormData();
       form.append('foto', foto);
       form.append('ordem', String(ordem));
-      form.set('metadados', JSON.stringify(dadosEvidencia(foto, id)));
+      form.set('metadados', JSON.stringify(dadosEvidencia(foto, id, { permitirArquivo: true })));
       return syncMutateMultipart<{ id: string }>('/api/acidentes/' + id + '/fotos', form, await montarHeadersAuth());
     },
     baixarFoto: async (id: string) => syncFetchBlob('/api/acidentes/fotos/' + id, await montarHeadersAuth()),

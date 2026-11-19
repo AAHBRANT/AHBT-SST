@@ -79,7 +79,7 @@ export function NaoConformidadeDetalhePage() {
       setErro(null);
       const [det, listaUsuarios] = await Promise.all([
         api.naoConformidades.obterDetalhe(id),
-        api.usuarios.listar(),
+        api.usuarios.listar().catch(() => [] as Usuario[]),
       ]);
       setDetalhe(det);
       setUsuarios(listaUsuarios);

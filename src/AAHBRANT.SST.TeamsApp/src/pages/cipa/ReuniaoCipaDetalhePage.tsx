@@ -92,7 +92,7 @@ export function ReuniaoCipaDetalhePage() {
       setDeliberacoes(dados.reuniao.deliberacoes ?? '');
       const [listaTrabalhadores, listaUsuarios, listaAcoes] = await Promise.all([
         api.trabalhadores.listar(dados.reuniao.obraId),
-        api.usuarios.listar(),
+        api.usuarios.listar().catch(() => [] as Usuario[]),
         api.acoesPlano.listar('ReuniaoCipa', id),
       ]);
       setTrabalhadores(listaTrabalhadores);

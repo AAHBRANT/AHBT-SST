@@ -104,7 +104,7 @@ export function PcmsoDetalhePage() {
       const [dados, listaObras, listaUsuarios, listaAcoes] = await Promise.all([
         api.pcmsos.obterPorId(id),
         api.obras.listar(),
-        api.usuarios.listar(),
+        api.usuarios.listar().catch(() => [] as Usuario[]),
         api.acoesPlano.listar('Pcmso', id),
       ]);
       setPcmso(dados);

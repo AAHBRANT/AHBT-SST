@@ -324,13 +324,17 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
         });
     }
 
-    private static string LegendaFoto(int numero, InvestigacaoOcorrenciaPdfFotoModelo foto)
+    public static string LegendaFoto(int numero, InvestigacaoOcorrenciaPdfFotoModelo foto)
     {
-        var partes = new List<string> { $"Foto {numero}" };
+        var partes = new List<string> { foto.DeArquivo ? $"Foto {numero} — enviada de arquivo" : $"Foto {numero}" };
         if (foto.CapturadaEmUtc is { } capturada)
-            partes.Add(HorarioBrasilia.De(capturada).ToString("dd/MM/yyyy HH:mm"));
+            partes.Add((foto.DeArquivo ? "data da foto " : "") + HorarioBrasilia.De(capturada).ToString("dd/MM/yyyy HH:mm"));
+        else if (foto.DeArquivo)
+            partes.Add("data e local não comprovados pela foto");
         if (foto.Latitude is { } lat && foto.Longitude is { } lon)
             partes.Add($"{lat.ToString("0.00000", CultureInfo.InvariantCulture)}, {lon.ToString("0.00000", CultureInfo.InvariantCulture)}");
+        if (foto.DeArquivo && foto.RecebidaEmUtc is { } recebida)
+            partes.Add($"recebida no sistema em {HorarioBrasilia.De(recebida):dd/MM/yyyy HH:mm}");
         return string.Join(" · ", partes);
     }
 

@@ -98,7 +98,7 @@ export function NaoConformidadesTab() {
         api.naoConformidades.listar(),
         api.atividades.listar(),
         api.riscos.listar(),
-        api.usuarios.listar(),
+        api.usuarios.listar().catch(() => [] as Usuario[]),
         api.obras.listar(),
       ]);
       setNaoConformidades(listaNc);

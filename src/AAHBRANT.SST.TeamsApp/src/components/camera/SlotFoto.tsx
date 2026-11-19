@@ -176,9 +176,10 @@ export function SlotFoto({
   aoAbrirCamera,
   contextoFoto,
   dadosFoto,
+  permitirArquivo,
 }: SlotFotoProps) {
   const estilos = useEstilos();
-  const captura = useCapturaFoto({ contextoFoto, exigirCamera, aoSelecionarArquivo, aoErroValidacao, tamanhoMaximoMb, modoCamera, permitirCamera, modoCaptura, aoAbrirCamera });
+  const captura = useCapturaFoto({ contextoFoto, exigirCamera, aoSelecionarArquivo, aoErroValidacao, tamanhoMaximoMb, modoCamera, permitirCamera, modoCaptura, aoAbrirCamera, permitirArquivo });
   const { inputRef, processando, abrirCamera, onInputChange } = captura;
   const compacta = tamanho === 'compacta';
   const ocupado = processando || carregandoMiniatura;
@@ -186,7 +187,7 @@ export function SlotFoto({
 
   return (
     <div>
-      {!captura.exigirCamera && <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onInputChange} />}
+      {(!captura.exigirCamera || captura.permitirArquivo) && <input ref={inputRef} type="file" accept={captura.permitirArquivo ? 'image/jpeg,image/png' : 'image/*'} style={{ display: 'none' }} onChange={onInputChange} />}
 
       {url ? (
         <div className={mergeClasses(estilos.slotPreenchido, compacta && estilos.slotPreenchidoCompacto)}>

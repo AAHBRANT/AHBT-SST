@@ -15,6 +15,23 @@ public class InvestigacaoOcorrenciaPdfServiceTests
         QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
     }
 
+    // Ocorrências aceitam foto de arquivo (18/11/2026): a legenda do PDF diz a origem e não apresenta a
+    // data lida da foto como captura comprovada.
+    [Fact]
+    public void LegendaFoto_DeArquivo_IndicaOrigemEDataNaoComprovada()
+    {
+        var recebida = new DateTime(2026, 11, 18, 13, 15, 0, DateTimeKind.Utc);
+        var comExif = new InvestigacaoOcorrenciaPdfFotoModelo([], new DateTime(2026, 11, 16, 10, 42, 0, DateTimeKind.Utc), -7.15182, -34.85093, true, recebida);
+        var semExif = new InvestigacaoOcorrenciaPdfFotoModelo([], null, null, null, true, recebida);
+        var camera = new InvestigacaoOcorrenciaPdfFotoModelo([], new DateTime(2026, 11, 16, 10, 42, 0, DateTimeKind.Utc), -7.15182, -34.85093);
+
+        Assert.Equal("Foto 2 — enviada de arquivo · data da foto 16/11/2026 07:42 · -7.15182, -34.85093 · recebida no sistema em 18/11/2026 10:15",
+            InvestigacaoOcorrenciaPdfService.LegendaFoto(2, comExif));
+        Assert.Equal("Foto 3 — enviada de arquivo · data e local não comprovados pela foto · recebida no sistema em 18/11/2026 10:15",
+            InvestigacaoOcorrenciaPdfService.LegendaFoto(3, semExif));
+        Assert.Equal("Foto 1 · 16/11/2026 07:42 · -7.15182, -34.85093", InvestigacaoOcorrenciaPdfService.LegendaFoto(1, camera));
+    }
+
     [Fact]
     public void Gerar_Completo_GeraPdf()
     {

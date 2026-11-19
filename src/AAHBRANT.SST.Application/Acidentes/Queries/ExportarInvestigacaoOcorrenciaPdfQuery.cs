@@ -46,7 +46,8 @@ public class ExportarInvestigacaoOcorrenciaPdfQueryHandler : IRequestHandler<Exp
             .Select(f =>
             {
                 var dados = DadosCapturaFoto.Ler(f.FotoMetadadosJson);
-                return new InvestigacaoOcorrenciaPdfFotoModelo(f.FotoConteudo, dados?.CapturadaEm?.UtcDateTime, dados?.Latitude, dados?.Longitude);
+                return new InvestigacaoOcorrenciaPdfFotoModelo(f.FotoConteudo, dados?.CapturadaEm?.UtcDateTime, dados?.Latitude, dados?.Longitude,
+                    dados?.Origem == "arquivo", dados?.RecebidaEm?.UtcDateTime);
             })
             .ToList();
 
