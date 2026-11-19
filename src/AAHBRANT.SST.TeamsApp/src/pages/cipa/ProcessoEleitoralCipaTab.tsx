@@ -21,8 +21,11 @@ import {
   type Tom,
 } from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { BotaoAbrirDetalhe } from '../../components/BotaoAbrirDetalhe';
 import {
   api,
+  StatusProcessoEleitoralCipa,
   statusProcessoEleitoralCipaLabel,
   type NovoProcessoEleitoralCipa,
   type Obra,
@@ -56,6 +59,7 @@ const tomPorStatus: Record<number, Tom> = {
 // "ver" redundante não existe (Guia §1).
 export function ProcessoEleitoralCipaTab() {
   const navigate = useNavigate();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [lista, setLista] = useState<ProcessoEleitoralCipa[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [novo, setNovo] = useState<NovoProcessoEleitoralCipa>(vazio());
@@ -140,6 +144,7 @@ export function ProcessoEleitoralCipaTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
+      {dialogoVisualizador}
       <PageHeader
         titulo="Processo Eleitoral CIPA"
         acoes={
@@ -227,12 +232,21 @@ export function ProcessoEleitoralCipaTab() {
             titulo: 'Nenhum processo eleitoral cadastrado ainda',
             acao: { rotulo: 'Convocar eleição', aoClicar: () => setPainelAberto(true) },
           }}
-          aoClicarLinha={(p) => navigate(`/operacao/cipa/eleicao/${p.id}`)}
-          acoesLinha={
-            souAdministrador
-              ? (p) => <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(p.id)} aria-label="Excluir" />
-              : undefined
+          // 18/11/2026: eleição apurada/encerrada abre a ata em PDF; antes disso não há ata e a linha
+          // segue para o detalhe.
+          aoClicarLinha={(p) =>
+            p.status === StatusProcessoEleitoralCipa.Apurado || p.status === StatusProcessoEleitoralCipa.Encerrado
+              ? void visualizar({ titulo: 'Ata da eleição da CIPA', nomeArquivo: `ata-eleicao-cipa-${p.id}.pdf`, obter: () => api.cipa.processosEleitorais.baixarAtaPdf(p.id) })
+              : navigate(`/operacao/cipa/eleicao/${p.id}`)
           }
+          acoesLinha={(p) => (
+            <>
+              <BotaoAbrirDetalhe aoAbrir={() => navigate(`/operacao/cipa/eleicao/${p.id}`)} />
+              {souAdministrador && (
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(p.id)} aria-label="Excluir" />
+              )}
+            </>
+          )}
         />
       </Card>
     </div>

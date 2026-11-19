@@ -27,8 +27,11 @@ import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
 import { assinarMudancasSync } from '../../lib/offline/syncEngine';
 import { criarInspecaoCampo, mesclarInspecoesLocais, obterPreparacaoInspecoes, prepararInspecoesOffline, type InspecaoCampo } from '../../lib/offline/inspecoes';
 import { conferirPendencias } from '../../lib/avisoErro';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { BotaoAbrirDetalhe } from '../../components/BotaoAbrirDetalhe';
 import {
   api,
+  StatusInspecao,
   statusInspecaoLabel,
   tipoInspecaoLabel,
   TipoInspecao,
@@ -64,6 +67,7 @@ const tomPorStatusInspecao: Record<number, Tom> = {
 // só repetia a navegação da linha (guia item 1) sai — a linha inteira já navega via aoClicarLinha.
 export function InspecoesTab() {
   const navigate = useNavigate();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [inspecoes, setInspecoes] = useState<InspecaoCampo[]>([]);
   // Já assinados não podem ser excluídos (o servidor recusa): o botão some deles.
   const travados = useRegistrosTravados('Inspecao', inspecoes.map((i) => i.id));
@@ -210,6 +214,7 @@ export function InspecoesTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
+      {dialogoVisualizador}
       <PageHeader
         titulo="Inspeções"
         acoes={
@@ -334,9 +339,16 @@ export function InspecoesTab() {
           linhas={inspecoes}
           chaveLinha={(i) => i.id}
           carregando={carregandoLista}
-          aoClicarLinha={(i) => navigate(`/prevencao/inspecoes/${i.id}`)}
+          // 18/11/2026: inspeção concluída abre o PDF; em andamento, aguardando assinatura, ainda não
+          // enviada (offline) ou sem internet continua indo para o detalhe, que também fica no "Abrir".
+          aoClicarLinha={(i) =>
+            i.status === StatusInspecao.Concluida && !i.criacaoPendente && navigator.onLine
+              ? void visualizar({ titulo: 'PDF da inspeção', nomeArquivo: `inspecao-${i.id}.pdf`, obter: () => api.inspecoes.baixarPdf(i.id) })
+              : navigate(`/prevencao/inspecoes/${i.id}`)
+          }
           acoesLinha={(i) => (
             <>
+              <BotaoAbrirDetalhe aoAbrir={() => navigate(`/prevencao/inspecoes/${i.id}`)} />
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
               {souAdministrador && !travados.has(i.id) && (
                 <BotaoAcao

@@ -21,6 +21,8 @@ import {
   type Tom,
 } from '@ui';
 import { Add24Regular, Delete24Regular, PeopleTeamAdd24Regular } from '@fluentui/react-icons';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { BotaoAbrirDetalhe } from '../../components/BotaoAbrirDetalhe';
 import { api, StatusApr, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { dataBr, hojeIso } from '../../lib/datas';
@@ -57,6 +59,7 @@ const tomPorStatusApr: Record<number, Tom> = {
 export function AprsTab() {
   const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [aprs, setAprs] = useState<Apr[]>([]);
   // Finalizados não podem ser excluídos (o servidor recusa): o botão some deles.
   const travados = useRegistrosTravados('Apr', aprs.map((a) => a.id));
@@ -386,9 +389,15 @@ export function AprsTab() {
           chaveLinha={(a) => a.id}
           carregando={carregandoLista}
           vazio={{ titulo: 'Nenhuma APR cadastrada ainda.' }}
-          aoClicarLinha={(a) => navigate(`/operacao/apr/${a.id}`)}
+          // 18/11/2026: APR aprovada ou encerrada abre o PDF; as demais seguem para o preenchimento.
+          aoClicarLinha={(a) =>
+            a.status === StatusApr.Aprovada || a.status === StatusApr.Encerrada
+              ? void visualizar({ titulo: 'PDF da APR', nomeArquivo: `apr-${a.id}.pdf`, obter: () => api.aprs.exportarPdf(a.id) })
+              : navigate(`/operacao/apr/${a.id}`)
+          }
           acoesLinha={(a) => (
             <>
+              <BotaoAbrirDetalhe aoAbrir={() => navigate(`/operacao/apr/${a.id}`)} />
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
               {souAdministrador && !travados.has(a.id) && (
                 <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
@@ -398,6 +407,7 @@ export function AprsTab() {
         />
       </Card>
       {dialogElement}
+      {dialogoVisualizador}
     </>
   );
 }
