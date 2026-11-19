@@ -4,6 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 // oxlint-disable-next-line no-restricted-imports
 import { makeStyles, mergeClasses } from '@fluentui/react-components';
 import {
+  ArrowMaximize20Regular,
+  ArrowMinimize20Regular,
   Dismiss20Regular,
   Mic20Regular,
   RecordStop20Filled,
@@ -39,6 +41,16 @@ export type AbaSstIa = 'perguntar' | 'chamado' | 'chamados';
 const VERDE_ESCURO = '#065f46';
 const VINHO = '#670000';
 const BEGE = '#ebe9ad';
+// Painel ampliado lembrado entre aberturas (mockup aprovado em 19/11/2026: docs/mockups/sst-ia-ampliar-painel-2026-11-19.html).
+const CHAVE_AMPLIADO = 'sst.sstIa.ampliado';
+
+function lerAmpliado(): boolean {
+  try {
+    return localStorage.getItem(CHAVE_AMPLIADO) === '1';
+  } catch {
+    return false;
+  }
+}
 
 const useStyles = makeStyles({
   painel: {
@@ -55,6 +67,12 @@ const useStyles = makeStyles({
     backgroundColor: '#ffffff',
     boxShadow: '0 14px 40px rgba(0,0,0,0.25)',
     '@media (max-width: 680px)': { inset: 0, width: 'auto', height: 'auto', borderRadius: 0 },
+  },
+  // Até 760 px sem passar por cima do menu lateral (76 px + margens); altura quase total, acima do rodapé fixo.
+  ampliado: {
+    width: 'min(760px, calc(100vw - 116px))',
+    height: 'calc(100dvh - 40px - var(--sst-ia-rodape, 0px))',
+    '@media (max-width: 680px)': { width: 'auto', height: 'auto' },
   },
   esquerda: { right: 'auto', left: '76px', '@media (max-width: 680px)': { left: 0 } },
   oculto: { display: 'none' },
@@ -100,6 +118,8 @@ const useStyles = makeStyles({
     borderRadius: '50%',
     '@media (max-width: 680px)': { width: '40px', height: '40px' },
   },
+  // No celular o painel já ocupa a tela inteira: o botão some.
+  ampliar: { '@media (max-width: 680px)': { display: 'none' } },
   abas: { display: 'flex', marginTop: '10px' },
   aba: {
     border: 'none',
@@ -273,6 +293,17 @@ export function PainelSstIa({
   const [erroVoz, setErroVoz] = useState<string | null>(null);
   const fimRef = useRef<HTMLDivElement | null>(null);
   const campoRef = useRef<HTMLTextAreaElement | null>(null);
+  const [ampliado, setAmpliadoEstado] = useState(lerAmpliado);
+  const alternarAmpliado = () => {
+    const novo = !ampliado;
+    setAmpliadoEstado(novo);
+    try {
+      if (novo) localStorage.setItem(CHAVE_AMPLIADO, '1');
+      else localStorage.removeItem(CHAVE_AMPLIADO);
+    } catch {
+      /* sem armazenamento: vale só nesta abertura */
+    }
+  };
 
   // Tela atual vai junto como contexto (só o caminho, nunca dados da tela).
   const tela = `${document.title || 'G-SST'} (${location.pathname})`;
@@ -400,7 +431,7 @@ export function PainelSstIa({
 
   return (
     <section
-      className={mergeClasses(estilos.painel, esquerda && estilos.esquerda, oculto && estilos.oculto)}
+      className={mergeClasses(estilos.painel, ampliado && estilos.ampliado, esquerda && estilos.esquerda, oculto && estilos.oculto)}
       aria-hidden={oculto || undefined}
       role="region"
       aria-label="SST IA"
@@ -434,6 +465,16 @@ export function PainelSstIa({
                 {vozLigada ? 'Voz' : 'Mudo'}
               </button>
             )}
+            <button
+              type="button"
+              className={mergeClasses(estilos.botaoTopo, estilos.fechar, estilos.ampliar)}
+              onClick={alternarAmpliado}
+              aria-pressed={ampliado}
+              aria-label={ampliado ? 'Reduzir o painel do SST IA' : 'Ampliar o painel do SST IA'}
+              title={ampliado ? 'Reduzir' : 'Ampliar'}
+            >
+              {ampliado ? <ArrowMinimize20Regular /> : <ArrowMaximize20Regular />}
+            </button>
             <button type="button" className={mergeClasses(estilos.botaoTopo, estilos.fechar)} onClick={aoFechar} aria-label="Fechar o SST IA" title="Fechar (Esc)">
               <Dismiss20Regular />
             </button>
