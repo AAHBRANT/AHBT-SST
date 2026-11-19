@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { api } from '../../lib/api';
 
-// Resposta falada do SST IA com a voz do próprio aparelho (speechSynthesis), decisão do usuário em
-// 18/11/2026: sem custo e o texto não sai do aparelho. A API do Claude só devolve texto. A qualidade
-// depende das vozes instaladas (Teams no Windows tem vozes Microsoft em pt-BR; no celular varia).
+// Resposta falada do SST IA. Desde 19/11/2026 usa a voz neural do Azure (pedido do usuário: as vozes
+// do aparelho no Teams soam robóticas). Se o servidor não tiver a voz neural (503), falhar ou o
+// navegador bloquear o áudio, cai na voz do próprio aparelho (speechSynthesis).
 
 /** Tira a marcação que o agente usa (negrito, listas, links) para a voz não ler símbolos. */
 export function textoParaFala(texto: string): string {
@@ -29,49 +30,122 @@ function escolherVoz(): SpeechSynthesisVoice | null {
 }
 
 export function useLeituraVoz() {
-  const suportado = typeof window !== 'undefined' && 'speechSynthesis' in window;
-  // Id da mensagem que está sendo lida (null = em silêncio).
+  const temVozAparelho = typeof window !== 'undefined' && 'speechSynthesis' in window;
+  const suportado = typeof window !== 'undefined' && (typeof Audio !== 'undefined' || temVozAparelho);
+  // Id da mensagem que está sendo lida (null = em silêncio). Fica marcado já enquanto o áudio é gerado.
   const [lendoId, setLendoId] = useState<string | null>(null);
-  const atualRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const atualRef = useRef<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  // Áudio já gerado por mensagem: "Ouvir" de novo não chama o servidor outra vez.
+  const cacheRef = useRef(new Map<string, string>());
+  // Depois de um 503 a voz neural não existe neste ambiente: não insiste a cada clique.
+  const semNeuralRef = useRef(false);
 
   useEffect(() => {
-    if (!suportado) return;
     // Chrome/Edge carregam a lista de vozes depois do primeiro getVoices().
-    window.speechSynthesis.getVoices();
-    return () => window.speechSynthesis.cancel();
-  }, [suportado]);
+    if (temVozAparelho) window.speechSynthesis.getVoices();
+    const cache = cacheRef.current;
+    return () => {
+      abortRef.current?.abort();
+      audioRef.current?.pause();
+      if (temVozAparelho) window.speechSynthesis.cancel();
+      cache.forEach((url) => URL.revokeObjectURL(url));
+      cache.clear();
+    };
+  }, [temVozAparelho]);
+
+  const pararTudo = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (temVozAparelho) window.speechSynthesis.cancel();
+  }, [temVozAparelho]);
 
   const parar = useCallback(() => {
-    if (!suportado) return;
     atualRef.current = null;
-    window.speechSynthesis.cancel();
+    pararTudo();
     setLendoId(null);
-  }, [suportado]);
+  }, [pararTudo]);
 
-  const ler = useCallback(
-    (id: string, texto: string) => {
-      if (!suportado) return;
-      const fala = textoParaFala(texto);
-      if (!fala) return;
-      window.speechSynthesis.cancel();
+  const lerNoAparelho = useCallback(
+    (id: string, fala: string) => {
+      if (!temVozAparelho || atualRef.current !== id) {
+        if (atualRef.current === id) {
+          atualRef.current = null;
+          setLendoId(null);
+        }
+        return;
+      }
       const frase = new SpeechSynthesisUtterance(fala);
       const voz = escolherVoz();
       if (voz) frase.voice = voz;
       frase.lang = voz?.lang ?? 'pt-BR';
       frase.rate = 1.03;
       const terminou = () => {
-        if (atualRef.current === frase) {
+        if (atualRef.current === id) {
           atualRef.current = null;
           setLendoId(null);
         }
       };
       frase.onend = terminou;
       frase.onerror = terminou;
-      atualRef.current = frase;
-      setLendoId(id);
       window.speechSynthesis.speak(frase);
     },
-    [suportado],
+    [temVozAparelho],
+  );
+
+  const ler = useCallback(
+    async (id: string, texto: string) => {
+      if (!suportado) return;
+      const fala = textoParaFala(texto);
+      if (!fala) return;
+      pararTudo();
+      atualRef.current = id;
+      setLendoId(id);
+
+      if (semNeuralRef.current || typeof Audio === 'undefined') {
+        lerNoAparelho(id, fala);
+        return;
+      }
+
+      try {
+        let url = cacheRef.current.get(id);
+        if (!url) {
+          const controle = new AbortController();
+          abortRef.current = controle;
+          const blob = await api.agenteIa.falar(fala, controle.signal);
+          abortRef.current = null;
+          url = URL.createObjectURL(blob);
+          cacheRef.current.set(id, url);
+        }
+        if (atualRef.current !== id) return; // parou ou trocou de mensagem enquanto gerava
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        const terminou = () => {
+          if (audioRef.current === audio) audioRef.current = null;
+          if (atualRef.current === id) {
+            atualRef.current = null;
+            setLendoId(null);
+          }
+        };
+        audio.onended = terminou;
+        audio.onerror = terminou;
+        await audio.play();
+      } catch (e) {
+        if (atualRef.current !== id) return; // cancelado pelo usuário
+        if ((e as { status?: number })?.status === 503) semNeuralRef.current = true;
+        // Sem voz neural, falha de rede ou áudio bloqueado: lê com a voz do aparelho.
+        audioRef.current = null;
+        lerNoAparelho(id, fala);
+      }
+    },
+    [suportado, pararTudo, lerNoAparelho],
   );
 
   return { suportado, lendoId, ler, parar };

@@ -3298,6 +3298,17 @@ public static class NovidadesSeeder
                     "A foto variava conforme o tipo: no tema era 1 foto por item, no veículo só no item Não conforme e nas demais só em alguns itens.",
                     "Em qualquer inspeção, cada item do checklist precisa de 2 fotos, seja Conforme, Não conforme ou Não aplicável. A inspeção só pode ser finalizada com as 2 fotos de todos os itens."),
             }),
+        new(
+            Versao: "5.190.0",
+            Titulo: "SST IA responde com voz natural",
+            DataPublicacao: new DateTime(2026, 11, 19, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "O botão Ouvir do SST IA agora lê a resposta com uma voz natural",
+                    "A resposta era lida pela voz instalada no aparelho, que no Teams soava robótica.",
+                    "A resposta é lida por uma voz natural em português do Brasil, igual no computador, no celular e no tablet. Se a voz natural não estiver disponível, a leitura continua com a voz do aparelho."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

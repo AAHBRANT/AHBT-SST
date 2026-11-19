@@ -94,6 +94,10 @@ public static class DependencyInjection
         services.AddScoped<ClaudeChatJsonCliente>();
         // Agente de suporte da bola flutuante (Claude Managed Agents, 17/11/2026).
         services.AddSingleton<AAHBRANT.SST.Application.AgenteIa.IAgenteSuporteIa, Integracao.AgenteIa.AnthropicAgenteSuporteIa>();
+        // "Ouvir" do SST IA com voz neural do Azure (19/11/2026). Sem AzureSpeech:ApiKey o app usa a voz do aparelho.
+        services.Configure<Integracao.AgenteIa.AzureSpeechOptions>(configuration.GetSection("AzureSpeech"));
+        services.AddHttpClient(Integracao.AgenteIa.AzureSpeechSinteseVoz.NomeCliente, c => c.Timeout = TimeSpan.FromSeconds(30));
+        services.AddScoped<AAHBRANT.SST.Application.AgenteIa.ISinteseVoz, Integracao.AgenteIa.AzureSpeechSinteseVoz>();
         services.AddScoped<AAHBRANT.SST.Application.Cameras.IAnalisadorEpiImagem, AAHBRANT.SST.Infrastructure.Integracao.Cameras.ClaudeAnalisadorEpiImagem>();
         // Leitura de PGR/PCMSO com IA (10/10/2026). O consumidor da fila (LeituraIaBackgroundService) é
         // registrado só na Api.

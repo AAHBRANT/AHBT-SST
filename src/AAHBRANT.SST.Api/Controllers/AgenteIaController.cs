@@ -10,7 +10,7 @@ namespace AAHBRANT.SST.Api.Controllers;
 /// <summary>
 /// SST IA, o botão flutuante de suporte (agente Claude Managed Agents). Mesma permissão do Suporte IA.
 /// POST sessoes cria a conversa; POST sessoes/{id}/mensagens responde em text/event-stream;
-/// POST transcrever converte a pergunta falada em texto.
+/// POST transcrever converte a pergunta falada em texto; POST falar lê a resposta com voz neural.
 /// </summary>
 [ApiController]
 [Route("api/agente-ia")]
@@ -24,16 +24,46 @@ public class AgenteIaController : ControllerBase
 
     private readonly IAgenteSuporteIa _agente;
     private readonly ITranscricaoAudioService _transcricao;
+    private readonly ISinteseVoz _voz;
     private readonly ILogger<AgenteIaController> _logger;
 
-    public AgenteIaController(IAgenteSuporteIa agente, ITranscricaoAudioService transcricao, ILogger<AgenteIaController> logger)
+    // Uma resposta comum tem ~1.000 caracteres; acima disso o app lê só o começo.
+    private const int TamanhoMaximoFala = 5000;
+
+    public AgenteIaController(IAgenteSuporteIa agente, ITranscricaoAudioService transcricao, ISinteseVoz voz, ILogger<AgenteIaController> logger)
     {
         _agente = agente;
         _transcricao = transcricao;
+        _voz = voz;
         _logger = logger;
     }
 
-    // Só transcreve (o áudio não é salvo). A resposta falada é feita no aparelho, não no servidor.
+    // Lê a resposta em voz alta (voz neural do Azure). O áudio não é salvo. 503 = o app usa a voz do aparelho.
+    [HttpPost("falar")]
+    public async Task<IActionResult> Falar([FromBody] FalarRespostaBody body, CancellationToken ct)
+    {
+        if (!_voz.Configurado)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { erro = "Voz neural não configurada neste ambiente." });
+        var texto = body.Texto?.Trim() ?? "";
+        if (texto.Length == 0)
+            return BadRequest(new { erro = "Texto vazio." });
+        if (texto.Length > TamanhoMaximoFala)
+            texto = texto[..TamanhoMaximoFala];
+
+        try
+        {
+            var audio = await _voz.SintetizarAsync(texto, ct);
+            Response.Headers.CacheControl = "no-store";
+            return File(audio, "audio/mpeg");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Falha ao gerar a voz do SST IA");
+            return StatusCode(StatusCodes.Status502BadGateway, new { erro = "Não foi possível gerar a voz agora." });
+        }
+    }
+
+    // Só transcreve (o áudio não é salvo).
     [HttpPost("transcrever")]
     [RequestSizeLimit(TamanhoMaximoAudio + 1_000_000)]
     public async Task<IActionResult> Transcrever([FromForm] TranscreverPerguntaBody body, CancellationToken ct)
@@ -117,6 +147,8 @@ public class AgenteIaController : ControllerBase
 }
 
 public record EnviarMensagemAgenteBody(string? Texto, string? Tela);
+
+public record FalarRespostaBody(string? Texto);
 
 public class TranscreverPerguntaBody
 {
