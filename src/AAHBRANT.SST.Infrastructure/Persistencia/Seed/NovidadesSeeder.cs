@@ -3298,6 +3298,21 @@ public static class NovidadesSeeder
                     "A foto variava conforme o tipo: no tema era 1 foto por item, no veículo só no item Não conforme e nas demais só em alguns itens.",
                     "Em qualquer inspeção, cada item do checklist precisa de 2 fotos, seja Conforme, Não conforme ou Não aplicável. A inspeção só pode ser finalizada com as 2 fotos de todos os itens."),
             }),
+        new(
+            Versao: "5.190.0",
+            Titulo: "SST IA com voz natural e painel que pode ser ampliado",
+            DataPublicacao: new DateTime(2026, 11, 19, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "O botão Ouvir do SST IA agora lê a resposta com uma voz natural",
+                    "A resposta era lida pela voz instalada no aparelho, que no Teams soava robótica.",
+                    "A resposta é lida por uma voz natural em português do Brasil, igual no computador, no celular e no tablet. Se a voz natural não estiver disponível, a leitura continua com a voz do aparelho."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Botão Ampliar deixa o painel do SST IA maior no computador",
+                    "O painel do SST IA tinha tamanho fixo e as respostas longas ficavam apertadas.",
+                    "O botão de setas no topo do painel amplia a conversa para quase toda a altura da tela, e um novo clique volta ao tamanho normal. O sistema lembra a escolha. No celular o painel continua em tela cheia."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
