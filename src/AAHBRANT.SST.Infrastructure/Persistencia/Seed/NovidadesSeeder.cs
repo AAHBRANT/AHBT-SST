@@ -3287,6 +3287,17 @@ public static class NovidadesSeeder
                     "A fila facial recusava algumas pessoas com \"Rosto parecido com o de outra pessoa\", mesmo de frente para a câmera.",
                     "Cadastros repetidos da mesma pessoa não são mais tratados como outra pessoa, e a presença é confirmada normalmente. Rostos realmente parecidos com o de um colega continuam pedindo a digital."),
             }),
+        new(
+            Versao: "5.189.0",
+            Titulo: "Inspeções: 2 fotos obrigatórias em cada item",
+            DataPublicacao: new DateTime(2026, 11, 19, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Toda inspeção agora exige 2 fotos em cada item do checklist",
+                    "A foto variava conforme o tipo: no tema era 1 foto por item, no veículo só no item Não conforme e nas demais só em alguns itens.",
+                    "Em qualquer inspeção, cada item do checklist precisa de 2 fotos, seja Conforme, Não conforme ou Não aplicável. A inspeção só pode ser finalizada com as 2 fotos de todos os itens."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

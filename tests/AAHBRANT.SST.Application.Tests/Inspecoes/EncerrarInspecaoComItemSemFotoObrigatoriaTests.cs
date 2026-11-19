@@ -6,10 +6,12 @@ using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
 
+using AAHBRANT.SST.Application.Tests.TestSupport;
+
 namespace AAHBRANT.SST.Application.Tests.Inspecoes;
 
-// Task 6 (Alojamento em Inspeções, 2026-09-15): item de checklist com ExigeFotografia = true
-// bloqueia o encerramento da inspeção enquanto não tiver foto registrada.
+// 18/11/2026: todo item do checklist exige 2 fotos (foto principal + 1 foto adicional) para encerrar,
+// independente de ExigeFotografia. A "foto posterior" (FotoDepois) não conta como 2ª foto.
 public class EncerrarInspecaoComItemSemFotoObrigatoriaTests
 {
     private static IAppDbContext CriarDb(string nomeBanco)
@@ -59,14 +61,14 @@ public class EncerrarInspecaoComItemSemFotoObrigatoriaTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => handler.Handle(new EncerrarInspecaoCommand(inspecao.Id), default));
 
-        Assert.Contains("exigem foto", ex.Message);
+        Assert.Contains("exige 2 fotos", ex.Message);
         Assert.Contains(item.Descricao, ex.Message);
     }
 
     [Fact]
-    public async Task Handle_AlojamentoItemExigeFotoSoComFotoDoItem_EncerraSemErro()
+    public async Task Handle_ItemComUmaFotoSo_Recusa()
     {
-        var db = CriarDb(nameof(Handle_AlojamentoItemExigeFotoSoComFotoDoItem_EncerraSemErro));
+        var db = CriarDb(nameof(Handle_ItemComUmaFotoSo_Recusa));
         var obra = new Obra { Codigo = "OB2", Nome = "Obra Teste 2" };
         var usuario = new Usuario { Email = "responsavel2@aahbrant.com", Nome = "Responsável Teste 2" };
         var checklist = new ChecklistModelo { Nome = "Checklist Alojamento", TipoInspecao = TipoInspecao.Alojamento };
@@ -102,17 +104,17 @@ public class EncerrarInspecaoComItemSemFotoObrigatoriaTests
 
         var handler = new EncerrarInspecaoCommandHandler(db);
 
-        // Alojamento: 1 foto por item basta (30/10/2026); a evidência posterior não é mais exigida.
-        await handler.Handle(new EncerrarInspecaoCommand(inspecao.Id), default);
-
-        var atualizada = await db.Inspecoes.FirstAsync(i => i.Id == inspecao.Id);
-        Assert.Equal(StatusInspecao.AguardandoAssinatura, atualizada.Status);
+        // Só a foto principal: falta a 2ª.
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.Handle(new EncerrarInspecaoCommand(inspecao.Id), default));
+        Assert.Contains("exige 2 fotos", ex.Message);
+        Assert.Contains("Piso resistente", ex.Message);
     }
 
     [Fact]
-    public async Task Handle_AlojamentoItemExigeFotoComDuasFotos_EncerraSemErro()
+    public async Task Handle_ItemComDuasFotos_Encerra()
     {
-        var db = CriarDb(nameof(Handle_AlojamentoItemExigeFotoComDuasFotos_EncerraSemErro));
+        var db = CriarDb(nameof(Handle_ItemComDuasFotos_Encerra));
         var obra = new Obra { Codigo = "OB3", Nome = "Obra Teste 3" };
         var usuario = new Usuario { Email = "responsavel3@aahbrant.com", Nome = "Responsável Teste 3" };
         var checklist = new ChecklistModelo { Nome = "Checklist Alojamento", TipoInspecao = TipoInspecao.Alojamento };
@@ -147,6 +149,7 @@ public class EncerrarInspecaoComItemSemFotoObrigatoriaTests
         });
         db.Inspecoes.Add(inspecao);
         await db.SaveChangesAsync();
+        await FotosInspecaoDeTeste.CompletarAsync(db, inspecao.Id);
 
         var handler = new EncerrarInspecaoCommandHandler(db);
         await handler.Handle(new EncerrarInspecaoCommand(inspecao.Id), default);

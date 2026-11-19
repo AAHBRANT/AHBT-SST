@@ -430,9 +430,31 @@ export function InspecaoDetalhePage() {
   const ehInspecaoAlojamento = inspecao.tipoInspecao === TipoInspecao.Alojamento;
   const ehInspecaoVeiculo = inspecao.tipoInspecao === TipoInspecao.Veiculo;
   const ehInspecaoTema = inspecao.tipoInspecao === TipoInspecao.Tema;
-  // Veículos e temas criados pelo usuário: 1 foto por item, obrigatória só quando o item é Não Conforme
-  // (decisão de 02/10/2026).
   const usaLayoutCompacto = ehInspecaoVeiculo || ehInspecaoTema;
+  // 18/11/2026 (decisão do usuário): TODA inspeção exige 2 fotos em cada item do checklist, qualquer que seja a
+  // resposta. A 2ª fica em fotosAdicionais (ordem 2) e só abre depois da 1ª (o servidor exige a principal antes).
+  const segundaFotoDe = (resposta: (typeof detalhe.respostas)[number]) =>
+    resposta.fotosAdicionais?.find((f) => f.ordem === 2);
+  const slotSegundaFoto = (resposta: (typeof detalhe.respostas)[number], local: string | null | undefined, largura: number, somenteLeitura: boolean) => {
+    const extra = segundaFotoDe(resposta);
+    if (!extra && (!resposta.temFoto || somenteLeitura)) return null;
+    return (
+      <div style={{ flex: '1 1 130px', minWidth: 0, maxWidth: largura }}>
+        <SlotFoto
+          rotulo="2ª foto"
+          contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local }}
+          dadosFoto={extra?.dadosFoto}
+          url={extra ? fotoAdicionalUrls[extra.id] : null}
+          carregandoMiniatura={!!extra && !fotoAdicionalUrls[extra.id]}
+          somenteLeitura={somenteLeitura}
+          modo="remover"
+          aoRemover={extra ? () => removerFotoAdicional(extra.id) : undefined}
+          aoSelecionarArquivo={(arquivo) => enviarFotoAdicional(resposta.id, arquivo)}
+          aoErroValidacao={setErro}
+        />
+      </div>
+    );
+  };
   // Volta para o card de onde a inspeção foi aberta (Alojamento, Veículos ou o tema do item).
   const voltarPara = ehInspecaoAlojamento
     ? '/operacao?secao=inspecoes&cartao=alojamento'
@@ -471,10 +493,11 @@ export function InspecaoDetalhePage() {
       pendencias: [...(rascunhos.length ? ['Aguarde o salvamento automático dos itens (escolha o status de cada um).'] : []), ...detalhe.respostas.flatMap(r => {
         const p: string[] = [];
         if (r.statusItem == null) p.push('resposta do checklist');
-        if (r.exigeFotografia && !r.temFoto) p.push('foto anterior obrigatória');
-        if (ehInspecaoTema && !r.temFoto) p.push('foto do item obrigatória');
-        else if (ehInspecaoVeiculo && r.statusItem === StatusItemChecklist.NaoConforme && !r.temFoto) p.push('foto da não conformidade obrigatória');
-        if (r.temFoto && r.dadosFoto) p.push(...pendenciasFoto(r.dadosFoto).map(d => 'foto anterior: ' + d));
+        if (!r.temFoto) p.push('1ª foto obrigatória');
+        const extra = segundaFotoDe(r);
+        if (!extra) p.push('2ª foto obrigatória');
+        if (r.temFoto && r.dadosFoto) p.push(...pendenciasFoto(r.dadosFoto).map(d => '1ª foto: ' + d));
+        if (extra?.dadosFoto) p.push(...pendenciasFoto(extra.dadosFoto).map(d => '2ª foto: ' + d));
         if (r.temFotoDepois && r.dadosFotoDepois) p.push(...pendenciasFoto(r.dadosFotoDepois).map(d => 'foto posterior: ' + d));
         return p.length ? [r.descricao + ': ' + p.join('; ')] : [];
       })],
@@ -659,8 +682,10 @@ export function InspecaoDetalhePage() {
               {sync.itensPendentes.includes(resposta.id) && <StatusChip tom="atencao">Item salvo no tablet — envio pendente</StatusChip>}
               {usaLayoutCompacto ? (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1fr) minmax(220px, 320px)', gap: 16, alignItems: 'start' }}>
-                    <div>
+                  {/* Flex com quebra (19/11/2026): a grade de colunas fixas (260 px + 220 px) não cabia no celular e
+                      escondia "Não conforme" e "Não aplicável". No desktop continua igual; no celular o status desce. */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
+                    <div style={{ flex: '1 1 260px', minWidth: 0 }}>
                       <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
                         Item {resposta.ordem}
                       </Text>
@@ -668,7 +693,7 @@ export function InspecaoDetalhePage() {
                         {resposta.descricao}
                       </Text>
                     </div>
-                    <Field label="Status do item">
+                    <Field label="Status do item" style={{ flex: '0 1 320px', minWidth: 220 }}>
                       <SeletorStatusItemChecklist
                         value={edicao.statusItem ? Number(edicao.statusItem) : null}
                         onChange={(valor) => atualizarEdicao(resposta.id, { statusItem: String(valor) })}
@@ -687,12 +712,11 @@ export function InspecaoDetalhePage() {
                       />
                     </Field>
 
-                    {(ehInspecaoTema || edicao.statusItem === String(StatusItemChecklist.NaoConforme)) && (
-                      <Field label={ehInspecaoTema ? 'Fotos do item (1ª obrigatória, até 2)' : 'Fotos da não conformidade (1ª obrigatória, até 2)'}>
+                    <Field label="Fotos do item (2 obrigatórias)">
                         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                        <div style={{ width: 180 }}>
+                        <div style={{ flex: '1 1 130px', minWidth: 0, maxWidth: 180 }}>
                           <SlotFoto
-                            rotulo={ehInspecaoTema ? 'Foto do item' : 'Foto da não conformidade'}
+                            rotulo="1ª foto"
                             contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: inspecao.veiculoPlacaPrefixo }}
                             dadosFoto={resposta.dadosFoto}
                             url={fotoUrls[resposta.id]}
@@ -702,37 +726,18 @@ export function InspecaoDetalhePage() {
                             aoErroValidacao={setErro}
                           />
                         </div>
-                        {(() => {
-                          // 2ª foto (opcional): liberada depois da 1ª; online só.
-                          const extra = resposta.fotosAdicionais?.find((f) => f.ordem === 2);
-                          if (!extra && (!resposta.temFoto || somenteLeitura)) return null;
-                          return (
-                            <div style={{ width: 180 }}>
-                              <SlotFoto
-                                rotulo="2ª foto"
-                                contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: inspecao.veiculoPlacaPrefixo }}
-                                dadosFoto={extra?.dadosFoto}
-                                url={extra ? fotoAdicionalUrls[extra.id] : null}
-                                carregandoMiniatura={!!extra && !fotoAdicionalUrls[extra.id]}
-                                somenteLeitura={somenteLeitura}
-                                modo="remover"
-                                aoRemover={extra ? () => removerFotoAdicional(extra.id) : undefined}
-                                aoSelecionarArquivo={(arquivo) => enviarFotoAdicional(resposta.id, arquivo)}
-                                aoErroValidacao={setErro}
-                              />
-                            </div>
-                          );
-                        })()}
+                        {slotSegundaFoto(resposta, inspecao.veiculoPlacaPrefixo, 180, somenteLeitura)}
                         </div>
                       </Field>
-                    )}
                   </div>
 
                 </>
               ) : ehInspecaoAlojamento ? (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1fr) minmax(220px, 320px)', gap: 16, alignItems: 'start' }}>
-                    <div>
+                  {/* Flex com quebra (19/11/2026): a grade de colunas fixas (260 px + 220 px) não cabia no celular e
+                      escondia "Não conforme" e "Não aplicável". No desktop continua igual; no celular o status desce. */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
+                    <div style={{ flex: '1 1 260px', minWidth: 0 }}>
                       <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
                         Item {resposta.ordem}
                       </Text>
@@ -740,7 +745,7 @@ export function InspecaoDetalhePage() {
                         {resposta.descricao}
                       </Text>
                     </div>
-                    <Field label="Status do item">
+                    <Field label="Status do item" style={{ flex: '0 1 320px', minWidth: 220 }}>
                       <SeletorStatusItemChecklist
                         value={edicao.statusItem ? Number(edicao.statusItem) : null}
                         onChange={(valor) => atualizarEdicao(resposta.id, { statusItem: String(valor) })}
@@ -750,10 +755,11 @@ export function InspecaoDetalhePage() {
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginTop: 16 }}>
-                    <Field label="Foto do item (obrigatória)">
-                      <div style={{ maxWidth: 180 }}>
+                    <Field label="Fotos do item (2 obrigatórias)">
+                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ flex: '1 1 130px', minWidth: 0, maxWidth: 180 }}>
                         <SlotFoto
-                          rotulo="Foto do item"
+                          rotulo="1ª foto"
                           contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
                           dadosFoto={resposta.dadosFoto}
                           url={fotoUrls[resposta.id]}
@@ -762,6 +768,8 @@ export function InspecaoDetalhePage() {
                           aoSelecionarArquivo={(arquivo) => enviarFoto(resposta.id, arquivo)}
                           aoErroValidacao={setErro}
                         />
+                      </div>
+                      {slotSegundaFoto(resposta, resposta.local, 180, somenteLeitura)}
                       </div>
                     </Field>
 
@@ -888,10 +896,11 @@ export function InspecaoDetalhePage() {
               {/* Evidências no mesmo padrão de quadro/miniatura usado em todo o sistema (pedido do
                   usuário, 14/09) — ver components/camera/SlotFoto.tsx. */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginTop: 12 }}>
-                <Field label="Evidência anterior">
-                  <div style={{ maxWidth: 160 }}>
+                <Field label="Evidência anterior (2 fotos obrigatórias)">
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 130px', minWidth: 0, maxWidth: 160 }}>
                     <SlotFoto
-                      rotulo="Evidência anterior"
+                      rotulo="1ª foto"
                       contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
                       dadosFoto={resposta.dadosFoto}
                       url={fotoUrls[resposta.id]}
@@ -900,6 +909,8 @@ export function InspecaoDetalhePage() {
                       aoSelecionarArquivo={(arquivo) => enviarFoto(resposta.id, arquivo)}
                       aoErroValidacao={setErro}
                     />
+                  </div>
+                  {slotSegundaFoto(resposta, resposta.local, 160, somenteLeitura)}
                   </div>
                 </Field>
 

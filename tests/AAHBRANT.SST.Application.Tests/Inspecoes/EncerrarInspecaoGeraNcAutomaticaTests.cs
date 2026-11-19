@@ -6,6 +6,8 @@ using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
 
+using AAHBRANT.SST.Application.Tests.TestSupport;
+
 namespace AAHBRANT.SST.Application.Tests.Inspecoes;
 
 // Encerramento gera NC automática para cada item Não Conforme que ainda não tem NC (decisão do usuário, 17/10).
@@ -34,6 +36,7 @@ public class EncerrarInspecaoGeraNcAutomaticaTests
             inspecao.Respostas.Add(new InspecaoItemResposta { ChecklistModeloItemId = itens[i].Id, StatusItem = status[i], Observacao = i == 0 ? "Colchão rasgado" : null });
         db.Inspecoes.Add(inspecao);
         await db.SaveChangesAsync();
+        await FotosInspecaoDeTeste.CompletarAsync(db, inspecao.Id);
         return (db, inspecao, obra);
     }
 

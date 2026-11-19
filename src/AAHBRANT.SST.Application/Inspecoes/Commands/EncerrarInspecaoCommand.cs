@@ -44,47 +44,27 @@ public class EncerrarInspecaoCommandHandler : IRequestHandler<EncerrarInspecaoCo
             throw new InvalidOperationException(
                 $"Não é possível encerrar: {pendentes.Count} item(ns) do checklist ainda não respondido(s).");
 
-        // Task 6 (Alojamento em Inspeções, 2026-09-15): item com ChecklistModeloItem.ExigeFotografia
-        // bloqueia o encerramento enquanto não tiver foto registrada. FotoConteudo nunca é null
-        // (default Array.Empty<byte>() em InspecaoItemResposta) — por isso a checagem é por Length.
-        var itensSemFotoObrigatoria = inspecao.Respostas
-            .Where(r => r.Ativo && (r.ChecklistModeloItem?.ExigeFotografia ?? false) && r.FotoConteudo.Length == 0)
-            .Select(r => r.DescricaoPersonalizada ?? r.ChecklistModeloItem!.Descricao)
+        // 18/11/2026 (decisão do usuário): TODA inspeção exige 2 fotos em CADA item do checklist, qualquer que
+        // seja o tipo e a resposta. Substitui as regras anteriores (ExigeFotografia do modelo, Tema com 1 foto em
+        // todos os itens, Veículo só no Não Conforme). Foto 1 = InspecaoItemResposta.FotoConteudo (nunca null,
+        // por isso a checagem é por Length); foto 2 = InspecaoItemFotoAdicional ativa.
+        var respostasAtivas = inspecao.Respostas.Where(r => r.Ativo).ToList();
+        var idsRespostas = respostasAtivas.Select(r => r.Id).ToList();
+        var comSegundaFoto = (await _db.InspecaoItemFotosAdicionais
+            .Where(f => f.Ativo && idsRespostas.Contains(f.InspecaoItemRespostaId) && f.FotoConteudo.Length > 0)
+            .Select(f => f.InspecaoItemRespostaId)
+            .Distinct()
+            .ToListAsync(ct)).ToHashSet();
+
+        var semDuasFotos = respostasAtivas
+            .Where(r => r.FotoConteudo.Length == 0 || !comSegundaFoto.Contains(r.Id))
+            .OrderBy(r => r.ChecklistModeloItem?.Ordem ?? int.MaxValue)
+            .Select(r => r.DescricaoPersonalizada ?? r.ChecklistModeloItem?.Descricao ?? "Item")
             .ToList();
 
-        if (itensSemFotoObrigatoria.Count > 0)
+        if (semDuasFotos.Count > 0)
             throw new InvalidOperationException(
-                $"Não é possível encerrar: os seguintes itens exigem foto e ainda não têm: {string.Join("; ", itensSemFotoObrigatoria)}");
-
-        // Veículos e temas criados pelo usuário: 1 foto, obrigatória APENAS nos itens marcados como Não
-        // Conforme (decisão do usuário, 02/10/2026). Item Conforme/Não Aplicável não exige nem usa foto.
-        // Temas criados pelo usuário (24/10/2026): foto em TODOS os itens, qualquer que seja a resposta.
-        if (inspecao.TipoInspecao == TipoInspecao.Tema)
-        {
-            var semFoto = inspecao.Respostas
-                .Where(r => r.Ativo && r.FotoConteudo.Length == 0)
-                .Select(r => r.DescricaoPersonalizada ?? r.ChecklistModeloItem!.Descricao)
-                .ToList();
-
-            if (semFoto.Count > 0)
-                throw new InvalidOperationException(
-                    $"Não é possível encerrar: os itens a seguir exigem foto e ainda não têm: {string.Join("; ", semFoto)}");
-        }
-
-        if (inspecao.TipoInspecao == TipoInspecao.Veiculo)
-        {
-            var ncSemFoto = inspecao.Respostas
-                .Where(r => r.Ativo && r.StatusItem == StatusItemChecklist.NaoConforme && r.FotoConteudo.Length == 0)
-                .Select(r => r.DescricaoPersonalizada ?? r.ChecklistModeloItem!.Descricao)
-                .ToList();
-
-            if (ncSemFoto.Count > 0)
-                throw new InvalidOperationException(
-                    $"Não é possível encerrar: os itens Não Conforme a seguir exigem foto e ainda não têm: {string.Join("; ", ncSemFoto)}");
-        }
-
-        // Alojamento: 1 foto obrigatória por item, igual ao checklist padrão (decisão do usuário,
-        // 30/10/2026). A evidência posterior deixou de ser exigida; as já registradas continuam no histórico.
+                $"Não é possível encerrar: cada item do checklist exige 2 fotos. Faltam fotos em: {string.Join("; ", semDuasFotos)}");
 
         foreach (var resposta in inspecao.Respostas.Where(r => r.Ativo))
         {
