@@ -45,7 +45,6 @@ import {
   Fingerprint24Regular,
   PersonAvailable24Regular,
   Camera20Regular,
-  ChatHelp24Regular,
   ChatMultiple24Regular,
   HatGraduation24Regular,
   ShieldCheckmark24Regular,
@@ -72,6 +71,8 @@ import { FuncionarioNovoModal } from '../components/planos-integracao/Funcionari
 import { PendenciasAutomaticasModal } from '../components/pendencias/PendenciasAutomaticasModal';
 import { ID_TOASTER_GLOBAL } from '../lib/toaster';
 import { AvisoErroModal } from '../components/avisos/AvisoErroModal';
+import { BotaoSstIa } from '../components/sst-ia/BotaoSstIa';
+import { IconeSstIa } from '../components/sst-ia/IconeSstIa';
 
 // Rail de navegação (Hub Gênesis SST — design decidido em sessão anterior): faixa fina só com
 // ícones + tooltip ao passar o mouse/focar, no lugar do menu largo com texto. O botão de
@@ -579,7 +580,9 @@ const useStyles = makeStyles({
     backgroundSize: '80px 80px',
     overflowY: 'auto',
     padding: '16px',
-    '@media (max-width: 680px)': { gridColumn: '1', padding: '12px' },
+    // Espaço livre no fim de toda tela para o botão SST IA nunca cobrir o último item (18/11/2026).
+    paddingBottom: 'calc(88px + var(--sst-ia-rodape, 0px))',
+    '@media (max-width: 680px)': { gridColumn: '1', padding: '12px', paddingBottom: 'calc(80px + var(--sst-ia-rodape, 0px))' },
   },
   cardGrid: {
     display: 'grid',
@@ -682,6 +685,11 @@ function CapaceteObra24Regular(props: SVGProps<SVGSVGElement>) {
       <path d="M5.7 15.8l1.1 3.4h10.4l1.1-3.4" />
     </svg>
   );
+}
+
+// SST IA no rail com 24 px, igual aos ícones do Fluent (o ícone usa 1em e herdaria a fonte de 14 px).
+function IconeSstIa24(props: SVGProps<SVGSVGElement>) {
+  return <IconeSstIa width={24} height={24} {...props} />;
 }
 
 // Item solto no topo, fora de qualquer módulo — Início (antes "Dashboard") não pertence a nenhum
@@ -1088,8 +1096,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className={estilos.railRodape}>
           <ItemRail
             rota="/suporte-ia"
-            rotulo="Suporte IA"
-            icone={ChatHelp24Regular}
+            rotulo="SST IA"
+            icone={IconeSstIa24}
             expandido={railExpandido}
             aoNavegar={() => setRailExpandido(false)}
           />
@@ -1347,6 +1355,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {(acessoCameras || !location.pathname.startsWith('/cameras/')) && <TrilhaNavegacao />}
         {children}
       </main>
+      <BotaoSstIa menuMobileAberto={railExpandido} />
       <Toaster toasterId={ID_TOASTER_GLOBAL} />
       <AvisoErroModal />
     </div>

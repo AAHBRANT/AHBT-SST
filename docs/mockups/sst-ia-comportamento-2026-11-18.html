@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SST IA comportamento</title>
+<style>
+  :root{--marsala:#670000;--bege:#ebe9ad;--sub:#605e5c;--borda:#e1dfdd;--fundo:#f3f2f1}
+  *{box-sizing:border-box}
+  body{margin:0;padding:22px;background:#e7e4e0;font-family:"Segoe UI",system-ui,sans-serif;color:#1f1f1f}
+  h1{font-size:18px;margin:0 0 4px}.leg{color:var(--sub);font-size:13px;margin:0 0 14px}
+  .layout{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+  /* controles */
+  .ctl{width:280px;background:#fff;border-radius:12px;border:1px solid var(--borda);padding:14px;display:flex;flex-direction:column;gap:8px;font-size:13px}
+  .ctl h3{margin:4px 0 2px;font-size:12px;color:var(--marsala);text-transform:uppercase;letter-spacing:.04em}
+  .ctl button{text-align:left;border:1px solid var(--borda);background:#faf9f8;border-radius:8px;padding:8px 10px;font:13px "Segoe UI";cursor:pointer}
+  .ctl button:hover{border-color:#10b981;background:#ecfdf5}
+  .ctl button.on{border-color:#059669;background:#d1fae5;font-weight:600}
+  .log{font-size:12px;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:8px 10px;min-height:52px;line-height:1.45}
+  /* app */
+  .app{position:relative;width:860px;height:600px;background:var(--fundo);border-radius:12px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.18);display:flex;transition:width .3s,height .3s}
+  .app.cel{width:380px;height:700px}
+  .rail{width:56px;background:#fff;border-right:1px solid var(--borda);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:12px;flex-shrink:0}
+  .rail i{width:24px;height:24px;border-radius:6px;background:#e9e7e5}.rail .sp{flex:1}
+  .rail .it{width:24px;height:24px;color:#424242}.rail .adm{width:24px;height:24px;border-radius:6px;background:var(--marsala)}
+  .app.cel .rail{display:none}
+  .area{flex:1;display:flex;flex-direction:column;min-width:0}
+  .topo{height:46px;background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;padding:0 16px;font-weight:600;font-size:14px}
+  .rolagem{flex:1;overflow:auto;padding:16px 16px 88px}  /* 88px = espaço livre para o botão */
+  .rolagem h2{font-size:16px;margin:0 0 10px}
+  .linhaTab{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--borda);border-radius:8px;padding:12px;margin-bottom:8px;font-size:13px}
+  .linhaTab span:last-child{font-size:11px;font-weight:600;background:#dff6dd;color:#0e5c0e;border-radius:10px;padding:2px 8px}
+  .ultimo{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+  .btn{border:0;border-radius:6px;padding:9px 16px;font:600 13px "Segoe UI"}
+  .btn-p{background:var(--marsala);color:#fff}.btn-s{background:#fff;border:1px solid var(--borda)}
+  .barraFixa{display:none;height:64px;background:#fff;border-top:1px solid var(--borda);align-items:center;justify-content:space-between;padding:0 16px;font-size:13px;box-shadow:0 -4px 12px rgba(0,0,0,.05)}
+  .app.comBarra .barraFixa{display:flex}
+  .marca{position:absolute;right:0;left:56px;bottom:0;height:88px;pointer-events:none;background:repeating-linear-gradient(135deg,rgba(16,185,129,.08) 0 8px,transparent 8px 16px);border-top:1px dashed rgba(5,150,105,.5);display:none}
+  .app.verEspaco .marca{display:block}
+  .app.cel .marca{left:0}
+  .app.comBarra .marca{bottom:64px}
+  .marca small{position:absolute;left:10px;top:6px;font-size:11px;color:#065f46;font-weight:600}
+
+  /* ===== vidro esmeralda (ui/tokens/esmeralda.ts) ===== */
+  .vidro{position:relative;overflow:hidden;isolation:isolate;color:#fff;
+    background-image:linear-gradient(140deg,rgba(16,185,129,.92) 0%,rgba(5,150,105,.86) 48%,rgba(6,95,70,.92) 100%);
+    border:1px solid rgba(167,243,208,.55);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -1px 0 rgba(0,0,0,.12),0 10px 30px rgba(5,150,105,.28)}
+  .vidro::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+    background-image:radial-gradient(120% 80% at 0% 0%,rgba(255,255,255,.35),transparent 55%),radial-gradient(90% 70% at 100% 100%,rgba(6,78,59,.45),transparent 60%)}
+  .vidro::after{content:"";position:absolute;top:-40%;bottom:-40%;width:38%;left:-60%;z-index:-1;pointer-events:none;
+    background-image:linear-gradient(100deg,transparent,rgba(167,243,208,.55),transparent);transform:skewX(-18deg);animation:brilho 5.5s ease-in-out 1s infinite}
+  @keyframes brilho{0%{left:-60%}60%{left:-60%}100%{left:130%}}
+  @media (prefers-reduced-motion:reduce){.vidro::after{animation:none}}
+
+  /* botão */
+  .fab{position:absolute;right:20px;bottom:20px;height:48px;min-width:48px;padding:0 12px;border-radius:24px;display:flex;align-items:center;gap:8px;
+    font:600 14px "Segoe UI";cursor:grab;z-index:20;transition:bottom .25s,right .3s,left .3s,opacity .25s,transform .25s,padding .25s;user-select:none;text-shadow:0 1px 2px rgba(6,78,59,.35)}
+  .fab svg{width:24px;height:24px;flex-shrink:0}
+  .fab .nome{max-width:0;overflow:hidden;white-space:nowrap;transition:max-width .3s}
+  .fab.aberto .nome,.fab:hover .nome{max-width:100px}
+  .fab.aberto,.fab:hover{padding:0 16px 0 13px}
+  .fab .b{position:absolute;top:-2px;right:-2px;background:var(--marsala);color:#fff;font-size:10.5px;font-weight:700;border-radius:10px;padding:1px 6px;border:1.5px solid #fff;text-shadow:none}
+  .fab.aberto .b,.fab:hover .b{position:static;border:1px solid rgba(255,255,255,.35)}
+  .fab.rolando{transform:scale(.86);opacity:.55}
+  .fab.escondido{opacity:0;transform:scale(.6);pointer-events:none}
+  .app.comBarra .fab{bottom:84px}
+  .app.cel .fab{right:16px;bottom:16px}
+  .app.cel.comBarra .fab{bottom:80px}
+  .fab.esquerda{right:auto;left:76px}
+  .app.cel .fab.esquerda{left:16px}
+
+  /* painel */
+  .painel{position:absolute;right:20px;bottom:20px;width:380px;height:520px;background:#fff;border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.25);display:none;flex-direction:column;overflow:hidden;z-index:30}
+  .painel.on{display:flex}
+  .painel.esquerda{right:auto;left:76px}
+  .app.cel .painel{inset:0;width:auto;height:auto;border-radius:0}
+  .ph{padding:12px 14px 0;border:0!important}
+  .ph-top{display:flex;align-items:center;gap:10px}
+  .av{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);display:grid;place-items:center}
+  .av svg{width:20px;height:20px}
+  .ph h2{margin:0;font-size:15px}.ph small{font-size:11.5px;font-weight:600;opacity:.92}
+  .fechar{margin-left:auto;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:50%;width:30px;height:30px;font-size:15px;cursor:pointer}
+  .app.cel .fechar{width:40px;height:40px;font-size:18px}
+  .abas{display:flex;margin-top:10px}
+  .abas span{padding:8px 12px;font-size:12.5px;font-weight:600;color:rgba(255,255,255,.8);border-bottom:3px solid transparent}
+  .abas .on{color:#fff;border-color:#fff}
+  .corpo{flex:1;padding:12px;background:#faf9f8;display:flex;flex-direction:column;gap:8px;font-size:13px}
+  .ia{background:#fff;border:1px solid var(--borda);padding:9px 12px;border-radius:12px 12px 12px 4px;line-height:1.45}
+  .rodPainel{border-top:1px solid var(--borda);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;font-size:12px;background:#fff}
+  .rodPainel button{border:0;background:none;color:var(--sub);font:600 12px "Segoe UI";cursor:pointer;text-decoration:underline}
+  .ent{border-top:1px solid var(--borda);padding:10px;display:flex;gap:8px;background:#fff}
+  .ent input{flex:1;border:1px solid var(--borda);border-radius:18px;padding:9px 14px;font:13px "Segoe UI"}
+
+  /* janela (modal) e teclado */
+  .modal{position:absolute;inset:0;background:rgba(0,0,0,.35);display:none;place-items:center;z-index:40}
+  .modal.on{display:grid}
+  .modal div{background:#fff;border-radius:10px;padding:20px;width:300px;font-size:13px}
+  .teclado{position:absolute;left:0;right:0;bottom:0;height:230px;background:#d1d5db;display:none;z-index:35;padding:10px;gap:6px;flex-wrap:wrap;align-content:flex-start}
+  .teclado.on{display:flex}
+  .teclado i{width:30px;height:38px;background:#fff;border-radius:5px}
+  .toast{position:absolute;left:50%;transform:translateX(-50%);bottom:20px;background:#323130;color:#fff;font-size:12.5px;padding:8px 14px;border-radius:8px;display:none;z-index:50}
+  svg.ic{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+</style>
+</head>
+<body>
+<h1>SST IA — como o botão se comporta</h1>
+<p class="leg">Clique nos cenários à esquerda. Na tela, role a lista, passe o mouse no botão, arraste o botão para o outro lado e clique para abrir.</p>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="cap" viewBox="0 0 24 24">
+    <path d="M5.5 11.5a6.5 6.5 0 0 1 13 0"/><path d="M12 5v3.2"/><path d="M3.8 11.5h16.4"/>
+    <rect x="3.6" y="13.2" width="3" height="4.6" rx="1.2"/><rect x="17.4" y="13.2" width="3" height="4.6" rx="1.2"/>
+    <path d="M18.9 17.8c0 1.9-1.6 3.2-4 3.2h-1.4"/><circle cx="12.4" cy="21" r=".9" fill="currentColor" stroke="none"/>
+  </symbol>
+</svg>
+
+<div class="layout">
+  <div class="ctl">
+    <h3>Cenários</h3>
+    <button id="bEntrar">1 · Abrir uma tela (pílula 4 s → círculo)</button>
+    <button id="bEspaco">2 · Ver o espaço livre no fim da tela</button>
+    <button id="bBarra">3 · Tela com barra fixa no rodapé</button>
+    <button id="bModal">4 · Abrir uma janela (botão some)</button>
+    <button id="bTeclado">5 · Teclado aberto no celular</button>
+    <button id="bCel">6 · Ver no celular</button>
+    <button id="bReset">Voltar ao padrão</button>
+    <h3>O que aconteceu</h3>
+    <div class="log" id="log">Abra uma tela para ver o botão entrar como pílula e virar círculo.</div>
+  </div>
+
+  <div class="app" id="app">
+    <div class="rail"><i></i><i></i><i></i><i></i><i></i><div class="sp"></div>
+      <svg class="it ic" title="SST IA no menu"><use href="#cap"/></svg><div class="adm"></div></div>
+    <div class="area">
+      <div class="topo">Operação › Inspeções</div>
+      <div class="rolagem" id="rol">
+        <h2>Inspeções da obra</h2>
+        <div id="linhas"></div>
+        <div class="ultimo"><button class="btn btn-s">Exportar</button><button class="btn btn-p">Nova inspeção</button></div>
+      </div>
+      <div class="barraFixa"><span>Etapa 3 de 5 · Realizar integração</span><button class="btn btn-p">Concluir etapa</button></div>
+    </div>
+    <div class="marca"><small>Espaço livre reservado para o botão: nada da tela fica embaixo dele</small></div>
+
+    <div class="fab vidro" id="fab" title="SST IA">
+      <svg class="ic" style="color:#fff"><use href="#cap"/></svg><span class="nome">SST IA</span><span class="b">1</span>
+    </div>
+
+    <div class="painel" id="painel">
+      <div class="ph vidro">
+        <div class="ph-top"><div class="av"><svg class="ic"><use href="#cap"/></svg></div><div><h2>SST IA</h2><small>Tire dúvidas do G-SST ou abra um chamado</small></div><button class="fechar" id="fechar" title="Fechar (Esc)">✕</button></div>
+        <div class="abas"><span class="on">Perguntar</span><span>Abrir chamado</span><span>Meus chamados</span></div>
+      </div>
+      <div class="corpo"><div class="ia">Olá! Pergunte sobre qualquer tela do G-SST. A tela em que você está continua visível ao lado.</div></div>
+      <div class="ent"><input placeholder="Escreva sua dúvida…"></div>
+      <div class="rodPainel"><span style="color:var(--sub)">Também no menu lateral</span><button id="esconder">Esconder por hoje</button></div>
+    </div>
+
+    <div class="modal" id="modal"><div><b>Pendências automáticas</b><p>3 funcionários sem cadastro de biometria.</p><button class="btn btn-p" id="fecharModal">Entendi</button></div></div>
+    <div class="teclado" id="teclado"></div>
+    <div class="toast" id="toast">SST IA escondido até amanhã. Ele continua no menu lateral.</div>
+  </div>
+</div>
+
+<script>
+  const $=id=>document.getElementById(id), app=$('app'), fab=$('fab'), painel=$('painel'), log=t=>$('log').textContent=t;
+  const nomes=['Andaime bloco A','Escavação vala 2','Instalações elétricas','Trabalho em altura','Máquinas e equipamentos','Proteção de periferia','Canteiro e vivência','Armazenamento','Ferramentas manuais','Içamento de cargas','Extintores','Sinalização'];
+  $('linhas').innerHTML=nomes.map(n=>`<div class="linhaTab"><span>${n}</span><span>Conforme</span></div>`).join('');
+  for(let i=0;i<30;i++) $('teclado').appendChild(document.createElement('i'));
+  let tPilula;
+  function pilula(){fab.classList.add('aberto');clearTimeout(tPilula);tPilula=setTimeout(()=>fab.classList.remove('aberto'),4000)}
+  function marca(btn){document.querySelectorAll('.ctl button').forEach(b=>b.classList.remove('on'));btn&&btn.classList.add('on')}
+  $('bEntrar').onclick=e=>{marca(e.target);fab.classList.remove('escondido');pilula();log('Botão entra com o nome "SST IA" e, depois de 4 segundos, vira só o círculo com o capacete. Passe o mouse para ver o nome de novo.')};
+  $('bEspaco').onclick=e=>{marca(e.target);app.classList.toggle('verEspaco');$('rol').scrollTop=9999;log('Toda tela ganha 88 px livres no fim. O último item e os botões "Exportar" e "Nova inspeção" nunca ficam atrás do SST IA.')};
+  $('bBarra').onclick=e=>{marca(e.target);app.classList.toggle('comBarra');log(app.classList.contains('comBarra')?'A tela tem barra fixa ("Concluir etapa"). O botão sobe sozinho e fica logo acima dela.':'Sem barra fixa: o botão volta ao canto.')};
+  $('bModal').onclick=e=>{marca(e.target);$('modal').classList.add('on');fab.classList.add('escondido');log('Uma janela abriu no meio da tela: o SST IA some e volta quando a janela fecha. Vale também para câmera, assinatura e Modo TV.')};
+  $('fecharModal').onclick=()=>{$('modal').classList.remove('on');fab.classList.remove('escondido');log('Janela fechada: o SST IA voltou.')};
+  $('bTeclado').onclick=e=>{marca(e.target);app.classList.add('cel');const on=!$('teclado').classList.contains('on');$('teclado').classList.toggle('on',on);fab.classList.toggle('escondido',on);log(on?'No celular, com o teclado aberto, o botão some para não cobrir o campo que a pessoa está digitando.':'Teclado fechado: o botão voltou.')};
+  $('bCel').onclick=e=>{marca(e.target);app.classList.toggle('cel');log(app.classList.contains('cel')?'No celular o botão fica a 16 px da borda e o painel abre em tela cheia, com um ✕ grande.':'Visão de computador.')};
+  $('bReset').onclick=e=>{marca();app.className='app';fab.className='fab vidro';painel.className='painel';$('modal').classList.remove('on');$('teclado').classList.remove('on');log('Padrão restaurado.')};
+  // rolagem: encolhe e fica translúcido
+  let tRol;$('rol').addEventListener('scroll',()=>{fab.classList.add('rolando');clearTimeout(tRol);tRol=setTimeout(()=>fab.classList.remove('rolando'),600);log('Enquanto a lista rola, o botão fica menor e meio transparente. Parou de rolar, ele volta.')});
+  // arrastar para o outro lado
+  let ini=null,moveu=false;
+  fab.addEventListener('pointerdown',e=>{ini=e.clientX;moveu=false;fab.setPointerCapture(e.pointerId)});
+  fab.addEventListener('pointermove',e=>{if(ini!==null&&Math.abs(e.clientX-ini)>30)moveu=true});
+  fab.addEventListener('pointerup',e=>{
+    if(moveu){const r=app.getBoundingClientRect();const esq=e.clientX<r.left+r.width/2;fab.classList.toggle('esquerda',esq);painel.classList.toggle('esquerda',esq);log(esq?'Botão arrastado para a esquerda. O app guarda essa posição para a próxima vez.':'Botão de volta à direita.')}
+    else{painel.classList.add('on');fab.classList.add('escondido');log('Painel aberto no canto. A tela continua visível e utilizável. Fecha com ✕, Esc ou clicando fora.')}
+    ini=null});
+  $('fechar').onclick=()=>{painel.classList.remove('on');fab.classList.remove('escondido');log('Painel fechado. A conversa fica guardada até sair do app.')};
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&painel.classList.contains('on'))$('fechar').onclick()});
+  $('esconder').onclick=()=>{painel.classList.remove('on');fab.classList.add('escondido');const t=$('toast');t.style.display='block';setTimeout(()=>t.style.display='none',3500);log('"Esconder por hoje": o botão some até amanhã. O SST IA continua no menu lateral.')};
+  pilula();
+</script>
+</body>
+</html>

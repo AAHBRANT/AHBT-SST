@@ -19,4 +19,10 @@ public class ClaudeOptions
     /// </summary>
     public string ModeloCameras { get; set; } = "claude-haiku-5-5";
     public string Endpoint { get; set; } = "https://api.anthropic.com";
+    /// <summary>
+    /// Agente de suporte da bola flutuante (Claude Managed Agents, 17/11/2026). O agente e o ambiente já
+    /// existem na conta da Anthropic; aqui só se guardam os IDs. Vazio = bola desligada.
+    /// </summary>
+    public string? AgenteSuporteId { get; set; } = "agent_01RLfPp6yzk5hn2LpGDD2Vay";
+    public string? AgenteSuporteAmbienteId { get; set; } = "env_014oYscKtMiRzeGeNu9Kg1ka";
 }

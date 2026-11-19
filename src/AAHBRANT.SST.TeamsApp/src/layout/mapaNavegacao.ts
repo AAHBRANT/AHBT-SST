@@ -52,7 +52,7 @@ export const modulosNav: Record<string, ModuloNav> = {
   pessoas: { rota: '/pessoas', rotulo: 'Pessoas' },
   cameras: { rota: '/cameras', rotulo: 'Câmeras' },
   terceirizados: { rota: '/terceirizados', rotulo: 'Terceirizado' },
-  suporteIa: { rota: '/suporte-ia', rotulo: 'Suporte IA' },
+  suporteIa: { rota: '/suporte-ia', rotulo: 'SST IA' },
 };
 
 type ChaveModulo = keyof typeof modulosNav;

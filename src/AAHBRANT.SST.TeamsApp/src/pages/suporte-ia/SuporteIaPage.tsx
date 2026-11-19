@@ -5,8 +5,8 @@ export function SuporteIaPage() {
   return (
     <div>
       <PageHeader
-        titulo="Central de Suporte IA"
-        subtitulo="Triagem governada para dúvidas, bugs, melhorias e demandas técnicas do G-SST."
+        titulo="SST IA"
+        subtitulo="Chamados do G-SST: dúvidas, erros e melhorias, com triagem por IA. Para perguntar, use o botão SST IA no canto da tela."
       />
       <SuporteIaTab />
     </div>

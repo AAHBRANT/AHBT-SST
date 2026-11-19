@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BotaoVoltar, Button, Card, Carregando, FeedbackInline, useEstilosEsmeralda } from '@ui';
+import { useReservaRodapeSstIa } from '../../components/sst-ia/reservaRodapeSstIa';
 import { ChevronRight16Regular, Info20Regular, LockClosed20Regular, Warning16Regular } from '@fluentui/react-icons';
 import {
   api,
@@ -221,6 +222,10 @@ export function RealizarIntegracaoPage() {
   const concluida = integracao?.status === 'concluido';
   const sessaoAlvoId = atual && !ehEtapaOs(atual) && atual.status === 'emAndamento' ? atual.sessaoTreinamentoId ?? null : null;
   const precisaOs = !!integracao && (concluida || (!!atual && ehEtapaOs(atual)));
+
+  // Barra fixa "Avançar" no celular: o botão SST IA sobe para não cobri-la.
+  const barraRef = useRef<HTMLDivElement | null>(null);
+  useReservaRodapeSstIa(barraRef, !carregando && !!integracao && !concluida);
 
   // Relógio da tela: a espera do fim da carga automática ("faltam X h YY min") e o Avançar recalculam por ele, e
   // o fim do período dispara a re-renderização na hora exata (e a busca do atendimento, que traz a regra do servidor).
@@ -684,7 +689,7 @@ export function RealizarIntegracaoPage() {
       </div>
 
       {!concluida && (
-        <div className={e.barra}>
+        <div className={e.barra} ref={barraRef}>
           <span className={e.barraResumo}>{acao.resumo}</span>
           <Button
             appearance="primary"
