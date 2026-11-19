@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ícone Suporte IA</title>
+<style>
+  :root{--marsala:#670000;--bege:#ebe9ad;--bege-claro:#f7f6e3;--texto:#1f1f1f;--sub:#605e5c;--borda:#e1dfdd}
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px;background:#efedea;font-family:"Segoe UI",system-ui,sans-serif;color:var(--texto)}
+  h1{font-size:18px;margin:0 0 4px}.leg{color:var(--sub);font-size:13px;margin:0 0 22px}
+  .grade{display:grid;grid-template-columns:repeat(3,minmax(240px,1fr));gap:20px;max-width:960px}
+  .op{background:#fff;border-radius:14px;border:1px solid var(--borda);padding:20px;display:flex;flex-direction:column;gap:16px}
+  .op h2{margin:0;font-size:15px;color:var(--marsala)}
+  .op p{margin:0;font-size:12.5px;color:var(--sub);line-height:1.5}
+  .grande{height:120px;border-radius:12px;background:var(--bege-claro);display:grid;place-items:center;color:var(--marsala)}
+  .grande svg{width:72px;height:72px}
+  .fab{align-self:flex-start;height:50px;padding:0 20px 0 15px;border-radius:25px;background:var(--marsala);color:#fff;display:flex;align-items:center;gap:10px;font:600 14px "Segoe UI";box-shadow:0 8px 20px rgba(103,0,0,.3)}
+  .fab svg{width:24px;height:24px}
+  .fab .b{background:var(--bege);color:var(--marsala);font-size:11px;font-weight:700;border-radius:10px;padding:1px 7px}
+  .rail{display:flex;align-items:center;gap:10px;font-size:13px;color:#323130;padding:8px 10px;border-radius:8px;background:#f5f4f3;align-self:flex-start}
+  .rail svg{width:22px;height:22px;color:#424242}
+  .redondo{width:52px;height:52px;border-radius:50%;background:var(--marsala);color:#fff;display:grid;place-items:center;box-shadow:0 8px 20px rgba(103,0,0,.3)}
+  .redondo svg{width:26px;height:26px}
+  .linha{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  svg{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+</style>
+</head>
+<body>
+<h1>Ícone do Suporte IA — 3 opções</h1>
+<p class="leg">Traço fino no padrão dos ícones do app. Cada opção aplicada no botão flutuante (pílula e redondo) e no menu lateral.</p>
+
+<svg width="0" height="0" style="position:absolute">
+  <!-- A: capacete com headset (atendente de SST) -->
+  <symbol id="a" viewBox="0 0 24 24">
+    <path d="M5.5 11.5a6.5 6.5 0 0 1 13 0"/>
+    <path d="M12 5v3.2"/>
+    <path d="M3.8 11.5h16.4"/>
+    <rect x="3.6" y="13.2" width="3" height="4.6" rx="1.2"/>
+    <rect x="17.4" y="13.2" width="3" height="4.6" rx="1.2"/>
+    <path d="M18.9 17.8c0 1.9-1.6 3.2-4 3.2h-1.4"/>
+    <circle cx="12.4" cy="21" r=".9" fill="currentColor" stroke="none"/>
+  </symbol>
+  <!-- B: balão de conversa com capacete dentro -->
+  <symbol id="b" viewBox="0 0 24 24">
+    <path d="M12 3.5c4.97 0 9 3.36 9 7.5s-4.03 7.5-9 7.5c-1.1 0-2.15-.16-3.12-.46L4 20l1.3-3.9C3.86 14.8 3 13 3 11c0-4.14 4.03-7.5 9-7.5z"/>
+    <path d="M8 12.6a4 4 0 0 1 8 0"/>
+    <path d="M6.9 12.6h10.2"/>
+    <path d="M12 8.6v1.6"/>
+  </symbol>
+  <!-- C: escudo de segurança com balão e brilho de IA -->
+  <symbol id="c" viewBox="0 0 24 24">
+    <path d="M12 2.8l7.2 2.7v5.6c0 4.7-3.1 8.4-7.2 10.1-4.1-1.7-7.2-5.4-7.2-10.1V5.5z"/>
+    <path d="M12 7.6l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z" fill="currentColor" stroke="none"/>
+    <path d="M8.6 15.8h6.8"/>
+  </symbol>
+</svg>
+
+<div class="grade">
+  <div class="op">
+    <h2>A · Atendente de SST</h2>
+    <div class="grande"><svg><use href="#a"/></svg></div>
+    <p>Capacete de obra com headset: alguém da segurança pronto para atender. Fala direto com quem está na obra.</p>
+    <div class="linha">
+      <div class="fab"><svg><use href="#a"/></svg>Suporte IA <span class="b">1</span></div>
+      <div class="redondo"><svg><use href="#a"/></svg></div>
+    </div>
+    <div class="rail"><svg><use href="#a"/></svg>Suporte IA</div>
+  </div>
+
+  <div class="op">
+    <h2>B · Conversa de obra</h2>
+    <div class="grande"><svg><use href="#b"/></svg></div>
+    <p>Balão de conversa com o capacete dentro. Une "conversar" com "segurança do trabalho" e continua legível pequeno.</p>
+    <div class="linha">
+      <div class="fab"><svg><use href="#b"/></svg>Suporte IA <span class="b">1</span></div>
+      <div class="redondo"><svg><use href="#b"/></svg></div>
+    </div>
+    <div class="rail"><svg><use href="#b"/></svg>Suporte IA</div>
+  </div>
+
+  <div class="op">
+    <h2>C · Escudo inteligente</h2>
+    <div class="grande"><svg><use href="#c"/></svg></div>
+    <p>Escudo de proteção com o brilho de IA no centro. Mais institucional, remete ao sistema G-SST como um todo.</p>
+    <div class="linha">
+      <div class="fab"><svg><use href="#c"/></svg>Suporte IA <span class="b">1</span></div>
+      <div class="redondo"><svg><use href="#c"/></svg></div>
+    </div>
+    <div class="rail"><svg><use href="#c"/></svg>Suporte IA</div>
+  </div>
+</div>
+</body>
+</html>

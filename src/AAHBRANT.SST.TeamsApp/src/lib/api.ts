@@ -5659,6 +5659,25 @@ export interface RelatoVozSuporteIa {
   sugestao: ChamadoSugeridoSuporteIa | null;
 }
 
+/**
+ * Evento da resposta do SST IA. "delta" = pedaço de texto em geração (id = mensagem); "mensagem" =
+ * texto final da mensagem id (substitui os deltas); "status" = pensando/consultando; "fim"; "erro".
+ */
+export interface EventoAgenteIa {
+  tipo: 'delta' | 'mensagem' | 'status' | 'fim' | 'erro';
+  id?: string | null;
+  texto?: string | null;
+}
+
+/** Falha HTTP do SST IA; 404 = conversa expirada ou de outro usuário (abrir uma nova). */
+export class ErroAgenteIa extends Error {
+  readonly status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 export interface NovaSolicitacaoSuporteIa {
   tipo: number;
   severidadeInformada: number;
@@ -8290,6 +8309,75 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ confirmado, comentario }),
       }),
+  },
+  // SST IA (botão flutuante, 18/11/2026): conversa com o agente de suporte (Claude Managed Agents).
+  // Sempre online: a resposta chega aos pedaços (text/event-stream), fora do motor offline.
+  agenteIa: {
+    // fetch direto (fora de request/requestOnline): a falha aparece dentro do painel do SST IA, sem o
+    // aviso global "Não foi possível salvar", que esconderia o próprio painel.
+    criarSessao: async (): Promise<{ sessaoId: string }> => {
+      const response = await fetch(`${API_BASE_URL}/api/agente-ia/sessoes`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new ErroAgenteIa(extrairMensagemErro(corpo, response.status, response.statusText), response.status);
+      }
+      return (await response.json()) as { sessaoId: string };
+    },
+    enviar: async function* (
+      sessaoId: string,
+      texto: string,
+      tela: string,
+      signal?: AbortSignal,
+    ): AsyncGenerator<EventoAgenteIa> {
+      const response = await fetch(`${API_BASE_URL}/api/agente-ia/sessoes/${encodeURIComponent(sessaoId)}/mensagens`, {
+        method: 'POST',
+        headers: { ...(await montarHeadersAuth()), 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+        body: JSON.stringify({ texto, tela }),
+        signal,
+      });
+      if (!response.ok || !response.body) {
+        const corpo = await response.text().catch(() => '');
+        throw new ErroAgenteIa(extrairMensagemErro(corpo, response.status, response.statusText), response.status);
+      }
+      const leitor = response.body.getReader();
+      const decodificador = new TextDecoder();
+      let pendente = '';
+      for (;;) {
+        const { value, done } = await leitor.read();
+        if (done) break;
+        pendente += decodificador.decode(value, { stream: true });
+        let fim = pendente.indexOf('\n\n');
+        while (fim >= 0) {
+          const bloco = pendente.slice(0, fim);
+          pendente = pendente.slice(fim + 2);
+          const dados = bloco
+            .split('\n')
+            .filter((l) => l.startsWith('data:'))
+            .map((l) => l.slice(5).trimStart())
+            .join('\n');
+          if (dados) yield JSON.parse(dados) as EventoAgenteIa;
+          fim = pendente.indexOf('\n\n');
+        }
+      }
+    },
+    // Pergunta falada: só transcreve (sem classificar como chamado).
+    transcrever: async (audio: Blob, nomeArquivo: string): Promise<{ transcricao: string }> => {
+      const formData = new FormData();
+      formData.append('audio', audio, nomeArquivo);
+      const response = await fetch(`${API_BASE_URL}/api/agente-ia/transcrever`, {
+        method: 'POST',
+        headers: await montarHeadersAuth(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const corpo = await response.text().catch(() => '');
+        throw new Error(extrairMensagemErro(corpo, response.status, response.statusText));
+      }
+      return (await response.json()) as { transcricao: string };
+    },
   },
   pendenciasAutomaticas: {
     listar: () => request<PendenciaAutomatica[]>('/api/pendencias-automaticas'),

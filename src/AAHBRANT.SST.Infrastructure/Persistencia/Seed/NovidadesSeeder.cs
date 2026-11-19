@@ -3253,6 +3253,25 @@ public static class NovidadesSeeder
                     "Nas listas de Ocorrências, Inspeções, APR, PT, DDS e CIPA, clicar na linha sempre abria a tela de preenchimento, mesmo com o documento já finalizado.",
                     "Documento finalizado (ocorrência concluída, inspeção concluída, APR aprovada, PT autorizada, semana de DDS concluída, ata registrada) abre o PDF ao clicar na linha. A tela de detalhe continua no botão Abrir de cada linha, e documento em preenchimento segue abrindo a tela de preencher."),
             }),
+        new(
+            Versao: "5.187.0",
+            Titulo: "SST IA: tire dúvidas do G-SST em qualquer tela, escrevendo ou falando",
+            DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Botão SST IA no canto da tela responde dúvidas sobre o uso do G-SST com base nas NRs",
+                    "Para tirar uma dúvida era preciso sair da tela e abrir um chamado no Suporte IA, que só registrava o pedido.",
+                    "O botão SST IA aparece em todas as telas: pergunte como usar uma tela, o que significa uma mensagem ou o que a NR pede, e a resposta chega na hora. Se não resolver, o chamado já sai preenchido com a conversa."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Pergunte falando e ouça a resposta",
+                    "As dúvidas só podiam ser digitadas.",
+                    "Toque no microfone e fale: a resposta é lida em voz alta pela voz do próprio aparelho. Cada resposta tem o botão Ouvir, e o botão Voz no topo do painel liga ou desliga a leitura."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Suporte IA passa a se chamar SST IA, com um botão discreto que não cobre a tela",
+                    "O item se chamava Suporte IA e ficava só no menu lateral.",
+                    "O item do menu lateral virou SST IA. O botão flutuante encolhe depois de alguns segundos, sobe acima de barras fixas, some quando abre uma janela e pode ser escondido até o dia seguinte em Esconder por hoje."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

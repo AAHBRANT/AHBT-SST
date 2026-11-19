@@ -92,6 +92,8 @@ public static class DependencyInjection
         services.Configure<ClaudeOptions>(configuration.GetSection("Claude"));
         services.AddScoped<AAHBRANT.SST.Application.SuporteIa.ITranscricaoAudioService, AzureOpenAiTranscricaoService>();
         services.AddScoped<ClaudeChatJsonCliente>();
+        // Agente de suporte da bola flutuante (Claude Managed Agents, 17/11/2026).
+        services.AddSingleton<AAHBRANT.SST.Application.AgenteIa.IAgenteSuporteIa, Integracao.AgenteIa.AnthropicAgenteSuporteIa>();
         services.AddScoped<AAHBRANT.SST.Application.Cameras.IAnalisadorEpiImagem, AAHBRANT.SST.Infrastructure.Integracao.Cameras.ClaudeAnalisadorEpiImagem>();
         // Leitura de PGR/PCMSO com IA (10/10/2026). O consumidor da fila (LeituraIaBackgroundService) é
         // registrado só na Api.
