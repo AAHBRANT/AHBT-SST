@@ -69,7 +69,7 @@ export function InspecoesCipaTab() {
       const [listaInspecoes, listaObras, listaUsuarios] = await Promise.all([
         api.cipa.inspecoes.listar(),
         api.obras.listar(),
-        api.usuarios.listar(),
+        api.usuarios.listar().catch(() => [] as Usuario[]),
       ]);
       setLista(listaInspecoes);
       setObras(listaObras);

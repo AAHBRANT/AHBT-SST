@@ -157,7 +157,7 @@ export function AcidenteDetalhePage() {
     if (!id) return;
     try {
       setErro(null);
-      const [det, listaUsuarios] = await Promise.all([api.acidentes.obterDetalhe(id), api.usuarios.listar()]);
+      const [det, listaUsuarios] = await Promise.all([api.acidentes.obterDetalhe(id), api.usuarios.listar().catch(() => [] as Usuario[])]);
       setDetalhe(det);
       setUsuarios(listaUsuarios);
       setMetodologia(det.acidente.metodologiaInvestigacao ? String(det.acidente.metodologiaInvestigacao) : '');

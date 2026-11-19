@@ -108,7 +108,7 @@ export function AlertasListaTab() {
         }),
         api.obras.listar(),
         api.trabalhadores.listar(),
-        api.usuarios.listar(),
+        api.usuarios.listar().catch(() => [] as Usuario[]),
       ]);
       setAlertas(listaAlertas);
       setObras(listaObras);
