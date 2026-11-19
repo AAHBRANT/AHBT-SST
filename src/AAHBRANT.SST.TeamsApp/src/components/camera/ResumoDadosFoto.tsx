@@ -1,8 +1,13 @@
-import { Text } from '@fluentui/react-components';
+import { Text, makeStyles } from '@fluentui/react-components';
 import { StatusChip } from '@ui';
 import { formatarDataFoto, pendenciasFoto, type DadosFoto } from '../../lib/dadosFoto';
 
+// Em colunas estreitas (2 fotos lado a lado no celular) a etiqueta precisa quebrar linha; sem isso ela
+// passava por baixo da foto vizinha (conferido 19/11/2026).
+const useEstilos = makeStyles({ etiqueta: { whiteSpace: 'normal', maxWidth: '100%', alignSelf: 'flex-start' } });
+
 export function ResumoDadosFoto({ dados }: { dados?: DadosFoto | null }) {
+  const estilos = useEstilos();
   const legado = !dados;
   const pendencias = pendenciasFoto(dados);
   return <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, overflowWrap: 'anywhere' }}>
@@ -12,7 +17,7 @@ export function ResumoDadosFoto({ dados }: { dados?: DadosFoto | null }) {
     {dados?.latitude != null && dados.longitude != null && <Text size={200}>
       {dados.latitude.toFixed(6)}, {dados.longitude.toFixed(6)}{dados.precisaoMetros != null ? ` · precisão ${Math.round(dados.precisaoMetros)} m` : ' · precisão não informada'}
     </Text>}
-    <StatusChip tom={legado ? 'neutro' : pendencias.length ? 'atencao' : 'ok'}>
+    <StatusChip className={estilos.etiqueta} tom={legado ? 'neutro' : pendencias.length ? 'atencao' : 'ok'}>
       {legado ? 'Foto legada sem metadados' : pendencias.length ? 'Foto com pendência' : 'Dados da foto completos'}
     </StatusChip>
     {pendencias.length > 0 && <Text size={200}>Falta: {pendencias.join(', ')}.</Text>}

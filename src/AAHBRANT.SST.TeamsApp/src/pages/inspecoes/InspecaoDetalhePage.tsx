@@ -439,7 +439,7 @@ export function InspecaoDetalhePage() {
     const extra = segundaFotoDe(resposta);
     if (!extra && (!resposta.temFoto || somenteLeitura)) return null;
     return (
-      <div style={{ width: largura }}>
+      <div style={{ flex: '1 1 130px', minWidth: 0, maxWidth: largura }}>
         <SlotFoto
           rotulo="2ª foto"
           contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local }}
@@ -682,8 +682,10 @@ export function InspecaoDetalhePage() {
               {sync.itensPendentes.includes(resposta.id) && <StatusChip tom="atencao">Item salvo no tablet — envio pendente</StatusChip>}
               {usaLayoutCompacto ? (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1fr) minmax(220px, 320px)', gap: 16, alignItems: 'start' }}>
-                    <div>
+                  {/* Flex com quebra (19/11/2026): a grade de colunas fixas (260 px + 220 px) não cabia no celular e
+                      escondia "Não conforme" e "Não aplicável". No desktop continua igual; no celular o status desce. */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
+                    <div style={{ flex: '1 1 260px', minWidth: 0 }}>
                       <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
                         Item {resposta.ordem}
                       </Text>
@@ -691,7 +693,7 @@ export function InspecaoDetalhePage() {
                         {resposta.descricao}
                       </Text>
                     </div>
-                    <Field label="Status do item">
+                    <Field label="Status do item" style={{ flex: '0 1 320px', minWidth: 220 }}>
                       <SeletorStatusItemChecklist
                         value={edicao.statusItem ? Number(edicao.statusItem) : null}
                         onChange={(valor) => atualizarEdicao(resposta.id, { statusItem: String(valor) })}
@@ -712,7 +714,7 @@ export function InspecaoDetalhePage() {
 
                     <Field label="Fotos do item (2 obrigatórias)">
                         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                        <div style={{ width: 180 }}>
+                        <div style={{ flex: '1 1 130px', minWidth: 0, maxWidth: 180 }}>
                           <SlotFoto
                             rotulo="1ª foto"
                             contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: inspecao.veiculoPlacaPrefixo }}
@@ -732,8 +734,10 @@ export function InspecaoDetalhePage() {
                 </>
               ) : ehInspecaoAlojamento ? (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1fr) minmax(220px, 320px)', gap: 16, alignItems: 'start' }}>
-                    <div>
+                  {/* Flex com quebra (19/11/2026): a grade de colunas fixas (260 px + 220 px) não cabia no celular e
+                      escondia "Não conforme" e "Não aplicável". No desktop continua igual; no celular o status desce. */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
+                    <div style={{ flex: '1 1 260px', minWidth: 0 }}>
                       <Text weight="semibold" style={{ display: 'block', marginBottom: 8 }}>
                         Item {resposta.ordem}
                       </Text>
@@ -741,7 +745,7 @@ export function InspecaoDetalhePage() {
                         {resposta.descricao}
                       </Text>
                     </div>
-                    <Field label="Status do item">
+                    <Field label="Status do item" style={{ flex: '0 1 320px', minWidth: 220 }}>
                       <SeletorStatusItemChecklist
                         value={edicao.statusItem ? Number(edicao.statusItem) : null}
                         onChange={(valor) => atualizarEdicao(resposta.id, { statusItem: String(valor) })}
@@ -753,7 +757,7 @@ export function InspecaoDetalhePage() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginTop: 16 }}>
                     <Field label="Fotos do item (2 obrigatórias)">
                       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                      <div style={{ width: 180 }}>
+                      <div style={{ flex: '1 1 130px', minWidth: 0, maxWidth: 180 }}>
                         <SlotFoto
                           rotulo="1ª foto"
                           contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
@@ -894,7 +898,7 @@ export function InspecaoDetalhePage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginTop: 12 }}>
                 <Field label="Evidência anterior (2 fotos obrigatórias)">
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <div style={{ width: 160 }}>
+                  <div style={{ flex: '1 1 130px', minWidth: 0, maxWidth: 160 }}>
                     <SlotFoto
                       rotulo="1ª foto"
                       contextoFoto={{ registroId: resposta.id, obraId: inspecao.obraId, obraNome: inspecao.obraNome, local: resposta.local }}
