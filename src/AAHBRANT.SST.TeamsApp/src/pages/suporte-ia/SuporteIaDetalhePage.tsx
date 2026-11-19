@@ -251,7 +251,7 @@ export function SuporteIaDetalhePage() {
           </StatusChip>
         ),
         voltarPara: '/suporte-ia',
-        rotuloVoltar: 'Suporte IA',
+        rotuloVoltar: 'SST IA',
       }}
       lateral={
         <>

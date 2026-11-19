@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SST IA esmeralda</title>
+<style>
+  :root{--marsala:#670000;--bege:#ebe9ad;--sub:#605e5c;--borda:#e1dfdd}
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px;background:#efedea;font-family:"Segoe UI",system-ui,sans-serif;color:#1f1f1f}
+  h1{font-size:18px;margin:0 0 4px}.leg{color:var(--sub);font-size:13px;margin:0 0 22px;max-width:1000px}
+  .grade{display:grid;grid-template-columns:repeat(3,minmax(270px,1fr));gap:20px;max-width:1040px}
+  .op{background:#fff;border-radius:14px;border:1px solid var(--borda);overflow:hidden}
+  .cab{padding:16px 18px 0}.cab h2{margin:0 0 4px;font-size:15px}.cab p{margin:0;font-size:12.5px;color:var(--sub);line-height:1.5}
+  .rec{display:inline-block;font-size:10.5px;font-weight:700;background:var(--bege);color:var(--marsala);border-radius:10px;padding:1px 8px;margin-left:6px;vertical-align:2px}
+  .tela{position:relative;margin:16px 18px 18px;height:250px;border-radius:10px;background:#f3f2f1;border:1px solid var(--borda);display:flex;overflow:hidden}
+  .rail{width:52px;background:#fff;border-right:1px solid var(--borda);display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:10px}
+  .rail i{width:22px;height:22px;border-radius:5px;background:#e9e7e5}.rail .sp{flex:1}
+  .rail .it{width:22px;height:22px;color:#424242}.rail .adm{width:22px;height:22px;border-radius:5px;background:var(--marsala)}
+  .conteudo{flex:1;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:start}
+  .conteudo div{height:56px;background:#fff;border-radius:6px;border:1px solid var(--borda)}
+
+  /* ===== vidro esmeralda: mesmos valores de ui/tokens/esmeralda.ts ===== */
+  .vidro{position:relative;overflow:hidden;isolation:isolate;color:#fff;
+    background-image:linear-gradient(140deg,rgba(16,185,129,.92) 0%,rgba(5,150,105,.86) 48%,rgba(6,95,70,.92) 100%);
+    border:1px solid rgba(167,243,208,.55);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -1px 0 rgba(0,0,0,.12),0 10px 30px rgba(5,150,105,.28);
+    backdrop-filter:blur(14px) saturate(160%)}
+  .vidro::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+    background-image:radial-gradient(120% 80% at 0% 0%,rgba(255,255,255,.35),transparent 55%),radial-gradient(90% 70% at 100% 100%,rgba(6,78,59,.45),transparent 60%)}
+  .vidro::after{content:"";position:absolute;top:-40%;bottom:-40%;width:38%;left:-60%;z-index:-1;pointer-events:none;
+    background-image:linear-gradient(100deg,transparent,rgba(167,243,208,.55),transparent);transform:skewX(-18deg);
+    animation:brilho 5.5s ease-in-out 1s infinite}
+  @keyframes brilho{0%{left:-60%}60%{left:-60%}100%{left:130%}}
+  @media (prefers-reduced-motion:reduce){.vidro::after{animation:none}}
+  .vidro:hover{border-color:rgba(209,250,229,.9);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 14px 38px rgba(5,150,105,.38)}
+
+  .fab{position:absolute;right:14px;bottom:14px;height:48px;padding:0 18px 0 14px;border-radius:24px;display:flex;align-items:center;gap:9px;font:600 14px "Segoe UI";text-shadow:0 1px 2px rgba(6,78,59,.35)}
+  .fab svg{width:24px;height:24px}
+  .fab .b{font-size:11px;font-weight:700;border-radius:10px;padding:1px 7px;text-shadow:none}
+  /* segunda cor */
+  .c-bege .fab svg{color:var(--bege)} .c-bege .fab .b{background:var(--bege);color:#064e3b}
+  .c-branco .fab svg{color:#fff} .c-branco .fab .b{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.3)}
+  .c-vinho .fab svg{color:#fff} .c-vinho .fab .b{background:var(--marsala);color:#fff;border:1px solid rgba(255,255,255,.35)}
+  .c-vinho .fab{box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 0 0 2px rgba(103,0,0,.0),0 10px 30px rgba(5,150,105,.28)}
+
+  /* painel aberto */
+  .painel{max-width:1040px;margin-top:22px;display:flex;gap:20px;align-items:flex-start}
+  .box{width:380px;background:#fff;border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.18);overflow:hidden}
+  .ph{padding:14px 16px 0;border:0!important;border-radius:0}
+  .ph-top{display:flex;align-items:center;gap:10px}
+  .av{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);display:grid;place-items:center}
+  .av svg{width:22px;height:22px;color:var(--bege)}
+  .ph h2{margin:0;font-size:15px;text-shadow:0 1px 2px rgba(6,78,59,.35)}.ph small{font-size:12px;font-weight:600;opacity:.92}
+  .voz{margin-left:auto;font-size:11.5px;font-weight:700;background:var(--bege);color:#064e3b;border-radius:12px;padding:3px 9px;white-space:nowrap}
+  .abas{display:flex;gap:2px;margin-top:12px}
+  .abas span{padding:9px 13px;font-size:13px;font-weight:600;color:rgba(255,255,255,.8);border-bottom:3px solid transparent}
+  .abas .on{color:#fff;border-color:var(--bege)}
+  .corpo{padding:14px;background:#faf9f8;display:flex;flex-direction:column;gap:10px;font-size:13px}
+  .eu{align-self:flex-end;background:#065f46;color:#fff;padding:9px 12px;border-radius:12px 12px 4px 12px;max-width:85%}
+  .ia{align-self:flex-start;background:#fff;border:1px solid var(--borda);padding:9px 12px;border-radius:12px 12px 12px 4px;max-width:88%;text-align:justify;line-height:1.45}
+  .ia b{color:#065f46}
+  .nr{display:inline-block;margin-top:6px;font-size:11px;font-weight:600;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;border-radius:10px;padding:1px 8px}
+  .ouvir{margin-top:8px;display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:600;color:#065f46}
+  .ouvir button{border:1px solid #a7f3d0;background:#fff;color:#065f46;border-radius:12px;font:600 11.5px "Segoe UI";padding:2px 9px}
+  .ent{border-top:1px solid var(--borda);padding:10px;display:flex;gap:8px;background:#fff}
+  .ent input{flex:1;border:1px solid var(--borda);border-radius:18px;padding:9px 14px;font:13px "Segoe UI"}
+  .ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--borda);color:#065f46}
+  .ic.env{border-radius:50%}
+  .txt{font-size:13px;line-height:1.6;color:#323130;max-width:520px}
+  .txt b{color:#065f46}
+  svg{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+</style>
+</head>
+<body>
+<h1>SST IA — vidro esmeralda com brilho</h1>
+<p class="leg">Mesmo degradê, borda, reflexo e brilho que passa do card "Aptos para o campo" (o código vai reutilizar o mesmo estilo, sem copiar valores). Muda só a segunda cor: ícone e contador.</p>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="a" viewBox="0 0 24 24">
+    <path d="M5.5 11.5a6.5 6.5 0 0 1 13 0"/><path d="M12 5v3.2"/><path d="M3.8 11.5h16.4"/>
+    <rect x="3.6" y="13.2" width="3" height="4.6" rx="1.2"/><rect x="17.4" y="13.2" width="3" height="4.6" rx="1.2"/>
+    <path d="M18.9 17.8c0 1.9-1.6 3.2-4 3.2h-1.4"/><circle cx="12.4" cy="21" r=".9" fill="currentColor" stroke="none"/>
+  </symbol>
+</svg>
+
+<div class="grade">
+  <div class="op c-bege">
+    <div class="cab"><h2>1 · Esmeralda + bege <span class="rec">RECOMENDO</span></h2><p>Ícone e contador em bege da marca. O verde traz a SST e o bege amarra com a AAHBRANT.</p></div>
+    <div class="tela"><div class="rail"><i></i><i></i><i></i><i></i><div class="sp"></div><svg class="it"><use href="#a"/></svg><div class="adm"></div></div>
+      <div class="conteudo"><div></div><div></div><div></div><div></div></div>
+      <div class="fab vidro"><svg><use href="#a"/></svg>SST IA <span class="b">1</span></div></div>
+  </div>
+  <div class="op c-branco">
+    <div class="cab"><h2>2 · Esmeralda + branco</h2><p>Tudo em branco sobre o vidro, igual ao card do Início. Mais limpo, com menos contraste no contador.</p></div>
+    <div class="tela"><div class="rail"><i></i><i></i><i></i><i></i><div class="sp"></div><svg class="it"><use href="#a"/></svg><div class="adm"></div></div>
+      <div class="conteudo"><div></div><div></div><div></div><div></div></div>
+      <div class="fab vidro"><svg><use href="#a"/></svg>SST IA <span class="b">1</span></div></div>
+  </div>
+  <div class="op c-vinho">
+    <div class="cab"><h2>3 · Esmeralda + vinho</h2><p>Contador em vinho, chamando atenção para chamado em andamento. Contraste forte entre as duas cores.</p></div>
+    <div class="tela"><div class="rail"><i></i><i></i><i></i><i></i><div class="sp"></div><svg class="it"><use href="#a"/></svg><div class="adm"></div></div>
+      <div class="conteudo"><div></div><div></div><div></div><div></div></div>
+      <div class="fab vidro"><svg><use href="#a"/></svg>SST IA <span class="b">1</span></div></div>
+  </div>
+</div>
+
+<div class="painel">
+  <div class="box">
+    <div class="ph vidro">
+      <div class="ph-top"><div class="av"><svg><use href="#a"/></svg></div><div><h2>SST IA</h2><small>Tire dúvidas do G-SST ou abra um chamado</small></div><span class="voz">🔊 Voz</span></div>
+      <div class="abas"><span class="on">Perguntar</span><span>Abrir chamado</span><span>Meus chamados</span></div>
+    </div>
+    <div class="corpo">
+      <div class="eu">Quem pode aprovar o PGR?</div>
+      <div class="ia">Somente o <b>Engenheiro de Segurança</b>. Em <b>Gestão de SST › PGR / GRO</b>, abra o PGR e clique em <b>"Aprovar e assinar o PGR"</b>.<br><span class="nr">NR-01 · GRO/PGR</span>
+        <div class="ouvir"><button>🔊 Ouvir</button></div></div>
+    </div>
+    <div class="ent"><input placeholder="Escreva sua dúvida…"><span class="ic">🎤</span></div>
+  </div>
+  <div class="txt"><b>Painel aberto (opção 1):</b> o topo do painel usa o mesmo vidro esmeralda com brilho; as mensagens do usuário ficam em verde escuro e as referências de NR em verde claro. O nome é <b>SST IA</b> em todo lugar.</div>
+</div>
+</body>
+</html>

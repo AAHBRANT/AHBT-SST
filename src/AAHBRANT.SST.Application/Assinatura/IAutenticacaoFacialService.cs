@@ -71,6 +71,12 @@ public interface IAutenticacaoFacialService
     // plano (MigracaoModeloFacialBackgroundService), nunca dentro de uma requisição.
     Task<ResultadoMigracaoModeloFacial?> MigrarModeloReconhecimentoAsync(Guid obraId, CancellationToken ct);
 
+    // Reconstrução forçada pelo Administrador (endpoint "recriar grupo"): refaz o grupo das fotos guardadas
+    // mesmo quando ele já está no modelo atual — limpa pessoas duplicadas ou soltas deixadas por falhas
+    // antigas. O grupo em uso nunca é apagado antes de o novo estar pronto e treinado.
+    Task<ResultadoMigracaoModeloFacial?> ReconstruirGrupoAsync(Guid obraId, CancellationToken ct)
+        => MigrarModeloReconhecimentoAsync(obraId, ct);
+
     // Identifica quem está na foto dentro do PersonGroup da obra informada. Não recebe TrabalhadorId
     // — ao contrário do Futronic (que já resolveu o match localmente), aqui é o Azure quem descobre
     // quem é, a partir da foto.

@@ -56,6 +56,8 @@ import {
 } from './pessoaExterna';
 import { payloadAcaoOcorrencia, pendenciaResolucao, resolucaoDoVinculo } from './CampoComoSeResolve';
 import { MapaCorporal } from '../../components/mapaCorporal/MapaCorporal';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { BotaoAbrirDetalhe } from '../../components/BotaoAbrirDetalhe';
 import {
   novaChaveAcao,
   PlanoAcaoOcorrenciaIa,
@@ -127,6 +129,7 @@ const normalizarNome = (nome: string) =>
 // página-pilar, então sem useAbaNaUrl (mesmo critério já usado nas sub-abas de TrabalhadorDetalhePage).
 export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
   const navigate = useNavigate();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [obraFiltro] = useFiltroObra();
   const [acidentes, setAcidentes] = useState<Acidente[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -940,11 +943,23 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
               linhas={obraFiltro ? acidentes.filter((a) => a.obraId === obraFiltro) : acidentes}
               chaveLinha={(a) => a.id}
               vazio={{ titulo: 'Nenhuma ocorrência cadastrada ainda.' }}
-              aoClicarLinha={(a) => navigate(`/acidentes/${a.id}`)}
+              // 18/11/2026: ocorrência concluída abre o relatório em PDF; em andamento continua indo para o
+              // preenchimento. O detalhe fica sempre no botão "Abrir".
+              aoClicarLinha={(a) =>
+                a.status === StatusAcidente.Concluido
+                  ? void visualizar({
+                      titulo: 'Relatório de investigação',
+                      nomeArquivo: `relatorio-investigacao-${a.id}.pdf`,
+                      obter: () => api.acidentes.baixarPdf(a.id),
+                    })
+                  : navigate(`/acidentes/${a.id}`)
+              }
+              acoesLinha={(a) => <BotaoAbrirDetalhe aoAbrir={() => navigate(`/acidentes/${a.id}`)} />}
             />
           </Card>
         </div>
       )}
+      {dialogoVisualizador}
     </div>
   );
 }

@@ -124,7 +124,7 @@ public class ObrasController : ControllerBase
             {
                 using var escopo = _scopeFactory.CreateScope();
                 var facial = escopo.ServiceProvider.GetRequiredService<IAutenticacaoFacialService>();
-                var resultado = await facial.MigrarModeloReconhecimentoAsync(id, CancellationToken.None);
+                var resultado = await facial.ReconstruirGrupoAsync(id, CancellationToken.None);
                 if (resultado is null)
                     _logger.LogInformation("Obra {ObraId}: grupo facial já está íntegro, nada a recriar.", id);
                 else

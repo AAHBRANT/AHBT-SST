@@ -3243,9 +3243,54 @@ public static class NovidadesSeeder
                     "Ao clicar em Ampliar, a ficha original do modelo abre inteira, sem cortes, com frente, costas e detalhes."),
             }),
         new(
-            Versao: "5.187.0",
-            Titulo: "Inspeções: 2 fotos obrigatórias em cada item",
+            Versao: "5.186.0",
+            Titulo: "Documento finalizado abre direto em PDF nas listas",
             DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Clique na linha de um documento finalizado e veja o PDF na hora",
+                    "Nas listas de Ocorrências, Inspeções, APR, PT, DDS e CIPA, clicar na linha sempre abria a tela de preenchimento, mesmo com o documento já finalizado.",
+                    "Documento finalizado (ocorrência concluída, inspeção concluída, APR aprovada, PT autorizada, semana de DDS concluída, ata registrada) abre o PDF ao clicar na linha. A tela de detalhe continua no botão Abrir de cada linha, e documento em preenchimento segue abrindo a tela de preencher."),
+            }),
+        new(
+            Versao: "5.187.0",
+            Titulo: "SST IA: tire dúvidas do G-SST em qualquer tela, escrevendo ou falando",
+            DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Botão SST IA no canto da tela responde dúvidas sobre o uso do G-SST com base nas NRs",
+                    "Para tirar uma dúvida era preciso sair da tela e abrir um chamado no Suporte IA, que só registrava o pedido.",
+                    "O botão SST IA aparece em todas as telas: pergunte como usar uma tela, o que significa uma mensagem ou o que a NR pede, e a resposta chega na hora. Se não resolver, o chamado já sai preenchido com a conversa."),
+                new NovidadeSeedItem(CategoriaNovidade.Novidade,
+                    "Pergunte falando e ouça a resposta",
+                    "As dúvidas só podiam ser digitadas.",
+                    "Toque no microfone e fale: a resposta é lida em voz alta pela voz do próprio aparelho. Cada resposta tem o botão Ouvir, e o botão Voz no topo do painel liga ou desliga a leitura."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Suporte IA passa a se chamar SST IA, com um botão discreto que não cobre a tela",
+                    "O item se chamava Suporte IA e ficava só no menu lateral.",
+                    "O item do menu lateral virou SST IA. O botão flutuante encolhe depois de alguns segundos, sobe acima de barras fixas, some quando abre uma janela e pode ser escondido até o dia seguinte em Esconder por hoje."),
+            }),
+        new(
+            Versao: "5.188.0",
+            Titulo: "Reconhecimento facial mais estável nas assinaturas e na fila do DDS",
+            DataPublicacao: new DateTime(2026, 11, 19, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Facial não fica mais indisponível pela manhã",
+                    "Em alguns dias, a assinatura pelo rosto mostrava \"O reconhecimento facial está indisponível no momento\" logo cedo, e era preciso usar a digital.",
+                    "Uma rotina noturna do sistema refazia o cadastro facial das obras sem necessidade e podia deixar o reconhecimento parado. Ela foi corrigida, e, se o reconhecimento da obra não estiver pronto, o sistema o prepara na hora e conclui a assinatura."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Fila facial do DDS deixa de confundir a pessoa com ela mesma",
+                    "A fila facial recusava algumas pessoas com \"Rosto parecido com o de outra pessoa\", mesmo de frente para a câmera.",
+                    "Cadastros repetidos da mesma pessoa não são mais tratados como outra pessoa, e a presença é confirmada normalmente. Rostos realmente parecidos com o de um colega continuam pedindo a digital."),
+            }),
+        new(
+            Versao: "5.189.0",
+            Titulo: "Inspeções: 2 fotos obrigatórias em cada item",
+            DataPublicacao: new DateTime(2026, 11, 19, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
             {
                 new NovidadeSeedItem(CategoriaNovidade.Melhoria,
