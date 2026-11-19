@@ -3289,7 +3289,6 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.189.0",
-<<<<<<< HEAD
             Titulo: "Inspeções: 2 fotos obrigatórias em cada item",
             DataPublicacao: new DateTime(2026, 11, 19, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
@@ -3301,12 +3300,7 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.190.0",
-            Titulo: "SST IA responde com voz natural",
-||||||| parent of 0f004fab (feat(sst-ia): botão Ampliar no painel (até 760 px e quase toda a altura), lembra a escolha)
-            Titulo: "SST IA responde com voz natural",
-=======
             Titulo: "SST IA com voz natural e painel que pode ser ampliado",
->>>>>>> 0f004fab (feat(sst-ia): botão Ampliar no painel (até 760 px e quase toda a altura), lembra a escolha)
             DataPublicacao: new DateTime(2026, 11, 19, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]
             {
