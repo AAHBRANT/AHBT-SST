@@ -20,6 +20,8 @@ import {
   type Tom,
 } from '@ui';
 import { Add24Regular } from '@fluentui/react-icons';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { BotaoAbrirDetalhe } from '../../components/BotaoAbrirDetalhe';
 import {
   api,
   statusDdsSemanalLabel,
@@ -53,6 +55,7 @@ const tomStatusSemanal: Record<number, Tom> = {
 // criação cresce acima da lista, sem cobrir a tela com uma gaveta.
 export function DdsSemanalPage() {
   const navigate = useNavigate();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [registros, setRegistros] = useState<DdsSemanal[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [nova, setNova] = useState<NovaDdsSemanal>(semanalVazia());
@@ -289,9 +292,16 @@ export function DdsSemanalPage() {
             descricao: 'Conecte-se à internet e carregue as semanas de DDS antes de usá-las offline.',
             acao: { rotulo: 'Tentar novamente', aoClicar: () => void carregar() },
           }}
-          aoClicarLinha={(s) => navigate(`/prevencao/dds/semana/${s.id}`)}
+          // 18/11/2026: semana concluída abre o PDF (com internet); em andamento segue para o preenchimento.
+          aoClicarLinha={(s) =>
+            s.status === StatusDdsSemanal.Concluida && navigator.onLine
+              ? void visualizar({ titulo: 'PDF da semana de DDS', nomeArquivo: `dds-semanal-${s.id}.pdf`, obter: () => api.ddsSemanal.baixarPdf(s.id) })
+              : navigate(`/prevencao/dds/semana/${s.id}`)
+          }
+          acoesLinha={(s) => <BotaoAbrirDetalhe aoAbrir={() => navigate(`/prevencao/dds/semana/${s.id}`)} />}
         />
       </Card>
+      {dialogoVisualizador}
     </div>
   );
 }

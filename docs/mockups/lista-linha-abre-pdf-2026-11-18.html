@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linha abre o PDF</title>
+<style>
+  :root {
+    --vinho: #670000; --vinho-wash: #f6ecec; --bege: #ebe9ad; --tinta: #1f1f1f; --cinza: #616161;
+    --borda: #e0e0e0; --fundo: #f5f5f5; --branco: #fff; --verde: #0e7a3a; --verde-wash: #e6f4ea;
+    --ambar: #8a5a00; --ambar-wash: #fff4ce;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--fundo); color: var(--tinta); font-size: 14px; }
+  .pagina { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 20px; margin: 0 0 4px; color: var(--vinho); }
+  .sub { color: var(--cinza); margin: 0 0 20px; }
+  .card { background: var(--branco); border: 1px solid var(--borda); border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+  .card h2 { font-size: 16px; margin: 0 0 12px; }
+  .legenda { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; font-size: 13px; color: var(--cinza); }
+  .legenda b { color: var(--tinta); }
+  .tabela-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-weight: 600; font-size: 12px; color: var(--cinza); padding: 8px 10px; border-bottom: 1px solid var(--borda); white-space: nowrap; }
+  td { padding: 10px; border-bottom: 1px solid var(--borda); white-space: nowrap; }
+  tr.clicavel { cursor: pointer; }
+  tr.clicavel:hover td { background: var(--vinho-wash); }
+  tr.clicavel:hover td:first-child { box-shadow: inset 3px 0 0 var(--vinho); }
+  .dica { font-size: 12px; color: var(--vinho); display: none; }
+  tr.clicavel:hover .dica { display: inline; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .p-ok { background: var(--verde-wash); color: var(--verde); }
+  .p-and { background: var(--ambar-wash); color: var(--ambar); }
+  .p-cinza { background: #eee; color: var(--cinza); }
+  .acoes { text-align: right; }
+  .btn { font: inherit; font-size: 13px; border-radius: 4px; padding: 4px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-ver { background: var(--branco); color: var(--vinho); border: 1px solid var(--vinho); }
+  .btn-ver:hover { background: var(--vinho-wash); }
+  .btn-excluir { background: #c50f1f; color: #fff; border: 1px solid #c50f1f; padding: 4px 8px; }
+  .btn-prim { background: var(--vinho); color: #fff; border: 1px solid var(--vinho); padding: 6px 16px; }
+  .btn-sec { background: #fff; color: var(--tinta); border: 1px solid #d1d1d1; padding: 6px 16px; }
+  .novo { font-size: 11px; font-weight: 700; color: var(--vinho); background: var(--bege); border-radius: 4px; padding: 1px 6px; margin-left: 6px; }
+  .icone-pdf { width: 14px; height: 14px; }
+  .lista-regra { margin: 0; padding-left: 18px; line-height: 1.7; }
+  .tabela-listas td, .tabela-listas th { white-space: normal; }
+  .sim { color: var(--verde); font-weight: 600; }
+  .nao { color: var(--cinza); }
+  /* visualizador */
+  .fundo-modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; padding: 16px; }
+  .fundo-modal.aberto { display: flex; }
+  .modal { background: #fff; border-radius: 8px; width: min(900px, 96vw); max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+  .modal-topo { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px 8px; font-weight: 600; font-size: 16px; }
+  .modal-corpo { padding: 8px 20px; overflow: auto; background: #e9e9e9; margin: 0 20px; border-radius: 4px; }
+  .folha { background: #fff; width: 100%; max-width: 620px; margin: 16px auto; aspect-ratio: 1 / 1.3; padding: 28px; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+  .folha .cab { display: flex; justify-content: space-between; border-bottom: 3px solid var(--vinho); padding-bottom: 8px; margin-bottom: 14px; }
+  .folha .logo { font-weight: 800; color: var(--vinho); letter-spacing: 1px; }
+  .linha-f { height: 9px; background: #ececec; border-radius: 3px; margin: 9px 0; }
+  .modal-rodape { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--tinta); color: #fff; padding: 10px 18px; border-radius: 6px; display: none; }
+  .toast.on { display: block; }
+  @media (max-width: 640px) { .ocultar-cel { display: none; } }
+</style>
+</head>
+<body>
+<div class="pagina">
+  <h1>Listas de documentos: clicar na linha abre o PDF</h1>
+  <p class="sub">Mockup 18/11/2026 — exemplo na lista “Acidentes e incidentes”. Clique numa linha para ver o PDF; clique em <b>Abrir</b> para ir à tela de detalhe/edição.</p>
+
+  <div class="card">
+    <h2>Acidentes e incidentes</h2>
+    <div class="legenda">
+      <span><b>Clique na linha</b> → abre o PDF na janela de visualização (a mesma do “Visualizar relatório”)</span>
+      <span><b>Botão Abrir</b> <span class="novo">NOVO</span> → abre a tela de detalhe, como a linha fazia antes</span>
+    </div>
+    <div class="tabela-wrap">
+    <table>
+      <thead><tr><th>Tipo</th><th>Obra</th><th>Funcionário / pessoa</th><th class="ocultar-cel">Data</th><th class="ocultar-cel">Local</th><th>Status</th><th class="ocultar-cel">Gravidade</th><th></th></tr></thead>
+      <tbody>
+        <tr class="clicavel" data-titulo="Relatório de investigação" data-doc="Acidente típico — Carlos Souza">
+          <td>Acidente típico <span class="dica">· ver PDF</span></td><td>Beira Rio</td><td>Carlos Souza</td><td class="ocultar-cel">12/11/2026</td><td class="ocultar-cel">Bloco B — 3º pav.</td><td><span class="pill p-and">Em investigação</span></td><td class="ocultar-cel">Leve</td>
+          <td class="acoes"><button class="btn btn-ver" data-abrir>
+            <svg class="icone-pdf" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 3h6v6M17 3l-8 8M8 4H4v12h12v-4"/></svg>Abrir</button></td>
+        </tr>
+        <tr class="clicavel" data-titulo="Relatório de investigação" data-doc="Quase acidente — Ana Lima">
+          <td>Quase acidente <span class="dica">· ver PDF</span></td><td>Parque Roger</td><td>Ana Lima</td><td class="ocultar-cel">08/11/2026</td><td class="ocultar-cel">Canteiro — betoneira</td><td><span class="pill p-ok">Concluído</span></td><td class="ocultar-cel">—</td>
+          <td class="acoes"><button class="btn btn-ver" data-abrir>
+            <svg class="icone-pdf" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 3h6v6M17 3l-8 8M8 4H4v12h12v-4"/></svg>Abrir</button></td>
+        </tr>
+        <tr class="clicavel" data-titulo="Relatório de investigação" data-doc="Incidente — Pessoa externa">
+          <td>Incidente <span class="dica">· ver PDF</span></td><td>Beira Rio</td><td>Visitante (externo)</td><td class="ocultar-cel">02/11/2026</td><td class="ocultar-cel">Portaria</td><td><span class="pill p-cinza">Aberto</span></td><td class="ocultar-cel">—</td>
+          <td class="acoes"><button class="btn btn-ver" data-abrir>
+            <svg class="icone-pdf" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 3h6v6M17 3l-8 8M8 4H4v12h12v-4"/></svg>Abrir</button></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Exemplo com botão Excluir já existente (Inspeções, APR, PT, CIPA)</h2>
+    <div class="legenda"><span>O <b>Excluir</b> (só Administrador) continua igual; o <b>Abrir</b> entra antes dele. Linha que ainda não tem PDF continua abrindo o detalhe.</span></div>
+    <div class="tabela-wrap">
+    <table>
+      <thead><tr><th>Tema</th><th>Obra</th><th class="ocultar-cel">Data</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        <tr class="clicavel" data-titulo="PDF da inspeção" data-doc="Inspeção — Andaimes (NR-18)">
+          <td>Andaimes (NR-18) <span class="dica">· ver PDF</span></td><td>Beira Rio</td><td class="ocultar-cel">17/11/2026</td><td><span class="pill p-ok">Concluída</span></td>
+          <td class="acoes"><button class="btn btn-ver" data-abrir><svg class="icone-pdf" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 3h6v6M17 3l-8 8M8 4H4v12h12v-4"/></svg>Abrir</button>
+          <button class="btn btn-excluir" title="Excluir">🗑</button></td>
+        </tr>
+        <tr class="clicavel" data-detalhe="1">
+          <td>Instalações elétricas (NR-10)</td><td>Parque Roger</td><td class="ocultar-cel">18/11/2026</td><td><span class="pill p-cinza">Aguardando envio</span></td>
+          <td class="acoes"><span style="color:var(--cinza);font-size:12px">sem PDF ainda → linha abre o detalhe</span></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Onde a mudança entra</h2>
+    <div class="tabela-wrap">
+    <table class="tabela-listas">
+      <thead><tr><th>Lista</th><th>PDF que abre no clique da linha</th><th>Quando a linha continua indo para o detalhe</th></tr></thead>
+      <tbody>
+        <tr><td>Acidentes e incidentes (Ocorrências)</td><td>Relatório de investigação</td><td class="nao">—</td></tr>
+        <tr><td>Ocorrências na aba do perfil da pessoa</td><td>Relatório de investigação</td><td class="nao">—</td></tr>
+        <tr><td>Inspeções</td><td>PDF da inspeção</td><td>Inspeção ainda aguardando envio (feita sem internet)</td></tr>
+        <tr><td>APR</td><td>PDF da APR</td><td class="nao">—</td></tr>
+        <tr><td>Permissões de Trabalho (PT)</td><td>PDF da PT</td><td class="nao">—</td></tr>
+        <tr><td>DDS — semanas</td><td>PDF da semana de DDS</td><td class="nao">—</td></tr>
+        <tr><td>Participações em DDS (aba do perfil)</td><td>PDF do DDS do dia</td><td class="nao">—</td></tr>
+        <tr><td>CIPA — Reuniões</td><td>Ata da reunião</td><td class="nao">—</td></tr>
+        <tr><td>CIPA — Processo eleitoral</td><td>Ata da eleição</td><td>Eleição ainda não apurada (não tem ata)</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p style="margin:12px 0 0;color:var(--cinza)"><b>Ficam como estão</b> (não são lista de um PDF só): PGR (detalhe abre no Resumo de propósito), PCMSO (o detalhe já é o próprio documento), Não conformidades, SIPAT, Membros da CIPA, Turmas e Integrações, Trabalhadores, Empresas terceirizadas.</p>
+  </div>
+</div>
+
+<div class="fundo-modal" id="modal">
+  <div class="modal">
+    <div class="modal-topo"><span id="m-titulo">Relatório de investigação</span><button class="btn btn-sec" id="x" aria-label="Fechar">✕</button></div>
+    <div class="modal-corpo">
+      <div class="folha">
+        <div class="cab"><span class="logo">AAHBRANT</span><span id="m-doc" style="font-size:12px;color:var(--cinza)"></span></div>
+        <div class="linha-f" style="width:70%"></div><div class="linha-f"></div><div class="linha-f" style="width:85%"></div>
+        <div class="linha-f" style="width:60%;margin-top:22px"></div><div class="linha-f"></div><div class="linha-f" style="width:90%"></div><div class="linha-f" style="width:40%"></div>
+      </div>
+    </div>
+    <div class="modal-rodape"><button class="btn btn-sec" id="fechar">Fechar</button><button class="btn btn-prim">⬇ Baixar</button></div>
+  </div>
+</div>
+<div class="toast" id="toast">Abrindo a tela de detalhe…</div>
+
+<script>
+  const modal = document.getElementById('modal');
+  const toast = document.getElementById('toast');
+  function aviso(t) { toast.textContent = t; toast.classList.add('on'); setTimeout(() => toast.classList.remove('on'), 1600); }
+  document.querySelectorAll('tr.clicavel').forEach(tr => tr.addEventListener('click', () => {
+    if (tr.dataset.detalhe) { aviso('Sem PDF ainda — abrindo a tela de detalhe…'); return; }
+    document.getElementById('m-titulo').textContent = tr.dataset.titulo;
+    document.getElementById('m-doc').textContent = tr.dataset.doc;
+    modal.classList.add('aberto');
+  }));
+  document.querySelectorAll('[data-abrir]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); aviso('Abrindo a tela de detalhe…'); }));
+  document.querySelectorAll('.btn-excluir').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); aviso('Excluir (só Administrador) — igual hoje'); }));
+  ['x', 'fechar'].forEach(id => document.getElementById(id).addEventListener('click', () => modal.classList.remove('aberto')));
+  modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('aberto'); });
+</script>
+</body>
+</html>

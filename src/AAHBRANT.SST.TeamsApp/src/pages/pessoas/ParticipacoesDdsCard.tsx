@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, DataTable, FeedbackInline, StatusChip, type Coluna } from '@ui';
-import { api, TipoFotoParticipante, type ParticipacaoDds } from '../../lib/api';
+import { api, StatusDds, TipoFotoParticipante, type ParticipacaoDds } from '../../lib/api';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { BotaoAbrirDetalhe } from '../../components/BotaoAbrirDetalhe';
 
 // Lista de DDS do perfil (aba Treinamentos): complementa o anel de assiduidade mostrando cada DDS da
 // obra desde a admissão — tema, responsável e como a presença foi registrada, ou a falta.
@@ -26,6 +28,7 @@ function horaBr(iso?: string | null) {
 
 export function ParticipacoesDdsCard({ trabalhadorId }: { trabalhadorId: string }) {
   const navigate = useNavigate();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [lista, setLista] = useState<ParticipacaoDds[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<Filtro>('todos');
@@ -126,8 +129,15 @@ export function ParticipacoesDdsCard({ trabalhadorId }: { trabalhadorId: string 
         chaveLinha={(d) => d.ddsId}
         carregando={lista === null && !erro}
         vazio={{ titulo: 'Nenhum DDS neste filtro.' }}
-        aoClicarLinha={(d) => navigate(`/prevencao/dds/dia/${d.ddsId}`)}
+        // 18/11/2026: DDS concluído abre o PDF; o detalhe fica no botão "Abrir".
+        aoClicarLinha={(d) =>
+          d.status === StatusDds.Concluido
+            ? void visualizar({ titulo: 'PDF do DDS', nomeArquivo: `dds-${d.ddsId}.pdf`, obter: () => api.dds.baixarPdf(d.ddsId) })
+            : navigate(`/prevencao/dds/dia/${d.ddsId}`)
+        }
+        acoesLinha={(d) => <BotaoAbrirDetalhe aoAbrir={() => navigate(`/prevencao/dds/dia/${d.ddsId}`)} />}
       />
+      {dialogoVisualizador}
     </Card>
   );
 }

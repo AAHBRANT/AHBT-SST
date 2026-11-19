@@ -3244,6 +3244,17 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.186.0",
+            Titulo: "Documento finalizado abre direto em PDF nas listas",
+            DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Clique na linha de um documento finalizado e veja o PDF na hora",
+                    "Nas listas de Ocorrências, Inspeções, APR, PT, DDS e CIPA, clicar na linha sempre abria a tela de preenchimento, mesmo com o documento já finalizado.",
+                    "Documento finalizado (ocorrência concluída, inspeção concluída, APR aprovada, PT autorizada, semana de DDS concluída, ata registrada) abre o PDF ao clicar na linha. A tela de detalhe continua no botão Abrir de cada linha, e documento em preenchimento segue abrindo a tela de preencher."),
+            }),
+        new(
+            Versao: "5.187.0",
             Titulo: "SST IA: tire dúvidas do G-SST em qualquer tela, escrevendo ou falando",
             DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]

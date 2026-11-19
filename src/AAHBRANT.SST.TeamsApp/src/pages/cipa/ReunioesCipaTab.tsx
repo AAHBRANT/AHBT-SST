@@ -22,8 +22,11 @@ import {
   type Tom,
 } from '@ui';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { BotaoAbrirDetalhe } from '../../components/BotaoAbrirDetalhe';
 import {
   api,
+  StatusReuniaoCipa,
   statusReuniaoCipaLabel,
   tipoReuniaoCipaLabel,
   TipoReuniaoCipa,
@@ -51,6 +54,7 @@ const tomPorStatus: Record<number, Tom> = { 1: 'info', 2: 'atencao', 3: 'ok' };
 // o botão "ver" redundante não existe (Guia §1).
 export function ReunioesCipaTab() {
   const navigate = useNavigate();
+  const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [lista, setLista] = useState<ReuniaoCipa[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [novo, setNovo] = useState<NovaReuniaoCipa>(vazio());
@@ -135,6 +139,7 @@ export function ReunioesCipaTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {dialogElement}
+      {dialogoVisualizador}
       <PageHeader
         titulo="Reuniões CIPA"
         acoes={
@@ -217,12 +222,20 @@ export function ReunioesCipaTab() {
             titulo: 'Nenhuma reunião da CIPA cadastrada ainda',
             acao: { rotulo: 'Agendar reunião', aoClicar: () => setPainelAberto(true) },
           }}
-          aoClicarLinha={(r) => navigate(`/operacao/cipa/reuniao/${r.id}`)}
-          acoesLinha={
-            souAdministrador
-              ? (r) => <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(r.id)} aria-label="Excluir" />
-              : undefined
+          // 18/11/2026: reunião com ata registrada abre a ata em PDF; as demais seguem para o detalhe.
+          aoClicarLinha={(r) =>
+            r.status === StatusReuniaoCipa.AtaRegistrada
+              ? void visualizar({ titulo: 'Ata da reunião da CIPA', nomeArquivo: `ata-reuniao-cipa-${r.id}.pdf`, obter: () => api.cipa.reunioes.baixarAtaPdf(r.id) })
+              : navigate(`/operacao/cipa/reuniao/${r.id}`)
           }
+          acoesLinha={(r) => (
+            <>
+              <BotaoAbrirDetalhe aoAbrir={() => navigate(`/operacao/cipa/reuniao/${r.id}`)} />
+              {souAdministrador && (
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(r.id)} aria-label="Excluir" />
+              )}
+            </>
+          )}
         />
       </Card>
     </div>
