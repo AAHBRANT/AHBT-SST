@@ -219,8 +219,26 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         }
     }
 
-    public async Task<ResultadoMigracaoModeloFacial?> MigrarModeloReconhecimentoAsync(Guid obraId, CancellationToken ct)
+    public Task<ResultadoMigracaoModeloFacial?> MigrarModeloReconhecimentoAsync(Guid obraId, CancellationToken ct)
+        => MigrarOuReconstruirAsync(obraId, forcar: false, ct);
+
+    public Task<ResultadoMigracaoModeloFacial?> ReconstruirGrupoAsync(Guid obraId, CancellationToken ct)
+        => MigrarOuReconstruirAsync(obraId, forcar: true, ct);
+
+    // Incidente de 19/11 (Ponte Rio Cuiá): a consulta do grupo vinha sem o modelo (faltava
+    // returnRecognitionModel), então todo grupo parecia antigo e era reconstruído a cada reinício da API, em
+    // todas as réplicas ao mesmo tempo e apagando o grupo em uso. Resultado: grupo sem treino ("reconhecimento
+    // indisponível") e pessoas duplicadas ("rosto parecido com o de outra pessoa"). Desde então:
+    //  1. só uma réplica por obra reconstrói (trava no SQL Server); as outras pulam;
+    //  2. o grupo novo tem id único e só vira o da obra depois de pronto e treinado — o grupo em uso nunca é
+    //     apagado nem alterado antes da troca; se algo falhar no meio, o grupo novo é descartado e a obra
+    //     continua no antigo.
+    private async Task<ResultadoMigracaoModeloFacial?> MigrarOuReconstruirAsync(Guid obraId, bool forcar, CancellationToken ct)
     {
+        await using var trava = await TravaSqlServer.TentarAdquirirAsync(_db, $"sst-facial-grupo-{obraId:N}", ct);
+        if (trava is null)
+            return null; // outra réplica já está reconstruindo este grupo
+
         var obra = await _db.Obras.IgnoreQueryFilters().FirstOrDefaultAsync(o => o.Id == obraId, ct)
             ?? throw new KeyNotFoundException("Obra não encontrada.");
         var grupoAntigo = obra.AzureFacePersonGroupId;
@@ -229,9 +247,17 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
 
         using var cliente = CriarCliente();
 
-        // Lido direto do Azure (sem o cache): é o que decide se a obra ainda precisa migrar.
-        var respostaGrupo = await cliente.GetAsync($"face/v1.0/persongroups/{grupoAntigo}", ct);
-        if (respostaGrupo.StatusCode == System.Net.HttpStatusCode.NotFound)
+        // Lido direto do Azure (sem o cache): é o que decide se a obra ainda precisa migrar. Sem
+        // returnRecognitionModel=true o Azure não devolve o modelo e todo grupo parecia precisar de migração.
+        var respostaGrupo = await cliente.GetAsync($"face/v1.0/persongroups/{grupoAntigo}?returnRecognitionModel=true", ct);
+        if (forcar)
+        {
+            var haCadastros = await _db.Trabalhadores.IgnoreQueryFilters()
+                .AnyAsync(t => t.ObraId == obra.Id && t.AzureFacePersonId != null, ct);
+            if (!haCadastros)
+                return null;
+        }
+        else if (respostaGrupo.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
             // Grupo ausente no recurso do Azure em uso (ex.: troca de recurso/região do Face): o banco ainda
             // aponta para ele e os trabalhadores têm PersonId, então todo rosto da obra cai em "não
@@ -259,10 +285,38 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
             }
         }
 
-        // Id novo e fixo por obra. Se uma migração anterior parou no meio, o grupo novo é apagado e refeito
-        // do zero, para não ficar com pessoas duplicadas.
-        var grupoNovo = $"obra-{obra.Id:N}-r4";
-        await EnviarComRetryMigracaoAsync(() => cliente.DeleteAsync($"face/v1.0/persongroups/{grupoNovo}", ct), ct);
+        // Id novo e ÚNICO a cada reconstrução: nunca coincide com o grupo em uso, então nada do que acontece
+        // aqui mexe no reconhecimento da obra até a troca final. (Antes o id era fixo "-r4" e a reconstrução
+        // apagava o próprio grupo em uso.) Até 64 caracteres, como o Azure exige.
+        var grupoNovo = $"obra-{obra.Id:N}-r4-{DateTime.UtcNow:yyyyMMddHHmmss}";
+        var estado = new EstadoReconstrucao();
+        try
+        {
+            return await ConstruirGrupoNovoETrocarAsync(cliente, obra, grupoAntigo, grupoNovo, estado, ct);
+        }
+        catch when (!estado.Trocou)
+        {
+            // Falhou antes da troca: a obra segue no grupo antigo, intacto. O grupo novo pela metade é
+            // descartado para não sobrar lixo no Azure (melhor esforço).
+            try
+            {
+                await cliente.DeleteAsync($"face/v1.0/persongroups/{grupoNovo}", CancellationToken.None);
+            }
+            catch (HttpRequestException)
+            {
+            }
+            throw;
+        }
+    }
+
+    private sealed class EstadoReconstrucao
+    {
+        public bool Trocou { get; set; }
+    }
+
+    private async Task<ResultadoMigracaoModeloFacial> ConstruirGrupoNovoETrocarAsync(HttpClient cliente, Obra obra,
+        string grupoAntigo, string grupoNovo, EstadoReconstrucao estado, CancellationToken ct)
+    {
         await CriarPersonGroupSeNaoExistirAsync(cliente, grupoNovo, obra.Nome, ct);
 
         var novosIds = new Dictionary<Guid, string>();
@@ -376,15 +430,16 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         }
         obra.AzureFacePersonGroupId = grupoNovo;
         await _db.SaveChangesAsync(ct);
+        estado.Trocou = true;
         ModelosPorGrupo[grupoNovo] = ModeloReconhecimentoAtual;
+        ModelosPorGrupo.TryRemove(grupoAntigo, out _);
 
         // O grupo antigo não é mais usado por ninguém; apagar é só limpeza (melhor esforço).
-        // Se o grupo reconstruído tem o mesmo id do antigo (grupo vazio refeito), não há o que apagar.
         if (!string.Equals(grupoAntigo, grupoNovo, StringComparison.Ordinal))
         {
             try
             {
-                await cliente.DeleteAsync($"face/v1.0/persongroups/{grupoAntigo}", ct);
+                await cliente.DeleteAsync($"face/v1.0/persongroups/{grupoAntigo}", CancellationToken.None);
             }
             catch (HttpRequestException)
             {
@@ -675,6 +730,19 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
             var erro = await LerErroAzureAsync(resposta, ct);
             if (erro.Code is "PersonGroupNotFound" or "LargePersonGroupNotFound")
                 return new Dictionary<string, List<CandidatoResposta>>();
+            if (erro.Code is "PersonGroupNotTrained" or "LargePersonGroupNotTrained")
+            {
+                // Câmeras: este quadro sai sem identificação, mas o grupo já fica treinado para os próximos
+                // (e para as assinaturas). Só dispara o treino, sem esperar.
+                try
+                {
+                    await cliente.PostAsync($"face/v1.0/persongroups/{personGroupId}/train", content: null, ct);
+                }
+                catch (HttpRequestException)
+                {
+                }
+                return new Dictionary<string, List<CandidatoResposta>>();
+            }
             if (erro.Message.Contains("recognitionModel", StringComparison.OrdinalIgnoreCase))
                 throw new ModeloReconhecimentoIncompativelException();
             throw ErroDeIndisponibilidade(resposta.StatusCode, MontarMensagemErroAzure("identify", erro));
@@ -709,11 +777,11 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         if (faceIds.Count > 1)
             return new ResultadoIdentificacaoFacial(false, null, MotivoRejeicaoFacial.MultiplosRostosDetectados, null);
 
-        CandidatoIdentificacao? candidato;
-        double? confiancaSegundo;
+        var grupo = obra.AzureFacePersonGroupId;
+        IReadOnlyList<CandidatoIdentificacao> candidatos;
         try
         {
-            (candidato, confiancaSegundo) = await IdentificarRostoAsync(cliente, obra.AzureFacePersonGroupId, faceIds[0], ct);
+            candidatos = await IdentificarComAutoTreinoAsync(cliente, grupo, faceIds[0], ct);
         }
         catch (ModeloReconhecimentoIncompativelException)
         {
@@ -728,7 +796,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
                     faceIds.Count == 0 ? MotivoRejeicaoFacial.NenhumRostoDetectado : MotivoRejeicaoFacial.MultiplosRostosDetectados, null);
             try
             {
-                (candidato, confiancaSegundo) = await IdentificarRostoAsync(cliente, obra.AzureFacePersonGroupId, faceIds[0], ct);
+                candidatos = await IdentificarComAutoTreinoAsync(cliente, grupo, faceIds[0], ct);
             }
             catch (ModeloReconhecimentoIncompativelException)
             {
@@ -736,6 +804,8 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
                     $"identify: recognitionModel incompatível mesmo após reler o modelo do grupo {obra.AzureFacePersonGroupId} ({modelo})");
             }
         }
+
+        var (candidato, confiancaSegundo) = await EscolherCandidatoAsync(cliente, grupo, obraId, candidatos, ct);
         if (candidato is null)
             return await RejeitarAsync(registrarFalhas, obraId,MotivoRejeicaoFacial.RostoNaoReconhecido, null, null, ct);
 
@@ -884,7 +954,8 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
     private static async Task TreinarEAguardarAsync(HttpClient cliente, string personGroupId, CancellationToken ct, int tentativas = 10)
     {
         var respostaTreino = await cliente.PostAsync($"face/v1.0/persongroups/{personGroupId}/train", content: null, ct);
-        if (!respostaTreino.IsSuccessStatusCode)
+        // 409 = já há um treino em andamento (ex.: duas assinaturas ao mesmo tempo): só acompanha esse.
+        if (!respostaTreino.IsSuccessStatusCode && respostaTreino.StatusCode != System.Net.HttpStatusCode.Conflict)
             throw new InvalidOperationException($"Falha ao disparar treino no Azure Face API: {respostaTreino.StatusCode}");
 
         // Treino é assíncrono no Azure — poll com backoff curto (ação administrativa pontual, ok
@@ -934,26 +1005,103 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         return rostos?.Select(r => r.FaceId).ToList() ?? new List<string>();
     }
 
-    // Devolve o melhor candidato e a confiança do segundo (quando houver), para a checagem de margem da fila.
-    private static async Task<(CandidatoIdentificacao? Primeiro, double? ConfiancaSegundo)> IdentificarRostoAsync(HttpClient cliente, string personGroupId, string faceId, CancellationToken ct)
+    // Candidatos do identify, do mais para o menos confiável. Até 5, para enxergar além de um cadastro solto
+    // (pessoa no grupo sem funcionário ligado) que esteja na frente.
+    private static async Task<IReadOnlyList<CandidatoIdentificacao>> IdentificarRostoAsync(HttpClient cliente, string personGroupId, string faceId, CancellationToken ct)
     {
-        var corpo = new { personGroupId, faceIds = new[] { faceId }, maxNumOfCandidatesReturned = 2, confidenceThreshold = 0.5 };
+        var corpo = new { personGroupId, faceIds = new[] { faceId }, maxNumOfCandidatesReturned = 5, confidenceThreshold = 0.5 };
         var resposta = await EnviarComRetry429Async(() => cliente.PostAsJsonAsync("face/v1.0/identify", corpo, ct), ct);
         if (!resposta.IsSuccessStatusCode)
         {
             var erro = await LerErroAzureAsync(resposta, ct);
             if (erro.Code is "PersonGroupNotFound" or "LargePersonGroupNotFound")
-                return (null, null);
+                return Array.Empty<CandidatoIdentificacao>();
+            if (erro.Code is "PersonGroupNotTrained" or "LargePersonGroupNotTrained")
+                throw new GrupoNaoTreinadoException();
             if (erro.Message.Contains("recognitionModel", StringComparison.OrdinalIgnoreCase))
                 throw new ModeloReconhecimentoIncompativelException();
             throw ErroDeIndisponibilidade(resposta.StatusCode, MontarMensagemErroAzure("identify", erro));
         }
         var resultados = await resposta.Content.ReadFromJsonAsync<List<IdentificacaoResposta>>(cancellationToken: ct);
-        var candidatos = resultados?.FirstOrDefault()?.Candidates.OrderByDescending(c => c.Confidence).ToList() ?? new List<CandidatoResposta>();
-        var primeiro = candidatos.FirstOrDefault();
-        return primeiro is null
-            ? (null, null)
-            : (new CandidatoIdentificacao(primeiro.PersonId, primeiro.Confidence, LerIdRequisicao(resposta)), candidatos.Skip(1).FirstOrDefault()?.Confidence);
+        var requisicao = LerIdRequisicao(resposta);
+        return (resultados?.FirstOrDefault()?.Candidates ?? new List<CandidatoResposta>())
+            .OrderByDescending(c => c.Confidence)
+            .Select(c => new CandidatoIdentificacao(c.PersonId, c.Confidence, requisicao))
+            .ToList();
+    }
+
+    // Grupo sem treino (incidente de 19/11: "reconhecimento facial indisponível" a manhã inteira): em vez de
+    // falhar até alguém perceber, treina o grupo na hora e repete a identificação uma vez. Grupo de obra
+    // treina em poucos segundos.
+    private static async Task<IReadOnlyList<CandidatoIdentificacao>> IdentificarComAutoTreinoAsync(HttpClient cliente, string personGroupId, string faceId, CancellationToken ct)
+    {
+        try
+        {
+            return await IdentificarRostoAsync(cliente, personGroupId, faceId, ct);
+        }
+        catch (GrupoNaoTreinadoException)
+        {
+            try
+            {
+                await TreinarEAguardarAsync(cliente, personGroupId, ct, tentativas: 20);
+                return await IdentificarRostoAsync(cliente, personGroupId, faceId, ct);
+            }
+            catch (Exception e) when (e is GrupoNaoTreinadoException or InvalidOperationException)
+            {
+                throw ErroDeIndisponibilidade(System.Net.HttpStatusCode.ServiceUnavailable,
+                    $"identify: grupo {personGroupId} sem treino e o treino automático não concluiu ({e.Message})");
+            }
+        }
+    }
+
+    // Escolhe o candidato que vale e a confiança do concorrente mais próximo (para a margem da fila).
+    // Cadastro solto do MESMO funcionário (pessoa duplicada no grupo, com o nome dele e sem vínculo no banco)
+    // não conta como concorrente: era ele que fazia a própria pessoa "parecer" outra e a fila recusar com
+    // "rosto parecido com o de outra pessoa" (19/11). Cadastro solto com outro nome continua contando.
+    private async Task<(CandidatoIdentificacao? Candidato, double? ConfiancaSegundo)> EscolherCandidatoAsync(
+        HttpClient cliente, string personGroupId, Guid obraId, IReadOnlyList<CandidatoIdentificacao> candidatos, CancellationToken ct)
+    {
+        if (candidatos.Count == 0)
+            return (null, null);
+
+        var personIds = candidatos.Select(c => c.PersonId).ToList();
+        var vinculados = await _db.Trabalhadores.IgnoreQueryFilters()
+            .Where(t => t.ObraId == obraId && t.AzureFacePersonId != null && personIds.Contains(t.AzureFacePersonId))
+            .Select(t => new { PersonId = t.AzureFacePersonId!, t.Nome })
+            .ToListAsync(ct);
+        var escolhido = candidatos.FirstOrDefault(c => vinculados.Any(v => v.PersonId == c.PersonId));
+        if (escolhido is null)
+            return (candidatos[0], candidatos.Skip(1).FirstOrDefault()?.Confidence);
+
+        var nomeEscolhido = vinculados.First(v => v.PersonId == escolhido.PersonId).Nome;
+        var concorrentes = new List<CandidatoIdentificacao>();
+        foreach (var c in candidatos.Where(c => c.PersonId != escolhido.PersonId))
+        {
+            var solto = !vinculados.Any(v => v.PersonId == c.PersonId);
+            if (solto && await NomeDaPessoaNoGrupoAsync(cliente, personGroupId, c.PersonId, ct) is { } nome
+                && string.Equals(nome.Trim(), nomeEscolhido.Trim(), StringComparison.OrdinalIgnoreCase))
+                continue;
+            concorrentes.Add(c);
+        }
+
+        // Um concorrente de verdade na frente do escolhido: segue a regra de sempre pelo primeiro colocado.
+        if (concorrentes.FirstOrDefault() is { } primeiroConcorrente && primeiroConcorrente.Confidence > escolhido.Confidence)
+            return (primeiroConcorrente, escolhido.Confidence);
+        return (escolhido, concorrentes.FirstOrDefault()?.Confidence);
+    }
+
+    private static async Task<string?> NomeDaPessoaNoGrupoAsync(HttpClient cliente, string personGroupId, string personId, CancellationToken ct)
+    {
+        try
+        {
+            var resposta = await cliente.GetAsync($"face/v1.0/persongroups/{personGroupId}/persons/{personId}", ct);
+            if (!resposta.IsSuccessStatusCode) return null;
+            return (await resposta.Content.ReadFromJsonAsync<PessoaAzureResposta>(cancellationToken: ct))?.Name;
+        }
+        catch (Exception e) when (e is HttpRequestException or System.Text.Json.JsonException)
+        {
+            return null;
+        }
     }
 
     // O Face API devolve o identificador da chamada no cabeçalho apim-request-id (ou x-ms-request-id);
@@ -975,7 +1123,9 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         if (ModelosPorGrupo.TryGetValue(personGroupId, out var emCache)) return emCache;
         try
         {
-            var resposta = await cliente.GetAsync($"face/v1.0/persongroups/{personGroupId}", ct);
+            // Sem returnRecognitionModel=true o Azure não devolve o modelo: o cache nunca enchia e a foto era
+            // detectada no modelo padrão (recognition_01), forçando um segundo detect+identify a cada assinatura.
+            var resposta = await cliente.GetAsync($"face/v1.0/persongroups/{personGroupId}?returnRecognitionModel=true", ct);
             if (!resposta.IsSuccessStatusCode) return null;
             var grupo = await resposta.Content.ReadFromJsonAsync<GrupoPessoasResposta>(cancellationToken: ct);
             if (string.IsNullOrWhiteSpace(grupo?.RecognitionModel)) return null;
@@ -1044,6 +1194,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
     private record CandidatoIdentificacao(string PersonId, double Confidence, string? RequisicaoId = null);
     private record AzureFaceErro(string Status, string Code, string Message);
     private sealed class ModeloReconhecimentoIncompativelException : Exception;
+    private sealed class GrupoNaoTreinadoException : Exception;
 
     private class AzureFaceErroResposta
     {

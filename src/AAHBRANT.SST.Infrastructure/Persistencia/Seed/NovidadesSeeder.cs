@@ -3272,6 +3272,21 @@ public static class NovidadesSeeder
                     "O item se chamava Suporte IA e ficava só no menu lateral.",
                     "O item do menu lateral virou SST IA. O botão flutuante encolhe depois de alguns segundos, sobe acima de barras fixas, some quando abre uma janela e pode ser escondido até o dia seguinte em Esconder por hoje."),
             }),
+        new(
+            Versao: "5.188.0",
+            Titulo: "Reconhecimento facial mais estável nas assinaturas e na fila do DDS",
+            DataPublicacao: new DateTime(2026, 11, 19, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Facial não fica mais indisponível pela manhã",
+                    "Em alguns dias, a assinatura pelo rosto mostrava \"O reconhecimento facial está indisponível no momento\" logo cedo, e era preciso usar a digital.",
+                    "Uma rotina noturna do sistema refazia o cadastro facial das obras sem necessidade e podia deixar o reconhecimento parado. Ela foi corrigida, e, se o reconhecimento da obra não estiver pronto, o sistema o prepara na hora e conclui a assinatura."),
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Fila facial do DDS deixa de confundir a pessoa com ela mesma",
+                    "A fila facial recusava algumas pessoas com \"Rosto parecido com o de outra pessoa\", mesmo de frente para a câmera.",
+                    "Cadastros repetidos da mesma pessoa não são mais tratados como outra pessoa, e a presença é confirmada normalmente. Rostos realmente parecidos com o de um colega continuam pedindo a digital."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
