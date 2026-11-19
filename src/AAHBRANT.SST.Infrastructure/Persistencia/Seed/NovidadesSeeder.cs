@@ -3242,6 +3242,17 @@ public static class NovidadesSeeder
                     "Ao clicar em Ampliar, aparecia apenas o recorte da frente da peça.",
                     "Ao clicar em Ampliar, a ficha original do modelo abre inteira, sem cortes, com frente, costas e detalhes."),
             }),
+        new(
+            Versao: "5.187.0",
+            Titulo: "Inspeções: 2 fotos obrigatórias em cada item",
+            DataPublicacao: new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Toda inspeção agora exige 2 fotos em cada item do checklist",
+                    "A foto variava conforme o tipo: no tema era 1 foto por item, no veículo só no item Não conforme e nas demais só em alguns itens.",
+                    "Em qualquer inspeção, cada item do checklist precisa de 2 fotos, seja Conforme, Não conforme ou Não aplicável. A inspeção só pode ser finalizada com as 2 fotos de todos os itens."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

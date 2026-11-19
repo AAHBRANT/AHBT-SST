@@ -7,6 +7,8 @@ using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
 
+using AAHBRANT.SST.Application.Tests.TestSupport;
+
 namespace AAHBRANT.SST.Application.Tests.Inspecoes;
 
 // Regra de 03/11/2026: a inspeção só fica Concluída depois de assinada. "Finalizar" leva para
@@ -52,6 +54,7 @@ public class InspecaoAssinaturaFluxoTests
         });
         db.Inspecoes.Add(inspecao);
         await db.SaveChangesAsync();
+        await FotosInspecaoDeTeste.CompletarAsync(db, inspecao.Id);
         return (db, alojamento, inspecao);
     }
 

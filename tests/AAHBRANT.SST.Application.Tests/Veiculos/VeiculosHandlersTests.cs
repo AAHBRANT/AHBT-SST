@@ -9,6 +9,8 @@ using AAHBRANT.SST.Infrastructure.Persistencia;
 using AAHBRANT.SST.Infrastructure.Seguranca;
 using Microsoft.EntityFrameworkCore;
 
+using AAHBRANT.SST.Application.Tests.TestSupport;
+
 namespace AAHBRANT.SST.Application.Tests.Veiculos;
 
 // Inspeção de Veículos (02/10/2026): cadastro manual por obra, checklist por tipo de veículo e
@@ -123,24 +125,25 @@ public class VeiculosHandlersTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => new EncerrarInspecaoCommandHandler(db).Handle(new EncerrarInspecaoCommand(inspecao.Id), default));
 
-        Assert.Contains("Não Conforme", ex.Message);
-        Assert.Contains("exigem foto", ex.Message);
+        Assert.Contains("exige 2 fotos", ex.Message);
+    }
+
+    // 18/11/2026: no veículo também valem 2 fotos em todo item, não só no Não Conforme (regra de 02/10 substituída).
+    [Fact]
+    public async Task Encerrar_ItemConformeSemFoto_Recusa()
+    {
+        var (db, inspecao, _) = await PrepararInspecaoComUmItem(nameof(Encerrar_ItemConformeSemFoto_Recusa), StatusItemChecklist.Conforme, null);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => new EncerrarInspecaoCommandHandler(db).Handle(new EncerrarInspecaoCommand(inspecao.Id), default));
+        Assert.Contains("exige 2 fotos", ex.Message);
     }
 
     [Fact]
-    public async Task Encerrar_ItemConformeSemFoto_Conclui()
+    public async Task Encerrar_TodosOsItensComDuasFotos_Conclui()
     {
-        var (db, inspecao, _) = await PrepararInspecaoComUmItem(nameof(Encerrar_ItemConformeSemFoto_Conclui), StatusItemChecklist.Conforme, null);
-
-        await new EncerrarInspecaoCommandHandler(db).Handle(new EncerrarInspecaoCommand(inspecao.Id), default);
-
-        Assert.Equal(StatusInspecao.AguardandoAssinatura, (await db.Inspecoes.FirstAsync(i => i.Id == inspecao.Id)).Status);
-    }
-
-    [Fact]
-    public async Task Encerrar_ItemNaoAplicavelSemFoto_Conclui()
-    {
-        var (db, inspecao, _) = await PrepararInspecaoComUmItem(nameof(Encerrar_ItemNaoAplicavelSemFoto_Conclui), StatusItemChecklist.NaoAplicavel, null);
+        var (db, inspecao, _) = await PrepararInspecaoComUmItem(nameof(Encerrar_TodosOsItensComDuasFotos_Conclui), StatusItemChecklist.NaoAplicavel, null);
+        await FotosInspecaoDeTeste.CompletarAsync(db, inspecao.Id);
 
         await new EncerrarInspecaoCommandHandler(db).Handle(new EncerrarInspecaoCommand(inspecao.Id), default);
 

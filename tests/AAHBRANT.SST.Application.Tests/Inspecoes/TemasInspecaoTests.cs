@@ -105,6 +105,7 @@ public class TemasInspecaoTests
 
         foreach (var r in db.InspecaoItemRespostas.Where(r => r.InspecaoId == atual.InspecaoId)) { r.StatusItem = StatusItemChecklist.Conforme; r.FotoConteudo = new byte[] { 1 }; }
         await db.SaveChangesAsync();
+        await FotosInspecaoDeTeste.CompletarAsync(db, atual.InspecaoId);
         await new EncerrarInspecaoCommandHandler(db).Handle(new EncerrarInspecaoCommand(atual.InspecaoId), default);
 
         // Finalizar só leva para "Aguardando assinatura": o item continua "nunca inspecionado" até assinar.
@@ -148,14 +149,16 @@ public class TemasInspecaoTests
             .Handle(new ObterOuCriarInspecaoItemCommand(itemId, "oid-desconhecido"), default));
     }
 
-    // 24/10/2026: nos temas a foto é obrigatória em TODOS os itens, não só no Não Conforme.
+    // 18/11/2026: 2 fotos obrigatórias em TODOS os itens, qualquer que seja a resposta (antes: 1 foto, 24/10).
     [Theory]
-    [InlineData(StatusItemChecklist.NaoConforme, false, false)]
-    [InlineData(StatusItemChecklist.Conforme, false, false)]
-    [InlineData(StatusItemChecklist.NaoAplicavel, false, false)]
-    [InlineData(StatusItemChecklist.Conforme, true, true)]
-    [InlineData(StatusItemChecklist.NaoConforme, true, true)]
-    public async Task Encerrar_FotoEhExigidaEmTodosOsItens(StatusItemChecklist status, bool comFoto, bool conclui)
+    [InlineData(StatusItemChecklist.NaoConforme, 0, false)]
+    [InlineData(StatusItemChecklist.Conforme, 0, false)]
+    [InlineData(StatusItemChecklist.NaoAplicavel, 0, false)]
+    [InlineData(StatusItemChecklist.Conforme, 1, false)]
+    [InlineData(StatusItemChecklist.NaoAplicavel, 2, true)]
+    [InlineData(StatusItemChecklist.Conforme, 2, true)]
+    [InlineData(StatusItemChecklist.NaoConforme, 2, true)]
+    public async Task Encerrar_DuasFotosSaoExigidasEmTodosOsItens(StatusItemChecklist status, int fotos, bool conclui)
     {
         var (db, obra, temaId) = await CenarioAsync("Guarda-corpo instalado");
         var itemId = await new CriarItemInspecionavelCommandHandler(db).Handle(new CriarItemInspecionavelCommand(temaId, obra.Id, "Andaime A-03", null), default);
@@ -163,8 +166,9 @@ public class TemasInspecaoTests
             .Handle(new ObterOuCriarInspecaoItemCommand(itemId, AzureAdObjectId), default);
         var resposta = await db.InspecaoItemRespostas.SingleAsync(r => r.InspecaoId == atual.InspecaoId);
         resposta.StatusItem = status;
-        if (comFoto) resposta.FotoConteudo = new byte[] { 1 };
+        if (fotos >= 1) resposta.FotoConteudo = new byte[] { 1 };
         await db.SaveChangesAsync();
+        if (fotos >= 2) await FotosInspecaoDeTeste.CompletarAsync(db, atual.InspecaoId);
 
         var encerrar = () => new EncerrarInspecaoCommandHandler(db).Handle(new EncerrarInspecaoCommand(atual.InspecaoId), default);
 
@@ -176,7 +180,8 @@ public class TemasInspecaoTests
         else
         {
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(encerrar);
-            Assert.Contains("exigem foto", ex.Message);
+            Assert.Contains("exige 2 fotos", ex.Message);
+            Assert.Contains("Guarda-corpo instalado", ex.Message);
         }
     }
 
