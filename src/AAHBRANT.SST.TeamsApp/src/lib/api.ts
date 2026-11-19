@@ -8378,6 +8378,17 @@ export const api = {
       }
       return (await response.json()) as { transcricao: string };
     },
+    /** Resposta lida com voz neural (MP3). Lança ErroAgenteIa (503 = sem voz neural: usar a do aparelho). */
+    falar: async (texto: string, signal?: AbortSignal): Promise<Blob> => {
+      const response = await fetch(`${API_BASE_URL}/api/agente-ia/falar`, {
+        method: 'POST',
+        headers: { ...(await montarHeadersAuth()), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto }),
+        signal,
+      });
+      if (!response.ok) throw new ErroAgenteIa('', response.status);
+      return response.blob();
+    },
   },
   pendenciasAutomaticas: {
     listar: () => request<PendenciaAutomatica[]>('/api/pendencias-automaticas'),

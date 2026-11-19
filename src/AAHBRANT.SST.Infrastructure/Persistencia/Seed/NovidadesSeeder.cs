@@ -3287,6 +3287,17 @@ public static class NovidadesSeeder
                     "A fila facial recusava algumas pessoas com \"Rosto parecido com o de outra pessoa\", mesmo de frente para a câmera.",
                     "Cadastros repetidos da mesma pessoa não são mais tratados como outra pessoa, e a presença é confirmada normalmente. Rostos realmente parecidos com o de um colega continuam pedindo a digital."),
             }),
+        new(
+            Versao: "5.189.0",
+            Titulo: "SST IA responde com voz natural",
+            DataPublicacao: new DateTime(2026, 11, 19, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "O botão Ouvir do SST IA agora lê a resposta com uma voz natural",
+                    "A resposta era lida pela voz instalada no aparelho, que no Teams soava robótica.",
+                    "A resposta é lida por uma voz natural em português do Brasil, igual no computador, no celular e no tablet. Se a voz natural não estiver disponível, a leitura continua com a voz do aparelho."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
