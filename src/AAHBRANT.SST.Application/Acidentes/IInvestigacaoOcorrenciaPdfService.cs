@@ -81,7 +81,9 @@ public record InvestigacaoOcorrenciaPdfModelo(
     // Quem assinou eletronicamente a ocorrência (DocumentoSignatarios do documento finalizado).
     // Vazio = seção 8 continua com as linhas em branco para assinatura à mão.
     IReadOnlyList<InvestigacaoOcorrenciaPdfSignatarioModelo>? Signatarios = null,
-    string? HashAssinatura = null);
+    string? HashAssinatura = null,
+    // Certificado de Assinaturas Eletrônicas (evidência de cada assinatura), anexado no fim do PDF.
+    AAHBRANT.SST.Application.Assinatura.CertificadoAssinaturasModelo? Certificado = null);
 
 public record InvestigacaoOcorrenciaPdfSignatarioModelo(
     string Nome,

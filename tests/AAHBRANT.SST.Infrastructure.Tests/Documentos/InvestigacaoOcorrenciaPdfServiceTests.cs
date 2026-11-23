@@ -60,6 +60,22 @@ public class InvestigacaoOcorrenciaPdfServiceTests
         if (!string.IsNullOrEmpty(destino)) File.WriteAllBytes(destino, pdf);
     }
 
+    // 23/11/2026: ocorrência assinada anexa o Certificado de Assinaturas Eletrônicas no fim do PDF.
+    [Fact]
+    public void Gerar_ComCertificado_AnexaPaginasDoCertificado()
+    {
+        var servico = new InvestigacaoOcorrenciaPdfService();
+        var semCertificado = servico.Gerar(CriarModelo(completo: true));
+        var comCertificado = servico.Gerar(CriarModelo(completo: true) with { Certificado = CertificadoAssinaturasPdfTests.ModeloTreinamento() });
+
+        Assert.True(Paginas(comCertificado) > Paginas(semCertificado));
+        var destino = Environment.GetEnvironmentVariable("INVESTIGACAO_PDF_AMOSTRA_CERTIFICADO");
+        if (!string.IsNullOrEmpty(destino)) File.WriteAllBytes(destino, comCertificado);
+    }
+
+    private static int Paginas(byte[] pdf) =>
+        System.Text.RegularExpressions.Regex.Matches(System.Text.Encoding.Latin1.GetString(pdf), @"/Type\s*/Page[^s]").Count;
+
     [Fact]
     public void Gerar_SemReuniaoFotosNemAcoes_NaoQuebra()
     {
