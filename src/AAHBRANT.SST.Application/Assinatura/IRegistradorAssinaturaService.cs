@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using AAHBRANT.SST.Application.Assinatura.Queries;
@@ -124,7 +124,9 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         if (comoInstrutor && !await _db.PerfisInstrutor.AnyAsync(p => p.TrabalhadorId == resultado.TrabalhadorId, ct))
             throw new InvalidOperationException("Este trabalhador não tem perfil de instrutor cadastrado.");
         // O instrutor da integração pode ser de outra obra: a identidade dele é conferida explicitamente na regra da OS.
-        var trabalhador = await (comoInstrutor || comoTecnicoOs ? _db.Trabalhadores.IgnoreQueryFilters() : _db.Trabalhadores)
+        // Ocorrência: o engenheiro de segurança que assina pode ser de outra obra (23/11/2026).
+        var ehOcorrencia = documento.EntidadeTipo == "Acidente";
+        var trabalhador = await (comoInstrutor || comoTecnicoOs || ehOcorrencia ? _db.Trabalhadores.IgnoreQueryFilters() : _db.Trabalhadores)
             .Include(t => t.Funcao).FirstAsync(t => t.Id == resultado.TrabalhadorId, ct);
         var permiteDuplaAssinaturaTecnicoEpi = documento.EntidadeTipo == "EntregaEpi"
             && FuncaoSstClassifier.EhTecnicoSeguranca(trabalhador.Funcao?.Nome);
@@ -158,16 +160,17 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
                 throw new InvalidOperationException("Apenas Técnico de Segurança ou Engenheiro de Segurança podem assinar inspeções.");
         }
 
-        // Ocorrência (acidente, incidente, quase acidente): quem assina é o Técnico ou o Engenheiro de Segurança, uma vez só
-        // (pedido do usuário, 04/11) — a assinatura fecha o documento, como na inspeção.
-        if (documento.EntidadeTipo == "Acidente")
+        // Ocorrência (acidente, incidente, quase acidente): assinam o Técnico de Segurança e o Engenheiro de Segurança,
+        // uma vez cada (04/11: só uma assinatura; 23/11/2026: as duas). O documento fecha quando as duas estão lá.
+        if (ehOcorrencia)
         {
-            var jaAssinada = await _db.DocumentoSignatarios.AnyAsync(s => s.DocumentoAssinaturaId == documento.Id, ct);
-            if (jaAssinada)
-                throw new InvalidOperationException("Esta ocorrência já foi assinada.");
-
-            if (!FuncaoPodeAssinarInspecao(trabalhador.Funcao?.Nome))
-                throw new InvalidOperationException("Apenas Técnico de Segurança ou Engenheiro de Segurança podem assinar a ocorrência.");
+            var papelOcorrencia = Acidentes.AssinaturasOcorrencia.Classificar(trabalhador.Funcao?.Nome)
+                ?? throw new InvalidOperationException("Apenas Técnico de Segurança ou Engenheiro de Segurança podem assinar a ocorrência.");
+            var situacao = await Acidentes.AssinaturasOcorrencia.ObterAsync(_db, documento.Id, ct);
+            if (papelOcorrencia == Acidentes.AssinaturasOcorrencia.Papel.Tecnico && situacao.TecnicoAssinou)
+                throw new InvalidOperationException("Esta ocorrência já tem a assinatura do técnico de segurança.");
+            if (papelOcorrencia == Acidentes.AssinaturasOcorrencia.Papel.Engenheiro && situacao.EngenheiroAssinou)
+                throw new InvalidOperationException("Esta ocorrência já tem a assinatura do engenheiro de segurança.");
         }
 
         if (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura)
@@ -224,7 +227,7 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         // Inspeção aceita uma assinatura só: assinada, está concluída — fecha o documento na hora. A OS
         // fecha com a assinatura do técnico, que é sempre a última.
         var fechaAgora = documento.EntidadeTipo == nameof(Inspecao)
-            || documento.EntidadeTipo == "Acidente"
+            || (ehOcorrencia && (await Acidentes.AssinaturasOcorrencia.ObterAsync(_db, documento.Id, ct)).Completa)
             || (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura && papel == PapelAssinatura.TecnicoSegurancaOs);
         if (fechaAgora && _mediator is not null)
             await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, documento.Id, ct);

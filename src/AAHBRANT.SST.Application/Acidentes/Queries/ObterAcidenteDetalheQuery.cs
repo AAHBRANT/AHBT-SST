@@ -1,7 +1,9 @@
-using AAHBRANT.SST.Application.AcoesPlano;
+﻿using AAHBRANT.SST.Application.AcoesPlano;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using AAHBRANT.SST.Domain.Entidades;
+using AAHBRANT.SST.Domain.Enums;
 
 namespace AAHBRANT.SST.Application.Acidentes.Queries;
 
@@ -135,8 +137,20 @@ public class ObterAcidenteDetalheQueryHandler : IRequestHandler<ObterAcidenteDet
             .Select(r => new { r.Inicio, r.Fim, r.Participantes, r.Situacao, r.LinkTeams, r.MotivoFalha, r.RealizadaEm, r.Presentes, r.Ata })
             .FirstOrDefaultAsync(ct);
 
+        var documentoAssinaturaId = await _db.DocumentosAssinatura
+            .Where(d => d.EntidadeTipo == nameof(Acidente) && d.EntidadeId == request.Id
+                && d.Status != StatusDocumentoAssinatura.Cancelado)
+            .OrderByDescending(d => d.Status == StatusDocumentoAssinatura.EmAndamento)
+            .Select(d => (Guid?)d.Id)
+            .FirstOrDefaultAsync(ct);
+        var assinaturas = documentoAssinaturaId is { } docId
+            ? await AssinaturasOcorrencia.ObterAsync(_db, docId, ct)
+            : new AssinaturasOcorrencia.Situacao(false, false);
+
         return new AcidenteDetalheDto
         {
+            AssinaturaTecnicoFeita = assinaturas.TecnicoAssinou,
+            AssinaturaEngenheiroFeita = assinaturas.EngenheiroAssinou,
             Reuniao = reuniao is null
                 ? null
                 : new ReuniaoAnaliseDto(reuniao.Inicio, reuniao.Fim,

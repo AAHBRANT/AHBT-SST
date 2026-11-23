@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Application.AcoesPlano;
+﻿using AAHBRANT.SST.Application.AcoesPlano;
 using AAHBRANT.SST.Domain.Enums;
 
 namespace AAHBRANT.SST.Application.Acidentes;
@@ -87,6 +87,9 @@ public class AcidenteDetalheDto
     public AcidenteDto Acidente { get; set; } = null!;
     public List<AcaoPlanoDto> AcoesPlano { get; set; } = new();
     public ReuniaoAnaliseDto? Reuniao { get; set; }
+    // Quem já assinou a ocorrência (23/11/2026: técnico e engenheiro de segurança), para a faixa de assinatura.
+    public bool AssinaturaTecnicoFeita { get; set; }
+    public bool AssinaturaEngenheiroFeita { get; set; }
 }
 
 // Reunião de análise no Teams (só acidentes registrados por relato).

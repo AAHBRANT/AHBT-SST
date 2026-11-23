@@ -4530,6 +4530,9 @@ export interface AcidenteDetalhe {
   acidente: Acidente;
   acoesPlano: AcaoPlano[];
   reuniao?: ReuniaoAnalise | null;
+  // 23/11/2026: a ocorrência é assinada pelo técnico (digital/facial) e pelo engenheiro de segurança (login).
+  assinaturaTecnicoFeita?: boolean;
+  assinaturaEngenheiroFeita?: boolean;
 }
 
 // Lançamento mensal de HHT (Horas-Homem Trabalhadas) por obra, usado no cálculo da Taxa de
