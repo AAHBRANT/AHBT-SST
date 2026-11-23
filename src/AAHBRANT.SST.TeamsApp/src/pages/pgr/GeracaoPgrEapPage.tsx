@@ -4,8 +4,8 @@ import {
   Button, Card, Carregando, Checkbox, FeedbackInline, Field, Input, PageHeader, Select, StatusChip, Text, Textarea, designTokens,
 } from '@ui';
 import {
-  api, StatusUsuario, type AcaoPlanoGerada, type AtividadeGerada, type CatalogoEpi, type CategoriaMedida, type EstruturaGeracaoPgr, type GeracaoPgrEap,
-  type GheGerado, type ItemEapGerado, type Obra, type ResumoPorFuncaoGeracaoPgr, type RiscoGerado, type Usuario,
+  api, type AcaoPlanoGerada, type AtividadeGerada, type CatalogoEpi, type CategoriaMedida, type EstruturaGeracaoPgr, type GeracaoPgrEap,
+  type GheGerado, type ItemEapGerado, type Obra, type ResumoPorFuncaoGeracaoPgr, type RiscoGerado,
 } from '../../lib/api';
 import { rotuloStatusGeracao } from './GeracoesPgrEapCard';
 import { QuemAssinaPgr } from './QuemAssinaPgr';
@@ -545,7 +545,7 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
   conferir: () => void;
 }) {
   const navigate = useNavigate();
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [usuarios, setUsuarios] = useState<ResponsavelPlano[]>([]);
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   const [modo, setModo] = useState<'perigo' | 'atividade' | 'funcao'>('perigo');
   // "Por função" (23/11/2026) leva de volta ao GHE para corrigir: abre o Por perigo e rola até o cartão.
@@ -579,7 +579,8 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
       aoCancelar={() => setForm(null)} aoAdicionar={incluirNoGhe(gi)} />
   );
   useEffect(() => {
-    api.usuarios.listar(StatusUsuario.Ativo).then(setUsuarios).catch(() => setUsuarios([]));
+    // Lista própria do PGR (23/11/2026): a de usuários exige usuario:ver e vinha vazia para o técnico.
+    api.geracoesPgrEap.responsaveisPlano(g.id).then(setUsuarios).catch(() => setUsuarios([]));
     api.catalogosEpi.listar().then(setEpis).catch(() => setEpis([]));
   }, []);
   const riscos = e.ghes.flatMap((x) => x.atividades.flatMap((a) => a.riscos)).filter((r) => !r.excluido);
@@ -850,9 +851,11 @@ function NovaMedida({ aoAdicionar }: { aoAdicionar: (fase: 1 | 2 | 3, categoria:
 }
 
 // Uma ação do plano: descrição, responsável (usuário ativo) e prazo.
+type ResponsavelPlano = { id: string; nome: string };
+
 function AcaoPlanoLinha({ acao, usuarios, editavel, alterar, remover }: {
   acao: AcaoPlanoGerada;
-  usuarios: Usuario[];
+  usuarios: ResponsavelPlano[];
   editavel: boolean;
   alterar: (f: (x: AcaoPlanoGerada) => void) => void;
   remover: () => void;

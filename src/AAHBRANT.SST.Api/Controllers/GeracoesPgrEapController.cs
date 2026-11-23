@@ -120,6 +120,12 @@ public class GeracoesPgrEapController : ControllerBase
     public async Task<IActionResult> ResumoPorFuncao(Guid id, CancellationToken ct)
         => Ok(await _mediator.Send(new ObterResumoPorFuncaoGeracaoPgrQuery(id), ct));
 
+    // Responsáveis do plano de ação: id e nome dos usuários ativos, sem exigir usuario:ver (23/11/2026).
+    [Authorize(Policy = "pgr:ver")]
+    [HttpGet("{id:guid}/responsaveis-plano")]
+    public async Task<IActionResult> ResponsaveisPlano(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ListarResponsaveisPlanoGeracaoPgrQuery(id), ct));
+
     [Authorize(Policy = "pgr:ver")]
     [HttpGet("{id:guid}/assinantes")]
     public async Task<IActionResult> Assinantes(Guid id, CancellationToken ct)
