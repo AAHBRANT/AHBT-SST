@@ -115,6 +115,9 @@ public static class EscopoDocumentoAssinatura
             // DevolucaoEpi usa o id da própria entrega (ver ExportarFichaEpiTrabalhadorQuery).
             "entregaepi" or "devolucaoepi" => db.EntregasEpi.IgnoreQueryFilters()
                 .Where(x => ids.Contains(x.Id) && trabalhadores.Contains(x.TrabalhadorId)).Select(x => x.Id),
+            // Ocorrência (acidente, incidente, quase acidente): EntidadeTipo "Acidente" para todos os tipos.
+            "acidente" => db.Acidentes.IgnoreQueryFilters()
+                .Where(x => ids.Contains(x.Id) && (todasAsObras || obras.Contains(x.ObraId))).Select(x => x.Id),
             "ordemservico" => db.OrdensServico.IgnoreQueryFilters()
                 .Where(x => ids.Contains(x.Id) && (todasAsObras || obras.Contains(x.ObraId))).Select(x => x.Id),
             "entregauniforme" => db.EntregasUniforme.IgnoreQueryFilters()
