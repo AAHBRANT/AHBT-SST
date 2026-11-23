@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Application.Assinatura.Queries;
+﻿using AAHBRANT.SST.Application.Assinatura.Queries;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.GeracaoPgr;
 using AAHBRANT.SST.Application.Inspecoes.Queries;
@@ -79,6 +79,11 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
         if (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura
             && !signatarios.Any(s => s.Papel == PapelAssinatura.TecnicoSegurancaOs || s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada))
             throw new InvalidOperationException("A Ordem de Serviço só é finalizada depois da assinatura do técnico de segurança.");
+
+        // Ocorrência (23/11/2026): só fecha com as assinaturas do técnico e do engenheiro de segurança.
+        if (documento.EntidadeTipo == "Acidente"
+            && !(await Acidentes.AssinaturasOcorrencia.ObterAsync(_db, documento.Id, ct)).Completa)
+            throw new InvalidOperationException("A ocorrência só é finalizada depois das assinaturas do técnico e do engenheiro de segurança.");
 
         var hash = HashConteudoDocumentoCalculador.Calcular(documento.EntidadeTipo, documento.EntidadeId, signatariosDto);
         // Mantém o token se o documento já tinha sido exportado (rodapé com QR): trocar invalidaria o QR já

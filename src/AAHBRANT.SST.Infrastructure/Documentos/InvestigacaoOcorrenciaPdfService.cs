@@ -343,8 +343,8 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
     }
 
     // 23/11/2026: a ocorrência assinada saía com as linhas em branco (o PDF nunca lia DocumentoSignatarios).
-    // Com assinatura eletrônica, cada signatário vira o bloco padrão (selo + nome + função); a linha do
-    // engenheiro continua para assinatura à mão, já que o fluxo eletrônico colhe só quem conclui.
+    // Assinam o Técnico de Segurança (digital/facial) e o Engenheiro de Segurança (login): cada lado mostra o
+    // selo de quem assinou ou "Aguardando assinatura". Sem nenhuma assinatura, ficam as linhas em branco.
     private static void Assinaturas(IContainer container, InvestigacaoOcorrenciaPdfModelo modelo)
     {
         if (modelo.Signatarios is not { Count: > 0 } signatarios)
@@ -353,14 +353,27 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
             return;
         }
 
+        // Quem não se classifica como engenheiro fica do lado do técnico (assinaturas antigas, função alterada).
+        var engenheiros = signatarios.Where(s => AssinaturasOcorrencia.Classificar(s.Funcao) == AssinaturasOcorrencia.Papel.Engenheiro).ToList();
+        var tecnicos = signatarios.Except(engenheiros).ToList();
+
         container.Border(0.5f).BorderColor(CorLinha).PaddingVertical(12).PaddingHorizontal(18).Row(linha =>
         {
             linha.Spacing(28);
-            foreach (var s in signatarios)
-                linha.RelativeItem().Element(c => AssinaturaPdfPadrao.Bloco(
-                    c, null, s.Nome, s.Funcao ?? "Técnico de Segurança do Trabalho", s.AssinadoEm, s.Metodo, modelo.HashAssinatura));
-            // Selo do bloco ao lado tem ~36pt + 4pt antes da linha: alinha a linha do engenheiro com a dele.
-            linha.RelativeItem().PaddingTop(44).Element(c => LinhaAssinatura(c, "Engenheiro de Segurança / Responsável da obra", "Nome · CREA"));
+            linha.RelativeItem().Element(c => Lado(c, tecnicos, "Técnico de Segurança do Trabalho", modelo.HashAssinatura));
+            linha.RelativeItem().Element(c => Lado(c, engenheiros, "Engenheiro de Segurança do Trabalho", modelo.HashAssinatura));
+        });
+    }
+
+    private static void Lado(IContainer container, IReadOnlyList<InvestigacaoOcorrenciaPdfSignatarioModelo> assinaram, string cargo, string? hash)
+    {
+        container.Column(coluna =>
+        {
+            coluna.Spacing(8);
+            if (assinaram.Count == 0)
+                coluna.Item().Element(c => AssinaturaPdfPadrao.Bloco(c, null, null, cargo, null, null));
+            foreach (var s in assinaram)
+                coluna.Item().Element(c => AssinaturaPdfPadrao.Bloco(c, null, s.Nome, s.Funcao ?? cargo, s.AssinadoEm, s.Metodo, hash));
         });
     }
 

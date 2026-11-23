@@ -3383,6 +3383,17 @@ public static class NovidadesSeeder
                     "O relatório de investigação mostrava quem assinou, mas sem as evidências da assinatura, diferente de DDS, APR, PT e Inspeção.",
                     "Depois de assinada, a ocorrência sai com o Certificado de Assinaturas Eletrônicas no fim do PDF: método, data, local, foto ou digital de cada assinatura e o QR Code de validação."),
             }),
+        new(
+            Versao: "5.197.0",
+            Titulo: "Ocorrência assinada pelo técnico e pelo engenheiro",
+            DataPublicacao: new DateTime(2026, 11, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "O engenheiro de segurança também assina a ocorrência",
+                    "A ocorrência concluída era assinada só por uma pessoa, e a linha do engenheiro no relatório ficava em branco.",
+                    "A faixa de assinatura agora tem dois botões: Assinar como técnico, por digital ou facial, e Assinar como engenheiro, com o login do Teams. A ocorrência só fecha com as duas assinaturas, e o relatório mostra cada uma no seu lado."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

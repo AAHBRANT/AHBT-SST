@@ -636,6 +636,29 @@ export function AcidenteDetalhePage() {
   const faltaAssinar =
     a.status === StatusAcidente.Concluido &&
     (documentoAssinatura === null || documentoAssinatura.status === StatusDocumentoAssinatura.EmAndamento);
+  // Duas assinaturas (23/11/2026): técnico de segurança por digital/facial e engenheiro de segurança pelo login.
+  const faltaTecnico = !detalhe.assinaturaTecnicoFeita;
+  const faltaEngenheiro = !detalhe.assinaturaEngenheiroFeita;
+  const mensagemAssinatura = faltaTecnico && faltaEngenheiro
+    ? 'Faltam as assinaturas do técnico e do engenheiro de segurança.'
+    : faltaTecnico
+      ? 'Falta a assinatura do técnico de segurança.'
+      : 'Falta a assinatura do engenheiro de segurança.';
+
+  async function assinarComoEngenheiro() {
+    if (!id) return;
+    setProcessando(true);
+    setErro(null);
+    try {
+      const documentoId = documentoAssinatura?.id ?? (await api.assinatura.criar('Acidente', id)).id;
+      await api.assinatura.assinarComSessao(documentoId);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível registrar a assinatura do engenheiro.');
+    } finally {
+      setProcessando(false);
+    }
+  }
 
   return (
     <DetailPageLayout
@@ -808,17 +831,32 @@ export function AcidenteDetalhePage() {
       {faltaAssinar && (
         <FaixaAssinatura
           acao={
-            <BotaoAcao
-              tom="assinar"
-              icon={<Signature24Regular />}
-              aria-label="Assinar ocorrência"
-              onClick={() => navigate(`/acidentes/${id}/assinar`)}
-            >
-              Assinar ocorrência
-            </BotaoAcao>
+            <>
+              {faltaTecnico && (
+                <BotaoAcao
+                  tom="assinar"
+                  icon={<Signature24Regular />}
+                  aria-label="Assinar como técnico de segurança"
+                  onClick={() => navigate(`/acidentes/${id}/assinar`)}
+                >
+                  Assinar como técnico
+                </BotaoAcao>
+              )}
+              {faltaEngenheiro && (
+                <BotaoAcao
+                  tom="assinar"
+                  icon={<Signature24Regular />}
+                  aria-label="Assinar como engenheiro de segurança"
+                  disabled={processando}
+                  onClick={() => void assinarComoEngenheiro()}
+                >
+                  Assinar como engenheiro
+                </BotaoAcao>
+              )}
+            </>
           }
         >
-          Falta a assinatura desta ocorrência.
+          {mensagemAssinatura}
         </FaixaAssinatura>
       )}
 

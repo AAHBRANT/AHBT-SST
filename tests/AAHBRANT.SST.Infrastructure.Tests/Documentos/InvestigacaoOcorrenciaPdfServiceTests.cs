@@ -50,7 +50,9 @@ public class InvestigacaoOcorrenciaPdfServiceTests
         var modelo = CriarModelo(completo: true) with
         {
             Signatarios = new[] { new InvestigacaoOcorrenciaPdfSignatarioModelo("Técnico Exemplo da Silva", "Técnico de Segurança do Trabalho",
-                new DateTime(2026, 11, 23, 16, 1, 0, DateTimeKind.Utc), AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura.ReconhecimentoFacial) },
+                new DateTime(2026, 11, 23, 16, 1, 0, DateTimeKind.Utc), AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura.ReconhecimentoFacial),
+                new InvestigacaoOcorrenciaPdfSignatarioModelo("Engenheiro Exemplo", "Engenheiro de Segurança do Trabalho",
+                    new DateTime(2026, 11, 23, 18, 0, 0, DateTimeKind.Utc), AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura.SessaoLogada) },
             HashAssinatura = new string('b', 64),
         };
         var pdf = new InvestigacaoOcorrenciaPdfService().Gerar(modelo);

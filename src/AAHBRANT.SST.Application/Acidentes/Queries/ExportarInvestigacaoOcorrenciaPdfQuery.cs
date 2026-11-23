@@ -80,13 +80,16 @@ public class ExportarInvestigacaoOcorrenciaPdfQueryHandler : IRequestHandler<Exp
 
         var rastreio = await _rastreabilidade.GarantirAsync(nameof(Acidente), request.Id, ct);
 
-        // Assinatura eletrônica da ocorrência (faixa "Assinar ocorrência"): mesmo critério de
-        // ExportarInspecaoPdfQuery — só documento finalizado entra no PDF.
+        // Assinatura eletrônica da ocorrência (faixa "Assinar ocorrência"). Desde 23/11/2026 são duas (técnico e
+        // engenheiro): o documento em andamento também entra, para a seção 8 mostrar quem já assinou e quem falta;
+        // o certificado de assinaturas continua só para o documento finalizado.
         var documentoAssinado = await _db.DocumentosAssinatura.AsNoTracking()
             .Include(d => d.Signatarios)
             .Where(d => d.EntidadeTipo == nameof(Acidente) && d.EntidadeId == request.Id
-                && d.Status == StatusDocumentoAssinatura.Finalizado && d.FinalizadoEm != null)
-            .OrderByDescending(d => d.FinalizadoEm)
+                && (d.Status == StatusDocumentoAssinatura.EmAndamento
+                    || (d.Status == StatusDocumentoAssinatura.Finalizado && d.FinalizadoEm != null)))
+            .OrderByDescending(d => d.Status == StatusDocumentoAssinatura.Finalizado)
+            .ThenByDescending(d => d.FinalizadoEm)
             .FirstOrDefaultAsync(ct);
         // Só assinaturas ativas; nome/função carregados com IgnoreQueryFilters (CarregarSignatariosAsync),
         // para o signatário não sumir do PDF se o cadastro for excluído ou estiver fora do escopo de obra.
@@ -114,6 +117,7 @@ public class ExportarInvestigacaoOcorrenciaPdfQueryHandler : IRequestHandler<Exp
             }),
         });
         var certificado = documentoAssinado is null || assinaturasAtivas.Count == 0
+                || documentoAssinado.Status != StatusDocumentoAssinatura.Finalizado
             ? null
             : await MontadorCertificadoAssinaturas.MontarAsync(
                 _db, _cripto, _qrCode, documentoAssinado, assinaturasAtivas, dadosSignatarios,
