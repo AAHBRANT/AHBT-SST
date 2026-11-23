@@ -166,6 +166,9 @@ public static class DependencyInjection
         services.AddScoped<AAHBRANT.SST.Application.Cameras.IAgenteCameraAutenticador, AAHBRANT.SST.Application.Cameras.AgenteCameraAutenticador>();
         services.AddScoped<IAutenticacaoBiometriaLocalService, FutronicAutenticacaoStrategy>();
         services.AddScoped<IAutenticacaoFacialService, AzureFaceAutenticacaoStrategy>();
+        // Guardião do grupo facial (23/11): falha suspeita na identificação pede conferência do grupo da obra.
+        services.AddSingleton<FilaReparoGrupoFacial>();
+        services.AddSingleton<IFilaReparoGrupoFacial>(sp => sp.GetRequiredService<FilaReparoGrupoFacial>());
         services.AddScoped<IAuditoriaService, AuditoriaService>();
         services.AddScoped<IDocumentoAssinaturaPdfService, DocumentoAssinaturaPdfService>();
         services.Configure<AssinaturaOptions>(configuration.GetSection("Assinatura"));
