@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using AAHBRANT.SST.Application.Acidentes;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -114,7 +114,7 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
                     if (modelo.Fotos.Count > 0)
                         coluna.Item().EnsureSpace(190).Element(c => Secao(c, tituloFotos!, corpo => Fotos(corpo, modelo.Fotos)));
 
-                    coluna.Item().ShowEntire().Element(c => Secao(c, tituloResponsaveis, Assinaturas));
+                    coluna.Item().ShowEntire().Element(c => Secao(c, tituloResponsaveis, corpo => Assinaturas(corpo, modelo)));
                 });
 
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
@@ -338,7 +338,29 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
         return string.Join(" · ", partes);
     }
 
-    private static void Assinaturas(IContainer container)
+    // 23/11/2026: a ocorrência assinada saía com as linhas em branco (o PDF nunca lia DocumentoSignatarios).
+    // Com assinatura eletrônica, cada signatário vira o bloco padrão (selo + nome + função); a linha do
+    // engenheiro continua para assinatura à mão, já que o fluxo eletrônico colhe só quem conclui.
+    private static void Assinaturas(IContainer container, InvestigacaoOcorrenciaPdfModelo modelo)
+    {
+        if (modelo.Signatarios is not { Count: > 0 } signatarios)
+        {
+            AssinaturasEmBranco(container);
+            return;
+        }
+
+        container.Border(0.5f).BorderColor(CorLinha).PaddingVertical(12).PaddingHorizontal(18).Row(linha =>
+        {
+            linha.Spacing(28);
+            foreach (var s in signatarios)
+                linha.RelativeItem().Element(c => AssinaturaPdfPadrao.Bloco(
+                    c, null, s.Nome, s.Funcao ?? "Técnico de Segurança do Trabalho", s.AssinadoEm, s.Metodo, modelo.HashAssinatura));
+            // Selo do bloco ao lado tem ~36pt + 4pt antes da linha: alinha a linha do engenheiro com a dele.
+            linha.RelativeItem().PaddingTop(44).Element(c => LinhaAssinatura(c, "Engenheiro de Segurança / Responsável da obra", "Nome · CREA"));
+        });
+    }
+
+    private static void AssinaturasEmBranco(IContainer container)
     {
         container.Border(0.5f).BorderColor(CorLinha).PaddingTop(36).PaddingBottom(10).PaddingHorizontal(18).Row(linha =>
         {

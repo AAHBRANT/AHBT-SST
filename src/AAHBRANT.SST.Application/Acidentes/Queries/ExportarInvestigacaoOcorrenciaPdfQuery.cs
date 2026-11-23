@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Application.Assinatura;
+﻿using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Entidades;
@@ -75,6 +75,24 @@ public class ExportarInvestigacaoOcorrenciaPdfQueryHandler : IRequestHandler<Exp
 
         var rastreio = await _rastreabilidade.GarantirAsync(nameof(Acidente), request.Id, ct);
 
+        // Assinatura eletrônica da ocorrência (faixa "Assinar ocorrência"): mesmo critério de
+        // ExportarInspecaoPdfQuery — só documento finalizado entra no PDF.
+        var documentoAssinado = await _db.DocumentosAssinatura
+            .Where(d => d.EntidadeTipo == nameof(Acidente) && d.EntidadeId == request.Id
+                && d.Status == StatusDocumentoAssinatura.Finalizado && d.FinalizadoEm != null)
+            .OrderByDescending(d => d.FinalizadoEm)
+            .Select(d => new { d.Id, d.ConteudoHash })
+            .FirstOrDefaultAsync(ct);
+        var signatarios = documentoAssinado is null
+            ? new List<InvestigacaoOcorrenciaPdfSignatarioModelo>()
+            : await _db.DocumentoSignatarios
+                .Where(s => s.DocumentoAssinaturaId == documentoAssinado.Id)
+                .OrderBy(s => s.AssinadoEm)
+                .Join(_db.Trabalhadores, s => s.TrabalhadorId, t => t.Id,
+                    (s, t) => new InvestigacaoOcorrenciaPdfSignatarioModelo(
+                        t.Nome, t.Funcao != null ? t.Funcao.Nome : null, s.AssinadoEm, s.MetodoAutenticacao))
+                .ToListAsync(ct);
+
         var modelo = new InvestigacaoOcorrenciaPdfModelo(
             a.ObraNome,
             obraLogoConteudo,
@@ -109,7 +127,9 @@ public class ExportarInvestigacaoOcorrenciaPdfQueryHandler : IRequestHandler<Exp
             a.PessoasExternas.Select(p => new InvestigacaoOcorrenciaPdfPessoaExternaModelo(
                 p.Nome, DescreverVinculo(p.Vinculo), p.Empresa, p.CpfMascarado, p.Idade,
                 DescreverResultado(p.Resultado), p.Lesao, p.Atendimento)).ToList(),
-            a.ConclusaoInvestigacao);
+            a.ConclusaoInvestigacao,
+            signatarios,
+            documentoAssinado?.ConteudoHash);
 
         var pdf = _pdf.Gerar(modelo);
         await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);

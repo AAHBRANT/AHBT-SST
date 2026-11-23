@@ -1,4 +1,4 @@
-namespace AAHBRANT.SST.Application.Acidentes;
+﻿namespace AAHBRANT.SST.Application.Acidentes;
 
 // Relatório de Investigação de Ocorrência (pedido de 23/10, desenho aprovado em
 // docs/mockups/relatorio-investigacao-ocorrencia-v1.html): tudo o que já está no registro da
@@ -77,7 +77,17 @@ public record InvestigacaoOcorrenciaPdfModelo(
     IReadOnlyList<string>? RegioesCorpo = null,
     IReadOnlyList<string>? Testemunhas = null,
     IReadOnlyList<InvestigacaoOcorrenciaPdfPessoaExternaModelo>? PessoasExternas = null,
-    string? ConclusaoInvestigacao = null);
+    string? ConclusaoInvestigacao = null,
+    // Quem assinou eletronicamente a ocorrência (DocumentoSignatarios do documento finalizado).
+    // Vazio = seção 8 continua com as linhas em branco para assinatura à mão.
+    IReadOnlyList<InvestigacaoOcorrenciaPdfSignatarioModelo>? Signatarios = null,
+    string? HashAssinatura = null);
+
+public record InvestigacaoOcorrenciaPdfSignatarioModelo(
+    string Nome,
+    string? Funcao,
+    DateTime AssinadoEm,
+    AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura Metodo);
 
 public interface IInvestigacaoOcorrenciaPdfService
 {
