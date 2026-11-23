@@ -1,4 +1,4 @@
-using AAHBRANT.SST.Application.Acidentes;
+﻿using AAHBRANT.SST.Application.Acidentes;
 using AAHBRANT.SST.Infrastructure.Documentos;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
@@ -40,6 +40,23 @@ public class InvestigacaoOcorrenciaPdfServiceTests
         Assert.True(pdf.Length > 0);
         // Salva uma cópia para conferência visual quando a variável de ambiente estiver definida.
         var destino = Environment.GetEnvironmentVariable("INVESTIGACAO_PDF_AMOSTRA");
+        if (!string.IsNullOrEmpty(destino)) File.WriteAllBytes(destino, pdf);
+    }
+
+    // 23/11/2026: ocorrência assinada saía com a seção 8 em branco. Com signatário, o nome entra no PDF.
+    [Fact]
+    public void Gerar_ComSignatario_MostraNomeNaSecaoDeResponsaveis()
+    {
+        var modelo = CriarModelo(completo: true) with
+        {
+            Signatarios = new[] { new InvestigacaoOcorrenciaPdfSignatarioModelo("Técnico Exemplo da Silva", "Técnico de Segurança do Trabalho",
+                new DateTime(2026, 11, 23, 16, 1, 0, DateTimeKind.Utc), AAHBRANT.SST.Domain.Enums.MetodoAutenticacaoAssinatura.ReconhecimentoFacial) },
+            HashAssinatura = new string('b', 64),
+        };
+        var pdf = new InvestigacaoOcorrenciaPdfService().Gerar(modelo);
+
+        Assert.True(pdf.Length > new InvestigacaoOcorrenciaPdfService().Gerar(CriarModelo(completo: true)).Length);
+        var destino = Environment.GetEnvironmentVariable("INVESTIGACAO_PDF_AMOSTRA_ASSINADA");
         if (!string.IsNullOrEmpty(destino)) File.WriteAllBytes(destino, pdf);
     }
 
