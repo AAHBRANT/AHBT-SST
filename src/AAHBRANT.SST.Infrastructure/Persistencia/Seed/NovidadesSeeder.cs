@@ -3328,6 +3328,17 @@ public static class NovidadesSeeder
                     "Quem não tinha permissão de ver usuários recebia erro 403 ao abrir a ocorrência, a não conformidade e outras telas.",
                     "A tela abre normalmente; só a lista de responsáveis fica vazia para quem não tem essa permissão."),
             }),
+        new(
+            Versao: "5.192.0",
+            Titulo: "Coluna da direita dos detalhes não corta mais os cards",
+            DataPublicacao: new DateTime(2026, 11, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Resumo e Ações disponíveis aparecem inteiros na coluna da direita",
+                    "No computador, quando a coluna da direita tinha muito conteúdo (ex.: ocorrência com óbito), os cards Resumo e Ações disponíveis ficavam espremidos e cortados, sem como ver o resto.",
+                    "Os cards mantêm o tamanho e a coluna da direita rola quando passa da altura da tela."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

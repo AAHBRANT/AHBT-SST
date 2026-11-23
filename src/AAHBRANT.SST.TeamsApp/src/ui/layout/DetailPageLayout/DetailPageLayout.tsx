@@ -15,6 +15,10 @@ const useStyles = makeStyles({
   // conteúdo da página e obriga a rolar dentro dela antes de alcançar o corpo.
   lateral: { display: 'flex', flexDirection: 'column', gap: tokensUi.espaco.lg, position: 'sticky', top: 0,
     maxHeight: 'calc(100vh - 112px)', overflowY: 'auto', overflowX: 'hidden',
+    // Os cards não encolhem para caber na altura máxima: o Card tem overflow: hidden, então o flex o
+    // espremia e cortava o conteúdo em vez de a lateral rolar (ocorrência com óbito, 23/11/2026: Resumo
+    // e "Ações disponíveis" sumiam no PC). Com isso a altura extra vira rolagem da própria lateral.
+    '& > *': { flexShrink: 0 },
     // Os dois eixos voltam a 'visible' juntos: com um eixo 'hidden', o outro 'visible' computa
     // como 'auto' e a lateral continuaria sendo um contexto de rolagem.
     '@media (max-width: 1100px)': { order: -1, position: 'static', maxHeight: 'none', overflowY: 'visible', overflowX: 'visible' } },
