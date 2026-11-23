@@ -21,6 +21,7 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
     private readonly IAppDbContext _db;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly AssinaturaOptions _options;
+    private readonly IFilaReparoGrupoFacial? _filaReparo;
 
     // Modelo de reconhecimento dos grupos de pessoas. O padrão do Azure (quando não se informa nada) é o
     // recognition_01, o mais antigo e menos preciso: com ele, quem é a pessoa certa ficava com 70% a 85%
@@ -31,11 +32,13 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
     // pequenos, de lado ou com máscara/capacete do que o detection_01 (padrão).
     private const string ModeloDeteccao = "detection_03";
 
-    public AzureFaceAutenticacaoStrategy(IAppDbContext db, IHttpClientFactory httpClientFactory, IOptions<AssinaturaOptions> options)
+    public AzureFaceAutenticacaoStrategy(IAppDbContext db, IHttpClientFactory httpClientFactory, IOptions<AssinaturaOptions> options,
+        IFilaReparoGrupoFacial? filaReparo = null)
     {
         _db = db;
         _httpClientFactory = httpClientFactory;
         _options = options.Value;
+        _filaReparo = filaReparo;
     }
 
     public async Task CadastrarAsync(Guid trabalhadorId, byte[] fotoJpeg, CancellationToken ct)
@@ -275,9 +278,11 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
             var grupo = await respostaGrupo.Content.ReadFromJsonAsync<GrupoPessoasResposta>(cancellationToken: ct);
             if (string.Equals(grupo?.RecognitionModel, ModeloReconhecimentoAtual, StringComparison.OrdinalIgnoreCase))
             {
-                // Modelo atual, mas grupo sem nenhuma pessoa enquanto o banco tem cadastros (ex.: grupo criado
-                // vazio por uma tentativa que falhou): tratado como ausente e reconstruído.
-                if (!await GrupoVazioComCadastrosNoBancoAsync(cliente, grupoAntigo, obra.Id, ct))
+                // Modelo atual, mas algum funcionário do banco aponta para uma pessoa que não existe no grupo
+                // (grupo vazio por uma tentativa que falhou, ou vínculos quebrados pela corrida de 19/11 — caso
+                // da Beira Rio em 23/11, 10 de 10 quebrados): reconstruído das fotos guardadas. Antes só o
+                // grupo totalmente vazio era detectado, e o quebrado passava por saudável toda noite.
+                if (!await GrupoComVinculosQuebradosAsync(cliente, grupoAntigo, obra.Id, ct))
                 {
                     ModelosPorGrupo[grupoAntigo] = ModeloReconhecimentoAtual;
                     return null;
@@ -849,6 +854,15 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
     // nunca atrapalha o fluxo de quem está assinando ou confirmando presença.
     private async Task<ResultadoIdentificacaoFacial> RejeitarAsync(bool registrarFalha, Guid obraId, MotivoRejeicaoFacial motivo, double? confianca, Guid? trabalhadorId, CancellationToken ct, string? personIdAzure = null)
     {
+        // Guardião do grupo facial: "sem vínculo" e "não reconhecido" são os sintomas de grupo quebrado. A
+        // conferência roda em segundo plano (a fila não repete a obra por 30 min) e só reconstrói se
+        // encontrar vínculo quebrado de fato. Melhor esforço: nunca atrapalha quem está assinando.
+        if (motivo is MotivoRejeicaoFacial.CadastroSemVinculo or MotivoRejeicaoFacial.RostoNaoReconhecido)
+        {
+            try { _filaReparo?.Solicitar(obraId); }
+            catch (Exception) { }
+        }
+
         if (!registrarFalha) return new ResultadoIdentificacaoFacial(false, null, motivo, confianca, trabalhadorId);
 
         try
@@ -1138,16 +1152,35 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         }
     }
 
-    private async Task<bool> GrupoVazioComCadastrosNoBancoAsync(HttpClient cliente, string personGroupId, Guid obraId, CancellationToken ct)
+    // True quando algum funcionário da obra aponta para uma pessoa que não está no grupo do Azure. Quem está
+    // nessa situação nunca é reconhecido ("cadastro sem vínculo" ou "rosto não reconhecido"). Pessoas soltas
+    // no Azure sem ninguém no banco não contam: a identificação já as ignora quando têm o mesmo nome.
+    private async Task<bool> GrupoComVinculosQuebradosAsync(HttpClient cliente, string personGroupId, Guid obraId, CancellationToken ct)
     {
-        var resposta = await cliente.GetAsync($"face/v1.0/persongroups/{personGroupId}/persons?top=1", ct);
-        if (!resposta.IsSuccessStatusCode)
-            throw new InvalidOperationException($"Falha ao listar pessoas do grupo {personGroupId} no Azure Face API: {resposta.StatusCode}");
-        var pessoas = await resposta.Content.ReadFromJsonAsync<List<PersonCriadoResposta>>(cancellationToken: ct);
-        if (pessoas is { Count: > 0 })
+        var idsNoBanco = await _db.Trabalhadores.IgnoreQueryFilters()
+            .Where(t => t.ObraId == obraId && t.AzureFacePersonId != null)
+            .Select(t => t.AzureFacePersonId!)
+            .ToListAsync(ct);
+        if (idsNoBanco.Count == 0)
             return false;
-        return await _db.Trabalhadores.IgnoreQueryFilters()
-            .AnyAsync(t => t.ObraId == obraId && t.AzureFacePersonId != null, ct);
+
+        var idsNoAzure = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        string? depoisDe = null;
+        while (true)
+        {
+            var url = $"face/v1.0/persongroups/{personGroupId}/persons?top=1000" + (depoisDe is null ? "" : $"&start={depoisDe}");
+            var resposta = await EnviarComRetry429Async(() => cliente.GetAsync(url, ct), ct);
+            if (!resposta.IsSuccessStatusCode)
+                throw new InvalidOperationException($"Falha ao listar pessoas do grupo {personGroupId} no Azure Face API: {resposta.StatusCode}");
+            var pagina = await resposta.Content.ReadFromJsonAsync<List<PersonCriadoResposta>>(cancellationToken: ct) ?? new();
+            foreach (var p in pagina)
+                idsNoAzure.Add(p.PersonId);
+            if (pagina.Count < 1000)
+                break;
+            depoisDe = pagina[^1].PersonId;
+        }
+
+        return idsNoBanco.Any(id => !idsNoAzure.Contains(id));
     }
 
     private class GrupoPessoasResposta

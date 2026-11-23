@@ -17,8 +17,10 @@ ConfiguracaoAutenticacao.Validar(builder.Configuration, builder.Environment.IsDe
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.LeituraIa.LeituraIaBackgroundService>();
-// Migração dos grupos do reconhecimento facial para o recognition_04 (madrugada, uma obra por vez).
+// Conferência noturna dos grupos do reconhecimento facial (modelo, grupo ausente e vínculos quebrados).
 builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Assinatura.MigracaoModeloFacialBackgroundService>();
+// Guardião do grupo facial: atende na hora os pedidos de conferência feitos por falhas suspeitas.
+builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Assinatura.ReparoGrupoFacialBackgroundService>();
 // Cifra as fotos biométricas gravadas antes da criptografia (LGPD, 12/10). Termina sozinha quando não sobra nada.
 builder.Services.AddHostedService<AAHBRANT.SST.Infrastructure.Seguranca.CriptografiaFotosBackgroundService>();
 // Prazo de guarda das fotos de evidência: desligado até configurar Lgpd:DiasRetencaoFotosEvidencia.

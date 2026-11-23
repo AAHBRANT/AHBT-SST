@@ -804,7 +804,7 @@ public class AzureFaceAutenticacaoStrategyTests
             req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath.EndsWith("/persongroups/obra-antiga")
                 ? Json(new { recognitionModel = "recognition_04" })
                 : req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath.EndsWith("/persongroups/obra-antiga/persons")
-                    ? Json(new[] { new { personId = "p1" } })
+                    ? Json(new[] { new { personId = "p-antigo-1" }, new { personId = "p-antigo-2" } })
                     : throw new InvalidOperationException("não deveria chamar: " + req.RequestUri));
         var servico = new AzureFaceAutenticacaoStrategy(db, factory, OpcoesSemPausa());
 
@@ -875,7 +875,7 @@ public class AzureFaceAutenticacaoStrategyTests
                     ? Json(new { personGroupId = "obra-antiga", recognitionModel = "recognition_04" })
                     : Json(new { personGroupId = "obra-antiga" });
             if (req.Method == HttpMethod.Get && caminho.EndsWith("/persongroups/obra-antiga/persons"))
-                return Json(new[] { new { personId = "p1" } });
+                return Json(new[] { new { personId = "p-antigo-1" }, new { personId = "p-antigo-2" } });
             throw new InvalidOperationException("não deveria mexer no grupo: " + req.Method + " " + req.RequestUri);
         });
         var servico = new AzureFaceAutenticacaoStrategy(db, factory, OpcoesSemPausa());
@@ -1116,5 +1116,142 @@ public class AzureFaceAutenticacaoStrategyTests
         var erro = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             new AzureFaceAutenticacaoStrategy(db, factory, Opcoes()).IdentificarAsync(obra.Id, new byte[] { 1 }, default));
         Assert.Contains("consentimento", erro.Message);
+    }
+
+    // ---- Guardião do grupo facial (23/11, 2ª ocorrência na Beira Rio) ----
+
+    // Caso real da Beira Rio: grupo no modelo atual e com pessoas, mas NENHUMA delas é a que o banco aponta
+    // (10 cadastros no banco x 3 pessoas soltas no Azure). Antes isso passava por "saudável" e só o
+    // "recriar grupo" manual consertava. Agora é reconstruído das fotos guardadas, num grupo novo.
+    [Fact]
+    public async Task MigrarModeloReconhecimentoAsync_VinculosQuebrados_ReconstroiDasFotosGuardadas()
+    {
+        var (db, obra, comFoto, recusada) = await CenarioMigracao(nameof(MigrarModeloReconhecimentoAsync_VinculosQuebrados_ReconstroiDasFotosGuardadas));
+        var factory = AzureDeReconstrucao(new[] { "p-solto-1", "p-solto-2" }, out _);
+        var servico = new AzureFaceAutenticacaoStrategy(db, factory, OpcoesSemPausa());
+
+        var resultado = await servico.MigrarModeloReconhecimentoAsync(obra.Id, default);
+
+        Assert.NotNull(resultado);
+        Assert.Equal(2, resultado!.Migrados);
+        Assert.StartsWith($"obra-{obra.Id:N}-r4-", (await db.Obras.FirstAsync(o => o.Id == obra.Id)).AzureFacePersonGroupId);
+        Assert.StartsWith("p-novo-", (await db.Trabalhadores.FirstAsync(t => t.Id == comFoto.Id)).AzureFacePersonId);
+        Assert.StartsWith("p-novo-", (await db.Trabalhadores.FirstAsync(t => t.Id == recusada.Id)).AzureFacePersonId);
+    }
+
+    // Um único vínculo quebrado já basta: quem está quebrado nunca seria reconhecido.
+    [Fact]
+    public async Task MigrarModeloReconhecimentoAsync_UmVinculoQuebrado_Reconstroi()
+    {
+        var (db, obra, _, _) = await CenarioMigracao(nameof(MigrarModeloReconhecimentoAsync_UmVinculoQuebrado_Reconstroi));
+        var factory = AzureDeReconstrucao(new[] { "p-antigo-1" }, out var criadas);
+
+        var resultado = await new AzureFaceAutenticacaoStrategy(db, factory, OpcoesSemPausa()).MigrarModeloReconhecimentoAsync(obra.Id, default);
+
+        Assert.NotNull(resultado);
+        Assert.Equal(2, criadas());
+    }
+
+    // Grupo "obra-antiga" no modelo atual com as pessoas informadas; aceita a reconstrução completa.
+    private static HttpClientFactoryFalso AzureDeReconstrucao(string[] pessoasNoGrupo, out Func<int> pessoasCriadas)
+    {
+        var pessoas = 0;
+        pessoasCriadas = () => pessoas;
+        return new HttpClientFactoryFalso(req =>
+        {
+            var caminho = req.RequestUri!.AbsolutePath;
+            if (req.Method == HttpMethod.Get && caminho.EndsWith("/persongroups/obra-antiga"))
+                return Json(new { recognitionModel = "recognition_04" });
+            if (req.Method == HttpMethod.Get && caminho.EndsWith("/persongroups/obra-antiga/persons"))
+                return Json(pessoasNoGrupo.Select(p => new { personId = p }).ToArray());
+            if (req.Method == HttpMethod.Put || req.Method == HttpMethod.Delete)
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            if (caminho.EndsWith("/persons"))
+                return Json(new { personId = $"p-novo-{++pessoas}" });
+            if (caminho.EndsWith("/persistedFaces"))
+                return Json(new { persistedFaceId = "f" });
+            if (caminho.EndsWith("/train"))
+                return new HttpResponseMessage(HttpStatusCode.Accepted);
+            if (caminho.EndsWith("/training"))
+                return Json(new { status = "succeeded" });
+            throw new InvalidOperationException("chamada inesperada: " + req.Method + " " + req.RequestUri);
+        });
+    }
+
+    private sealed class FilaReparoFalsa : IFilaReparoGrupoFacial
+    {
+        public List<Guid> Pedidos { get; } = new();
+        public void Solicitar(Guid obraId) => Pedidos.Add(obraId);
+    }
+
+    private static async Task<(SstDbContext Db, Obra Obra)> ObraComGrupo(string nome)
+    {
+        var db = CriarDb(nome);
+        var obra = new Obra
+        {
+            Codigo = "OB1", Nome = "Obra", AzureFacePersonGroupId = "obra-x",
+            MetodosAutenticacaoHabilitados = MetodoAutenticacaoObra.ReconhecimentoFacial,
+        };
+        db.Obras.Add(obra);
+        await db.SaveChangesAsync();
+        return (db, obra);
+    }
+
+    private static HttpClientFactoryFalso AzureQueIdentifica(object[] candidatos) => new(req =>
+    {
+        var caminho = req.RequestUri!.AbsolutePath;
+        if (req.Method == HttpMethod.Get && caminho.EndsWith("/persongroups/obra-x"))
+            return Json(new { recognitionModel = "recognition_04" });
+        if (caminho.EndsWith("/detect"))
+            return Json(new[] { new { faceId = "face-1" } });
+        if (caminho.EndsWith("/identify"))
+            return Json(new[] { new { faceId = "face-1", candidates = candidatos } });
+        throw new InvalidOperationException("chamada inesperada: " + req.RequestUri);
+    });
+
+    // Azure reconhece o rosto com segurança, mas ninguém da obra aponta para essa pessoa: sinal de vínculo
+    // quebrado. Pede a conferência do grupo na hora, sem esperar a madrugada nem alguém perceber.
+    [Fact]
+    public async Task IdentificarAsync_CadastroSemVinculo_PedeConferenciaDoGrupo()
+    {
+        var (db, obra) = await ObraComGrupo(nameof(IdentificarAsync_CadastroSemVinculo_PedeConferenciaDoGrupo));
+        var fila = new FilaReparoFalsa();
+        var servico = new AzureFaceAutenticacaoStrategy(db, AzureQueIdentifica(new object[] { new { personId = "p-solto", confidence = 0.94 } }), Opcoes(), fila);
+
+        var resultado = await servico.IdentificarAsync(obra.Id, new byte[] { 1 }, default);
+
+        Assert.Equal(MotivoRejeicaoFacial.CadastroSemVinculo, resultado.Motivo);
+        Assert.Equal(new[] { obra.Id }, fila.Pedidos);
+    }
+
+    // Nenhum candidato: pode ser rosto desconhecido, mas também grupo sem as pessoas do banco. A conferência é
+    // barata (2 leituras) e a fila não repete a mesma obra em sequência.
+    [Fact]
+    public async Task IdentificarAsync_RostoNaoReconhecido_PedeConferenciaDoGrupo()
+    {
+        var (db, obra) = await ObraComGrupo(nameof(IdentificarAsync_RostoNaoReconhecido_PedeConferenciaDoGrupo));
+        var fila = new FilaReparoFalsa();
+        var servico = new AzureFaceAutenticacaoStrategy(db, AzureQueIdentifica(Array.Empty<object>()), Opcoes(), fila);
+
+        var resultado = await servico.IdentificarAsync(obra.Id, new byte[] { 1 }, default);
+
+        Assert.Equal(MotivoRejeicaoFacial.RostoNaoReconhecido, resultado.Motivo);
+        Assert.Equal(new[] { obra.Id }, fila.Pedidos);
+    }
+
+    // Confiança baixa de alguém que está vinculado é foto ruim, não grupo quebrado: não pede conferência.
+    [Fact]
+    public async Task IdentificarAsync_ConfiancaBaixaDeVinculado_NaoPedeConferencia()
+    {
+        var (db, obra) = await ObraComGrupo(nameof(IdentificarAsync_ConfiancaBaixaDeVinculado_NaoPedeConferencia));
+        db.Trabalhadores.Add(new Trabalhador { ObraId = obra.Id, Nome = "Ana", Cpf = "12345678903", DataAdmissao = DateTime.UtcNow, AzureFacePersonId = "p-ana" });
+        await db.SaveChangesAsync();
+        var fila = new FilaReparoFalsa();
+        var servico = new AzureFaceAutenticacaoStrategy(db, AzureQueIdentifica(new object[] { new { personId = "p-ana", confidence = 0.70 } }), Opcoes(), fila);
+
+        var resultado = await servico.IdentificarAsync(obra.Id, new byte[] { 1 }, default);
+
+        Assert.Equal(MotivoRejeicaoFacial.ConfiancaBaixa, resultado.Motivo);
+        Assert.Empty(fila.Pedidos);
     }
 }
