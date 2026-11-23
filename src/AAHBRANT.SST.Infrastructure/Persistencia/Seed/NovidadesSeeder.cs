@@ -3350,6 +3350,17 @@ public static class NovidadesSeeder
                     "O PGR mostrava os riscos só por GHE. Para saber o que uma função tinha, era preciso procurar o GHE dela, e quem estava em vários GHEs (como o Ajudante Geral) não tinha a soma em lugar nenhum.",
                     "No gerador do PGR (passo 4, botão Por função) e no PGR aprovado (aba Por função), cada função mostra seus riscos do mais alto para o mais baixo, os EPIs das medidas e os treinamentos pelas regras Risco → NR. Risco sem medida de prevenção aparece em destaque, com o GHE para corrigir."),
             }),
+        new(
+            Versao: "5.194.0",
+            Titulo: "PGR: o que falta aparece antes de enviar",
+            DataPublicacao: new DateTime(2026, 11, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "O PGR só vai para aprovação sem pendências",
+                    "O PGR podia ser enviado com itens faltando (por exemplo, ação do plano sem responsável) e o engenheiro só via os erros ao tentar assinar.",
+                    "No passo 4, o cartão Antes de enviar para aprovação lista o que falta, e o botão de enviar só libera com a lista vazia. Salvar e conferir atualiza a lista."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

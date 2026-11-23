@@ -7014,6 +7014,8 @@ export const api = {
     },
     // Quem pode ser escolhido para assinar: técnico e engenheiro de segurança com perfil na obra.
     assinantes: (id: string) => request<AssinantesGeracaoPgr>(`/api/geracoes-pgr-eap/${id}/assinantes`),
+    // Responsáveis do plano de ação (id e nome), sem exigir permissão de ver usuários.
+    responsaveisPlano: (id: string) => request<{ id: string; nome: string }[]>(`/api/geracoes-pgr-eap/${id}/responsaveis-plano`),
     resumoPorFuncao: (id: string) => request<ResumoPorFuncaoGeracaoPgr>(`/api/geracoes-pgr-eap/${id}/resumo-por-funcao`),
     criar: async (dados: { obraId: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null }, arquivo: File) => {
       const formData = new FormData();
