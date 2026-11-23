@@ -92,6 +92,8 @@ public class EscopoObraTraducaoSqlTests
     [InlineData("EntregaUniforme")]
     [InlineData("FichaEpiTrabalhador")]
     [InlineData("TermoCompromissoEpi")]
+    [InlineData("Acidente")]
+    [InlineData("OrdemServico")]
     public void DocumentoAssinatura_TodoTipoConhecido_TraduzParaSqlServer(string entidadeTipo)
     {
         using var db = CriarContextoSqlServerRestrito();
