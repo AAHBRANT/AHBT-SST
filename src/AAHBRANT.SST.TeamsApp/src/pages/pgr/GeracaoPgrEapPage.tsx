@@ -5,12 +5,13 @@ import {
 } from '@ui';
 import {
   api, StatusUsuario, type AcaoPlanoGerada, type AtividadeGerada, type CatalogoEpi, type CategoriaMedida, type EstruturaGeracaoPgr, type GeracaoPgrEap,
-  type GheGerado, type ItemEapGerado, type Obra, type RiscoGerado, type Usuario,
+  type GheGerado, type ItemEapGerado, type Obra, type ResumoPorFuncaoGeracaoPgr, type RiscoGerado, type Usuario,
 } from '../../lib/api';
 import { rotuloStatusGeracao } from './GeracoesPgrEapCard';
 import { QuemAssinaPgr } from './QuemAssinaPgr';
 import { ExposicaoRiscoEditor, SeletorEpi } from './ExposicaoRiscoEditor';
 import { InventarioPorPerigo } from './InventarioPorPerigo';
+import { ResumoPorFuncao } from './ResumoPorFuncao';
 import { NovoRiscoForm, type InicialNovoRisco } from './NovoRiscoForm';
 import { DANOS_QUEDA_DE_ALTURA, QUEDA_DE_ALTURA, chaveAltura, funcoesEmAltura, incluirRisco, normalizar, precisaConfirmarAltura } from './riscoManual';
 import { CronogramaTreinamentosCard } from './CronogramaTreinamentosCard';
@@ -359,6 +360,11 @@ function Assistente({ id }: { id: string }) {
             await carregar(5);
           })}
           gerarPendentes={() => void executar('Gerando…', gerarInventario)}
+          carregarResumoPorFuncao={async () => {
+            // O resumo é montado no servidor a partir do que está salvo: grava a tela antes.
+            if (editavel) await salvar(4);
+            return api.geracoesPgrEap.resumoPorFuncao(id);
+          }}
           sugerirMelhorias={() => void executar('Montando as ações de melhoria a partir dos riscos…', async () => {
             await salvar(4);
             const r = await api.geracoesPgrEap.sugerirAcoesMelhoria(id);
@@ -522,7 +528,7 @@ function GheEditor({ ghe, todos, funcoesCadastradas, editavel, alterar, remover 
   );
 }
 
-function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, enviar, gerarPendentes, sugerirAcompanhamento, sugerirMelhorias }: {
+function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, enviar, gerarPendentes, sugerirAcompanhamento, sugerirMelhorias, carregarResumoPorFuncao }: {
   g: GeracaoPgrEap;
   e: EstruturaGeracaoPgr;
   editavel: boolean;
@@ -534,11 +540,17 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
   gerarPendentes: () => void;
   sugerirAcompanhamento: () => void;
   sugerirMelhorias: () => void;
+  carregarResumoPorFuncao: () => Promise<ResumoPorFuncaoGeracaoPgr>;
 }) {
   const navigate = useNavigate();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
-  const [modo, setModo] = useState<'perigo' | 'atividade'>('perigo');
+  const [modo, setModo] = useState<'perigo' | 'atividade' | 'funcao'>('perigo');
+  // "Por função" (23/11/2026) leva de volta ao GHE para corrigir: abre o Por perigo e rola até o cartão.
+  const irParaGhe = (numero: number) => {
+    setModo('perigo');
+    setTimeout(() => document.getElementById(`ghe-inventario-${numero}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
   // Formulário "Adicionar risco" aberto (um por vez): no GHE (cabeçalho do Por perigo ou aviso de altura) ou numa atividade.
   const [form, setForm] = useState<{
     gi: number; escopo: 'ghe' | 'atividade'; atual: string | null; marcadas: string[]; inicial?: InicialNovoRisco; chave: number;
@@ -597,10 +609,14 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
         <Text size={200}>Revisar:</Text>
         <Button size="small" appearance={modo === 'perigo' ? 'primary' : 'secondary'} onClick={() => setModo('perigo')}>Por perigo</Button>
         <Button size="small" appearance={modo === 'atividade' ? 'primary' : 'secondary'} onClick={() => setModo('atividade')}>Por atividade</Button>
+        <Button size="small" appearance={modo === 'funcao' ? 'primary' : 'secondary'} onClick={() => setModo('funcao')}>Por função</Button>
       </div>
 
-      {e.ghes.map((gh, gi) => (
-        <Card key={gh.numero} titulo={`GHE ${String(gh.numero).padStart(2, '0')} · ${gh.nome}`}>
+      {modo === 'funcao' && <ResumoPorFuncao carregar={carregarResumoPorFuncao} aoIrParaGhe={editavel ? irParaGhe : undefined} />}
+
+      {modo !== 'funcao' && e.ghes.map((gh, gi) => (
+        <div key={gh.numero} id={`ghe-inventario-${gh.numero}`} style={{ scrollMarginTop: 12 }}>
+        <Card titulo={`GHE ${String(gh.numero).padStart(2, '0')} · ${gh.nome}`}>
           {editavel && precisaConfirmarAltura(gh) && (() => {
             const nomes = funcoesEmAltura(gh);
             const lista = nomes.length > 1 ? `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}` : nomes[0];
@@ -657,6 +673,7 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
             </div>
           ))}
         </Card>
+        </div>
       ))}
 
       <Card titulo="Vigência do programa">

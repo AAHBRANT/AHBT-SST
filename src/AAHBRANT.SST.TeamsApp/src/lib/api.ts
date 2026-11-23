@@ -3549,6 +3549,22 @@ export interface NovaRevisaoPgr {
   observacao?: string | null;
   reavaliacaoConfirmada: boolean;
 }
+// Resumo por função do PGR (23/11/2026): riscos, EPIs e treinamentos de cada função, juntando os GHEs dela.
+export interface RiscoDaFuncaoPgr {
+  perigo: string; tipo: string; probabilidade: number; severidade: number; nivel: number | null;
+  medidas: number; ghesSemMedida: number[]; incluidoPeloTecnico: boolean;
+}
+export interface ResumoFuncaoPgr {
+  nome: string; cbo: string | null; cboTitulo: string | null;
+  ghes: { numero: number; nome: string }[];
+  riscos: RiscoDaFuncaoPgr[];
+  epis: { nome: string; especificacao: string; perigos: string[] }[];
+  treinamentos: { norma: string; descricao: string; motivos: string[] }[];
+  temQuedaDeAltura: boolean;
+  riscosSemMedida: number;
+}
+export interface ResumoPorFuncaoGeracaoPgr { geracaoId: string; totalGhes: number; funcoes: ResumoFuncaoPgr[] }
+
 export interface GeracaoPgrEap {
   id: string; obraId: string; obraNome: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null;
   elaboradoPorNome?: string | null; nomeArquivoEap: string; status: 1 | 2 | 3 | 4; passo: number; motivoDevolucao?: string | null;
@@ -6998,6 +7014,7 @@ export const api = {
     },
     // Quem pode ser escolhido para assinar: técnico e engenheiro de segurança com perfil na obra.
     assinantes: (id: string) => request<AssinantesGeracaoPgr>(`/api/geracoes-pgr-eap/${id}/assinantes`),
+    resumoPorFuncao: (id: string) => request<ResumoPorFuncaoGeracaoPgr>(`/api/geracoes-pgr-eap/${id}/resumo-por-funcao`),
     criar: async (dados: { obraId: string; nome: string; dataElaboracao: string; dataProximaRevisao?: string | null }, arquivo: File) => {
       const formData = new FormData();
       formData.append('obraId', dados.obraId);
