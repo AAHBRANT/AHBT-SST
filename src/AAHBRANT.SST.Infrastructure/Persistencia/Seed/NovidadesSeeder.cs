@@ -3372,6 +3372,17 @@ public static class NovidadesSeeder
                     "Depois de assinar a ocorrência, o relatório de investigação continuava com as linhas de assinatura em branco na seção Responsáveis pela investigação.",
                     "Quem assinou aparece com o selo Assinado digitalmente, nome, função, data e forma de assinatura. A linha do engenheiro continua para assinatura à mão."),
             }),
+        new(
+            Versao: "5.196.0",
+            Titulo: "Relatório de investigação com certificado de assinaturas",
+            DataPublicacao: new DateTime(2026, 11, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Certificado de assinaturas no relatório da ocorrência",
+                    "O relatório de investigação mostrava quem assinou, mas sem as evidências da assinatura, diferente de DDS, APR, PT e Inspeção.",
+                    "Depois de assinada, a ocorrência sai com o Certificado de Assinaturas Eletrônicas no fim do PDF: método, data, local, foto ou digital de cada assinatura e o QR Code de validação."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

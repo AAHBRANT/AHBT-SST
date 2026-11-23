@@ -18,9 +18,14 @@ public class ExportarInvestigacaoOcorrenciaPdfQueryHandler : IRequestHandler<Exp
     private readonly IAppDbContext _db;
     private readonly IInvestigacaoOcorrenciaPdfService _pdf;
     private readonly IRegistradorRastreabilidadeService _rastreabilidade;
+    private readonly IImagemBiometricaCriptografia? _cripto;
+    private readonly IQrCodeDocumentoService? _qrCode;
 
-    public ExportarInvestigacaoOcorrenciaPdfQueryHandler(IMediator mediator, IAppDbContext db, IInvestigacaoOcorrenciaPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade)
+    public ExportarInvestigacaoOcorrenciaPdfQueryHandler(IMediator mediator, IAppDbContext db, IInvestigacaoOcorrenciaPdfService pdf, IRegistradorRastreabilidadeService rastreabilidade,
+        IImagemBiometricaCriptografia? cripto = null, IQrCodeDocumentoService? qrCode = null)
     {
+        _cripto = cripto;
+        _qrCode = qrCode;
         _mediator = mediator;
         _db = db;
         _pdf = pdf;
@@ -77,21 +82,45 @@ public class ExportarInvestigacaoOcorrenciaPdfQueryHandler : IRequestHandler<Exp
 
         // Assinatura eletrônica da ocorrência (faixa "Assinar ocorrência"): mesmo critério de
         // ExportarInspecaoPdfQuery — só documento finalizado entra no PDF.
-        var documentoAssinado = await _db.DocumentosAssinatura
+        var documentoAssinado = await _db.DocumentosAssinatura.AsNoTracking()
+            .Include(d => d.Signatarios)
             .Where(d => d.EntidadeTipo == nameof(Acidente) && d.EntidadeId == request.Id
                 && d.Status == StatusDocumentoAssinatura.Finalizado && d.FinalizadoEm != null)
             .OrderByDescending(d => d.FinalizadoEm)
-            .Select(d => new { d.Id, d.ConteudoHash })
             .FirstOrDefaultAsync(ct);
-        var signatarios = documentoAssinado is null
-            ? new List<InvestigacaoOcorrenciaPdfSignatarioModelo>()
-            : await _db.DocumentoSignatarios
-                .Where(s => s.DocumentoAssinaturaId == documentoAssinado.Id)
-                .OrderBy(s => s.AssinadoEm)
-                .Join(_db.Trabalhadores, s => s.TrabalhadorId, t => t.Id,
-                    (s, t) => new InvestigacaoOcorrenciaPdfSignatarioModelo(
-                        t.Nome, t.Funcao != null ? t.Funcao.Nome : null, s.AssinadoEm, s.MetodoAutenticacao))
-                .ToListAsync(ct);
+        // Só assinaturas ativas; nome/função carregados com IgnoreQueryFilters (CarregarSignatariosAsync),
+        // para o signatário não sumir do PDF se o cadastro for excluído ou estiver fora do escopo de obra.
+        var assinaturasAtivas = documentoAssinado?.Signatarios.Where(s => s.Ativo).OrderBy(s => s.AssinadoEm).ToList()
+            ?? new List<DocumentoSignatario>();
+        var dadosSignatarios = assinaturasAtivas.Count > 0
+            ? await MontadorCertificadoAssinaturas.CarregarSignatariosAsync(_db, assinaturasAtivas.Select(s => s.TrabalhadorId), ct)
+            : new Dictionary<Guid, MontadorCertificadoAssinaturas.DadosSignatario>();
+        var signatarios = assinaturasAtivas.Select(s =>
+        {
+            dadosSignatarios.TryGetValue(s.TrabalhadorId, out var dados);
+            return new InvestigacaoOcorrenciaPdfSignatarioModelo(dados?.Nome ?? "—", dados?.Funcao, s.AssinadoEm, s.MetodoAutenticacao);
+        }).ToList();
+
+        // 23/11/2026: Certificado de Assinaturas Eletrônicas no fim do PDF, igual a DDS/APR/PT/Inspeção.
+        var tipoRotulo = TipoOcorrenciaRotulo.Descrever(a.Tipo);
+        var painel = new PainelCertificado("Ocorrência", $"{tipoRotulo} · {a.Data:dd/MM/yyyy}", new List<SecaoPainelCertificado>
+        {
+            new("Ocorrência", new List<LinhaPainelCertificado>
+            {
+                new("Tipo", tipoRotulo),
+                new("Data", a.Data.ToString("dd/MM/yyyy")),
+                new("Local", string.IsNullOrWhiteSpace(a.Local) ? "—" : a.Local),
+                new("Situação", DescreverStatus(a.Status)),
+            }),
+        });
+        var certificado = documentoAssinado is null || assinaturasAtivas.Count == 0
+            ? null
+            : await MontadorCertificadoAssinaturas.MontarAsync(
+                _db, _cripto, _qrCode, documentoAssinado, assinaturasAtivas, dadosSignatarios,
+                _ => "Investigação de ocorrência",
+                "Investigação de ocorrência",
+                $"Investigação de ocorrência — {tipoRotulo} · {a.Data:dd/MM/yyyy} · {a.ObraNome}",
+                a.ObraNome ?? string.Empty, obraLogoConteudo, rastreio, painel, compacto: false, ct);
 
         var modelo = new InvestigacaoOcorrenciaPdfModelo(
             a.ObraNome,
@@ -129,7 +158,8 @@ public class ExportarInvestigacaoOcorrenciaPdfQueryHandler : IRequestHandler<Exp
                 DescreverResultado(p.Resultado), p.Lesao, p.Atendimento)).ToList(),
             a.ConclusaoInvestigacao,
             signatarios,
-            documentoAssinado?.ConteudoHash);
+            documentoAssinado?.ConteudoHash,
+            certificado);
 
         var pdf = _pdf.Gerar(modelo);
         await _rastreabilidade.RegistrarArquivoAsync(rastreio.DocumentoId, pdf, ct);

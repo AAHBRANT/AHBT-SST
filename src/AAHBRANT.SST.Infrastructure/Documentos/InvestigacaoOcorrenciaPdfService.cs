@@ -120,6 +120,10 @@ public class InvestigacaoOcorrenciaPdfService : IInvestigacaoOcorrenciaPdfServic
                 pagina.Footer().Column(coluna => RodapeDocumentoPadrao.Desenhar(
                     coluna, "Investigação de ocorrência", null, null, modelo.ConteudoHash, modelo.UrlValidacaoPublica, modelo.QrCodePng, modelo.TemAssinatura));
             });
+
+            // 23/11/2026: certificado de assinaturas no fim, igual aos demais documentos assinados.
+            if (modelo.Certificado is { } certificado)
+                CertificadoAssinaturasPdf.Adicionar(container, certificado);
         });
 
         return documento.GeneratePdf();
