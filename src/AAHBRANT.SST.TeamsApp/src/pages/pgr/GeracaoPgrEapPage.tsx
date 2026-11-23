@@ -354,6 +354,7 @@ function Assistente({ id }: { id: string }) {
             await carregar(4);
           })}
           salvar={() => void executar('Salvando…', async () => { await salvar(4); setSalvo(true); })}
+          conferir={() => void executar('Salvando e conferindo…', async () => { await salvar(4); await carregar(4); setSalvo(true); })}
           enviar={() => void executar('Enviando para aprovação…', async () => {
             await salvar(4);
             await api.geracoesPgrEap.enviarAprovacao(id);
@@ -528,7 +529,7 @@ function GheEditor({ ghe, todos, funcoesCadastradas, editavel, alterar, remover 
   );
 }
 
-function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, enviar, gerarPendentes, sugerirAcompanhamento, sugerirMelhorias, carregarResumoPorFuncao }: {
+function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, enviar, gerarPendentes, sugerirAcompanhamento, sugerirMelhorias, carregarResumoPorFuncao, conferir }: {
   g: GeracaoPgrEap;
   e: EstruturaGeracaoPgr;
   editavel: boolean;
@@ -541,6 +542,7 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
   sugerirAcompanhamento: () => void;
   sugerirMelhorias: () => void;
   carregarResumoPorFuncao: () => Promise<ResumoPorFuncaoGeracaoPgr>;
+  conferir: () => void;
 }) {
   const navigate = useNavigate();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -725,9 +727,28 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
       </Card>
 
       {editavel && (
+        // Antes de enviar (23/11/2026): a mesma lista que travava a assinatura do engenheiro aparece aqui, e o envio só libera
+        // com ela vazia. A lista vem do que está salvo: "Salvar e conferir" grava a tela e confere de novo.
+        <Card titulo="Antes de enviar para aprovação">
+          {g.pendenciasAprovacao.length === 0
+            ? <StatusChip tom="ok">Nada pendente. Pode enviar.</StatusChip>
+            : (
+              <>
+                <FeedbackInline tom="aviso">
+                  {g.pendenciasAprovacao.length === 1 ? 'Falta 1 item' : `Faltam ${g.pendenciasAprovacao.length} itens`} para o engenheiro conseguir assinar. Resolva e clique em Salvar e conferir.
+                </FeedbackInline>
+                <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+                  {g.pendenciasAprovacao.map((p) => <li key={p}><Text>{p}</Text></li>)}
+                </ul>
+              </>
+            )}
+        </Card>
+      )}
+      {editavel && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <Button disabled={ocupado} onClick={salvar}>Salvar</Button>
-          <Button appearance="primary" disabled={ocupado} onClick={enviar}>
+          <Button disabled={ocupado} onClick={conferir}>Salvar e conferir</Button>
+          <Button appearance="primary" disabled={ocupado || g.pendenciasAprovacao.length > 0} onClick={enviar}>
             {e.complementares?.tecnico && !e.complementares.tecnico.aMao ? 'Assinar e enviar para aprovação' : 'Enviar para aprovação do engenheiro'}
           </Button>
         </div>

@@ -396,12 +396,13 @@ public class GeracaoPgrEapTests
         estrutura.Ghes[0].Atividades[0].Riscos[0].Medidas[0].Decisao = "Pendente";
         estrutura.Ghes[0].Atividades[0].Riscos[0].Revisado = false;
         await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
-        await new EnviarGeracaoPgrParaAprovacaoCommandHandler(db).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(id), default);
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new AprovarGeracaoPgrCommandHandler(db).Handle(new AprovarGeracaoPgrCommand(id, null, "Eng. Carlos"), default));
+        // Com pendência o PGR nem sai do rascunho (23/11/2026): o envio recusa com a mesma lista que a aprovação usaria.
+        var recusa = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new EnviarGeracaoPgrParaAprovacaoCommandHandler(db).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(id), default));
+        Assert.Contains("risco(s) não revisado(s)", recusa.Message);
+        Assert.Equal(StatusGeracaoPgrEap.Rascunho, (await db.GeracoesPgrEap.SingleAsync(x => x.Id == id)).Status);
 
-        // Engenheiro devolve; técnico resolve e reenvia; engenheiro aprova.
-        await new DevolverGeracaoPgrCommandHandler(db).Handle(new DevolverGeracaoPgrCommand(id, "Revisar o risco"), default);
+        // Técnico resolve e envia; engenheiro aprova.
         estrutura.Ghes[0].Atividades[0].Riscos[0].Revisado = true;
         await new SalvarGeracaoPgrEapCommandHandler(db).Handle(new SalvarGeracaoPgrEapCommand(id, 4, estrutura), default);
         await new EnviarGeracaoPgrParaAprovacaoCommandHandler(db).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(id), default);
@@ -982,8 +983,9 @@ public class GeracaoPgrEapTests
         estruturaEnviada.Complementares.Tecnico = new AssinanteGeracaoPgr { AMao = true };
         estruturaEnviada.Complementares.Engenheiro = new AssinanteGeracaoPgr { AMao = true };
         geracaoEnviada.EstruturaJson = System.Text.Json.JsonSerializer.Serialize(estruturaEnviada, opcoesJson);
+        // Só a situação importa aqui; o envio de verdade (com a conferência das pendências) é testado à parte.
+        geracaoEnviada.Status = StatusGeracaoPgrEap.AguardandoAprovacao;
         await db.SaveChangesAsync();
-        await new EnviarGeracaoPgrParaAprovacaoCommandHandler(db).Handle(new EnviarGeracaoPgrParaAprovacaoCommand(enviado), default);
 
         await new ExcluirGeracaoPgrCommandHandler(db).Handle(new ExcluirGeracaoPgrCommand(rascunho), default);
 
