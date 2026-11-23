@@ -114,6 +114,12 @@ public class GeracoesPgrEapController : ControllerBase
     }
 
     // Quem pode ser escolhido para assinar o PGR desta obra (técnico e engenheiro de segurança).
+    // Resumo por função (riscos, EPIs e treinamentos de cada função, juntando os GHEs em que ela está).
+    [Authorize(Policy = "pgr:ver")]
+    [HttpGet("{id:guid}/resumo-por-funcao")]
+    public async Task<IActionResult> ResumoPorFuncao(Guid id, CancellationToken ct)
+        => Ok(await _mediator.Send(new ObterResumoPorFuncaoGeracaoPgrQuery(id), ct));
+
     [Authorize(Policy = "pgr:ver")]
     [HttpGet("{id:guid}/assinantes")]
     public async Task<IActionResult> Assinantes(Guid id, CancellationToken ct)

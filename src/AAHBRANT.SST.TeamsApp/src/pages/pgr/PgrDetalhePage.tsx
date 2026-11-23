@@ -20,9 +20,10 @@ import { InventarioTab } from './InventarioTab';
 import { AtividadesPorFuncaoTab, useAtividadesFuncaoGhes } from './AtividadesPorFuncaoTab';
 import { PlanoAcaoTab } from './PlanoAcaoTab';
 import { PgrRevisoesTab } from './PgrRevisoesTab';
+import { ResumoPorFuncao } from './ResumoPorFuncao';
 import { DialogoNovaRevisaoPgr } from './DialogoNovaRevisaoPgr';
 
-const abasPgr = ['resumo', 'ghe', 'atividades-funcao', 'inventario', 'planoAcao', 'revisoes'] as const;
+const abasPgr = ['resumo', 'ghe', 'por-funcao', 'atividades-funcao', 'inventario', 'planoAcao', 'revisoes'] as const;
 type AbaPgr = (typeof abasPgr)[number];
 
 // Mapeamento por julgamento (guia item 5): Vigente é o único estado claramente positivo (ok); Em
@@ -223,6 +224,8 @@ export function PgrDetalhePage() {
           abas={[
             { valor: 'resumo', rotulo: 'Resumo' },
             { valor: 'ghe', rotulo: 'GHE' },
+            // Resumo por função (23/11/2026): só para PGR gerado pela EAP, que guarda a estrutura por GHE.
+            ...(geracao ? [{ valor: 'por-funcao' as const, rotulo: 'Por função' }] : []),
             {
               valor: 'atividades-funcao',
               rotulo: 'Atividades por função',
@@ -267,6 +270,9 @@ export function PgrDetalhePage() {
         </>
       )}
       {aba === 'ghe' && <GhesTab obraId={pgr.obraId} />}
+      {aba === 'por-funcao' && geracao && (
+        <ResumoPorFuncao key={geracao.id} carregar={() => api.geracoesPgrEap.resumoPorFuncao(geracao.id)} />
+      )}
       {aba === 'atividades-funcao' && (
         atividadesFuncao.ghes === null ? (
           <Carregando variante="detalhe" linhas={4} />

@@ -3339,6 +3339,17 @@ public static class NovidadesSeeder
                     "No computador, quando a coluna da direita tinha muito conteúdo (ex.: ocorrência com óbito), os cards Resumo e Ações disponíveis ficavam espremidos e cortados, sem como ver o resto.",
                     "Os cards mantêm o tamanho e a coluna da direita rola quando passa da altura da tela."),
             }),
+        new(
+            Versao: "5.193.0",
+            Titulo: "PGR: resumo por função",
+            DataPublicacao: new DateTime(2026, 11, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Veja os riscos, EPIs e treinamentos de cada função do PGR",
+                    "O PGR mostrava os riscos só por GHE. Para saber o que uma função tinha, era preciso procurar o GHE dela, e quem estava em vários GHEs (como o Ajudante Geral) não tinha a soma em lugar nenhum.",
+                    "No gerador do PGR (passo 4, botão Por função) e no PGR aprovado (aba Por função), cada função mostra seus riscos do mais alto para o mais baixo, os EPIs das medidas e os treinamentos pelas regras Risco → NR. Risco sem medida de prevenção aparece em destaque, com o GHE para corrigir."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
