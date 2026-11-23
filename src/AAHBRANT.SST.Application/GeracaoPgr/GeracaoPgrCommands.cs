@@ -100,6 +100,25 @@ public record DadosObraPgr(string? Cnae, int? GrauRisco, string? Cep = null, str
 // O que ainda impede a aprovação. A tela mostra a lista; o botão Aprovar só libera com ela vazia.
 public static class PendenciasGeracaoPgr
 {
+    // Lista completa, a mesma no envio e na aprovação (23/11/2026: o envio só conferia inventário e CBO, e o engenheiro
+    // descobria o resto ao tentar assinar). Espera a estrutura já com Ajudante Geral unificado e CBO completado.
+    public static async Task<List<string>> CalcularCompletoAsync(IAppDbContext db, GeracaoPgrEap g, EstruturaGeracaoPgr e, CatalogoCbo catalogo, CancellationToken ct)
+    {
+        var matriz = await db.MatrizRiscoConfigs.Include(c => c.Celulas).VigenteMaisRecente().FirstOrDefaultAsync(ct)
+            ?? throw new InvalidOperationException("Nenhuma matriz de risco cadastrada.");
+        DesmarcarAtividadesSemGhe(e);
+        var dadosObra = await db.Obras.Where(o => o.Id == g.ObraId)
+            .Select(o => new DadosObraPgr(o.Cnae, o.GrauRisco, o.Cep, o.Cnpj, o.Endereco))
+            .FirstOrDefaultAsync(ct);
+        var p = Calcular(e, matriz.NumNiveisProbabilidade, matriz.NumNiveisSeveridade, await SerializacaoGeracao.CarregarEpisAsync(db, e, ct), dadosObra);
+        p.AddRange(CboFuncoesGeracao.Pendencias(e, catalogo));
+        return p;
+    }
+
+    public static string Mensagem(string acao, List<string> pendencias) =>
+        $"Antes de {acao}, resolva {(pendencias.Count == 1 ? "a pendência" : $"as {pendencias.Count} pendências")}: "
+        + string.Join(" ", pendencias.Take(8)) + (pendencias.Count > 8 ? $" (e mais {pendencias.Count - 8})" : "");
+
     public static List<string> FaltandoNaObra(DadosObraPgr? obra)
     {
         var f = new List<string>();
@@ -697,9 +716,9 @@ public class EnviarGeracaoPgrParaAprovacaoCommandHandler : IRequestHandler<Envia
         await AjudanteGeral.UnificarAsync(_db, e, ct);
         var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
         await CboFuncoesGeracao.CompletarAsync(_db, e, catalogo, ct);
-        var semCbo = CboFuncoesGeracao.Pendencias(e, catalogo);
-        if (semCbo.Count > 0)
-            throw new InvalidOperationException("Escolha o CBO da tabela oficial no passo Funções e GHE. " + string.Join(" ", semCbo.Take(5)));
+        var pendenciasEnvio = await PendenciasGeracaoPgr.CalcularCompletoAsync(_db, g, e, catalogo, ct);
+        if (pendenciasEnvio.Count > 0)
+            throw new InvalidOperationException(PendenciasGeracaoPgr.Mensagem("enviar para aprovação", pendenciasEnvio));
         g.EstruturaJson = SerializacaoGeracao.Gravar(e);
 
         // Quem assina o PGR precisa estar escolhido antes de enviar; o técnico, se assina no sistema, assina agora.
@@ -779,20 +798,13 @@ public class AprovarGeracaoPgrCommandHandler : IRequestHandler<AprovarGeracaoPgr
             throw new InvalidOperationException("Só um PGR aguardando aprovação pode ser aprovado.");
 
         var e = SerializacaoGeracao.Ler(g.EstruturaJson);
-        var matriz = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).VigenteMaisRecente().FirstOrDefaultAsync(ct)
-            ?? throw new InvalidOperationException("Nenhuma matriz de risco cadastrada.");
-        PendenciasGeracaoPgr.DesmarcarAtividadesSemGhe(e);
-        var dadosObra = await _db.Obras.Where(o => o.Id == g.ObraId)
-            .Select(o => new DadosObraPgr(o.Cnae, o.GrauRisco, o.Cep, o.Cnpj, o.Endereco))
-            .FirstOrDefaultAsync(ct);
-        var pendencias = PendenciasGeracaoPgr.Calcular(e, matriz.NumNiveisProbabilidade, matriz.NumNiveisSeveridade,
-            await SerializacaoGeracao.CarregarEpisAsync(_db, e, ct), dadosObra);
         await AjudanteGeral.UnificarAsync(_db, e, ct);
         var catalogo = await CatalogoCbo.CarregarAsync(_db, ct);
         await CboFuncoesGeracao.CompletarAsync(_db, e, catalogo, ct);
-        pendencias.AddRange(CboFuncoesGeracao.Pendencias(e, catalogo));
+        var pendencias = await PendenciasGeracaoPgr.CalcularCompletoAsync(_db, g, e, catalogo, ct);
         if (pendencias.Count > 0)
-            throw new InvalidOperationException("Ainda há pendências: " + string.Join(" ", pendencias.Take(5)));
+            throw new InvalidOperationException(PendenciasGeracaoPgr.Mensagem("aprovar", pendencias));
+        var matriz = await _db.MatrizRiscoConfigs.Include(c => c.Celulas).VigenteMaisRecente().FirstAsync(ct);
 
         // Assinatura eletrônica: o técnico já assinou ao enviar; o engenheiro assina agora, antes de a aprovação ser gravada, para
         // nunca existir PGR aprovado sem a assinatura combinada. Rascunho antigo, sem escolha de quem assina, segue como antes.

@@ -3352,6 +3352,17 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.194.0",
+            Titulo: "PGR: o que falta aparece antes de enviar",
+            DataPublicacao: new DateTime(2026, 11, 23, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "O PGR só vai para aprovação sem pendências",
+                    "O PGR podia ser enviado com itens faltando (por exemplo, ação do plano sem responsável) e o engenheiro só via os erros ao tentar assinar.",
+                    "No passo 4, o cartão Antes de enviar para aprovação lista o que falta, e o botão de enviar só libera com a lista vazia. Salvar e conferir atualiza a lista."),
+            }),
+        new(
+            Versao: "5.195.0",
             Titulo: "Relatório de investigação mostra quem assinou",
             DataPublicacao: new DateTime(2026, 11, 23, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]

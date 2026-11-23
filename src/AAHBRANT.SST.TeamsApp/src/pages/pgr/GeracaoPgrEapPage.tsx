@@ -4,8 +4,8 @@ import {
   Button, Card, Carregando, Checkbox, FeedbackInline, Field, Input, PageHeader, Select, StatusChip, Text, Textarea, designTokens,
 } from '@ui';
 import {
-  api, StatusUsuario, type AcaoPlanoGerada, type AtividadeGerada, type CatalogoEpi, type CategoriaMedida, type EstruturaGeracaoPgr, type GeracaoPgrEap,
-  type GheGerado, type ItemEapGerado, type Obra, type ResumoPorFuncaoGeracaoPgr, type RiscoGerado, type Usuario,
+  api, type AcaoPlanoGerada, type AtividadeGerada, type CatalogoEpi, type CategoriaMedida, type EstruturaGeracaoPgr, type GeracaoPgrEap,
+  type GheGerado, type ItemEapGerado, type Obra, type ResumoPorFuncaoGeracaoPgr, type RiscoGerado,
 } from '../../lib/api';
 import { rotuloStatusGeracao } from './GeracoesPgrEapCard';
 import { QuemAssinaPgr } from './QuemAssinaPgr';
@@ -354,6 +354,7 @@ function Assistente({ id }: { id: string }) {
             await carregar(4);
           })}
           salvar={() => void executar('Salvando…', async () => { await salvar(4); setSalvo(true); })}
+          conferir={() => void executar('Salvando e conferindo…', async () => { await salvar(4); await carregar(4); setSalvo(true); })}
           enviar={() => void executar('Enviando para aprovação…', async () => {
             await salvar(4);
             await api.geracoesPgrEap.enviarAprovacao(id);
@@ -528,7 +529,7 @@ function GheEditor({ ghe, todos, funcoesCadastradas, editavel, alterar, remover 
   );
 }
 
-function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, enviar, gerarPendentes, sugerirAcompanhamento, sugerirMelhorias, carregarResumoPorFuncao }: {
+function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, enviar, gerarPendentes, sugerirAcompanhamento, sugerirMelhorias, carregarResumoPorFuncao, conferir }: {
   g: GeracaoPgrEap;
   e: EstruturaGeracaoPgr;
   editavel: boolean;
@@ -541,9 +542,10 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
   sugerirAcompanhamento: () => void;
   sugerirMelhorias: () => void;
   carregarResumoPorFuncao: () => Promise<ResumoPorFuncaoGeracaoPgr>;
+  conferir: () => void;
 }) {
   const navigate = useNavigate();
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [usuarios, setUsuarios] = useState<ResponsavelPlano[]>([]);
   const [epis, setEpis] = useState<CatalogoEpi[]>([]);
   const [modo, setModo] = useState<'perigo' | 'atividade' | 'funcao'>('perigo');
   // "Por função" (23/11/2026) leva de volta ao GHE para corrigir: abre o Por perigo e rola até o cartão.
@@ -577,7 +579,8 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
       aoCancelar={() => setForm(null)} aoAdicionar={incluirNoGhe(gi)} />
   );
   useEffect(() => {
-    api.usuarios.listar(StatusUsuario.Ativo).then(setUsuarios).catch(() => setUsuarios([]));
+    // Lista própria do PGR (23/11/2026): a de usuários exige usuario:ver e vinha vazia para o técnico.
+    api.geracoesPgrEap.responsaveisPlano(g.id).then(setUsuarios).catch(() => setUsuarios([]));
     api.catalogosEpi.listar().then(setEpis).catch(() => setEpis([]));
   }, []);
   const riscos = e.ghes.flatMap((x) => x.atividades.flatMap((a) => a.riscos)).filter((r) => !r.excluido);
@@ -725,9 +728,28 @@ function Inventario({ g, e, editavel, ocupado, alterar, gerarAtividade, salvar, 
       </Card>
 
       {editavel && (
+        // Antes de enviar (23/11/2026): a mesma lista que travava a assinatura do engenheiro aparece aqui, e o envio só libera
+        // com ela vazia. A lista vem do que está salvo: "Salvar e conferir" grava a tela e confere de novo.
+        <Card titulo="Antes de enviar para aprovação">
+          {g.pendenciasAprovacao.length === 0
+            ? <StatusChip tom="ok">Nada pendente. Pode enviar.</StatusChip>
+            : (
+              <>
+                <FeedbackInline tom="aviso">
+                  {g.pendenciasAprovacao.length === 1 ? 'Falta 1 item' : `Faltam ${g.pendenciasAprovacao.length} itens`} para o engenheiro conseguir assinar. Resolva e clique em Salvar e conferir.
+                </FeedbackInline>
+                <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+                  {g.pendenciasAprovacao.map((p) => <li key={p}><Text>{p}</Text></li>)}
+                </ul>
+              </>
+            )}
+        </Card>
+      )}
+      {editavel && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <Button disabled={ocupado} onClick={salvar}>Salvar</Button>
-          <Button appearance="primary" disabled={ocupado} onClick={enviar}>
+          <Button disabled={ocupado} onClick={conferir}>Salvar e conferir</Button>
+          <Button appearance="primary" disabled={ocupado || g.pendenciasAprovacao.length > 0} onClick={enviar}>
             {e.complementares?.tecnico && !e.complementares.tecnico.aMao ? 'Assinar e enviar para aprovação' : 'Enviar para aprovação do engenheiro'}
           </Button>
         </div>
@@ -829,9 +851,11 @@ function NovaMedida({ aoAdicionar }: { aoAdicionar: (fase: 1 | 2 | 3, categoria:
 }
 
 // Uma ação do plano: descrição, responsável (usuário ativo) e prazo.
+type ResponsavelPlano = { id: string; nome: string };
+
 function AcaoPlanoLinha({ acao, usuarios, editavel, alterar, remover }: {
   acao: AcaoPlanoGerada;
-  usuarios: Usuario[];
+  usuarios: ResponsavelPlano[];
   editavel: boolean;
   alterar: (f: (x: AcaoPlanoGerada) => void) => void;
   remover: () => void;
