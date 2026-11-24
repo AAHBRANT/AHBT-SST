@@ -28,6 +28,10 @@ public static class AppRolesReconhecidas
         // o webhook.
         ["Sst.ReceberContratosGJuri"] = new[] { "terceirizado:integracao-gjuri" },
         ["Sst.ReceberEstoqueGSupri"] = new[] { "estoque:integracao-gsupri" },
+        // App Role definida no app registration do SST, concedida ao service principal do app de
+        // Comunicados AAHBRANT (24/11/2026) — lê só o cadastro de obras e as logos (ver
+        // IntegracaoComunicadosController), com permissão DEDICADA, não "organizacional:ver".
+        ["Sst.LerObrasComunicados"] = new[] { "obra:integracao-comunicados" },
     };
 
     private static IEnumerable<string> ObterRoles(ClaimsPrincipal user) =>
