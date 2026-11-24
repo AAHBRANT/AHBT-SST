@@ -242,6 +242,7 @@ public static class RbacSeeder
         // chamar o webhook.
         ("terceirizado:integracao-gjuri", "Terceirizado", "IntegracaoGJuri", "Receber webhook de contrato validado/encerrado do G-Juri"),
         ("estoque:integracao-gsupri", "Estoque", "IntegracaoGsupri", "Receber eventos de estoque do G-SUPRI (identidade de aplicação)"),
+        ("obra:integracao-comunicados", "Obra", "IntegracaoComunicados", "Ler obras e logos pelo app de Comunicados (identidade de aplicação)"),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
