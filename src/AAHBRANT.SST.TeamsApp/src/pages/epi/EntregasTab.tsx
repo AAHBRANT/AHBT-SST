@@ -4,7 +4,7 @@ import {
   BotaoAcao,
   Button, Field, Input, Select, CampoData,
   Card, PageHeader, DataTable, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento,
-  CelulaDupla, Iniciais, FiltroRapido, BarraProgresso, type Tom,
+  CelulaDupla, FiltroRapido, BarraProgresso, type Tom,
   PainelCriacaoInline, FormSection, FormGrid, FormRodape, Campo, SeletorPesquisavel, FeedbackInline,
   useConfirmar,
   Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle, Spinner,
@@ -27,6 +27,7 @@ import {
   type Trabalhador,
 } from '../../lib/api';
 import { useSouAdministrador } from '../../lib/UsuarioLogadoContext';
+import { FotoTrabalhador } from '../../components/FotoTrabalhador';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { AssinaturaEntregaEpiLoteDialog, type ItemLoteAssinaturaEpi } from '../../components/assinatura/AssinaturaEntregaEpiLoteDialog';
 import { TermoCompromissoEpiDialog } from '../../components/assinatura/TermoCompromissoEpiDialog';
@@ -757,7 +758,7 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
       render: (e) => {
         const t = trabalhadorPorId(e.trabalhadorId);
         const detalhe = [t?.matricula, t?.funcaoId ? nomeFuncao(t.funcaoId) : null].filter(Boolean).join(' · ');
-        return <CelulaDupla inicio={<Iniciais nome={nomeTrabalhador(e.trabalhadorId)} />} titulo={nomeTrabalhador(e.trabalhadorId)} detalhe={detalhe || undefined} />;
+        return <CelulaDupla inicio={<FotoTrabalhador trabalhadorId={e.trabalhadorId} nome={nomeTrabalhador(e.trabalhadorId)} temFoto={t?.temFoto} />} titulo={nomeTrabalhador(e.trabalhadorId)} detalhe={detalhe || undefined} />;
       },
     },
     {
