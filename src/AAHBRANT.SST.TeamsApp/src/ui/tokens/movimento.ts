@@ -5,6 +5,13 @@ import type { Transition, Variants } from 'framer-motion';
 export const duracao = { rapido: 0.12, normal: 0.2, entrada: 0.3 } as const;
 export const curva: [number, number, number, number] = [0.2, 0, 0, 1];
 
+// Molas (física de mola, padrão d3motion): `seguir` acompanha o ponteiro sem passar do ponto nem
+// atrasar (realce de linha do DataTable); `assentar` pousa com um leve repique (pílula de filtro).
+export const molas = {
+  seguir: { type: 'spring', stiffness: 900, damping: 50 },
+  assentar: { type: 'spring', stiffness: 280, damping: 22 },
+} as const satisfies Record<string, Transition>;
+
 export const transicaoEntrada: Transition = { duration: duracao.entrada, ease: curva };
 export const transicaoNormal: Transition = { duration: duracao.normal, ease: curva };
 

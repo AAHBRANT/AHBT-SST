@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Listas G-SST</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eeeeff; --surface:#ffffff; --borda:#e6e6ef; --borda-forte:#d6d6e2;
+  --texto:#1b1b24; --texto-2:#5c5c6e; --texto-3:#8b8b9c;
+  --verde:#16a34a; --verde-escuro:#0f7a37; --verde-claro:#e8f7ee;
+  --marsala:#670000; --marsala-claro:#f6e9e9; --bege:#ebe9ad;
+  --ambar:#b45309; --ambar-claro:#fef3e2; --vermelho:#b91c1c; --vermelho-claro:#fdecec;
+  --cinza-claro:#f3f3f8;
+  --r-card:16px; --r-linha:12px; --r-pill:999px;
+  --sombra-card:0 1px 2px rgba(20,20,40,.04),0 8px 24px -6px rgba(20,20,40,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Roboto,system-ui,sans-serif;color:var(--texto);-webkit-font-smoothing:antialiased}
+.topo{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--borda);padding:12px 24px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.topo h1{font-size:15px;margin:0;font-weight:900;letter-spacing:-.01em}
+.topo h1 small{display:block;font-weight:400;color:var(--texto-3);font-size:12px;letter-spacing:0}
+.seg{position:relative;display:inline-flex;background:var(--cinza-claro);border-radius:var(--r-pill);padding:3px}
+.seg button{position:relative;z-index:1;border:0;background:none;font:500 13px Roboto,system-ui,sans-serif;padding:7px 16px;border-radius:var(--r-pill);cursor:pointer;color:var(--texto-2)}
+.seg button[aria-pressed=true]{color:#fff}
+.seg .pilula{position:absolute;top:3px;bottom:3px;left:0;border-radius:var(--r-pill);background:var(--marsala);will-change:transform,width}
+.seg.verde .pilula{background:var(--verde)}
+main{max-width:1240px;margin:0 auto;padding:24px 20px 80px}
+.legenda{font-size:12px;color:var(--texto-2);margin:0 0 14px;display:flex;gap:8px;align-items:center}
+.legenda b{font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:var(--r-pill);border:1px solid var(--borda-forte);background:#fff}
+.card{background:var(--surface);border-radius:var(--r-card);box-shadow:var(--sombra-card);padding:20px}
+.vista{display:none}.vista.ativa{display:block}
+
+/* ================= ANTES (réplica do atual) ================= */
+.antes table{width:100%;border-collapse:separate;border-spacing:0 4px;font-size:12.5px}
+.antes th{text-align:left;font-size:11px;font-weight:700;color:#6b6b7b;padding:6px 12px 8px;border-bottom:1px solid #e6e6ef;white-space:nowrap}
+.antes td{background:#fff;padding:10px 12px;border-top:1px solid #ececf3;border-bottom:1px solid #ececf3;vertical-align:middle;font-weight:500}
+.antes tr td:first-child{border-left:1px solid #ececf3;border-radius:10px 0 0 10px}
+.antes tr td:last-child{border-right:1px solid #ececf3;border-radius:0 10px 10px 0}
+.antes tbody tr{box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.chip-a{font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:99px;background:#e8f7ee;color:#16a34a;letter-spacing:.03em}
+.chip-a.and{background:#fef3e2;color:#d97706}
+.ic-a{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;border:1.5px solid #16a34a;color:#16a34a;margin-left:4px;font-size:13px}
+.ic-a.m{background:#670000;border-color:#670000;color:#fff}.ic-a.f{background:#16a34a;color:#fff}
+.lnk-a{color:#16a34a;font-weight:700}
+.thumb-a{display:inline-grid;place-items:center;width:22px;height:22px;border:1px solid #ccc;border-radius:4px;margin-right:8px;font-size:11px;color:#777;vertical-align:middle}
+
+/* ================= DEPOIS ================= */
+.barra{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.titulo-lista{display:flex;align-items:baseline;gap:10px}
+.titulo-lista h2{margin:0;font-size:18px;font-weight:900;letter-spacing:-.02em}
+.contador{font:500 12px 'Roboto Mono',ui-monospace,monospace;color:var(--texto-3);font-variant-numeric:tabular-nums}
+.busca{display:flex;align-items:center;gap:8px;background:var(--cinza-claro);border:1px solid transparent;border-radius:var(--r-pill);padding:8px 14px;min-width:240px;font-size:13px;color:var(--texto-3);transition:border-color .2s,background .2s}
+.busca:focus-within{background:#fff;border-color:var(--verde)}
+.busca input{border:0;background:none;outline:0;font:inherit;color:var(--texto);width:100%}
+.filtros{position:relative;display:inline-flex;gap:2px;background:var(--cinza-claro);border-radius:var(--r-pill);padding:3px}
+.filtros button{position:relative;z-index:1;border:0;background:none;font:500 12.5px Roboto,system-ui,sans-serif;color:var(--texto-2);padding:6px 13px;border-radius:var(--r-pill);cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.filtros button[aria-pressed=true]{color:var(--texto)}
+.filtros .n{font:500 11px 'Roboto Mono',ui-monospace,monospace;color:var(--texto-3);font-variant-numeric:tabular-nums}
+.filtros .pilula{position:absolute;top:3px;bottom:3px;left:0;background:#fff;border-radius:var(--r-pill);box-shadow:0 1px 3px rgba(0,0,0,.08),0 0 0 1px var(--borda)}
+
+.lista{position:relative}
+.cab,.linha{display:grid;align-items:center;gap:14px;padding:0 14px}
+.cab{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--texto-3);padding-bottom:8px;border-bottom:1px solid var(--borda);margin-bottom:6px;position:sticky;top:57px;background:#fff;z-index:2;padding-top:6px}
+.linha{position:relative;min-height:60px;border-radius:var(--r-linha);cursor:pointer;outline:0}
+.linha + .linha::before{content:"";position:absolute;left:14px;right:14px;top:0;height:1px;background:var(--borda)}
+.realce{position:absolute;left:0;right:0;top:0;border-radius:var(--r-linha);background:var(--cinza-claro);box-shadow:inset 0 0 0 1px var(--borda);opacity:0;pointer-events:none;will-change:transform,height,opacity}
+.linha > *{position:relative;z-index:1}
+.linha:focus-visible{box-shadow:0 0 0 2px var(--verde)}
+.linha .faixa{position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;background:var(--verde)}
+.linha.atencao .faixa{background:#f59e0b}.linha.vencido .faixa{background:var(--vermelho)}.linha.devolvido .faixa{background:var(--borda-forte)}
+
+.pessoa{display:flex;align-items:center;gap:10px;min-width:0}
+.avatar{flex:0 0 34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 12px Roboto,system-ui,sans-serif;color:var(--marsala);background:var(--marsala-claro)}
+.nome{font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{font-size:11.5px;color:var(--texto-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.epi{display:flex;align-items:center;gap:10px;min-width:0}
+.epi-ic{flex:0 0 32px;height:32px;border-radius:9px;background:var(--verde-claro);display:grid;place-items:center;color:var(--verde-escuro)}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.data{font-size:13px;font-weight:500}
+.validade{display:flex;flex-direction:column;gap:5px}
+.trilho{height:4px;border-radius:4px;background:var(--cinza-claro);overflow:hidden;width:110px}
+.trilho i{display:block;height:100%;border-radius:4px;background:var(--verde);transform-origin:left;transform:scaleX(0)}
+.atencao .trilho i{background:#f59e0b}.vencido .trilho i{background:var(--vermelho)}
+.chip{display:inline-flex;align-items:center;gap:5px;font:700 10.5px Roboto,system-ui,sans-serif;letter-spacing:.04em;padding:4px 9px;border-radius:var(--r-pill);background:var(--verde-claro);color:var(--verde-escuro);white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.chip.atencao{background:var(--ambar-claro);color:var(--ambar)}
+.chip.vencido{background:var(--vermelho-claro);color:var(--vermelho)}
+.chip.devolvido,.chip.neutro{background:var(--cinza-claro);color:var(--texto-2)}
+.btn-ghost{border:1px solid var(--borda-forte);background:#fff;border-radius:var(--r-pill);font:500 12px Roboto,system-ui,sans-serif;color:var(--texto);padding:6px 12px;cursor:pointer;white-space:nowrap;transition:border-color .15s,background .15s}
+.btn-ghost:hover{border-color:var(--verde);background:var(--verde-claro);color:var(--verde-escuro)}
+.acoes{display:inline-flex;gap:2px;justify-self:end;background:var(--cinza-claro);border-radius:var(--r-pill);padding:3px;opacity:.78;transition:opacity .2s}
+.linha:hover .acoes,.linha:focus-within .acoes{opacity:1}
+.ic{position:relative;width:30px;height:30px;border-radius:50%;border:0;background:none;display:grid;place-items:center;cursor:pointer;color:var(--texto-2)}
+.ic:hover{background:#fff;color:var(--verde-escuro);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.ic.assinar{background:var(--marsala);color:#fff}
+.ic.assinar:hover{background:#4d0000;color:#fff}
+.ic[data-dica]:hover::after{content:attr(data-dica);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--texto);color:#fff;font:500 11px Roboto,system-ui,sans-serif;padding:5px 9px;border-radius:7px;white-space:nowrap;pointer-events:none;z-index:5}
+
+/* Turmas */
+.nr{flex:0 0 auto;font:900 11px Roboto,system-ui,sans-serif;letter-spacing:.02em;color:var(--marsala);background:var(--marsala-claro);border-radius:8px;padding:6px 8px;min-width:50px;text-align:center}
+.cert{font:500 12px 'Roboto Mono',ui-monospace,monospace;color:var(--texto);background:var(--cinza-claro);border-radius:6px;padding:3px 7px}
+.sem{font-size:12px;color:var(--texto-3);font-style:italic}
+.presenca{display:flex;align-items:center;gap:8px}
+.anel{width:28px;height:28px;transform:rotate(-90deg)}
+.anel circle{fill:none;stroke-width:4}
+.anel .f{stroke:var(--cinza-claro)}.anel .p{stroke:var(--verde);stroke-linecap:round}
+.fotos{display:flex;gap:4px;align-items:center}
+.fotos i{width:9px;height:9px;border-radius:50%;background:var(--cinza-claro);box-shadow:inset 0 0 0 1px var(--borda-forte)}
+.fotos i.ok{background:var(--verde);box-shadow:none}
+.fotos span{font-size:11.5px;color:var(--texto-3);margin-left:4px}
+
+.notas{margin-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.nota{background:#fff;border-radius:14px;padding:14px 16px;font-size:12.5px;line-height:1.5;color:var(--texto-2);box-shadow:var(--sombra-card)}
+.nota b{display:block;color:var(--texto);font-size:13px;margin-bottom:3px}
+.nota.alerta{border-left:3px solid #f59e0b}
+
+@media (max-width:860px){
+  .cab{display:none}
+  .linha{grid-template-columns:1fr auto !important;row-gap:6px;padding:12px 14px}
+  .linha .col-opc{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="topo">
+  <h1>Listas do G-SST · proposta visual<small>Mockup para aprovação · 25/11/2026 · dados do ambiente de teste (matrícula, função e CA são ilustrativos)</small></h1>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <div class="seg" id="segTela"><span class="pilula"></span>
+      <button aria-pressed="true" data-v="epi">Entregas de EPI</button>
+      <button aria-pressed="false" data-v="turmas">Turmas</button>
+    </div>
+    <div class="seg verde" id="segModo"><span class="pilula"></span>
+      <button aria-pressed="false" data-v="antes">Antes</button>
+      <button aria-pressed="true" data-v="depois">Depois</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <!-- ============ EPI ANTES ============ -->
+  <section class="vista" id="epi-antes">
+    <p class="legenda"><b>Antes</b> Como a lista de Entregas de EPI aparece hoje</p>
+    <div class="card antes"><table>
+      <thead><tr><th>Funcionário</th><th>EPI</th><th>Qtd.</th><th>Entrega</th><th>Validade</th><th>Devolução</th><th></th></tr></thead>
+      <tbody id="epiAntesBody"></tbody></table></div>
+  </section>
+
+  <!-- ============ EPI DEPOIS ============ -->
+  <section class="vista" id="epi-depois">
+    <p class="legenda"><b>Depois</b> Mesmas colunas, mesmos dados e as mesmas 4 ações por linha</p>
+    <div class="card">
+      <div class="barra">
+        <div class="titulo-lista"><h2>Entregas de EPI</h2><span class="contador" id="epiCont">403 entregas</span></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <div class="filtros" id="filtrosEpi"><span class="pilula"></span>
+            <button aria-pressed="true" data-f="todos">Todas <span class="n">403</span></button>
+            <button aria-pressed="false" data-f="ok">Válidas <span class="n">396</span></button>
+            <button aria-pressed="false" data-f="atencao">Vencem em 30 dias <span class="n">5</span></button>
+            <button aria-pressed="false" data-f="devolvido">Devolvidas <span class="n">2</span></button>
+          </div>
+          <label class="busca">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input placeholder="Buscar funcionário ou EPI">
+          </label>
+        </div>
+      </div>
+      <div class="lista" id="listaEpi">
+        <div class="realce"></div>
+        <div class="cab" style="grid-template-columns:minmax(190px,1.3fr) minmax(220px,1.6fr) 44px 96px 150px 150px 146px">
+          <span>Funcionário</span><span>EPI</span><span style="text-align:right">Qtd.</span><span>Entrega</span><span>Validade</span><span>Devolução</span><span style="text-align:right">Ações</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TURMAS ANTES ============ -->
+  <section class="vista" id="turmas-antes">
+    <p class="legenda"><b>Antes</b> Como a lista de Turmas de treinamento aparece hoje</p>
+    <div class="card antes"><table>
+      <thead><tr><th>Nº certificado</th><th>Curso</th><th>Obra</th><th>Data</th><th>Presença</th><th>Fotos</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>CERT-2026-0002</td><td>NR-06 Equipamento de Proteção Individual</td><td>Edifício Aurora Corporate</td><td>2026-09-04</td><td>0/1</td><td>3/3</td><td><span class="chip-a">● CONCLUÍDA</span></td></tr>
+        <tr><td></td><td>NR-06 Equipamento de Proteção Individual</td><td>Edifício Aurora Corporate</td><td>2026-09-04</td><td>0/7</td><td>0/3</td><td><span class="chip-a and">● EM ANDAMENTO</span></td></tr>
+        <tr><td></td><td>NR-35 Trabalho em Altura</td><td>Edifício Aurora Corporate</td><td>2026-09-04</td><td>0/2</td><td>3/3</td><td><span class="chip-a">● CONCLUÍDA</span></td></tr>
+      </tbody></table></div>
+  </section>
+
+  <!-- ============ TURMAS DEPOIS ============ -->
+  <section class="vista" id="turmas-depois">
+    <p class="legenda"><b>Depois</b> Mesmas colunas e os mesmos dados, mais fáceis de ler</p>
+    <div class="card">
+      <div class="barra">
+        <div class="titulo-lista"><h2>Turmas de treinamento</h2><span class="contador">3 turmas</span></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <div class="filtros" id="filtrosTurma"><span class="pilula"></span>
+            <button aria-pressed="true">Todas <span class="n">3</span></button>
+            <button aria-pressed="false">Em andamento <span class="n">1</span></button>
+            <button aria-pressed="false">Concluídas <span class="n">2</span></button>
+          </div>
+          <label class="busca"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input placeholder="Buscar curso ou obra"></label>
+        </div>
+      </div>
+      <div class="lista" id="listaTurmas">
+        <div class="realce"></div>
+        <div class="cab" style="grid-template-columns:minmax(330px,2.6fr) minmax(160px,1fr) 96px 100px 96px 140px 130px">
+          <span>Curso</span><span>Obra</span><span>Data</span><span>Presença</span><span>Fotos</span><span>Nº certificado</span><span>Status</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="notas">
+    <div class="nota"><b>O que muda</b>Iniciais do funcionário, ícone do EPI, barra de tempo de validade, faixa de cor na lateral da linha, ações agrupadas com o nome ao passar o mouse e filtros rápidos com contagem.</div>
+    <div class="nota"><b>Movimento</b>As linhas entram em cascata curta (menos de 0,4 s), o destaque desliza até a linha sob o mouse e o filtro ativo desliza com efeito de mola. Quem ativou "reduzir movimento" no Windows vê tudo sem animação.</div>
+    <div class="nota"><b>O que não muda</b>Nenhuma coluna, ação ou dado sai da tela. A mudança fica no componente DataTable, então as 96 telas que o usam ganham o visual novo de uma vez.</div>
+    <div class="nota alerta"><b>Achado no caminho</b>Na lista de Turmas, a data aparece como 2026-09-04 (formato americano). No "depois" ela já aparece como 04/09/2026.</div>
+  </div>
+</main>
+
+<script>
+// ---- Mola (d3motion: createSpring, presets settle/soft/follow) ----
+const PRESETS={follow:{k:900,d:50},settle:{k:280,d:22},soft:{k:260,d:24},pop:{k:520,d:16}};
+const reduzir=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function mola(v0,preset){const c=PRESETS[preset];let x=v0,v=0,alvo=v0;return{get x(){return x},alvo(n){alvo=n},snap(n){x=alvo=n;v=0},step(dt){const n=Math.max(1,Math.ceil(dt/(1/120))),h=dt/n;for(let i=0;i<n;i++){const f=-c.k*(x-alvo)-c.d*v;v+=f*h;x+=v*h}return x},parado(){return Math.abs(x-alvo)<.05&&Math.abs(v)<.05}}}
+const ativos=new Set();let ult=0;
+function loop(t){const dt=Math.min(.05,(t-(ult||t))/1000)||1/60;ult=t;for(const a of ativos){a.tick(dt);if(a.fim())ativos.delete(a)}if(ativos.size)requestAnimationFrame(loop);else ult=0}
+function animar(a){if(reduzir){a.final();return}if(!ativos.size)requestAnimationFrame(loop);ativos.add(a)}
+
+// Pílula deslizante (segmentos e filtros)
+function pilula(cont){
+  const p=cont.querySelector('.pilula');const mx=mola(0,'settle'),mw=mola(0,'settle');let iniciado=false;
+  const ir=(b)=>{const r=b.getBoundingClientRect(),rc=cont.getBoundingClientRect();const x=r.left-rc.left,w=r.width;
+    if(!iniciado){mx.snap(x);mw.snap(w);iniciado=true;p.style.transform=`translateX(${x}px)`;p.style.width=w+'px';return}
+    mx.alvo(x);mw.alvo(w);animar({tick(dt){p.style.transform=`translateX(${mx.step(dt)}px)`;p.style.width=mw.step(dt)+'px'},fim(){return mx.parado()&&mw.parado()},final(){mx.snap(x);mw.snap(w);p.style.transform=`translateX(${x}px)`;p.style.width=w+'px'}})};
+  cont.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{cont.querySelectorAll('button').forEach(o=>o.setAttribute('aria-pressed',o===b));ir(b);cont.dispatchEvent(new CustomEvent('troca',{detail:b}))}));
+  const at=()=>ir(cont.querySelector('[aria-pressed=true]'));return{at};
+}
+
+// Realce que desliza sob a linha do mouse
+function realce(lista){
+  const r=lista.querySelector('.realce');const my=mola(0,'follow'),mh=mola(60,'follow'),mo=mola(0,'soft');let vis=false;
+  const tick={tick(dt){r.style.transform=`translateY(${my.step(dt)}px)`;r.style.height=mh.step(dt)+'px';r.style.opacity=Math.max(0,Math.min(1,mo.step(dt)))},fim(){return my.parado()&&mh.parado()&&mo.parado()},final(){r.style.transform=`translateY(${my.x}px)`}};
+  lista.addEventListener('pointerover',e=>{const l=e.target.closest('.linha');if(!l)return;const y=l.offsetTop,h=l.offsetHeight;if(!vis){my.snap(y);mh.snap(h)}vis=true;my.alvo(y);mh.alvo(h);mo.alvo(1);if(reduzir){r.style.transform=`translateY(${y}px)`;r.style.height=h+'px';r.style.opacity=1}else animar(tick)});
+  lista.addEventListener('pointerleave',()=>{vis=false;mo.alvo(0);if(reduzir)r.style.opacity=0;else animar(tick)});
+}
+
+// Entrada em cascata (máx. ~0,4 s no total)
+function cascata(linhas){if(reduzir)return;linhas.forEach((l,i)=>{l.animate([{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'none'}],{duration:420,delay:Math.min(i*28,300),easing:'cubic-bezier(.2,.9,.25,1.15)',fill:'backwards'});
+  l.querySelectorAll('.trilho i').forEach(t=>{const alvo=t.dataset.p;t.animate([{transform:'scaleX(0)'},{transform:`scaleX(${alvo})`}],{duration:700,delay:Math.min(i*28,300)+120,easing:'cubic-bezier(.2,.9,.25,1.1)',fill:'both'})})})}
+
+// ---- Dados (ambiente de teste) ----
+const EPIS=[
+ ['Ana Almeida Pereira','AUR-0144 · Motorista Carreteiro','Capacete de Segurança Classe B','CA 31469',1,'04/09/2026','04/09/2031',.05,'ok'],
+ ['Ana Almeida Pereira','AUR-0144 · Motorista Carreteiro','Colete Refletivo Classe 2','CA 41271',1,'04/09/2026','04/09/2027',.23,'ok'],
+ ['Ana Almeida Pereira','AUR-0144 · Motorista Carreteiro','Bota de Segurança com Bico de Aço','CA 42213',1,'04/09/2026','04/09/2027',.23,'ok'],
+ ['Juliana Almeida Gomes','AUR-0102 · Pedreiro','Capacete de Segurança Classe B','CA 31469',1,'28/07/2026','27/08/2031',.07,'ok'],
+ ['João Lima Santos','AUR-0057 · Servente de Obras','Luva de Vaqueta','CA 37811',2,'28/07/2026','10/12/2026',.82,'atencao'],
+ ['Juliana Pereira Gomes','AUR-0110 · Armador','Capacete de Segurança Classe B','CA 31469',1,'28/07/2026','27/08/2031',.07,'ok'],
+ ['Juliana Souza Gomes','AUR-0131 · Carpinteiro','Protetor Auricular Tipo Plug','CA 5745',2,'28/07/2026','15/12/2026',.78,'atencao'],
+ ['João Santos Santos','AUR-0066 · Eletricista','Capacete de Segurança Classe B','CA 31469',1,'28/07/2026','27/08/2031',.07,'devolvido'],
+ ['João Rodrigues Santos','AUR-0061 · Pedreiro','Óculos de Proteção Incolor','CA 11268',1,'28/07/2026','27/07/2027',.33,'ok'],
+];
+const iniciais=n=>n.split(' ').filter((p,i,a)=>i===0||i===a.length-1).map(p=>p[0]).join('');
+const ICO_EPI='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4.5 6v5.5c0 4.5 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5 7.5-9.5V6L12 3z"/><path d="m9 12 2 2 4-4"/></svg>';
+const svg=(d)=>`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ACOES=`<div class="acoes">
+ <button class="ic assinar" data-dica="Assinar entrega" aria-label="Assinar entrega">${svg('<path d="M3 21c3-1 5-3 7-6l7-7a2.1 2.1 0 0 0-3-3l-7 7c-3 2-5 4-6 7"/>')}</button>
+ <button class="ic" data-dica="Editar" aria-label="Editar">${svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>')}</button>
+ <button class="ic" data-dica="Ver ficha" aria-label="Ver ficha">${svg('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>')}</button>
+ <button class="ic" data-dica="Baixar PDF" aria-label="Baixar PDF">${svg('<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>')}</button></div>`;
+const rotulo={ok:'VÁLIDO',atencao:'VENCE EM BREVE',vencido:'VENCIDO',devolvido:'DEVOLVIDO'};
+
+// Antes
+document.getElementById('epiAntesBody').innerHTML=EPIS.map(e=>`<tr><td>${e[0]}</td><td><span class="thumb-a">▣</span>${e[2]}</td><td>${e[4]}</td><td>${e[5]}</td><td>${e[6]} <span class="chip-a">● VÁLIDO</span></td><td class="lnk-a">Registrar devolução</td><td style="white-space:nowrap"><span class="ic-a m">✎</span><span class="ic-a">✎</span><span class="ic-a">◉</span><span class="ic-a f">↓</span></td></tr>`).join('');
+
+// Depois
+const listaEpi=document.getElementById('listaEpi');
+const colsEpi='minmax(190px,1.3fr) minmax(220px,1.6fr) 44px 96px 150px 150px 146px';
+function desenharEpi(f){
+  listaEpi.querySelectorAll('.linha').forEach(l=>l.remove());
+  const dados=EPIS.filter(e=>f==='todos'||e[8]===f);
+  const html=dados.map(e=>{const s=e[8];const cls=s==='ok'?'':s;
+    const dev=s==='devolvido'?'<span class="chip neutro">Devolvido em 12/11/2026</span>':'<button class="btn-ghost">Registrar devolução</button>';
+    return `<div class="linha ${cls}" tabindex="0" style="grid-template-columns:${colsEpi}"><span class="faixa"></span>
+      <div class="pessoa"><span class="avatar">${iniciais(e[0])}</span><div style="min-width:0"><div class="nome">${e[0]}</div><div class="sub">${e[1]}</div></div></div>
+      <div class="epi"><span class="epi-ic">${ICO_EPI}</span><div style="min-width:0"><div class="nome" style="font-weight:500">${e[2]}</div><div class="sub">${e[3]}</div></div></div>
+      <div class="num col-opc" style="text-align:right;font-weight:700">${e[4]}</div>
+      <div class="num data col-opc">${e[5]}</div>
+      <div class="validade col-opc"><span class="num data">${e[6]}</span><span class="trilho"><i data-p="${s==='devolvido'?0:e[7]}"></i></span></div>
+      <div class="col-opc"><span class="chip ${cls||''}">${rotulo[s]}</span></div>
+      ${ACOES}</div>`}).join('');
+  listaEpi.insertAdjacentHTML('beforeend',html.replace(/<div class="col-opc"><span class="chip/g,'<div class="col-opc" style="display:flex;flex-direction:column;gap:6px;align-items:flex-start"><span class="chip').replace(/(<\/span><\/div>\s*<div class="acoes">)/g,'$1'));
+  // coluna Devolução: chip de status acima do botão
+  listaEpi.querySelectorAll('.linha').forEach((l,i)=>{const d=dados[i];const c=l.children[6];c.insertAdjacentHTML('beforeend',d[8]==='devolvido'?'<span class="sub">Em 12/11/2026</span>':'<button class="btn-ghost">Registrar devolução</button>')});
+  document.getElementById('epiCont').textContent=(f==='todos'?403:dados.length)+(f==='todos'?' entregas':' nesta seleção');
+  cascata([...listaEpi.querySelectorAll('.linha')]);
+}
+// Ajuste do cabeçalho: Validade (data + barra) e Devolução (status + ação)
+listaEpi.querySelector('.cab').children[5].textContent='Situação / Devolução';
+
+const listaTurmas=document.getElementById('listaTurmas');
+const TURMAS=[['NR-06','Equipamento de Proteção Individual','Edifício Aurora Corporate','04/09/2026',0,1,3,'CERT-2026-0002','ok','CONCLUÍDA'],
+['NR-06','Equipamento de Proteção Individual','Edifício Aurora Corporate','04/09/2026',0,7,0,null,'atencao','EM ANDAMENTO'],
+['NR-35','Trabalho em Altura','Edifício Aurora Corporate','04/09/2026',0,2,3,null,'ok','CONCLUÍDA']];
+const colsT='minmax(330px,2.6fr) minmax(160px,1fr) 96px 100px 96px 140px 130px';
+function anel(p,t){const r=11,c=2*Math.PI*r,v=t?p/t:0;return `<svg class="anel" viewBox="0 0 28 28"><circle class="f" cx="14" cy="14" r="${r}"/><circle class="p" cx="14" cy="14" r="${r}" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-v)}"/></svg>`}
+listaTurmas.insertAdjacentHTML('beforeend',TURMAS.map(t=>`<div class="linha ${t[8]==='ok'?'':t[8]}" tabindex="0" style="grid-template-columns:${colsT}"><span class="faixa"></span>
+  <div class="epi"><span class="nr">${t[0]}</span><div style="min-width:0"><div class="nome">${t[1]}</div></div></div>
+  <div class="col-opc" style="font-size:13px;color:var(--texto-2)">${t[2]}</div>
+  <div class="num data col-opc">${t[3]}</div>
+  <div class="presenca col-opc">${anel(t[4],t[5])}<span class="num data">${t[4]}<span style="color:var(--texto-3)">/${t[5]}</span></span></div>
+  <div class="fotos col-opc">${[0,1,2].map(i=>`<i class="${i<t[6]?'ok':''}"></i>`).join('')}<span class="num">${t[6]}/3</span></div>
+  <div class="col-opc">${t[7]?`<span class="cert">${t[7]}</span>`:'<span class="sem">Ainda não emitido</span>'}</div>
+  <div><span class="chip ${t[8]==='ok'?'':t[8]}">${t[9]}</span></div></div>`).join(''));
+
+// ---- Navegação do mockup ----
+const segTela=pilula(document.getElementById('segTela')),segModo=pilula(document.getElementById('segModo'));
+const fE=pilula(document.getElementById('filtrosEpi')),fT=pilula(document.getElementById('filtrosTurma'));
+let tela='epi',modo='depois';
+function mostrar(){document.querySelectorAll('.vista').forEach(v=>v.classList.toggle('ativa',v.id===`${tela}-${modo}`));
+  if(modo==='depois'){requestAnimationFrame(()=>{(tela==='epi'?fE:fT).at();if(tela==='epi')desenharEpi(document.querySelector('#filtrosEpi [aria-pressed=true]').dataset.f);else cascata([...listaTurmas.querySelectorAll('.linha')])})}}
+document.getElementById('segTela').addEventListener('troca',e=>{tela=e.detail.dataset.v;mostrar()});
+document.getElementById('segModo').addEventListener('troca',e=>{modo=e.detail.dataset.v;mostrar()});
+document.getElementById('filtrosEpi').addEventListener('troca',e=>desenharEpi(e.detail.dataset.f));
+realce(listaEpi);realce(listaTurmas);
+requestAnimationFrame(()=>{segTela.at();segModo.at();mostrar()});
+</script>
+</body>
+</html>
