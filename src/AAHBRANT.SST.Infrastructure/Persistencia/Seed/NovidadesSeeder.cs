@@ -3405,6 +3405,25 @@ public static class NovidadesSeeder
                     "Ao enviar uma EAP extensa (como o PDF da Ponte Rio Cuiabá) e clicar em Ler EAP com IA, aparecia \"Ocorreu um erro inesperado\".",
                     "A IA agora lê a EAP em partes e junta os itens na ordem original. Se um documento ainda passar do limite da IA, a tela explica o motivo e pede para dividir o arquivo."),
             }),
+        new(
+            Versao: "5.199.0",
+            Titulo: "Listas com visual novo, filtros rápidos e busca",
+            DataPublicacao: new DateTime(2026, 11, 25, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Todas as listas do sistema ficaram mais fáceis de ler",
+                    "As linhas eram cartões separados, sem destaque da linha sob o mouse, e as ações ficavam soltas em vários círculos.",
+                    "As linhas ganharam divisórias leves, um destaque que acompanha o mouse, uma faixa colorida com a situação do registro e as ações agrupadas num só bloco."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Entregas de EPI com filtro por situação e busca",
+                    "A lista mostrava só o nome do funcionário e do EPI, sem filtro nem busca, e era preciso rolar centenas de entregas para achar uma.",
+                    "Cada entrega mostra matrícula, função, CA e uma barra do prazo de validade. Os filtros Válidas, Vencem em breve, Vencidas e Devolvidas trazem a contagem, e a busca acha funcionário, EPI ou CA."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Turmas de treinamento com presença e fotos de relance",
+                    "A data da turma aparecia como 2026-09-04 e presença e fotos eram só números, como 0/7 e 0/3.",
+                    "A data aparece como 04/09/2026, a norma do curso ganha um selo, a presença vira um anel de progresso e as fotos viram três pontos. Há filtro por situação e busca por curso, obra ou certificado."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

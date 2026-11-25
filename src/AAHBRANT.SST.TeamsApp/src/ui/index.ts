@@ -53,6 +53,8 @@ export { useAbaNaUrl } from './compostos/Abas/useAbaNaUrl';
 export { DashboardTopo } from './compostos/DashboardTopo/DashboardTopo';
 
 export { DataTable, type DataTableProps, type Coluna } from './compostos/DataTable/DataTable';
+export { CelulaDupla, Iniciais, SeloTexto, type CelulaDuplaProps } from './primitivos/CelulaDupla/CelulaDupla';
+export { FiltroRapido, type FiltroRapidoProps, type OpcaoFiltro } from './primitivos/FiltroRapido/FiltroRapido';
 
 export { FormSection, FormRodape } from './compostos/Formulario/FormSection';
 export { FormGrid, Campo } from './compostos/Formulario/FormGrid';

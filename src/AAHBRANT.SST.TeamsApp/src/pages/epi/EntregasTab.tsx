@@ -4,12 +4,13 @@ import {
   BotaoAcao,
   Button, Field, Input, Select, CampoData,
   Card, PageHeader, DataTable, StatusChip, nivelVencimento, tomDeVencimento, rotuloDeVencimento,
+  CelulaDupla, Iniciais, FiltroRapido, BarraProgresso, type Tom,
   PainelCriacaoInline, FormSection, FormGrid, FormRodape, Campo, SeletorPesquisavel, FeedbackInline,
   useConfirmar,
   Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle, Spinner,
   type Coluna,
 } from '@ui';
-import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Eye24Regular, Print24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { Add24Regular, ArrowDownload24Regular, Delete24Regular, Eye24Regular, Print24Regular, Search20Regular, Signature24Regular } from '@fluentui/react-icons';
 import {
   api,
   motivoEntregaEpiLabel,
@@ -131,6 +132,29 @@ function ehCursoNr6(curso?: { atendeNr6?: boolean; normaReferencia?: string | nu
 
 interface EntregasTabProps {
   aoNavegarParaMatriz: () => void;
+}
+
+
+// Situação de uma entrega para o filtro rápido e a faixa lateral da lista (visual aprovado em
+// 25/11/2026, docs/mockups/listas-gsst-2026-11-25.html).
+type SituacaoEntrega = 'validas' | 'vencendo' | 'vencidas' | 'devolvidas';
+type FiltroSituacao = 'todas' | SituacaoEntrega;
+
+function situacaoEntrega(e: EntregaEpi): SituacaoEntrega {
+  if (e.dataDevolucao) return 'devolvidas';
+  const nivel = nivelVencimento(e.dataValidade);
+  return nivel === 'vencido' ? 'vencidas' : nivel === 'alerta' ? 'vencendo' : 'validas';
+}
+
+const TOM_DA_SITUACAO: Record<SituacaoEntrega, Tom> = { validas: 'ok', vencendo: 'atencao', vencidas: 'alerta', devolvidas: 'neutro' };
+
+// Fração do prazo de validade já consumida (0 = acabou de entregar, 1 = venceu).
+function fracaoDaValidade(e: EntregaEpi): number {
+  if (!e.dataEntrega || !e.dataValidade) return 0;
+  const inicio = new Date(e.dataEntrega).getTime();
+  const fim = new Date(e.dataValidade).getTime();
+  if (!(fim > inicio)) return 1;
+  return Math.max(0, Math.min(1, (Date.now() - inicio) / (fim - inicio)));
 }
 
 export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
@@ -350,6 +374,25 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
     () => trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome, descricao: t.matricula ?? undefined })),
     [trabalhadores],
   );
+
+  const [filtroSituacao, setFiltroSituacao] = useState<FiltroSituacao>('todas');
+  const [busca, setBusca] = useState('');
+  const contagemSituacao = useMemo(() => {
+    const c: Record<FiltroSituacao, number> = { todas: entregas.length, validas: 0, vencendo: 0, vencidas: 0, devolvidas: 0 };
+    for (const e of entregas) c[situacaoEntrega(e)] += 1;
+    return c;
+  }, [entregas]);
+  const entregasVisiveis = useMemo(() => {
+    const termo = busca.trim().toLocaleLowerCase('pt-BR');
+    return entregas.filter((e) => {
+      if (filtroSituacao !== 'todas' && situacaoEntrega(e) !== filtroSituacao) return false;
+      if (!termo) return true;
+      const t = trabalhadores.find((x) => x.id === e.trabalhadorId);
+      const epi = epis.find((x) => x.id === e.catalogoEpiId);
+      return [t?.nome, t?.matricula, epi?.nome, epi?.certificadoAprovacaoNumero]
+        .some((v) => v?.toLocaleLowerCase('pt-BR').includes(termo));
+    });
+  }, [entregas, filtroSituacao, busca, trabalhadores, epis]);
 
   function nomeEpi(id: string) {
     return epis.find((e) => e.id === id)?.nome ?? id;
@@ -708,40 +751,57 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
   // Coluna de devolução com edição na própria linha: o DataTable não tem edição inline embutida
   // (e não deveria — é caso desta página), então o estado de devolução entra pelo `render`.
   const colunas: Coluna<EntregaEpi>[] = [
-    { chave: 'trabalhador', rotulo: 'Funcionário', render: (e) => nomeTrabalhador(e.trabalhadorId) },
+    {
+      chave: 'trabalhador',
+      rotulo: 'Funcionário',
+      render: (e) => {
+        const t = trabalhadorPorId(e.trabalhadorId);
+        const detalhe = [t?.matricula, t?.funcaoId ? nomeFuncao(t.funcaoId) : null].filter(Boolean).join(' · ');
+        return <CelulaDupla inicio={<Iniciais nome={nomeTrabalhador(e.trabalhadorId)} />} titulo={nomeTrabalhador(e.trabalhadorId)} detalhe={detalhe || undefined} />;
+      },
+    },
     {
       chave: 'epi',
       rotulo: 'EPI',
-      render: (e) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <FotoCatalogoEpi catalogoEpiId={e.catalogoEpiId} temFoto={epiTemFoto(e.catalogoEpiId)} tamanho={28} />
-          {nomeEpi(e.catalogoEpiId)}
-        </div>
-      ),
+      render: (e) => {
+        const ca = catalogoEpi(e.catalogoEpiId)?.certificadoAprovacaoNumero;
+        return (
+          <CelulaDupla
+            tituloLeve
+            inicio={<FotoCatalogoEpi catalogoEpiId={e.catalogoEpiId} temFoto={epiTemFoto(e.catalogoEpiId)} tamanho={32} />}
+            titulo={nomeEpi(e.catalogoEpiId)}
+            detalhe={ca ? (/^\s*CA\b/i.test(ca) ? ca.trim() : `CA ${ca}`) : undefined}
+          />
+        );
+      },
     },
-    { chave: 'quantidade', rotulo: 'Qtd.', alinhar: 'direita', largura: '64px' },
+    { chave: 'quantidade', rotulo: 'Qtd.', alinhar: 'direita', largura: '56px', render: (e) => <strong>{e.quantidade}</strong> },
     { chave: 'dataEntrega', rotulo: 'Entrega', render: (e) => formatarDataBr(e.dataEntrega) },
     {
       chave: 'validade',
       rotulo: 'Validade',
-      // Data crua + chip juntos: o rótulo do chip diz o nível, não *quando* vence nem *há quanto*
-      // está vencido, e isso é dado de fiscalização (NR-6) que a tela antiga mostrava.
+      // Data + barra do prazo já consumido: a data diz *quando* vence (dado de fiscalização, NR-6) e a
+      // barra mostra de relance quanto falta.
       render: (e) => {
-        if (e.dataDevolucao) return <StatusChip tom="neutro">Devolvido {formatarDataBr(e.dataDevolucao)}</StatusChip>;
+        if (e.dataDevolucao) return formatarDataBr(e.dataValidade);
         const nivel = nivelVencimento(e.dataValidade);
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, width: 110 }}>
             <span>{formatarDataBr(e.dataValidade)}</span>
-            {nivel && <StatusChip tom={tomDeVencimento(nivel)}>{rotuloDeVencimento(nivel)}</StatusChip>}
+            {nivel && <BarraProgresso percentual={fracaoDaValidade(e) * 100} tom={tomDeVencimento(nivel)} aria-label="Prazo de validade já consumido" />}
           </div>
         );
       },
     },
     {
       chave: 'devolucao',
-      rotulo: 'Devolução',
-      render: (e) =>
-        devolucaoId === e.id ? (
+      rotulo: 'Situação / Devolução',
+      render: (e) => {
+        const nivel = nivelVencimento(e.dataValidade);
+        const chip = e.dataDevolucao
+          ? <StatusChip tom="neutro">Devolvido {formatarDataBr(e.dataDevolucao)}</StatusChip>
+          : nivel ? <StatusChip tom={tomDeVencimento(nivel)}>{rotuloDeVencimento(nivel)}</StatusChip> : null;
+        const acao = devolucaoId === e.id ? (
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <CampoData value={devolucaoData} onChange={(_, d) => setDevolucaoData(d.value)} style={{ width: 130 }} />
             <Input type="number" value={devolucaoQtd} onChange={(_, d) => setDevolucaoQtd(d.value)} style={{ width: 60 }} />
@@ -750,10 +810,17 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
             </Button>
           </div>
         ) : e.dataDevolucao ? null : (
-          <Button size="small" appearance="subtle" onClick={() => iniciarDevolucao(e)}>
+          <Button size="small" appearance="outline" shape="circular" style={{ whiteSpace: 'nowrap' }} onClick={() => iniciarDevolucao(e)}>
             Registrar devolução
           </Button>
-        ),
+        );
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+            {chip}
+            {acao}
+          </div>
+        );
+      },
     },
   ];
 
@@ -994,13 +1061,41 @@ export function EntregasTab({ aoNavegarParaMatriz }: EntregasTabProps) {
       </div>
 
       <Card densidade="compacta">
+        {entregas.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <FiltroRapido<FiltroSituacao>
+              aria-label="Filtrar entregas pela situação"
+              valor={filtroSituacao}
+              aoMudar={setFiltroSituacao}
+              opcoes={[
+                { valor: 'todas', rotulo: 'Todas', contagem: contagemSituacao.todas },
+                { valor: 'validas', rotulo: 'Válidas', contagem: contagemSituacao.validas },
+                { valor: 'vencendo', rotulo: 'Vencem em breve', contagem: contagemSituacao.vencendo },
+                { valor: 'vencidas', rotulo: 'Vencidas', contagem: contagemSituacao.vencidas },
+                { valor: 'devolvidas', rotulo: 'Devolvidas', contagem: contagemSituacao.devolvidas },
+              ]}
+            />
+            <Input
+              aria-label="Buscar funcionário, matrícula, EPI ou CA"
+              placeholder="Buscar funcionário, EPI ou CA"
+              contentBefore={<Search20Regular />}
+              value={busca}
+              onChange={(_, d) => setBusca(d.value)}
+              style={{ minWidth: 260 }}
+            />
+          </div>
+        )}
         <DataTable
           aria-label="Entregas de EPI"
           colunas={colunas}
-          linhas={entregas}
+          linhas={entregasVisiveis}
           chaveLinha={(e) => e.id}
           carregando={carregandoLista}
-          vazio={{
+          tomLinha={(e) => TOM_DA_SITUACAO[situacaoEntrega(e)]}
+          vazio={entregas.length > 0 ? {
+            titulo: 'Nenhuma entrega nesta seleção',
+            descricao: 'Troque o filtro ou a busca para ver outras entregas.',
+          } : {
             titulo: 'Nenhuma entrega registrada',
             descricao: 'Registre a primeira entrega para começar o controle de EPI.',
             acao: { rotulo: 'Nova entrega', aoClicar: () => setPainelAberto(true) },

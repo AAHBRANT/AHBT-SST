@@ -20,10 +20,14 @@ import {
   StatusChip,
   Textarea,
   designTokens,
+  tokensUi,
+  CelulaDupla,
+  SeloTexto,
+  FiltroRapido,
   type Coluna,
   type Tom,
 } from '@ui';
-import { Add24Regular, CheckmarkCircle24Regular, Delete24Regular, LockClosed16Regular } from '@fluentui/react-icons';
+import { Add24Regular, CheckmarkCircle24Regular, Delete24Regular, LockClosed16Regular, Search20Regular } from '@fluentui/react-icons';
 import {
   api,
   statusSessaoTreinamentoLabel,
@@ -66,6 +70,66 @@ const tomPorStatusTurma: Record<number, Tom> = {
   [StatusSessaoTreinamento.Concluida]: 'ok',
 };
 
+// ---- Peças visuais da lista de turmas (visual aprovado em 25/11/2026,
+// docs/mockups/listas-gsst-2026-11-25.html) ----
+
+// "2026-09-04T00:00:00" → "04/09/2026" (a lista mostrava a data crua, em formato americano).
+function dataBr(valor?: string | null): string {
+  if (!valor) return '—';
+  const [a, m, d] = valor.slice(0, 10).split('-');
+  return d && m && a ? `${d}/${m}/${a}` : valor;
+}
+
+// Separa a norma do nome do curso para o selo ("NR-06 Equipamento de…" → "NR-06" + "Equipamento de…").
+// Sem norma no nome, tenta a norma de referência do cadastro do curso.
+function normaECurso(nome: string, normaReferencia?: string | null): { norma: string | null; titulo: string } {
+  const m = /^\s*(NR)[\s-]*(\d{1,2})\b\s*[-–—:]?\s*(.*)$/i.exec(nome);
+  if (m && m[3]) return { norma: `NR-${m[2].padStart(2, '0')}`, titulo: m[3] };
+  const r = normaReferencia ? /(NR)[\s-]*(\d{1,2})\b/i.exec(normaReferencia) : null;
+  return { norma: r ? `NR-${r[2].padStart(2, '0')}` : null, titulo: nome };
+}
+
+// Anel de presença: fração de participantes com presença confirmada.
+function AnelPresenca({ confirmadas, total }: { confirmadas: number; total: number }) {
+  const raio = 11;
+  const circ = 2 * Math.PI * raio;
+  const fracao = total > 0 ? Math.min(1, confirmadas / total) : 0;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx="14" cy="14" r={raio} fill="none" strokeWidth="4" stroke={tokensUi.bordaSuave} />
+        <circle cx="14" cy="14" r={raio} fill="none" strokeWidth="4" strokeLinecap="round" stroke={tokensUi.status.ok.tinta} strokeDasharray={circ} strokeDashoffset={circ * (1 - fracao)} />
+      </svg>
+      <span>
+        <strong>{confirmadas}</strong>
+        <span style={{ color: designTokens.colorNeutralMedium }}>/{total}</span>
+      </span>
+    </span>
+  );
+}
+
+// Fotos de evidência: três pontos (a turma pede 3 fotos), cheios conforme as enviadas.
+function PontosFotos({ enviadas }: { enviadas: number }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} aria-label={`${enviadas} de 3 fotos`}>
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          aria-hidden="true"
+          style={{
+            width: 9, height: 9, borderRadius: '50%',
+            backgroundColor: i < enviadas ? tokensUi.status.ok.tinta : designTokens.colorNeutralLight,
+            boxShadow: i < enviadas ? 'none' : `inset 0 0 0 1px ${tokensUi.bordaSuave}`,
+          }}
+        />
+      ))}
+      <span style={{ fontSize: 11.5, color: designTokens.colorNeutralMedium, marginLeft: 4 }}>{enviadas}/3</span>
+    </span>
+  );
+}
+
+type FiltroTurma = 'todas' | 'andamento' | 'concluidas';
+
 // Turmas de treinamento (pedido do usuário, 04/09) — o responsável abre a turma já com os
 // participantes selecionados (ao contrário do DDS, onde o participante só aparece na hora da
 // biometria). O registro de presença por biometria, as fotos obrigatórias e o encerramento
@@ -81,6 +145,8 @@ export function TurmasTab() {
   const [turmas, setTurmas] = useState<SessaoTreinamento[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [cursos, setCursos] = useState<CursoTreinamento[]>([]);
+  const [filtroTurma, setFiltroTurma] = useState<FiltroTurma>('todas');
+  const [buscaTurma, setBuscaTurma] = useState('');
   const [trabalhadoresDaObra, setTrabalhadoresDaObra] = useState<Trabalhador[]>([]);
   const [novaTurma, setNovaTurma] = useState<NovaSessaoTreinamento>(turmaVazia);
   const [erro, setErro] = useState<string | null>(null);
@@ -239,6 +305,17 @@ export function TurmasTab() {
     !abaixoDoMinimo &&
     novaTurma.trabalhadoresIds.length > 0;
 
+  // Filtro e busca só valem fora do modo de seleção: "selecionar todas" agiria também sobre turmas
+  // escondidas pelo filtro, e a exclusão é definitiva.
+  const termoBusca = buscaTurma.trim().toLocaleLowerCase('pt-BR');
+  const turmasVisiveis = selecionando ? turmas : turmas.filter((t) => {
+    if (filtroTurma === 'andamento' && t.status !== StatusSessaoTreinamento.EmAndamento) return false;
+    if (filtroTurma === 'concluidas' && t.status !== StatusSessaoTreinamento.Concluida) return false;
+    if (!termoBusca) return true;
+    return [t.cursoTreinamentoNome || nomeCurso(t.cursoTreinamentoId), t.obraNome, t.numeroCertificado]
+      .some((v) => v?.toLocaleLowerCase('pt-BR').includes(termoBusca));
+  });
+
   const colunaSelecao: Coluna<SessaoTreinamento> = {
     chave: 'selecao',
     largura: '56px',
@@ -263,31 +340,42 @@ export function TurmasTab() {
 
   const colunas: Coluna<SessaoTreinamento>[] = [
     ...(souAdministrador && selecionando ? [colunaSelecao] : []),
-    { chave: 'certificado', rotulo: 'Nº certificado', render: (t) => t.numeroCertificado },
     {
       chave: 'curso',
       rotulo: 'Curso',
-      render: (t) => (
-        <>
-          {t.cursoTreinamentoNome || nomeCurso(t.cursoTreinamentoId)}
-          {souAdministrador && selecionando && travada(t) && (
-            <div>
-              <StatusChip tom="neutro" icone={<LockClosed16Regular />}>
-                {t.totalCertificadosEmitidos === 1 ? '1 certificado' : `${t.totalCertificadosEmitidos} certificados`}
-              </StatusChip>
-            </div>
-          )}
-        </>
-      ),
+      render: (t) => {
+        const curso = cursos.find((c) => c.id === t.cursoTreinamentoId);
+        const { norma, titulo } = normaECurso(t.cursoTreinamentoNome || nomeCurso(t.cursoTreinamentoId), curso?.normaReferencia);
+        return (
+          <>
+            <CelulaDupla inicio={norma ? <SeloTexto>{norma}</SeloTexto> : undefined} titulo={titulo} />
+            {souAdministrador && selecionando && travada(t) && (
+              <div style={{ marginTop: 4 }}>
+                <StatusChip tom="neutro" icone={<LockClosed16Regular />}>
+                  {t.totalCertificadosEmitidos === 1 ? '1 certificado' : `${t.totalCertificadosEmitidos} certificados`}
+                </StatusChip>
+              </div>
+            )}
+          </>
+        );
+      },
     },
-    { chave: 'obra', rotulo: 'Obra', render: (t) => t.obraNome },
-    { chave: 'data', rotulo: 'Data', render: (t) => t.dataRealizacao?.slice(0, 10) },
+    { chave: 'obra', rotulo: 'Obra', render: (t) => <span style={{ color: designTokens.colorNeutralMedium }}>{t.obraNome}</span> },
+    { chave: 'data', rotulo: 'Data', render: (t) => dataBr(t.dataRealizacao) },
     {
       chave: 'presenca',
       rotulo: 'Presença',
-      render: (t) => `${t.totalPresencasConfirmadas}/${t.totalParticipantes}`,
+      render: (t) => <AnelPresenca confirmadas={t.totalPresencasConfirmadas} total={t.totalParticipantes} />,
     },
-    { chave: 'fotos', rotulo: 'Fotos', render: (t) => `${t.totalFotosEvidencia}/3` },
+    { chave: 'fotos', rotulo: 'Fotos', render: (t) => <PontosFotos enviadas={t.totalFotosEvidencia} /> },
+    {
+      chave: 'certificado',
+      rotulo: 'Nº certificado',
+      render: (t) =>
+        t.numeroCertificado
+          ? <span style={{ fontFamily: 'ui-monospace, Consolas, monospace', fontSize: 12, padding: '3px 7px', borderRadius: 6, backgroundColor: designTokens.colorNeutralLight }}>{t.numeroCertificado}</span>
+          : <span style={{ fontSize: 12, fontStyle: 'italic', color: designTokens.colorNeutralMedium }}>Ainda não emitido</span>,
+    },
     {
       chave: 'status',
       rotulo: 'Status',
@@ -522,13 +610,39 @@ export function TurmasTab() {
       </div>
 
       <Card>
+        {turmas.length > 0 && !selecionando && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <FiltroRapido<FiltroTurma>
+              aria-label="Filtrar turmas pela situação"
+              valor={filtroTurma}
+              aoMudar={setFiltroTurma}
+              opcoes={[
+                { valor: 'todas', rotulo: 'Todas', contagem: turmas.length },
+                { valor: 'andamento', rotulo: 'Em andamento', contagem: turmas.filter((t) => t.status === StatusSessaoTreinamento.EmAndamento).length },
+                { valor: 'concluidas', rotulo: 'Concluídas', contagem: turmas.filter((t) => t.status === StatusSessaoTreinamento.Concluida).length },
+              ]}
+            />
+            <Input
+              aria-label="Buscar curso, obra ou número do certificado"
+              placeholder="Buscar curso, obra ou certificado"
+              contentBefore={<Search20Regular />}
+              value={buscaTurma}
+              onChange={(_, d) => setBuscaTurma(d.value)}
+              style={{ minWidth: 260 }}
+            />
+          </div>
+        )}
         <DataTable
           aria-label="Turmas de treinamento"
           colunas={colunas}
-          linhas={turmas}
+          linhas={turmasVisiveis}
           chaveLinha={(t) => t.id}
           carregando={carregandoLista}
-          vazio={{
+          tomLinha={(t) => tomPorStatusTurma[t.status] ?? 'neutro'}
+          vazio={turmas.length > 0 ? {
+            titulo: 'Nenhuma turma nesta seleção',
+            descricao: 'Troque o filtro ou a busca para ver outras turmas.',
+          } : {
             titulo: 'Nenhuma turma de treinamento criada ainda.',
             acao: { rotulo: 'Nova turma', aoClicar: () => setPainelAberto(true) },
           }}
