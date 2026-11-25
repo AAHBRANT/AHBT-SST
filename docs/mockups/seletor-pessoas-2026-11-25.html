@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seletor de Pessoas</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eeeeff; --surface:#fff; --borda:#e6e6ef; --borda-forte:#d6d6e2; --suave:#f3f3f8;
+  --texto:#1b1b24; --texto-2:#5c5c6e; --texto-3:#8b8b9c;
+  --verde:#16a34a; --verde-escuro:#0f7a37; --verde-claro:#e8f7ee;
+  --marsala:#670000; --marsala-claro:#f6e9e9; --ambar:#b45309; --ambar-claro:#fef3e2; --verm:#b91c1c; --verm-claro:#fdecec;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Roboto,system-ui,sans-serif;color:var(--texto);-webkit-font-smoothing:antialiased}
+.topo{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--borda);padding:12px 24px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.topo h1{font-size:15px;margin:0;font-weight:900}
+.topo h1 small{display:block;font-weight:400;color:var(--texto-3);font-size:12px}
+.seg{display:inline-flex;background:var(--suave);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;font:500 13px Roboto,system-ui,sans-serif;padding:7px 18px;border-radius:999px;cursor:pointer;color:var(--texto-2)}
+.seg button[aria-pressed=true]{background:var(--verde);color:#fff}
+main{max-width:1040px;margin:0 auto;padding:24px 20px 60px}
+.card{background:#fff;border-radius:16px;box-shadow:0 1px 2px rgba(20,20,40,.04),0 8px 24px -6px rgba(20,20,40,.08);padding:22px 24px}
+.etapa{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--texto-3);padding-bottom:10px;border-bottom:1px solid var(--borda);margin-bottom:16px}
+.grade{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 16px}
+.campo label{display:block;font-size:13px;font-weight:500;margin-bottom:6px}
+.campo .ctl{height:32px;border:1px solid var(--borda-forte);border-bottom-color:#8b8b9c;border-radius:6px;padding:0 10px;display:flex;align-items:center;font-size:13.5px;justify-content:space-between}
+.vista{display:none}.vista.ativa{display:block}
+.legenda{font-size:12px;color:var(--texto-2);margin:0 0 14px;display:flex;gap:8px;align-items:center}
+.legenda b{font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid var(--borda-forte);background:#fff}
+
+/* ANTES */
+.a-lista{border:1px solid var(--borda);border-radius:8px;overflow:hidden;margin-top:6px}
+.a-topo{display:flex;gap:10px;align-items:center;padding:8px 12px;background:var(--suave);border-bottom:1px solid var(--borda)}
+.a-busca{flex:1;height:32px;border:1px solid var(--borda-forte);border-radius:6px;background:#fff;display:flex;align-items:center;padding:0 10px;color:var(--texto-3);font-size:13.5px}
+.a-grid{display:grid;grid-template-columns:repeat(3,1fr);max-height:260px;overflow:auto}
+.a-grid div{display:flex;gap:10px;align-items:center;padding:8px 18px;border-bottom:1px solid var(--borda);font-size:14px;color:#333}
+.a-grid i{width:16px;height:16px;border:1.5px solid #666;border-radius:50%;flex:none}
+
+/* DEPOIS */
+.sel{border:1px solid var(--borda);border-radius:14px;overflow:hidden;margin-top:6px}
+.sel-cab{padding:12px 14px;border-bottom:1px solid var(--borda);display:flex;flex-direction:column;gap:10px;background:#fff}
+.linha1{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.busca{flex:1;min-width:240px;display:flex;align-items:center;gap:8px;background:var(--suave);border:1px solid transparent;border-radius:999px;padding:8px 14px;font-size:13.5px;color:var(--texto-3)}
+.busca:focus-within{background:#fff;border-color:var(--verde)}
+.busca input{border:0;background:none;outline:0;font:inherit;color:var(--texto);width:100%}
+.atalho{font-size:11px;color:var(--texto-3);border:1px solid var(--borda-forte);border-radius:5px;padding:1px 6px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip-f{border:1px solid var(--borda-forte);background:#fff;border-radius:999px;font:500 12.5px Roboto,system-ui,sans-serif;padding:5px 11px;cursor:pointer;color:var(--texto-2);display:inline-flex;gap:6px;align-items:center}
+.chip-f .n{font-size:11px;color:var(--texto-3)}
+.chip-f[aria-pressed=true]{background:var(--marsala);border-color:var(--marsala);color:#fff}
+.chip-f[aria-pressed=true] .n{color:#f3d6d6}
+.rot{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--texto-3);margin-right:4px}
+
+.escolhidos{background:var(--marsala-claro);padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid #ecd3d3;min-height:52px}
+.escolhidos .tit{font-size:12.5px;font-weight:700;color:var(--marsala);margin-right:4px}
+.pessoa-chip{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #ecd3d3;border-radius:999px;padding:3px 4px 3px 3px;font-size:12.5px;font-weight:500;animation:entra .28s cubic-bezier(.2,.9,.25,1.3)}
+.pessoa-chip .av{width:22px;height:22px;font-size:9.5px}
+.pessoa-chip button{border:0;background:none;width:20px;height:20px;border-radius:50%;cursor:pointer;color:var(--texto-3);font-size:14px;line-height:1}
+.pessoa-chip button:hover{background:var(--suave);color:var(--verm)}
+.vaz{font-size:12.5px;color:var(--texto-2)}
+.acoes-esc{margin-left:auto;display:flex;gap:6px}
+.btn-l{border:0;background:none;font:500 12.5px Roboto,system-ui,sans-serif;color:var(--marsala);cursor:pointer;padding:5px 8px;border-radius:8px;text-decoration:underline;text-underline-offset:2px}
+.btn-l:hover{background:#fff}
+@keyframes entra{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
+
+.lista{max-height:330px;overflow:auto;position:relative}
+.grupo{position:sticky;top:0;z-index:1;background:rgba(255,255,255,.95);backdrop-filter:blur(4px);font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--texto-3);padding:6px 14px;border-bottom:1px solid var(--borda)}
+.item{display:grid;grid-template-columns:22px 36px 1fr auto;gap:12px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--borda);cursor:pointer;transition:background .12s}
+.item:hover{background:var(--suave)}
+.item[aria-checked=true]{background:#fbf5f5}
+.item:focus-visible{outline:2px solid var(--verde);outline-offset:-2px}
+.cx{width:18px;height:18px;border-radius:5px;border:1.5px solid #8b8b9c;display:grid;place-items:center;transition:all .15s}
+.item[aria-checked=true] .cx{background:var(--marsala);border-color:var(--marsala)}
+.cx svg{opacity:0;transform:scale(.6);transition:all .18s cubic-bezier(.2,.9,.25,1.4)}
+.item[aria-checked=true] .cx svg{opacity:1;transform:none}
+.av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 12px Roboto,system-ui,sans-serif;color:#fff;flex:none}
+.nome{font-weight:700;font-size:13.5px}
+.sub{font-size:11.5px;color:var(--texto-3);margin-top:1px}
+.tag{font:700 10px Roboto,system-ui,sans-serif;letter-spacing:.04em;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.tag.ok{background:var(--verde-claro);color:var(--verde-escuro)}.tag.bl{background:var(--verm-claro);color:var(--verm)}.tag.at{background:var(--ambar-claro);color:var(--ambar)}
+.rodape{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 14px;background:var(--suave);font-size:12px;color:var(--texto-2);flex-wrap:wrap}
+.rodape kbd{font:inherit;font-size:11px;border:1px solid var(--borda-forte);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:#fff}
+.vazio{padding:30px;text-align:center;color:var(--texto-3);font-size:13px}
+
+.notas{margin-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.nota{background:#fff;border-radius:14px;padding:14px 16px;font-size:12.5px;line-height:1.5;color:var(--texto-2);box-shadow:0 1px 2px rgba(20,20,40,.04),0 8px 24px -6px rgba(20,20,40,.08)}
+.nota b{display:block;color:var(--texto);font-size:13px;margin-bottom:3px}
+.nota.alerta{border-left:3px solid #f59e0b}
+@media (max-width:760px){.grade{grid-template-columns:1fr 1fr}.a-grid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="topo">
+  <h1>APR · escolha dos Responsáveis<small>Mockup para aprovação · 25/11/2026 · nomes do ambiente de teste; matrícula, função e situação ilustrativas</small></h1>
+  <div class="seg" id="seg"><button aria-pressed="false" data-v="antes">Antes</button><button aria-pressed="true" data-v="depois">Depois</button></div>
+</div>
+<main>
+<div class="card">
+  <div class="etapa">Etapa 1 - Informações da APR</div>
+  <div class="grade">
+    <div class="campo"><label>Atividade</label><div class="ctl">1.1 Mobilização e instalação do canteiro <span>⌄</span></div></div>
+    <div class="campo"><label>Local / Frente</label><div class="ctl"></div></div>
+    <div class="campo"><label>Data</label><div class="ctl">25/11/2026</div></div>
+    <div class="campo"><label>Equipe</label><div class="ctl">Nenhuma <span>⌄</span></div></div>
+  </div>
+
+  <!-- ANTES -->
+  <section class="vista" id="v-antes" style="margin-top:18px">
+    <p class="legenda"><b>Antes</b> Como está hoje</p>
+    <div class="campo"><label>Responsáveis</label></div>
+    <div class="a-lista">
+      <div class="a-topo"><div class="a-busca">🔍&nbsp; Buscar por nome...</div><span style="color:#16a34a;font-weight:700;font-size:13px">Marcar todos</span><span style="font-size:12px;color:#888;font-weight:600">0 selecionado(s) de 202</span></div>
+      <div class="a-grid" id="aGrid"></div>
+    </div>
+  </section>
+
+  <!-- DEPOIS -->
+  <section class="vista ativa" id="v-depois" style="margin-top:18px">
+    <p class="legenda"><b>Depois</b> Busca, filtros, foto e quem já foi escolhido sempre à vista</p>
+    <div class="campo"><label>Responsáveis</label></div>
+    <div class="sel">
+      <div class="escolhidos" id="escolhidos" aria-live="polite"></div>
+      <div class="sel-cab">
+        <div class="linha1">
+          <label class="busca">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="busca" placeholder="Buscar por nome, matrícula ou função">
+            <span class="atalho">/</span>
+          </label>
+        </div>
+        <div class="chips" id="filtros"></div>
+      </div>
+      <div class="lista" id="lista" role="listbox" aria-multiselectable="true" aria-label="Responsáveis"></div>
+      <div class="rodape">
+        <span id="info"></span>
+        <span><kbd>↑</kbd> <kbd>↓</kbd> para andar · <kbd>Espaço</kbd> marca <button class="btn-l" id="marcarFiltrados" style="text-decoration:none"></button></span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="notas">
+  <div class="nota"><b>Quem já foi escolhido fica à vista</b>Os escolhidos aparecem no topo com foto e um × para tirar, sem rolar a lista atrás de quem está marcado.</div>
+  <div class="nota"><b>Só gente da obra da atividade</b>A lista começa filtrada pela obra da atividade escolhida (hoje aparecem os 202 de todas as obras). Para ver os outros, é só desligar o filtro.</div>
+  <div class="nota"><b>Filtro por função e pela equipe</b>Um toque mostra só Pedreiros, só Armadores ou só a equipe. "Marcar os 8 filtrados" aparece só com filtro ligado, para nunca marcar 202 por engano.</div>
+  <div class="nota"><b>Uma coluna, com foto e situação</b>Lista em ordem alfabética com letra fixa no topo, foto, matrícula, função e situação (Apto, Bloqueado). A caixa de marcar é quadrada, porque dá para escolher várias pessoas.</div>
+  <div class="nota alerta"><b>Vale para as 6 telas</b>A mesma lista é usada em APR, PT, DDS, Turmas, Acidentes e CIPA. Mudando a peça, todas ganham o novo jeito. "Salvar seleção como equipe" vai para a faixa dos escolhidos.</div>
+</div>
+</main>
+
+<script>
+const NOMES=['Ana','Bruno','Carlos','Daniela','Eduardo','Fernanda','Gabriel','Helena','Igor','Juliana','João','Lucas','Marcos','Paulo','Rafael'];
+const SOBRE=['Almeida Pereira','Costa Pereira','Lima Pereira','Nascimento Pereira','Oliveira Pereira','Pereira Silva','Rodrigues Silva','Santos Silva','Souza Gomes','Lima Santos'];
+const FUNC=['Pedreiro','Armador','Carpinteiro','Servente de Obras','Eletricista','Motorista Carreteiro','Encarregado de Obras','Soldador'];
+const CORES=['#7c3aed','#0d9488','#c2410c','#2563eb','#be185d','#15803d','#a16207','#4f46e5'];
+const pessoas=[];let k=0;
+for(const n of NOMES){for(let j=0;j<4;j++){const s=SOBRE[(k*3+j)%SOBRE.length];const f=FUNC[(k+j*5)%FUNC.length];
+  pessoas.push({id:'p'+k,nome:`${n} ${s}`,mat:'AUR-'+String(100+k*7%900).padStart(4,'0'),func:f,obra:k%9===0?'Consorcio Parque Roger':'Edifício Aurora',equipe:(k%5===0)?'Equipe Estrutura':null,sit:k%6===1?'bl':(k%11===3?'at':'ok'),cor:CORES[k%CORES.length]});k++;}}
+pessoas.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+const ini=n=>{const p=n.split(' ');return (p[0][0]+p[p.length-1][0]).toUpperCase()};
+const SIT={ok:['APTO','ok'],bl:['BLOQUEADO','bl'],at:['ATENÇÃO','at']};
+
+// ANTES
+document.getElementById('aGrid').innerHTML=pessoas.slice(0,30).map(p=>`<div><i></i>${p.nome}</div>`).join('');
+
+// DEPOIS
+const sel=new Set(['p3','p11']);
+let filtroObra=true, filtroFunc=null, filtroEquipe=false, busca='';
+const norm=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+function visiveis(){return pessoas.filter(p=>(!filtroObra||p.obra==='Edifício Aurora')&&(!filtroFunc||p.func===filtroFunc)&&(!filtroEquipe||p.equipe)&&(!busca||norm(p.nome+' '+p.mat+' '+p.func).includes(norm(busca))))}
+const ehFiltrado=()=>!!(filtroFunc||filtroEquipe||busca);
+function desenharFiltros(){
+  const base=pessoas.filter(p=>!filtroObra||p.obra==='Edifício Aurora');
+  const cont={};base.forEach(p=>cont[p.func]=(cont[p.func]||0)+1);
+  const topF=Object.entries(cont).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  document.getElementById('filtros').innerHTML=
+   `<span class="rot">Filtros</span>
+    <button class="chip-f" data-f="obra" aria-pressed="${filtroObra}">Só da obra Edifício Aurora <span class="n">${pessoas.filter(p=>p.obra==='Edifício Aurora').length}</span></button>
+    <button class="chip-f" data-f="equipe" aria-pressed="${filtroEquipe}">Equipe Estrutura <span class="n">${base.filter(p=>p.equipe).length}</span></button>
+    <span style="width:1px;height:18px;background:var(--borda-forte);margin:0 4px"></span>
+    ${topF.map(([f,n])=>`<button class="chip-f" data-func="${f}" aria-pressed="${filtroFunc===f}">${f} <span class="n">${n}</span></button>`).join('')}`;
+}
+function desenharEscolhidos(){
+  const el=document.getElementById('escolhidos');const lista=pessoas.filter(p=>sel.has(p.id));
+  el.innerHTML=`<span class="tit">${lista.length} ${lista.length===1?'escolhido':'escolhidos'}</span>`+
+   (lista.length?lista.map(p=>`<span class="pessoa-chip"><span class="av" style="background:${p.cor}">${ini(p.nome)}</span>${p.nome}<button aria-label="Tirar ${p.nome}" data-tirar="${p.id}">×</button></span>`).join(''):'<span class="vaz">Ninguém ainda. Marque na lista abaixo ou escolha uma equipe.</span>')+
+   (lista.length?`<span class="acoes-esc"><button class="btn-l">Salvar como equipe</button><button class="btn-l" data-limpar>Limpar</button></span>`:'');
+}
+function desenharLista(){
+  const v=visiveis();const el=document.getElementById('lista');
+  if(!v.length){el.innerHTML=`<div class="vazio">Ninguém encontrado com esses filtros.</div>`}else{
+  let letra='',h='';
+  for(const p of v){const L=p.nome[0];if(L!==letra){letra=L;h+=`<div class="grupo">${L}</div>`}
+    const s=SIT[p.sit];
+    h+=`<div class="item" role="option" tabindex="0" data-id="${p.id}" aria-checked="${sel.has(p.id)}">
+      <span class="cx"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>
+      <span class="av" style="background:${p.cor}">${ini(p.nome)}</span>
+      <span><div class="nome">${p.nome}</div><div class="sub">${p.mat} · ${p.func}${p.equipe?' · '+p.equipe:''}${filtroObra?'':' · '+p.obra}</div></span>
+      <span class="tag ${s[1]}">${s[0]}</span></div>`}
+  el.innerHTML=h;}
+  document.getElementById('info').textContent=`Mostrando ${v.length} de ${pessoas.length}`+(filtroObra?' · obra Edifício Aurora':'');
+  const b=document.getElementById('marcarFiltrados');
+  if(ehFiltrado()&&v.length){const todos=v.every(p=>sel.has(p.id));b.style.display='';b.textContent=(todos?`· Desmarcar os ${v.length} filtrados`:`· Marcar os ${v.length} filtrados`);}else b.style.display='none';
+}
+function tudo(){desenharFiltros();desenharEscolhidos();desenharLista()}
+document.addEventListener('click',e=>{
+  const it=e.target.closest('.item');if(it){const id=it.dataset.id;sel.has(id)?sel.delete(id):sel.add(id);it.setAttribute('aria-checked',sel.has(id));desenharEscolhidos();desenharLista();return}
+  const t=e.target.closest('[data-tirar]');if(t){sel.delete(t.dataset.tirar);desenharEscolhidos();desenharLista();return}
+  if(e.target.closest('[data-limpar]')){sel.clear();desenharEscolhidos();desenharLista();return}
+  const f=e.target.closest('.chip-f');if(f){if(f.dataset.f==='obra')filtroObra=!filtroObra;else if(f.dataset.f==='equipe')filtroEquipe=!filtroEquipe;else filtroFunc=filtroFunc===f.dataset.func?null:f.dataset.func;tudo();return}
+  if(e.target.id==='marcarFiltrados'){const v=visiveis();const todos=v.every(p=>sel.has(p.id));v.forEach(p=>todos?sel.delete(p.id):sel.add(p.id));desenharEscolhidos();desenharLista();return}
+  const s=e.target.closest('#seg button');if(s){document.querySelectorAll('#seg button').forEach(b=>b.setAttribute('aria-pressed',b===s));document.getElementById('v-antes').classList.toggle('ativa',s.dataset.v==='antes');document.getElementById('v-depois').classList.toggle('ativa',s.dataset.v==='depois')}
+});
+document.getElementById('busca').addEventListener('input',e=>{busca=e.target.value;desenharLista()});
+document.addEventListener('keydown',e=>{
+  if(e.key==='/'&&document.activeElement.tagName!=='INPUT'){e.preventDefault();document.getElementById('busca').focus();return}
+  const it=document.activeElement.closest&&document.activeElement.closest('.item');if(!it)return;
+  if(e.key===' '||e.key==='Enter'){e.preventDefault();it.click();document.querySelector(`.item[data-id="${it.dataset.id}"]`)?.focus()}
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const its=[...document.querySelectorAll('.item')];const i=its.indexOf(it);its[Math.max(0,Math.min(its.length-1,i+(e.key==='ArrowDown'?1:-1)))].focus()}
+});
+tudo();
+</script>
+</body>
+</html>

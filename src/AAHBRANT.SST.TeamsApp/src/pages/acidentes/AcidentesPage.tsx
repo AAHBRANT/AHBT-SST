@@ -14,7 +14,6 @@ import {
   FormRodape,
   FormSection,
   Input,
-  ListaSelecaoMultipla,
   Select,
   StatusChip,
   Text,
@@ -43,6 +42,7 @@ import {
   type Usuario,
   type Trabalhador,
 } from '../../lib/api';
+import { SeletorTrabalhadores } from '../../components/SeletorTrabalhadores';
 import { HhtMensalTab } from './HhtMensalTab';
 import { dataBr } from '../../lib/datas';
 import { useFiltroObra } from '../../lib/ObraAtivaContext';
@@ -719,11 +719,9 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                     }
                   >
                     {nova.obraId ? (
-                      <ListaSelecaoMultipla
+                      <SeletorTrabalhadores
                         aria-label="Funcionários envolvidos"
-                        opcoes={trabalhadores
-                          .filter((t) => !(nova.testemunhas ?? []).includes(t.id))
-                          .map((t) => ({ id: t.id, rotulo: t.matricula ? `${t.nome} (${t.matricula})` : t.nome }))}
+                        trabalhadores={trabalhadores.filter((t) => !(nova.testemunhas ?? []).includes(t.id))}
                         selecionados={nova.trabalhadoresIds ?? []}
                         aoMudar={(atualizar) => alterar('trabalhadoresIds', { trabalhadoresIds: atualizar(nova.trabalhadoresIds ?? []) })}
                       />
@@ -752,11 +750,9 @@ export function AcidentesPage({ tipoFixo }: { tipoFixo?: number } = {}) {
                     }
                   >
                     {nova.obraId ? (
-                      <ListaSelecaoMultipla
+                      <SeletorTrabalhadores
                         aria-label="Testemunhas"
-                        opcoes={trabalhadores
-                          .filter((t) => !(nova.trabalhadoresIds ?? []).includes(t.id))
-                          .map((t) => ({ id: t.id, rotulo: t.matricula ? `${t.nome} (${t.matricula})` : t.nome }))}
+                        trabalhadores={trabalhadores.filter((t) => !(nova.trabalhadoresIds ?? []).includes(t.id))}
                         selecionados={nova.testemunhas ?? []}
                         aoMudar={(atualizar) => {
                           setNova((atual) => ({ ...atual, testemunhas: atualizar(atual.testemunhas ?? []) }));
