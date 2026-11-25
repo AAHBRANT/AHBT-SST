@@ -3424,6 +3424,17 @@ public static class NovidadesSeeder
                     "A data da turma aparecia como 2026-09-04 e presença e fotos eram só números, como 0/7 e 0/3.",
                     "A data aparece como 04/09/2026, a norma do curso ganha um selo, a presença vira um anel de progresso e as fotos viram três pontos. Há filtro por situação e busca por curso, obra ou certificado."),
             }),
+        new(
+            Versao: "5.200.0",
+            Titulo: "Foto do funcionário nas Entregas de EPI",
+            DataPublicacao: new DateTime(2026, 11, 25, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Entregas de EPI mostram a foto do cadastro do funcionário",
+                    "A lista de entregas mostrava só as iniciais do funcionário.",
+                    "Quem tem foto no cadastro aparece com a foto, como na tela de Pessoas. Quem ainda não tem continua com as iniciais."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
