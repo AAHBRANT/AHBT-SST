@@ -14,7 +14,6 @@ import {
   FormRodape,
   FormSection,
   Input,
-  ListaSelecaoMultipla,
   PageHeader,
   StatusChip,
   Text,
@@ -33,6 +32,7 @@ import {
   type Trabalhador,
   type VotoApuradoCipa,
 } from '../../lib/api';
+import { SeletorTrabalhadores } from '../../components/SeletorTrabalhadores';
 import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { PainelUrnaCipa } from './urna/PainelUrnaCipa';
 
@@ -285,12 +285,9 @@ export function ProcessoEleitoralCipaDetalhePage() {
           {!jaApurado && !urnaAberta && detalhe.processo.status !== StatusProcessoEleitoralCipa.VotacaoRealizada && (
             <Card titulo="Inscrever candidato">
               <FormSection titulo="Dados do Candidato" primeira>
-                <ListaSelecaoMultipla
+                <SeletorTrabalhadores
                   aria-label="Funcionários para inscrever"
-                  placeholderBusca="Buscar funcionário..."
-                  opcoes={trabalhadores
-                    .filter((t) => !t.dataDemissao && !detalhe.candidatos.some((c) => c.trabalhadorId === t.id))
-                    .map((t) => ({ id: t.id, rotulo: t.matricula ? `${t.nome} (${t.matricula})` : t.nome }))}
+                  trabalhadores={trabalhadores.filter((t) => !t.dataDemissao && !detalhe.candidatos.some((c) => c.trabalhadorId === t.id))}
                   selecionados={selecionados}
                   aoMudar={(atualizar) => setSelecionados(atualizar)}
                 />

@@ -9,7 +9,6 @@ import {
   CampoData,
   CelulaDupla,
   FiltroRapido,
-  ListaSelecaoMultipla,
   PageHeader,
   PainelCriacaoInline,
   nivelVencimento,
@@ -31,6 +30,7 @@ import {
 import { Add24Regular, Delete24Regular, DocumentPdf24Regular, Open24Regular, PeopleTeamAdd24Regular, Play24Regular, Search20Regular, Warning20Regular } from '@fluentui/react-icons';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { FotoTrabalhador } from '../../components/FotoTrabalhador';
+import { SeletorTrabalhadores } from '../../components/SeletorTrabalhadores';
 import { api, StatusApr, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { dataBr, hojeIso } from '../../lib/datas';
@@ -426,71 +426,6 @@ export function AprsTab() {
                 />
               </Field>
             </Campo>
-            <Campo span={12}>
-              {!montandoEquipe ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <Button
-                    icon={<PeopleTeamAdd24Regular />}
-                    onClick={abrirMontagemEquipe}
-                    disabled={!obraIdAtividadeSelecionada || novaApr.responsaveisIds.length === 0}
-                  >
-                    Salvar seleção como equipe
-                  </Button>
-                  <span style={{ fontSize: 12, opacity: 0.75 }}>
-                    {!obraIdAtividadeSelecionada
-                      ? 'Escolha a atividade para saber de qual obra é a equipe.'
-                      : novaApr.responsaveisIds.length === 0
-                        ? 'Marque os responsáveis que formam a equipe.'
-                        : `${novaApr.responsaveisIds.length} responsável(is) marcado(s).`}
-                  </span>
-                </div>
-              ) : (
-                <FormGrid>
-                  <Campo span={4}>
-                    <Field label="Nome da equipe" required>
-                      <Input
-                        value={nomeNovaEquipe}
-                        onChange={(_, d) => setNomeNovaEquipe(d.value)}
-                        placeholder="Ex.: Armação – Frente 2"
-                      />
-                    </Field>
-                  </Campo>
-                  <Campo span={4}>
-                    <Field label="Encarregado">
-                      <Select value={encarregadoNovaEquipe} onChange={(_, d) => setEncarregadoNovaEquipe(d.value)}>
-                        <option value="">Sem encarregado definido</option>
-                        {responsaveisSelecionados.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.nome}
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
-                  </Campo>
-                  <Campo span={12}>
-                    <span style={{ fontSize: 12 }}>
-                      {responsaveisSelecionados.length} membro(s): {responsaveisSelecionados.map((t) => t.nome).join(', ')}.
-                      {seraoMovidos.length > 0 &&
-                        ` ${seraoMovidos.length} já está(ão) em outra equipe e será(ão) movido(s) para esta.`}
-                    </span>
-                  </Campo>
-                  <Campo span={12}>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <Button
-                        appearance="primary"
-                        onClick={salvarEquipe}
-                        disabled={salvandoEquipe || nomeNovaEquipe.trim() === ''}
-                      >
-                        Criar equipe
-                      </Button>
-                      <Button onClick={() => setMontandoEquipe(false)} disabled={salvandoEquipe}>
-                        Cancelar
-                      </Button>
-                    </div>
-                  </Campo>
-                </FormGrid>
-              )}
-            </Campo>
             {/* 05/11: quem elabora e quem supervisiona — assinam por biometria, como os envolvidos. */}
             <Campo span={6}>
               <Field label="Elaboração (técnico / encarregado)">
@@ -524,14 +459,71 @@ export function AprsTab() {
             </Campo>
             <Campo span={12}>
               <Field label="Responsáveis">
-                <ListaSelecaoMultipla
+                <SeletorTrabalhadores
                   aria-label="Responsáveis"
-                  opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome }))}
+                  trabalhadores={trabalhadores}
+                  obraId={obraIdAtividadeSelecionada}
+                  equipes={equipesDaObra}
                   selecionados={novaApr.responsaveisIds}
                   aoMudar={(atualizar) => setNovaApr((atual) => ({ ...atual, responsaveisIds: atualizar(atual.responsaveisIds) }))}
+                  acoesEscolhidos={
+                    obraIdAtividadeSelecionada && !montandoEquipe ? (
+                      <Button size="small" appearance="subtle" icon={<PeopleTeamAdd24Regular />} onClick={abrirMontagemEquipe}>
+                        Salvar como equipe
+                      </Button>
+                    ) : undefined
+                  }
                 />
               </Field>
             </Campo>
+            {montandoEquipe && (
+              <Campo span={12}>
+                  <FormGrid>
+                    <Campo span={4}>
+                      <Field label="Nome da equipe" required>
+                        <Input
+                          value={nomeNovaEquipe}
+                          onChange={(_, d) => setNomeNovaEquipe(d.value)}
+                          placeholder="Ex.: Armação – Frente 2"
+                        />
+                      </Field>
+                    </Campo>
+                    <Campo span={4}>
+                      <Field label="Encarregado">
+                        <Select value={encarregadoNovaEquipe} onChange={(_, d) => setEncarregadoNovaEquipe(d.value)}>
+                          <option value="">Sem encarregado definido</option>
+                          {responsaveisSelecionados.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.nome}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                    </Campo>
+                    <Campo span={12}>
+                      <span style={{ fontSize: 12 }}>
+                        {responsaveisSelecionados.length} membro(s): {responsaveisSelecionados.map((t) => t.nome).join(', ')}.
+                        {seraoMovidos.length > 0 &&
+                          ` ${seraoMovidos.length} já está(ão) em outra equipe e será(ão) movido(s) para esta.`}
+                      </span>
+                    </Campo>
+                    <Campo span={12}>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Button
+                          appearance="primary"
+                          onClick={salvarEquipe}
+                          disabled={salvandoEquipe || nomeNovaEquipe.trim() === ''}
+                        >
+                          Criar equipe
+                        </Button>
+                        <Button onClick={() => setMontandoEquipe(false)} disabled={salvandoEquipe}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    </Campo>
+                  </FormGrid>
+              </Campo>
+            )}
           </FormGrid>
           <FormRodape>
             <Button onClick={fecharPainel}>Cancelar</Button>
