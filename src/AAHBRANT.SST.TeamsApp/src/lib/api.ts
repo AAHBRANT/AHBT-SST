@@ -2205,6 +2205,8 @@ export interface Apr {
   // 05/11: quem elabora e quem supervisiona (assinam por biometria).
   elaboradorTrabalhadorId?: string | null;
   elaboradorNome?: string | null;
+  // Foto de quem elabora na lista (25/11/2026).
+  elaboradorTemFoto?: boolean;
   supervisorTrabalhadorId?: string | null;
   supervisorNome?: string | null;
 }
@@ -2470,6 +2472,9 @@ export interface PermissaoTrabalho {
   validade?: string | null;
   responsavelExecucaoUsuarioId?: string | null;
   responsavelExecucaoUsuarioNome?: string | null;
+  // Foto do responsável pela execução na lista (25/11/2026).
+  responsavelExecucaoTrabalhadorId?: string | null;
+  responsavelExecucaoTemFoto?: boolean;
   responsavelAreaUsuarioId?: string | null;
   responsavelAreaUsuarioNome?: string | null;
   status: number;
@@ -3182,6 +3187,9 @@ export interface Inspecao {
   data: string;
   responsavelUsuarioId: string;
   responsavelUsuarioNome: string;
+  // Foto do responsável na lista (25/11/2026): funcionário vinculado e se ele tem foto.
+  responsavelTrabalhadorId?: string | null;
+  responsavelTemFoto?: boolean;
   status: number;
   totalItens: number;
   itensRespondidos: number;
@@ -3308,6 +3316,9 @@ export interface TemaInspecaoResumo {
   totalItensChecklist: number;
   // Periodicidade sugerida para os itens novos do tema.
   periodicidadeDiasPadrao?: number | null;
+  // Ponto de prazo no card (25/11/2026): itens vencendo em até 7 dias e itens fora do prazo.
+  itensVencendo?: number;
+  itensForaDoPrazo?: number;
 }
 
 export interface ItemInspecionavelResumo {
@@ -3771,6 +3782,10 @@ export interface DdsSemanal {
   encerradaEm?: string | null;
   totalDiasRegistrados: number;
   totalDiasConcluidos: number;
+  // Lista de semanas (25/11/2026): dias com registro e se foram concluídos; foto do responsável.
+  diasResumo?: { data: string; concluido: boolean }[];
+  responsavelTrabalhadorId?: string | null;
+  responsavelTemFoto?: boolean;
 }
 
 export interface NovaDdsSemanal {

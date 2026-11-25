@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BotaoAcao,
@@ -6,7 +6,12 @@ import {
   Campo,
   Card,
   CampoData,
+  CelulaDupla,
+  FiltroRapido,
   ListaSelecaoMultipla,
+  PageHeader,
+  PainelCriacaoInline,
+  tokensUi,
   DataTable,
   Field,
   FeedbackInline,
@@ -20,9 +25,9 @@ import {
   type Coluna,
   type Tom,
 } from '@ui';
-import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { Add24Regular, Delete24Regular, DocumentPdf24Regular, Open24Regular, Play24Regular, Search20Regular, ShieldCheckmark20Regular } from '@fluentui/react-icons';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
-import { BotaoAbrirDetalhe } from '../../components/BotaoAbrirDetalhe';
+import { FotoTrabalhador } from '../../components/FotoTrabalhador';
 import {
   api,
   StatusPt,
@@ -67,6 +72,41 @@ const tomPorStatusPt: Record<number, Tom> = {
 
 // Onda 2 Task 6 (camada ui/): lista + formulário de criação de Permissão de Trabalho. Mesmo padrão
 // de AprsTab.tsx (Task 11) — Card + FormSection + DataTable, seleção de responsáveis em ChipCheckboxGroup.
+// Visual e utilidade aprovados em 25/11/2026 (docs/mockups/dds-apr-pt-visual-2026-11-25.html).
+type FiltroPt = 'todas' | 'vigor' | 'elaboracao' | 'suspensas' | 'encerradas';
+
+function diaLocal(iso: string): number {
+  return new Date(iso.slice(0, 10) + 'T00:00:00').getTime();
+}
+
+// "Em vigor hoje": autorizada e hoje dentro do período da PT (data até a validade, ou só a data).
+function emVigorHoje(pt: PermissaoTrabalho): boolean {
+  if (pt.status !== StatusPt.Autorizada) return false;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const t = hoje.getTime();
+  return diaLocal(pt.data) <= t && t <= diaLocal(pt.validade ?? pt.data);
+}
+
+function passaNoFiltroPt(pt: PermissaoTrabalho, f: FiltroPt): boolean {
+  switch (f) {
+    case 'vigor': return emVigorHoje(pt);
+    case 'elaboracao': return pt.status === StatusPt.EmElaboracao;
+    case 'suspensas': return pt.status === StatusPt.Suspensa;
+    case 'encerradas': return pt.status === StatusPt.Encerrada;
+    default: return true;
+  }
+}
+
+function tomDaLinhaPt(pt: PermissaoTrabalho): Tom {
+  if (pt.status === StatusPt.Suspensa) return 'atencao';
+  if (emVigorHoje(pt)) return 'ok';
+  if (pt.status === StatusPt.Encerrada) return 'info';
+  return 'neutro';
+}
+
+const hora = (h?: string | null) => (h ? h.slice(0, 5) : null);
+
 export function PermissoesTrabalhoTab() {
   const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
@@ -82,6 +122,9 @@ export function PermissoesTrabalhoTab() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoLista, setCarregandoLista] = useState(true);
+  const [painelAberto, setPainelAberto] = useState(false);
+  const [filtro, setFiltro] = useState<FiltroPt>('todas');
+  const [busca, setBusca] = useState('');
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -131,6 +174,7 @@ export function PermissoesTrabalhoTab() {
         responsavelAreaUsuarioId: novaPt.responsavelAreaUsuarioId || null,
       });
       setNovaPt(ptVazia());
+      setPainelAberto(false);
       await carregar();
       sucessoToast('Permissão de Trabalho criada com sucesso.');
     } catch (e) {
@@ -151,12 +195,97 @@ export function PermissoesTrabalhoTab() {
     }
   }
 
+  function fecharPainel() {
+    setPainelAberto(false);
+    setNovaPt(ptVazia());
+  }
+
+  function abrirPdf(pt: PermissaoTrabalho) {
+    void visualizar({ titulo: 'PDF da Permissão de Trabalho', nomeArquivo: `pt-${pt.id}.pdf`, obter: () => api.permissoesTrabalho.exportarPdf(pt.id) });
+  }
+
+  const contagem = useMemo(() => {
+    const c: Record<FiltroPt, number> = { todas: permissoes.length, vigor: 0, elaboracao: 0, suspensas: 0, encerradas: 0 };
+    for (const pt of permissoes) for (const f of ['vigor', 'elaboracao', 'suspensas', 'encerradas'] as const) if (passaNoFiltroPt(pt, f)) c[f] += 1;
+    return c;
+  }, [permissoes]);
+  const termo = busca.trim().toLocaleLowerCase('pt-BR');
+  const permissoesVisiveis = permissoes.filter(
+    (pt) =>
+      passaNoFiltroPt(pt, filtro) &&
+      (!termo ||
+        [pt.numeroPt, pt.atividadeNome, pt.descricaoAtividade, pt.local, pt.obraNome, pt.empresaExecutante, pt.responsavelExecucaoUsuarioNome]
+          .some((v) => v?.toLocaleLowerCase('pt-BR').includes(termo))),
+  );
+
+  const aviso = (texto: string) => <span style={{ color: tokensUi.status.atencao.tinta, fontWeight: 600 }}>{texto}</span>;
+  const fonteDoc = { fontFamily: "'Roboto Mono', ui-monospace, monospace" };
   const colunas: Coluna<PermissaoTrabalho>[] = [
-    { chave: 'numeroPt', rotulo: 'Nº PT', render: (pt) => pt.numeroPt ?? '-' },
-    { chave: 'atividadeNome', rotulo: 'Atividade' },
-    { chave: 'local', rotulo: 'Local' },
-    { chave: 'data', rotulo: 'Data', render: (pt) => dataBr(pt.data) },
-    { chave: 'validade', rotulo: 'Validade', render: (pt) => dataBr(pt.validade) },
+    {
+      chave: 'atividadeNome',
+      rotulo: 'Atividade',
+      render: (pt) => {
+        const faltando = pt.status === StatusPt.EmElaboracao
+          ? [!pt.horarioInicio && !pt.horarioFim ? 'horário' : null, !pt.responsavelExecucaoUsuarioId ? 'responsáveis' : null].filter(Boolean)
+          : [];
+        return (
+          <CelulaDupla
+            inicio={
+              <span aria-hidden="true" style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', color: 'var(--sst-acao-marca-tinta)', backgroundColor: 'var(--sst-acao-marca-wash)' }}>
+                <ShieldCheckmark20Regular />
+              </span>
+            }
+            titulo={pt.descricaoAtividade || pt.atividadeNome}
+            detalhe={
+              <>
+                {pt.numeroPt && <span style={fonteDoc}>{pt.numeroPt}</span>}
+                {pt.empresaExecutante && <> · {pt.empresaExecutante}</>}
+                {faltando.length > 0 && <> · {aviso(`sem ${faltando.join(' e sem ')}`)}</>}
+              </>
+            }
+          />
+        );
+      },
+    },
+    {
+      chave: 'local',
+      rotulo: 'Obra / local',
+      render: (pt) => <CelulaDupla tituloLeve titulo={pt.obraNome ?? '—'} detalhe={pt.local || undefined} />,
+    },
+    {
+      chave: 'data',
+      rotulo: 'Data e horário',
+      render: (pt) => {
+        const inicio = hora(pt.horarioInicio);
+        const fim = hora(pt.horarioFim);
+        const horario = inicio && fim ? `${inicio} às ${fim}` : inicio ? `a partir das ${inicio}` : fim ? `até ${fim}` : 'horário não definido';
+        return (
+          <CelulaDupla
+            tituloLeve
+            titulo={<span style={{ fontVariantNumeric: 'tabular-nums' }}>{dataBr(pt.data)}{pt.validade && pt.validade.slice(0, 10) !== pt.data.slice(0, 10) ? ` a ${dataBr(pt.validade)}` : ''}</span>}
+            detalhe={
+              emVigorHoje(pt)
+                ? <><strong style={{ color: tokensUi.status.ok.tinta }}>em vigor</strong> · {horario}</>
+                : horario
+            }
+          />
+        );
+      },
+    },
+    {
+      chave: 'responsavel',
+      rotulo: 'Responsável pela execução',
+      render: (pt) =>
+        pt.responsavelExecucaoUsuarioNome ? (
+          <CelulaDupla
+            tituloLeve
+            inicio={<FotoTrabalhador nome={pt.responsavelExecucaoUsuarioNome} trabalhadorId={pt.responsavelExecucaoTrabalhadorId ?? ''} temFoto={pt.responsavelExecucaoTemFoto} tamanho={36} />}
+            titulo={pt.responsavelExecucaoUsuarioNome}
+          />
+        ) : (
+          <span style={{ fontSize: 12 }}>{aviso('Não definido')}</span>
+        ),
+    },
     {
       chave: 'status',
       rotulo: 'Status',
@@ -172,7 +301,26 @@ export function PermissoesTrabalhoTab() {
         </FeedbackInline>
       )}
 
-      <Card titulo="Permissão de Trabalho (PT)">
+      {/* 25/11/2026 (docs/mockups/dds-apr-pt-visual-2026-11-25.html): o formulário ficava sempre aberto,
+          com a grade de todas as pessoas, e a lista só aparecia no fim da página. Agora ele abre pelo
+          botão "Nova PT" (PainelCriacaoInline, mesmo padrão de Inspeções e DDS). Nenhum campo mudou. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader
+        titulo="Permissões de Trabalho"
+        acoes={
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-pt"
+          >
+            {painelAberto ? 'Fechar' : 'Nova PT'}
+          </Button>
+        }
+      />
+      <div id="painel-nova-pt">
+      <PainelCriacaoInline aberto={painelAberto} titulo="Nova Permissão de Trabalho">
         <FormSection titulo="Dados Gerais" numero={1} primeira>
           <FormGrid>
             <Campo span={3}>
@@ -301,6 +449,7 @@ export function PermissoesTrabalhoTab() {
             </Campo>
           </FormGrid>
           <FormRodape>
+            <Button onClick={fecharPainel}>Cancelar</Button>
             <Button
               appearance="primary"
               icon={<Add24Regular />}
@@ -311,32 +460,78 @@ export function PermissoesTrabalhoTab() {
             </Button>
           </FormRodape>
         </FormSection>
+      </PainelCriacaoInline>
+      </div>
 
+      <Card densidade="compacta">
+        {permissoes.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <FiltroRapido<FiltroPt>
+              aria-label="Filtrar Permissões de Trabalho pela situação"
+              valor={filtro}
+              aoMudar={setFiltro}
+              opcoes={[
+                { valor: 'todas', rotulo: 'Todas', contagem: contagem.todas },
+                { valor: 'vigor', rotulo: 'Em vigor hoje', contagem: contagem.vigor },
+                { valor: 'elaboracao', rotulo: 'Em elaboração', contagem: contagem.elaboracao },
+                { valor: 'suspensas', rotulo: 'Suspensas', contagem: contagem.suspensas },
+                { valor: 'encerradas', rotulo: 'Encerradas', contagem: contagem.encerradas },
+              ]}
+            />
+            <Input
+              aria-label="Buscar número, atividade, local ou empresa"
+              placeholder="Buscar nº, atividade, local ou empresa"
+              contentBefore={<Search20Regular />}
+              value={busca}
+              onChange={(_, d) => setBusca(d.value)}
+              style={{ minWidth: 260 }}
+            />
+          </div>
+        )}
         <DataTable
           aria-label="Permissões de Trabalho cadastradas"
           colunas={colunas}
-          linhas={permissoes}
+          linhas={permissoesVisiveis}
           chaveLinha={(pt) => pt.id}
           carregando={carregandoLista}
-          vazio={{ titulo: 'Nenhuma Permissão de Trabalho cadastrada ainda.' }}
+          tomLinha={tomDaLinhaPt}
+          vazio={permissoes.length > 0
+            ? { titulo: 'Nenhuma PT nesta seleção', descricao: 'Troque o filtro ou a busca para ver outras PTs.' }
+            : { titulo: 'Nenhuma Permissão de Trabalho cadastrada ainda.', acao: { rotulo: 'Nova PT', aoClicar: () => setPainelAberto(true) } }}
           // 18/11/2026: PT já autorizada (ou suspensa/encerrada) abre o PDF; em elaboração segue para o
           // preenchimento. Assinatura da equipe e demais ações ficam no detalhe, pelo "Abrir".
           aoClicarLinha={(pt) =>
             pt.status !== StatusPt.EmElaboracao
-              ? void visualizar({ titulo: 'PDF da Permissão de Trabalho', nomeArquivo: `pt-${pt.id}.pdf`, obter: () => api.permissoesTrabalho.exportarPdf(pt.id) })
+              ? abrirPdf(pt)
               : navigate(`/operacao/pt/${pt.id}`)
           }
+          // Ação principal (25/11/2026): em elaboração → Continuar (é o próprio detalhe); autorizada ou
+          // encerrada → PDF + Abrir; suspensa → Abrir.
           acoesLinha={(pt) => (
             <>
-              <BotaoAbrirDetalhe aoAbrir={() => navigate(`/operacao/pt/${pt.id}`)} />
+              {pt.status === StatusPt.EmElaboracao ? (
+                <BotaoAcao tom="ver" icon={<Play24Regular />} aria-label="Continuar a PT" onClick={(e) => { e.stopPropagation(); navigate(`/operacao/pt/${pt.id}`); }}>
+                  Continuar
+                </BotaoAcao>
+              ) : (
+                <>
+                  {(pt.status === StatusPt.Autorizada || pt.status === StatusPt.Encerrada) && navigator.onLine && (
+                    <BotaoAcao tom="baixar" icon={<DocumentPdf24Regular />} aria-label="Abrir o PDF da PT" onClick={(e) => { e.stopPropagation(); abrirPdf(pt); }}>
+                      PDF
+                    </BotaoAcao>
+                  )}
+                  <BotaoAcao tom="ver" icon={<Open24Regular />} aria-label="Abrir detalhe da PT" title="Abrir detalhe" onClick={(e) => { e.stopPropagation(); navigate(`/operacao/pt/${pt.id}`); }} />
+                </>
+              )}
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
               {souAdministrador && !travados.has(pt.id) && (
-                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(pt.id)} aria-label="Excluir" />
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={(e) => { e.stopPropagation(); void excluir(pt.id); }} aria-label="Excluir" />
               )}
             </>
           )}
         />
       </Card>
+      </div>
       {dialogElement}
       {dialogoVisualizador}
     </>

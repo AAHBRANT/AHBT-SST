@@ -216,4 +216,32 @@ public class TemasInspecaoTests
         Assert.Equal(v2Id, resumo.ChecklistModeloId);
         Assert.Equal(2, resumo.TotalItensChecklist);
     }
+
+    // Ponto de prazo no card do tema (25/11/2026): quantos itens vencem em até 7 dias e quantos já
+    // passaram do prazo. Sem periodicidade, o item não conta em nenhum dos dois.
+    [Fact]
+    public async Task ListarTemas_ContaItensVencendoEForaDoPrazo()
+    {
+        var (db, obra, temaId) = await CenarioAsync();
+        ItemInspecionavel Item(string id, int? dias) => new() { TemaInspecaoId = temaId, ObraId = obra.Id, Identificacao = id, PeriodicidadeInspecaoDias = dias };
+        var foraDoPrazo = Item("A-01", 30);
+        var vencendo = Item("A-02", 30);
+        var emDia = Item("A-03", 30);
+        var semPeriodicidade = Item("A-04", null);
+        db.AddRange(foraDoPrazo, vencendo, emDia, semPeriodicidade);
+        await db.SaveChangesAsync();
+        // Nunca inspecionados: o prazo conta do cadastro.
+        var hoje = DateTime.UtcNow.Date;
+        foraDoPrazo.CreatedAtUtc = hoje.AddDays(-40);
+        vencendo.CreatedAtUtc = hoje.AddDays(-25);
+        emDia.CreatedAtUtc = hoje.AddDays(-5);
+        semPeriodicidade.CreatedAtUtc = hoje.AddDays(-400);
+        await db.SaveChangesAsync();
+
+        var resumo = (await new ListarTemasInspecaoQueryHandler(db).Handle(new ListarTemasInspecaoQuery(), default)).Single();
+
+        Assert.Equal(4, resumo.TotalItens);
+        Assert.Equal(1, resumo.ItensForaDoPrazo);
+        Assert.Equal(1, resumo.ItensVencendo);
+    }
 }

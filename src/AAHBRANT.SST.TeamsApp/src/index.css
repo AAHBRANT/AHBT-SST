@@ -191,3 +191,31 @@ h3 {
     transition-delay: 0s !important;
   }
 }
+
+/* Inspeções (25/11/2026): cartão compacto de tema e ponto de prazo que pulsa quando há item fora
+   do prazo. O bloco de prefers-reduced-motion acima já desliga a animação. */
+.sst-cartao-tema {
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.sst-cartao-tema:hover {
+  border-color: var(--sst-acao-marca-tinta) !important;
+  box-shadow: 0 6px 16px -6px rgba(20, 20, 40, 0.18);
+}
+.sst-cartao-tema:focus-visible {
+  outline: 2px solid var(--sst-acao-marca-tinta);
+  outline-offset: 1px;
+}
+.sst-ponto-pulso::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  color: var(--sst-status-alerta-tinta);
+  opacity: 0;
+  animation: sst-ponto-pulso 2.2s ease-out infinite;
+}
+@keyframes sst-ponto-pulso {
+  0% { transform: scale(0.6); opacity: 0.7; }
+  100% { transform: scale(1.6); opacity: 0; }
+}

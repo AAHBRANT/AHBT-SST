@@ -28,6 +28,10 @@ public class InspecaoDto
     public DateTime Data { get; set; }
     public Guid ResponsavelUsuarioId { get; set; }
     public string ResponsavelUsuarioNome { get; set; } = string.Empty;
+    // Foto do responsável na lista (25/11/2026): funcionário vinculado ao usuário e se ele tem foto.
+    // Sem vínculo ou sem foto, a tela mostra as iniciais.
+    public Guid? ResponsavelTrabalhadorId { get; set; }
+    public bool ResponsavelTemFoto { get; set; }
     public StatusInspecao Status { get; set; }
     public int TotalItens { get; set; }
     public int ItensRespondidos { get; set; }

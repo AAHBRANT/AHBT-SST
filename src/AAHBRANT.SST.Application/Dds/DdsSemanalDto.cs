@@ -22,7 +22,15 @@ public class DdsSemanalDto
     public DateTime? EncerradaEm { get; set; }
     public int TotalDiasRegistrados { get; set; }
     public int TotalDiasConcluidos { get; set; }
+    // Lista de semanas (25/11/2026): dias da semana com registro (data) e se foi concluído — a tela
+    // marca o dia certo nos quadradinhos de segunda a sexta.
+    public List<DdsSemanalDiaResumoDto> DiasResumo { get; set; } = new();
+    // Foto do responsável na lista (25/11/2026).
+    public Guid? ResponsavelTrabalhadorId { get; set; }
+    public bool ResponsavelTemFoto { get; set; }
 }
+
+public record DdsSemanalDiaResumoDto(DateTime Data, bool Concluido);
 
 // Um slot por dia útil (sempre 5, segunda a sexta) — DdsId nulo significa que o dia ainda não tem
 // registro criado (tela mostra "Criar registro do dia" nesse caso).
