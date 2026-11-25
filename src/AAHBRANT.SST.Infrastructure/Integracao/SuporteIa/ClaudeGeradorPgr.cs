@@ -59,10 +59,32 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
         },
     };
 
+    // 25/11/2026: a EAP em PDF da Ponte Rio Cuiabá passou de 16000 tokens de resposta numa chamada só; o JSON
+    // vinha cortado e a tela mostrava "erro inesperado". A EAP é lida em trechos (quebrados em fim de linha),
+    // em paralelo, e os itens são juntados na ordem. Cada trecho cabe com folga no limite de resposta, e o
+    // tempo total fica no de um trecho (o ingress do Container Apps corta a requisição em 240 s).
+    private const int CaracteresPorTrecho = 12_000;
+    private const int TrechosEmParalelo = 5;
+
     public async Task<List<ItemEapGerado>> LerEapAsync(string textoEap, CancellationToken ct)
     {
-        var r = await _chat.ObterAsync<RespostaEap>(InstrucoesEap, textoEap, "eap_obra", SchemaEap, ct, maxTokens: 16000, timeoutSegundos: 180);
-        return (r.Itens ?? new())
+        var trechos = DividirEmTrechos(textoEap, CaracteresPorTrecho);
+        using var limite = new SemaphoreSlim(TrechosEmParalelo);
+        var tarefas = trechos.Select(async (trecho, i) =>
+        {
+            await limite.WaitAsync(ct);
+            try
+            {
+                var mensagem = trechos.Count == 1 ? trecho :
+                    $"Trecho {i + 1} de {trechos.Count} da EAP (os itens podem continuar um pacote do trecho anterior; " +
+                    $"mantenha os códigos como estão e defina o nível pelo código).\n\n{trecho}";
+                var r = await _chat.ObterAsync<RespostaEap>(InstrucoesEap, mensagem, "eap_obra", SchemaEap, ct, maxTokens: 16000, timeoutSegundos: 180);
+                return r.Itens ?? new();
+            }
+            finally { limite.Release(); }
+        }).ToList();
+        var partes = await Task.WhenAll(tarefas);
+        return partes.SelectMany(p => p)
             .Where(i => !string.IsNullOrWhiteSpace(i.Nome))
             .Select(i => new ItemEapGerado
             {
@@ -74,6 +96,25 @@ public class ClaudeGeradorPgr : IGeradorPgrIa
                 Conferir = i.Conferir,
             })
             .ToList();
+    }
+
+    // Quebra o texto em trechos de até "maximo" caracteres, sempre em fim de linha (uma linha maior que o
+    // limite vira um trecho sozinha). Público para teste.
+    public static List<string> DividirEmTrechos(string texto, int maximo)
+    {
+        var trechos = new List<string>();
+        var atual = new StringBuilder();
+        foreach (var linha in texto.Split('\n'))
+        {
+            if (atual.Length > 0 && atual.Length + linha.Length + 1 > maximo)
+            {
+                trechos.Add(atual.ToString());
+                atual.Clear();
+            }
+            atual.Append(linha).Append('\n');
+        }
+        if (atual.ToString().Trim().Length > 0) trechos.Add(atual.ToString());
+        return trechos.Count == 0 ? new List<string> { texto } : trechos;
     }
 
     // ---- 2. GHE e funções ----
