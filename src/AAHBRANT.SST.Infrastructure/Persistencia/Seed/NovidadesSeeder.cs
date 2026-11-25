@@ -3394,6 +3394,17 @@ public static class NovidadesSeeder
                     "A ocorrência concluída era assinada só por uma pessoa, e a linha do engenheiro no relatório ficava em branco.",
                     "A faixa de assinatura agora tem dois botões: Assinar como técnico, por digital ou facial, e Assinar como engenheiro, com o login do Teams. A ocorrência só fecha com as duas assinaturas, e o relatório mostra cada uma no seu lado."),
             }),
+        new(
+            Versao: "5.198.0",
+            Titulo: "EAP grande lida pela IA no gerador de PGR",
+            DataPublicacao: new DateTime(2026, 11, 25, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Ler EAP com IA funciona com EAP grande",
+                    "Ao enviar uma EAP extensa (como o PDF da Ponte Rio Cuiabá) e clicar em Ler EAP com IA, aparecia \"Ocorreu um erro inesperado\".",
+                    "A IA agora lê a EAP em partes e junta os itens na ordem original. Se um documento ainda passar do limite da IA, a tela explica o motivo e pede para dividir o arquivo."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)
