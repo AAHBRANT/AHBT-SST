@@ -6,7 +6,6 @@ import {
   Card,
   Checkbox,
   CampoData,
-  ListaSelecaoMultipla,
   DataTable,
   Field,
   FeedbackInline,
@@ -39,6 +38,7 @@ import {
   type SessaoTreinamento,
   type Trabalhador,
 } from '../../lib/api';
+import { SeletorTrabalhadores } from '../../components/SeletorTrabalhadores';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { hoje } from '../../lib/valoresPadrao';
 import { useSouAdministrador, useUsuarioLogado } from '../../lib/UsuarioLogadoContext';
@@ -587,12 +587,9 @@ export function TurmasTab() {
                 ) : trabalhadoresDaObra.length === 0 ? (
                   <Legenda>Nenhum funcionário cadastrado nesta obra.</Legenda>
                 ) : (
-                  <ListaSelecaoMultipla
+                  <SeletorTrabalhadores
                     aria-label="Participantes"
-                    opcoes={trabalhadoresDaObra.map((t) => ({
-                      id: t.id,
-                      rotulo: t.matricula ? `${t.nome} (${t.matricula})` : t.nome,
-                    }))}
+                    trabalhadores={trabalhadoresDaObra}
                     selecionados={novaTurma.trabalhadoresIds}
                     aoMudar={(atualizar) => setNovaTurma((atual) => ({ ...atual, trabalhadoresIds: atualizar(atual.trabalhadoresIds) }))}
                   />

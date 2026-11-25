@@ -6,7 +6,6 @@ import {
   Campo,
   Card,
   CampoData,
-  ListaSelecaoMultipla,
   DataTable,
   Field,
   FeedbackInline,
@@ -34,6 +33,7 @@ import {
   type Trabalhador,
   type Usuario,
 } from '../../lib/api';
+import { SeletorTrabalhadores } from '../../components/SeletorTrabalhadores';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { dataBr, hojeIso } from '../../lib/datas';
 import { useRegistrosTravados } from '../../hooks/useRegistrosTravados';
@@ -291,9 +291,11 @@ export function PermissoesTrabalhoTab() {
             </Campo>
             <Campo span={12}>
               <Field label="Equipe executante (responsáveis)">
-                <ListaSelecaoMultipla
+                <SeletorTrabalhadores
                   aria-label="Equipe executante (responsáveis)"
-                  opcoes={trabalhadores.map((t) => ({ id: t.id, rotulo: t.nome }))}
+                  trabalhadores={trabalhadores}
+                  obraId={obraIdAtividadeSelecionada}
+                  equipes={equipesDaObra}
                   selecionados={novaPt.responsaveisIds}
                   aoMudar={(atualizar) => setNovaPt((atual) => ({ ...atual, responsaveisIds: atualizar(atual.responsaveisIds) }))}
                 />

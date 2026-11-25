@@ -3435,6 +3435,21 @@ public static class NovidadesSeeder
                     "A lista de entregas mostrava só as iniciais do funcionário.",
                     "Quem tem foto no cadastro aparece com a foto, como na tela de Pessoas. Quem ainda não tem continua com as iniciais."),
             }),
+        new(
+            Versao: "5.201.0",
+            Titulo: "Escolha de pessoas mais rápida e com foto",
+            DataPublicacao: new DateTime(2026, 11, 25, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "Responsáveis, participantes, envolvidos e inscritos escolhidos numa lista nova",
+                    "A lista mostrava até 202 nomes em três colunas, só com o nome, sem mostrar quem já estava marcado e com um Marcar todos que marcava todo mundo.",
+                    "Cada pessoa aparece com foto, matrícula e função, em ordem alfabética. Os escolhidos ficam no topo com um × para tirar, e há filtros de um toque por obra, equipe e função. Vale para APR, PT, Turmas, Acidentes e CIPA."),
+                new NovidadeSeedItem(CategoriaNovidade.Melhoria,
+                    "APR e PT começam só com quem é da obra da atividade",
+                    "Apareciam funcionários de todas as obras.",
+                    "Escolhida a atividade, a lista mostra só quem é daquela obra. Para ver os outros, é só desligar o filtro Só desta obra. Na APR, Salvar como equipe fica junto dos escolhidos."),
+            }),
     };
 
     public static async Task ExecutarAsync(IServiceProvider services, CancellationToken ct = default)

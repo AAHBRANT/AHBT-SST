@@ -51,7 +51,7 @@ export interface FotoTrabalhadorProps {
   nome: string;
   /** Flag do cadastro: sem foto, nem tenta baixar. */
   temFoto?: boolean;
-  tamanho?: 24 | 28 | 32 | 36 | 40 | 48;
+  tamanho?: 20 | 24 | 28 | 32 | 36 | 40 | 48;
 }
 
 export function FotoTrabalhador({ trabalhadorId, nome, temFoto, tamanho = 36 }: FotoTrabalhadorProps) {
