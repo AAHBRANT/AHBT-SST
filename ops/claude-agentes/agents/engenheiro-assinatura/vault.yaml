@@ -1,0 +1,8 @@
+# Só o cofre (o contêiner). As duas credenciais são cadastradas pelo responsável no Claude Console, nunca
+# neste arquivo nem no repositório:
+#   1. Variável de ambiente AGENTE_CHAVE = valor do secret "agente-assinatura-chave" do sst-api-hml.
+#      Host permitido: sst-api-hml.kindground-7a44c4f0.brazilsouth.azurecontainerapps.io; injeção só no cabeçalho.
+#   2. MCP (token estático) para https://api.githubcopilot.com/mcp/ = token fine-grained do GitHub,
+#      só leitura de conteúdo do repositório AAHBRANT/AHBT-SST.
+type: vault
+display_name: Engenheiro da assinatura G-SST

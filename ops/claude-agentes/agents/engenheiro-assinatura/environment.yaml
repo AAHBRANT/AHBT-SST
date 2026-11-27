@@ -1,0 +1,11 @@
+# Sandbox do agente engenheiro da assinatura. Rede limitada: só a API do G-SST em homologação e o servidor
+# MCP do GitHub (allow_mcp_servers). Sem web aberta, sem gerenciador de pacotes (curl, jq e python3 bastam).
+name: engenheiro-assinatura-env
+config:
+  type: cloud
+  networking:
+    type: limited
+    allow_package_managers: false
+    allow_mcp_servers: true
+    allowed_hosts:
+      - sst-api-hml.kindground-7a44c4f0.brazilsouth.azurecontainerapps.io

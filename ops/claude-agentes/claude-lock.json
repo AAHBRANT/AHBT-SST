@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "origin": {
+    "base_url": "https://api.anthropic.com",
+    "organization_id": "a49ad3da-619e-49db-9bd0-a33baf573bd5",
+    "workspace_id": "wrkspc_01C1A2RsbEUTu24gJZ1Lc5Be"
+  },
+  "resources": {
+    "./agents/engenheiro-assinatura/agent.md": {
+      "kind": "agent",
+      "id": "agent_01L9rZxaaJgGgmeG6sN7V9dC",
+      "version": "2",
+      "hash": "f9e96f50b1e12781285ac2542b042ab9",
+      "remote_hash": "8d43711e7defaab58a1c68fbd8d863c4",
+      "stamp": "2"
+    },
+    "./agents/engenheiro-assinatura/deployment-diario.md": {
+      "kind": "deployment",
+      "id": "depl_01NNmnfjRbDmbAJruYd5kxMP",
+      "hash": "0780799529a1152f8ba58bc9ba976152",
+      "remote_hash": "0780799529a1152f8ba58bc9ba976152",
+      "stamp": "2026-11-27T15:26:57.430716Z"
+    },
+    "./agents/engenheiro-assinatura/environment.yaml": {
+      "kind": "environment",
+      "id": "env_01XJTiy6ivj6j1rYHWprR1zJ",
+      "hash": "c602469c60a5f1414aa68b96c7cba835",
+      "remote_hash": "d9174d561e74392fd95da317dceeeba6",
+      "stamp": "2026-11-27T15:10:52.898334Z"
+    },
+    "./agents/engenheiro-assinatura/vault.yaml": {
+      "kind": "vault",
+      "id": "vlt_011ChTeT3EsxDCxnwYs3qVcg",
+      "hash": "6fe01cb4fd8096ea29c0c39cb268429e",
+      "remote_hash": "6fe01cb4fd8096ea29c0c39cb268429e",
+      "stamp": "2026-11-27T15:10:53.188336Z"
+    }
+  }
+}
