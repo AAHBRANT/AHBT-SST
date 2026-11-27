@@ -42,8 +42,27 @@ public record DiagnosticoVinculosFacialDto(
     IReadOnlyList<PessoaFacialSemVinculoDto> PessoasSemVinculo,
     IReadOnlyList<VinculoFacialQuebradoDto> DuplicadosNoBanco);
 
+// Teste rápido do serviço de reconhecimento facial (uma consulta leve ao Azure, sem foto). Ok=false quando o
+// Azure recusa ou não responde: é o sinal que a vigia do Worker usa para avisar antes de a obra abrir a fila
+// (27/11: o Azure passou a recusar o endereço do recurso às 22h e a obra só descobriu às 6h58).
+public record VerificacaoServicoFacialDto(bool Ok, string Endpoint, int? StatusHttp, string? CodigoErro, string? Mensagem, long DuracaoMs);
+
+// Situação do treino do grupo de rostos de uma obra no Azure ("succeeded", "running", "failed" ou "notstarted").
+public record TreinoGrupoFacialDto(string? Status, DateTime? UltimaAcaoEm, string? Mensagem);
+
 public interface IAutenticacaoFacialService
 {
+    // Implementações de teste não precisam desses três: só a do Azure fala com o serviço de verdade.
+    Task<VerificacaoServicoFacialDto> VerificarServicoAsync(CancellationToken ct)
+        => Task.FromResult(new VerificacaoServicoFacialDto(true, "(não verificado)", null, null, null, 0));
+
+    Task<TreinoGrupoFacialDto?> ObterTreinoGrupoAsync(Guid obraId, CancellationToken ct)
+        => Task.FromResult<TreinoGrupoFacialDto?>(null);
+
+    // Dispara um novo treino do grupo da obra e aguarda terminar. Seguro e reversível: não apaga nem cria
+    // pessoa, só recalcula o índice do Azure com as faces que já estão lá.
+    Task RetreinarGrupoAsync(Guid obraId, CancellationToken ct) => Task.CompletedTask;
+
     // Compara os cadastros faciais do banco com o grupo da obra no Azure, sem alterar nada.
     Task<DiagnosticoVinculosFacialDto> DiagnosticarVinculosAsync(Guid obraId, CancellationToken ct);
 
