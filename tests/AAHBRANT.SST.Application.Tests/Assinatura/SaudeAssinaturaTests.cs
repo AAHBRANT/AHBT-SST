@@ -125,6 +125,25 @@ public class SaudeAssinaturaTests
         Assert.Equal("succeeded", Assert.Single(saude.Obras).TreinoStatus);
     }
 
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(3, true)]
+    public async Task Saude_GrupoInexistente_SoECriticoComGenteCadastrada(int cadastros, bool alerta)
+    {
+        var db = DbContextFactory.Criar();
+        var (obra, _) = await CriarObraComFacialAsync(db);
+        var facial = new FacialFalso
+        {
+            Treino = null,
+            Diagnostico = id => new DiagnosticoVinculosFacialDto(id, obra.Nome, obra.AzureFacePersonGroupId, false, cadastros, 0, [], [], []),
+        };
+
+        var saude = await new ObterSaudeAssinaturaQueryHandler(db, facial).Handle(new ObterSaudeAssinaturaQuery(), CancellationToken.None);
+
+        Assert.Equal(alerta, saude.Alertas.Any(a => a.Codigo == "GRUPO_FACIAL_INEXISTENTE" && a.Severidade == SeveridadeAlertaAssinatura.Critico));
+        Assert.Equal(alerta ? "critico" : "ok", saude.Situacao);
+    }
+
     [Fact]
     public async Task Saude_EnderecoRegional_EAtencao()
     {

@@ -180,9 +180,11 @@ public class ObterSaudeAssinaturaQueryHandler : IRequestHandler<ObterSaudeAssina
                 $"Não foi possível conferir o grupo de rostos: {o.ErroDiagnostico}",
                 "Rodar o diagnóstico facial da obra de novo e ver o log da API.");
 
-        if (o.GrupoExisteNoAzure == false)
+        // Obra que ainda não cadastrou ninguém no facial não tem o que quebrar (hml 27/11: "Produção Next",
+        // 0 de 33 cadastrados, virava alerta crítico todo dia). O grupo nasce no primeiro cadastro.
+        if (o.GrupoExisteNoAzure == false && o.CadastrosFaciaisNoBanco > 0)
             yield return Alerta(SeveridadeAlertaAssinatura.Critico, "GRUPO_FACIAL_INEXISTENTE",
-                "O grupo de rostos da obra não existe no Azure: ninguém da obra é reconhecido pelo rosto.",
+                $"O grupo de rostos da obra não existe no Azure: as {o.CadastrosFaciaisNoBanco} pessoa(s) cadastradas no facial não são reconhecidas.",
                 "Recriar o grupo da obra a partir das fotos de cadastro (ação do Administrador).");
 
         if (string.Equals(o.TreinoStatus, "failed", StringComparison.OrdinalIgnoreCase))
