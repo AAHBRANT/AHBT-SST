@@ -14,6 +14,10 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Identity.Web" Version="4.14.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <!-- Transitivos do Microsoft.Identity.Web fixados na versão corrigida (avisos de segurança
+         das versões 8.0.4 e 8.0.1). Remover quando o Identity.Web passar a trazer a corrigida. -->
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.5" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.2" />
   </ItemGroup>
 
   <ItemGroup>

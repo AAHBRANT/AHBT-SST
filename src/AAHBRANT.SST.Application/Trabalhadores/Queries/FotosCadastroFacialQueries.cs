@@ -1,4 +1,5 @@
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,12 +22,18 @@ public class ListarFotosCadastroFacialQueryHandler : IRequestHandler<ListarFotos
 
     public ListarFotosCadastroFacialQueryHandler(IAppDbContext db) => _db = db;
 
-    public Task<List<FotoCadastroFacialDto>> Handle(ListarFotosCadastroFacialQuery request, CancellationToken ct) =>
-        _db.FotosCadastroFacial
+    public async Task<List<FotoCadastroFacialDto>> Handle(ListarFotosCadastroFacialQuery request, CancellationToken ct)
+    {
+        // FotoCadastroFacial não tem filtro por obra: sem isto, quem tem a permissão em uma obra
+        // listava as fotos faciais de trabalhador de qualquer outra, bastando o Id.
+        await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
+
+        return await _db.FotosCadastroFacial
             .Where(f => f.TrabalhadorId == request.TrabalhadorId)
             .OrderByDescending(f => f.CapturadaEm)
             .Select(f => new FotoCadastroFacialDto { Id = f.Id, CapturadaEm = f.CapturadaEm, HashSha256 = f.HashSha256 })
             .ToListAsync(ct);
+    }
 }
 
 public record ObterFotoCadastroFacialQuery(Guid TrabalhadorId, Guid FotoId) : IRequest<FotoTrabalhadorResultado?>;
@@ -39,6 +46,9 @@ public class ObterFotoCadastroFacialQueryHandler : IRequestHandler<ObterFotoCada
 
     public async Task<FotoTrabalhadorResultado?> Handle(ObterFotoCadastroFacialQuery request, CancellationToken ct)
     {
+        // Mesmo motivo da listagem: a foto de trabalhador de outra obra não sai por aqui.
+        await _db.GarantirTrabalhadorNoEscopoAsync(request.TrabalhadorId, ct);
+
         // TrabalhadorId entra no filtro de propósito: a foto só sai pelo perfil do dono dela.
         var foto = await _db.FotosCadastroFacial
             .FirstOrDefaultAsync(f => f.Id == request.FotoId && f.TrabalhadorId == request.TrabalhadorId, ct);
