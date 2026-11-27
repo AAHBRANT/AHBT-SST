@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 
 namespace AAHBRANT.SST.Infrastructure.Integracao.Telegram;
 
-// Mesmo bot do suporte (Telegram:BotToken), mas para o chat de alertas técnicos (Telegram:AlertasChatId,
+// Robô próprio dos alertas (Telegram:AlertasBotToken) ou, sem ele, o do suporte (Telegram:BotToken), para o chat de alertas técnicos (Telegram:AlertasChatId,
 // ou o SuporteChatId quando vazio). Texto puro, sem formatação: a mensagem vem do agente e não deve
 // conseguir quebrar o envio com um caractere de Markdown.
 public class TelegramAlertaService : ITelegramAlertaService
@@ -24,7 +24,9 @@ public class TelegramAlertaService : ITelegramAlertaService
         _logger = logger;
     }
 
-    private string? Token => _options.Value.BotToken;
+    // Robô só dos alertas quando configurado: os cliques de Aprovar/Recusar também chegam por ele, então o
+    // webhook (RegistrarWebhookAsync) é registrado no mesmo robô.
+    private string? Token => string.IsNullOrWhiteSpace(_options.Value.AlertasBotToken) ? _options.Value.BotToken : _options.Value.AlertasBotToken;
 
     private string? ChatId => string.IsNullOrWhiteSpace(_options.Value.AlertasChatId) ? _options.Value.SuporteChatId : _options.Value.AlertasChatId;
 
