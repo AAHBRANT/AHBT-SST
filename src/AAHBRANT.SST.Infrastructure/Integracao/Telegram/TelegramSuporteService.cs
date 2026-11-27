@@ -13,6 +13,9 @@ public class TelegramSuporteOptions
     public string? ResumoChatId { get; set; }
     // Opcional: chat dos alertas técnicos de engenharia (saúde da assinatura). Vazio = usa SuporteChatId.
     public string? AlertasChatId { get; set; }
+    // Opcional: robô próprio para os alertas técnicos (27/11/2026). Separado do robô dos resumos de DDS, o
+    // responsável pode dar som de alarme só aos alertas. Vazio = usa BotToken.
+    public string? AlertasBotToken { get; set; }
 }
 
 public class TelegramSuporteService : ITelegramSuporteService
