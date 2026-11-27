@@ -1,7 +1,7 @@
 import { TrilhaNavegacao } from './TrilhaNavegacao';
 import { localizarNaNavegacao, rotaDaSecao } from './mapaNavegacao';
 import type { ComponentType, ReactElement, ReactNode, SVGProps } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   makeStyles,
@@ -27,16 +27,10 @@ import {
   useToastController,
 } from '@fluentui/react-components';
 import {
-  Home24Regular,
   Add24Regular,
-  CalendarLtr24Regular,
-  Video24Regular,
   ClipboardTaskListLtr24Regular,
-  Settings24Regular,
   Alert24Regular,
   BriefcaseMedical24Regular,
-  Building24Regular,
-  People24Regular,
   ChevronLeft24Regular,
   ChevronRight24Regular,
   WeatherSunny24Regular,
@@ -72,7 +66,19 @@ import { PendenciasAutomaticasModal } from '../components/pendencias/PendenciasA
 import { ID_TOASTER_GLOBAL } from '../lib/toaster';
 import { AvisoErroModal } from '../components/avisos/AvisoErroModal';
 import { BotaoSstIa } from '../components/sst-ia/BotaoSstIa';
-import { IconeSstIa } from '../components/sst-ia/IconeSstIa';
+import {
+  IconeAdministracao,
+  IconeCalendario,
+  IconeCamera,
+  IconeCapacete,
+  IconeCracha,
+  IconeGestaoSst,
+  IconeIaBrilho,
+  IconeInicio,
+  IconeOcorrencia,
+  IconePessoas,
+} from './IconesRail';
+import { CLASSE_ITEM_ATIVO, CLASSE_ITEM_DESTAQUE, usePilulaRail } from './usePilulaRail';
 
 // Rail de navegação (Hub Gênesis SST — design decidido em sessão anterior): faixa fina só com
 // ícones + tooltip ao passar o mouse/focar, no lugar do menu largo com texto. O botão de
@@ -142,6 +148,7 @@ const useStyles = makeStyles({
     alignItems: 'stretch',
     padding: '8px 0',
     gap: '4px',
+    position: 'relative',
     overflowY: 'auto',
     overflowX: 'hidden',
     '@media (max-width: 680px)': {
@@ -246,6 +253,10 @@ const useStyles = makeStyles({
     textDecoration: 'none',
     transition: 'background-color 0.15s ease, color 0.15s ease',
     flexShrink: 0,
+    // Fica acima da pílula verde (usePilulaRail), que corre por trás dos itens.
+    zIndex: 1,
+    '& .gs-rail-icone': { flexShrink: 0, transformOrigin: 'center' },
+    '& .gs-rail-icone .f': { fill: 'currentColor', fillOpacity: 0, transition: 'fill-opacity 0.2s ease' },
   },
   navItemExpandido: {
     width: 'calc(100% - 16px)',
@@ -261,9 +272,76 @@ const useStyles = makeStyles({
       backgroundColor: 'color-mix(in srgb, var(--sst-color-primary) 10%, transparent)',
     },
   },
+  // O fundo verde do item ativo é a pílula elástica (`pilulaRail` + usePilulaRail), que desliza de
+  // um item para o outro — por isso o próprio item fica transparente.
   navItemActive: {
     color: designTokens.colorRailActiveInk,
+    backgroundColor: 'transparent',
+    fontWeight: 600,
+    '& .gs-rail-icone .f': { fillOpacity: 0.2 },
+  },
+  pilulaRail: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '40px',
+    height: '40px',
+    borderRadius: '8px',
     backgroundColor: designTokens.colorRailActiveBackground,
+    boxShadow: '0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 4px 14px -6px rgba(22, 163, 74, 0.55)',
+    zIndex: 0,
+    opacity: 0,
+    pointerEvents: 'none',
+    transition: 'opacity 0.15s ease',
+    willChange: 'transform, height',
+  },
+  // Rótulo de grupo ("Módulos", "Ferramentas") — só com o rail aberto; recolhido vira linha fina.
+  grupoRail: {
+    fontSize: '10px',
+    fontWeight: 700,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+    color: designTokens.colorRailInkMuted,
+    opacity: 0.6,
+    padding: '10px 20px 2px',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+  },
+  // SST IA: fundo verde clarinho (tokens --sst-acao-marca-*, já existentes) e um brilho que passa a
+  // cada 4 s. Sem brilho com prefers-reduced-motion.
+  itemIa: {
+    overflow: 'hidden',
+    color: 'var(--sst-acao-marca-tinta)',
+    backgroundColor: 'var(--sst-acao-marca-wash)',
+    fontWeight: 600,
+    '& .gs-rail-icone .f': { fillOpacity: 0.2 },
+    '::after': {
+      content: '""',
+      position: 'absolute',
+      inset: 0,
+      pointerEvents: 'none',
+      backgroundImage: 'linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.7) 50%, transparent 70%)',
+      transform: 'translateX(-120%)',
+      animationName: {
+        '0%': { transform: 'translateX(-120%)' },
+        '27%': { transform: 'translateX(120%)' },
+        '100%': { transform: 'translateX(120%)' },
+      },
+      animationDuration: '4s',
+      animationIterationCount: 'infinite',
+      animationTimingFunction: 'linear',
+    },
+    ':global([data-theme="dark"]) &::after': {
+      backgroundImage: 'linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.12) 50%, transparent 70%)',
+    },
+    '@media (prefers-reduced-motion: reduce)': {
+      '::after': { display: 'none' },
+    },
+  },
+  itemIaInativo: {
+    ':hover': {
+      backgroundColor: 'color-mix(in srgb, var(--sst-acao-marca-tinta) 18%, transparent)',
+    },
   },
   navRotulo: {
     fontSize: '15px',
@@ -298,9 +376,6 @@ const useStyles = makeStyles({
     borderTop: `1px solid ${designTokens.colorRailBorder}`,
     margin: '6px 0 6px 12px',
     flexShrink: 0,
-  },
-  navSeparadorExpandido: {
-    width: 'calc(100% - 24px)',
   },
   railRodape: {
     marginTop: 'auto',
@@ -673,30 +748,13 @@ interface ItemNav {
 
 type IconeNav = ComponentType<SVGProps<SVGSVGElement>>;
 
-// Ícone próprio de capacete de obra (substitui BuildingBank24Regular para "Operação") — nenhum
-// ícone pronto do Fluent lia como EPI de canteiro; refinado após teste visual (19/09) porque a
-// primeira versão lia como capacete "pequeno demais" no rail colapsado.
-function CapaceteObra24Regular(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="2 3 20 18" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
-      <path d="M4 13.8a8 8 0 0 1 16 0" />
-      <path d="M8 13.8V9.2a4 4 0 0 1 8 0v4.6" />
-      <path d="M3.8 15.8h16.4" />
-      <path d="M5.7 15.8l1.1 3.4h10.4l1.1-3.4" />
-    </svg>
-  );
-}
-
-// SST IA no rail com 24 px, igual aos ícones do Fluent (o ícone usa 1em e herdaria a fonte de 14 px).
-function IconeSstIa24(props: SVGProps<SVGSVGElement>) {
-  return <IconeSstIa width={24} height={24} {...props} />;
-}
-
 // Item solto no topo, fora de qualquer módulo — Início (antes "Dashboard") não pertence a nenhum
-// pilar. O Calendário voltou à sidebar como último módulo (pedido do usuário, 04/10): o mini
-// calendário saiu da tela inicial e a página completa /calendario é aberta direto por este item.
+// pilar. O Calendário voltou à sidebar (pedido do usuário, 04/10): o mini calendário saiu da tela
+// inicial e a página completa /calendario é aberta direto por este item.
+// Redesenho 27/11/2026: ícones próprios em grade 24×24 (IconesRail) e grupos "Módulos" e
+// "Ferramentas" — mesmas cores de antes, muda só desenho, organização e movimento.
 const itensAvulsos: Array<ItemNav & { icone: IconeNav }> = [
-  { rota: '/', rotulo: 'Início', icone: Home24Regular },
+  { rota: '/', rotulo: 'Início', icone: IconeInicio },
 ];
 
 // Reformulação de navegação (pedido do usuário, 02/09, réplica de mockup dark-mode): a gaveta
@@ -706,13 +764,17 @@ const itensAvulsos: Array<ItemNav & { icone: IconeNav }> = [
 // destino já tinham viram sub-abas. A sidebar fica só com os 5 módulos (4 pilares + Administração,
 // fixa no rodapé) e o Dashboard solto no topo.
 const itensPilares: Array<ItemNav & { icone: IconeNav }> = [
-  { rota: '/gestao-sst', rotulo: 'Gestão de SST', icone: ClipboardTaskListLtr24Regular },
-  { rota: '/operacao', rotulo: 'Operação', icone: CapaceteObra24Regular },
-  { rota: '/pessoas', rotulo: 'Pessoas', icone: People24Regular },
-  { rota: '/ocorrencias', rotulo: 'Ocorrências', icone: BriefcaseMedical24Regular },
-  { rota: '/terceirizados', rotulo: 'Terceirizado', icone: Building24Regular },
-  { rota: '/calendario', rotulo: 'Calendário', icone: CalendarLtr24Regular },
+  { rota: '/gestao-sst', rotulo: 'Gestão de SST', icone: IconeGestaoSst },
+  { rota: '/operacao', rotulo: 'Operação', icone: IconeCapacete },
+  { rota: '/pessoas', rotulo: 'Pessoas', icone: IconePessoas },
+  { rota: '/ocorrencias', rotulo: 'Ocorrências', icone: IconeOcorrencia },
+  { rota: '/terceirizados', rotulo: 'Terceirizado', icone: IconeCracha },
   // Relatórios oculto da sidebar (pedido do usuário, 17/10) — rota /relatorios segue ativa no App.tsx.
+];
+
+// Grupo "Ferramentas": Calendário (e Câmeras, quando o perfil tem acesso — ver AppShell).
+const itensFerramentas: Array<ItemNav & { icone: IconeNav }> = [
+  { rota: '/calendario', rotulo: 'Calendário', icone: IconeCalendario },
 ];
 
 // Administração fica fixa no rodapé do rail (mesmo padrão do mockup Hub Gênesis SST) — item único,
@@ -721,7 +783,7 @@ const itensPilares: Array<ItemNav & { icone: IconeNav }> = [
 const itemAdministracao: ItemNav & { icone: IconeNav } = {
   rota: '/administracao',
   rotulo: 'Administração',
-  icone: Settings24Regular,
+  icone: IconeAdministracao,
 };
 
 // Menu "Atalhos" (pedido do usuário, 24/09): substituiu o antigo "Criar" (PGR/APR/funcionário/
@@ -761,6 +823,7 @@ function ItemRail({
   icone: Icone,
   expandido,
   destaque,
+  ia,
   aoNavegar,
 }: {
   rota: string;
@@ -768,6 +831,8 @@ function ItemRail({
   icone: IconeNav;
   expandido: boolean;
   destaque?: boolean;
+  /** SST IA: fundo verde clarinho e brilho suave (mockup 27/11/2026). */
+  ia?: boolean;
   aoNavegar?: () => void;
 }) {
   const estilos = useStyles();
@@ -793,9 +858,14 @@ function ItemRail({
         return mergeClasses(
           estilos.navItem,
           expandido && estilos.navItemExpandido,
-          !ativo && estilos.navItemHover,
+          !ativo && !ia && estilos.navItemHover,
+          ia && estilos.itemIa,
+          ia && !ativo && estilos.itemIaInativo,
           ativo && !destaque && estilos.navItemActive,
           destaque && estilos.itemAdministracaoBotao,
+          // Classes globais lidas por usePilulaRail (posiciona o indicador verde no item ativo).
+          ativo && CLASSE_ITEM_ATIVO,
+          destaque && CLASSE_ITEM_DESTAQUE,
         );
       }}
     >
@@ -840,6 +910,9 @@ function ItemRail({
 
 export function AppShell({ children }: { children: ReactNode }) {
   const estilos = useStyles();
+  const localizacaoRail = useLocation();
+  const navRailRef = useRef<HTMLElement>(null);
+  const pilulaRef = useRef<HTMLDivElement>(null);
   const acessoCameras = useAcessoCameras();
   const { data: obrasAcessiveis = [] } = useObras();
   const location = useLocation();
@@ -877,6 +950,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [railExpandido, setRailExpandido] = useState<boolean>(
     () => localStorage.getItem(CHAVE_RAIL_EXPANDIDO) === '1',
   );
+  usePilulaRail(navRailRef, pilulaRef, [localizacaoRail.pathname, localizacaoRail.search, railExpandido]);
   const dataTopo = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',
     day: 'numeric',
@@ -1076,19 +1150,36 @@ export function AppShell({ children }: { children: ReactNode }) {
           aria-hidden="true"
         />
       )}
-      <nav className={mergeClasses(estilos.rail, railExpandido && estilos.railAberto)} aria-label="Navegação principal">
+      <nav
+        ref={navRailRef}
+        className={mergeClasses(estilos.rail, railExpandido && estilos.railAberto)}
+        aria-label="Navegação principal"
+      >
+        <div ref={pilulaRef} className={estilos.pilulaRail} aria-hidden="true" />
         {itensAvulsos.map((item) => (
           <ItemRail key={item.rota} {...item} expandido={railExpandido} aoNavegar={() => setRailExpandido(false)} />
         ))}
-        <div className={mergeClasses(estilos.navSeparador, railExpandido && estilos.navSeparadorExpandido)} />
+        {railExpandido ? (
+          <div className={estilos.grupoRail}>Módulos</div>
+        ) : (
+          <div className={estilos.navSeparador} />
+        )}
         {itensPilares.map((item) => (
+          <ItemRail key={item.rota} {...item} expandido={railExpandido} aoNavegar={() => setRailExpandido(false)} />
+        ))}
+        {railExpandido ? (
+          <div className={estilos.grupoRail}>Ferramentas</div>
+        ) : (
+          <div className={estilos.navSeparador} />
+        )}
+        {itensFerramentas.map((item) => (
           <ItemRail key={item.rota} {...item} expandido={railExpandido} aoNavegar={() => setRailExpandido(false)} />
         ))}
         {acessoCameras && (
           <ItemRail
             rota="/cameras"
             rotulo="Câmeras"
-            icone={Video24Regular}
+            icone={IconeCamera}
             expandido={railExpandido}
             aoNavegar={() => setRailExpandido(false)}
           />
@@ -1097,7 +1188,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ItemRail
             rota="/suporte-ia"
             rotulo="SST IA"
-            icone={IconeSstIa24}
+            icone={IconeIaBrilho}
+            ia
             expandido={railExpandido}
             aoNavegar={() => setRailExpandido(false)}
           />
