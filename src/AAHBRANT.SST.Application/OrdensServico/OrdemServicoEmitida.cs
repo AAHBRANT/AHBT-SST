@@ -73,10 +73,13 @@ internal static class AssinaturasOrdemServico
                 s.TrabalhadorId == os.TrabalhadorId && s.Papel != PapelAssinatura.TecnicoSegurancaOs && s.MetodoAutenticacao != MetodoAutenticacaoAssinatura.SessaoLogada);
             // Técnico: papel TecnicoSegurancaOs (biometria, desde 16/11) ou a assinatura antiga por login (OS já válidas de antes continuam válidas).
             var tecnico = doDocumento.FirstOrDefault(s => s.Papel == PapelAssinatura.TecnicoSegurancaOs || s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada);
-            resultado[os.Id] = (
-                documento?.Id,
-                funcionario is null ? null : new AssinaturaOsDto(funcionario.Nome, funcoes.GetValueOrDefault(FuncaoNaAssinatura(funcionario.TrabalhadorId, funcionario.FuncaoId, funcionario.AssinadoEm)), funcionario.AssinadoEm, funcionario.MetodoAutenticacao),
-                tecnico is null ? null : new AssinaturaOsDto(tecnico.Nome, funcoes.GetValueOrDefault(FuncaoNaAssinatura(tecnico.TrabalhadorId, tecnico.FuncaoId, tecnico.AssinadoEm)), tecnico.AssinadoEm, tecnico.MetodoAutenticacao));
+            var assinaturaFuncionario = funcionario is null ? null : new AssinaturaOsDto(funcionario.Nome, funcoes.GetValueOrDefault(FuncaoNaAssinatura(funcionario.TrabalhadorId, funcionario.FuncaoId, funcionario.AssinadoEm)), funcionario.AssinadoEm, funcionario.MetodoAutenticacao);
+            var assinaturaTecnico = tecnico is null ? null : new AssinaturaOsDto(tecnico.Nome, funcoes.GetValueOrDefault(FuncaoNaAssinatura(tecnico.TrabalhadorId, tecnico.FuncaoId, tecnico.AssinadoEm)), tecnico.AssinadoEm, tecnico.MetodoAutenticacao);
+            // OS do próprio técnico/engenheiro de segurança: a assinatura dele (função na data da assinatura) vale pelas duas.
+            if (assinaturaTecnico is null && assinaturaFuncionario is not null
+                && AAHBRANT.SST.Application.Assinatura.TecnicoOrdemServicoRegra.DonoDispensaTecnico(assinaturaFuncionario.Funcao))
+                assinaturaTecnico = assinaturaFuncionario;
+            resultado[os.Id] = (documento?.Id, assinaturaFuncionario, assinaturaTecnico);
         }
         return resultado;
     }
