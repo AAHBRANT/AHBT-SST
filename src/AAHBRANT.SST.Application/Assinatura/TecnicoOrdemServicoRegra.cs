@@ -21,6 +21,12 @@ public static class TecnicoOrdemServicoRegra
     public const string MensagemLoginRecusado =
         "A assinatura do técnico na Ordem de Serviço é feita só por digital ou reconhecimento facial. Use a leitura biométrica para assinar.";
 
+    // OS do próprio técnico/engenheiro de segurança (pedido do usuário, 27/11/2026): a assinatura dele, como dono da OS,
+    // já vale também como a do técnico — a OS fica válida sem segunda assinatura. Ele continua sem poder assinar
+    // duas vezes (GarantirIdentidade abaixo).
+    public static bool DonoDispensaTecnico(string? nomeFuncaoDono) =>
+        FuncaoSstClassifier.EhTecnicoSeguranca(nomeFuncaoDono) || FuncaoSstClassifier.EhEngenheiroSeguranca(nomeFuncaoDono);
+
     // ObraId da OS; Funcionario = dono; InstrutorIntegracaoId != null quando a OS está dentro de uma integração em andamento.
     public sealed record ContextoOs(Guid OrdemServicoId, Guid ObraId, Guid FuncionarioId, Guid? InstrutorIntegracaoId);
 

@@ -228,7 +228,10 @@ public class RegistradorAssinaturaService : IRegistradorAssinaturaService
         // fecha com a assinatura do técnico, que é sempre a última.
         var fechaAgora = documento.EntidadeTipo == nameof(Inspecao)
             || (ehOcorrencia && (await Acidentes.AssinaturasOcorrencia.ObterAsync(_db, documento.Id, ct)).Completa)
-            || (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura && papel == PapelAssinatura.TecnicoSegurancaOs);
+            || (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura && papel == PapelAssinatura.TecnicoSegurancaOs)
+            // OS do próprio técnico/engenheiro de segurança: a assinatura dele como dono já fecha a OS.
+            || (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura && papel != PapelAssinatura.TecnicoSegurancaOs
+                && TecnicoOrdemServicoRegra.DonoDispensaTecnico(trabalhador.Funcao?.Nome));
         if (fechaAgora && _mediator is not null)
             await FinalizacaoAutomaticaDocumento.TentarAsync(_db, _mediator, _logger, documento.Id, ct);
 

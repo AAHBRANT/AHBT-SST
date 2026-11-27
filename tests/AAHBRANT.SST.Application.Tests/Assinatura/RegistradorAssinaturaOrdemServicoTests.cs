@@ -284,6 +284,29 @@ public class RegistradorAssinaturaOrdemServicoTests
         Assert.Equal(c.Funcionario.Nome, os.Funcionario?.Nome);
     }
 
+    // 27/11/2026: OS do próprio técnico de segurança — a assinatura dele como dono vale pelas duas.
+    [Fact]
+    public async Task OsDoProprioTecnico_AssinaturaDeleJaDeixaValida_EFinaliza()
+    {
+        var c = await PrepararAsync();
+        var osDoTecnico = new OrdemServico { TrabalhadorId = c.Tecnico.Id, ObraId = c.ObraA.Id, Numero = "OS-2026-0002", EmitidaEm = DateTime.UtcNow, ConteudoJson = "{}" };
+        c.Db.OrdensServico.Add(osDoTecnico);
+        var doc = new DocumentoAssinatura { EntidadeTipo = OrdemServico.EntidadeTipoAssinatura, EntidadeId = osDoTecnico.Id, ObraId = c.ObraA.Id };
+        c.Db.DocumentosAssinatura.Add(doc);
+        await c.Db.SaveChangesAsync();
+
+        await Registrador(c.Db).RegistrarAsync(doc.Id, new ResultadoAutenticacaoAssinatura(c.Tecnico.Id, MetodoAutenticacaoAssinatura.ReconhecimentoFacial), null, default);
+
+        var os = Assert.Single(await new ListarOrdensServicoQueryHandler(c.Db).Handle(new ListarOrdensServicoQuery(c.Tecnico.Id), default));
+        Assert.Equal(SituacaoOrdemServico.Valida, os.Situacao);
+        Assert.Equal(c.Tecnico.Nome, os.Tecnico?.Nome);
+
+        var handler = new FinalizarDocumentoCommandHandler(c.Db, new AuditoriaFalsa(),
+            new MediatorSimulado(r => r is ExportarOrdemServicoPdfQuery ? new byte[] { 1 } : null), new PdfFalso(), new QrFalso());
+        var finalizado = await handler.Handle(new FinalizarDocumentoCommand(doc.Id), default);
+        Assert.Equal(StatusDocumentoAssinatura.Finalizado, finalizado.Status);
+    }
+
     [Fact]
     public async Task FinalizarDocumento_AceitaOPapelNovoComoAssinaturaDoTecnico()
     {
