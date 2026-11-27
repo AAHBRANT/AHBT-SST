@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
@@ -26,6 +27,10 @@ public class ListarAprsQueryHandler : IRequestHandler<ListarAprsQuery, List<AprD
             query = query.Where(a => a.AtividadeId == request.AtividadeId.Value);
 
         var aprs = await query.OrderByDescending(a => a.CreatedAtUtc).ToListAsync(ct);
+        // Nome e foto de quem elabora e de quem supervisiona (25/11/2026), sem carregar as imagens.
+        var pessoas = await FotosPessoas.DeTrabalhadoresAsync(
+            _db, aprs.SelectMany(a => new[] { a.ElaboradorTrabalhadorId, a.SupervisorTrabalhadorId }), ct);
+        PessoaComFoto? Pessoa(Guid? id) => id.HasValue && pessoas.TryGetValue(id.Value, out var p) ? p : null;
 
         return aprs.Select(a => new AprDto
         {
@@ -47,7 +52,10 @@ public class ListarAprsQueryHandler : IRequestHandler<ListarAprsQuery, List<AprD
             DataAprovacao = a.DataAprovacao,
             MotivoReprovacao = a.MotivoReprovacao,
             ElaboradorTrabalhadorId = a.ElaboradorTrabalhadorId,
-            SupervisorTrabalhadorId = a.SupervisorTrabalhadorId
+            ElaboradorNome = Pessoa(a.ElaboradorTrabalhadorId)?.Nome,
+            ElaboradorTemFoto = Pessoa(a.ElaboradorTrabalhadorId)?.TemFoto ?? false,
+            SupervisorTrabalhadorId = a.SupervisorTrabalhadorId,
+            SupervisorNome = Pessoa(a.SupervisorTrabalhadorId)?.Nome,
         }).ToList();
     }
 }

@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Domain.Enums;
 using MediatR;
@@ -27,7 +28,15 @@ public class ListarDdsSemanaisQueryHandler : IRequestHandler<ListarDdsSemanaisQu
 
         var lista = await query.OrderByDescending(s => s.DataInicioSemana).ToListAsync(ct);
 
-        return lista.Select(MapearParaDto).ToList();
+        var dtos = lista.Select(MapearParaDto).ToList();
+        var pessoas = await FotosPessoas.DeUsuariosAsync(_db, dtos.Select(d => (Guid?)d.ResponsavelUsuarioId), ct);
+        foreach (var dto in dtos)
+        {
+            if (!pessoas.TryGetValue(dto.ResponsavelUsuarioId, out var p)) continue;
+            dto.ResponsavelTrabalhadorId = p.TrabalhadorId;
+            dto.ResponsavelTemFoto = p.TemFoto;
+        }
+        return dtos;
     }
 
     internal static DdsSemanalDto MapearParaDto(Domain.Entidades.DdsSemanal semanal)
@@ -53,6 +62,7 @@ public class ListarDdsSemanaisQueryHandler : IRequestHandler<ListarDdsSemanaisQu
             EncerradaEm = semanal.EncerradaEm,
             TotalDiasRegistrados = dias.Count,
             TotalDiasConcluidos = dias.Count(d => d.Status == StatusDds.Concluido),
+            DiasResumo = dias.OrderBy(d => d.Data).Select(d => new DdsSemanalDiaResumoDto(d.Data, d.Status == StatusDds.Concluido)).ToList(),
         };
     }
 }

@@ -18,8 +18,9 @@ import {
   designTokens,
   tokensUi,
 } from '@ui';
-import { Add24Regular, ClipboardTaskListLtr24Regular, Delete24Regular, Home24Regular, VehicleTruckProfile24Regular } from '@fluentui/react-icons';
-import { api, type TemaInspecaoResumo } from '../../lib/api';
+import { Add24Regular, ChevronRight20Regular, ClipboardTaskListLtr20Regular, Delete24Regular, Home24Regular, VehicleTruckProfile24Regular } from '@fluentui/react-icons';
+import { api, StatusInspecao, TipoInspecao, type TemaInspecaoResumo } from '../../lib/api';
+import type { InspecaoCampo } from '../../lib/offline/inspecoes';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
 import { AlojamentoTab } from './AlojamentoTab';
 import { VeiculosTab } from './VeiculosTab';
@@ -68,6 +69,104 @@ function CartaoAcionavel({ aoAbrir, rotuloAria, children, tracejado = false }: {
   );
 }
 
+// Visual aprovado em 25/11/2026 (docs/mockups/inspecoes-visual-2026-11-25.html): Alojamento e Veículos
+// em destaque, com a situação das inspeções de cada um; os temas em cartões compactos.
+function CartaoDestaque({ titulo, descricao, icone, inspecoes, aoAbrir }: {
+  titulo: string;
+  descricao: string;
+  icone: ReactNode;
+  inspecoes: InspecaoCampo[];
+  aoAbrir: () => void;
+}) {
+  const emAndamento = inspecoes.filter((i) => i.status === StatusInspecao.EmAndamento).length;
+  const aguardando = inspecoes.filter((i) => i.status === StatusInspecao.AguardandoAssinatura).length;
+  const comNc = inspecoes.filter((i) => i.itensNaoConformes > 0).length;
+  const concluidas = inspecoes.filter((i) => i.status === StatusInspecao.Concluida).length;
+  return (
+    <CartaoAcionavel rotuloAria={`Abrir ${titulo}`} aoAbrir={aoAbrir}>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+        <span
+          aria-hidden="true"
+          style={{
+            flexShrink: 0, width: 44, height: 44, borderRadius: 12, display: 'grid', placeItems: 'center',
+            color: 'var(--sst-acao-marca-tinta)', backgroundColor: 'var(--sst-acao-marca-wash)',
+          }}
+        >
+          {icone}
+        </span>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div style={{ fontWeight: 800, fontSize: 15 }}>{titulo}</div>
+          <Legenda>{descricao}</Legenda>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+            {emAndamento > 0 && <StatusChip tom="info">{emAndamento} em andamento</StatusChip>}
+            {aguardando > 0 && <StatusChip tom="atencao">{aguardando} aguardando assinatura</StatusChip>}
+            {comNc > 0 && <StatusChip tom="alerta">{comNc} com não conformidade</StatusChip>}
+            {concluidas > 0 && <StatusChip tom="ok">{concluidas} {concluidas === 1 ? 'concluída' : 'concluídas'}</StatusChip>}
+            {inspecoes.length === 0 && <Legenda>Nenhuma inspeção ainda.</Legenda>}
+          </div>
+        </div>
+        <ChevronRight20Regular aria-hidden="true" style={{ alignSelf: 'center', color: designTokens.colorNeutralMedium }} />
+      </div>
+    </CartaoAcionavel>
+  );
+}
+
+// Cartão compacto de tema. Ponto âmbar: item vencendo em até 7 dias; vermelho: item fora do prazo.
+function CartaoTema({ tema, aoAbrir }: { tema: TemaInspecaoResumo; aoAbrir: () => void }) {
+  const fora = tema.itensForaDoPrazo ?? 0;
+  const vencendo = tema.itensVencendo ?? 0;
+  const partes = [
+    tema.totalItens === 0 ? 'Nenhum item cadastrado' : `${tema.totalItens} ${tema.totalItens === 1 ? 'item' : 'itens'}`,
+    fora > 0 ? `${fora} fora do prazo` : null,
+    vencendo > 0 ? `${vencendo} ${vencendo === 1 ? 'vence' : 'vencem'} em até 7 dias` : null,
+    tema.itensComInspecaoEmAndamento > 0 ? `${tema.itensComInspecaoEmAndamento} em andamento` : null,
+  ].filter(Boolean);
+  const tomPonto = fora > 0 ? 'alerta' : vencendo > 0 ? 'atencao' : null;
+  function aoTeclar(evento: KeyboardEvent<HTMLDivElement>) {
+    if (evento.key === 'Enter' || evento.key === ' ') {
+      evento.preventDefault();
+      aoAbrir();
+    }
+  }
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Abrir ${tema.nome}: ${partes.join(', ')}`}
+      onClick={aoAbrir}
+      onKeyDown={aoTeclar}
+      className="sst-cartao-tema"
+      style={{
+        position: 'relative', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer',
+        borderRadius: tokensUi.raio.md, backgroundColor: designTokens.colorSurface,
+        border: `1px solid ${tokensUi.bordaSuave}`,
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          flexShrink: 0, width: 30, height: 30, borderRadius: 9, display: 'grid', placeItems: 'center',
+          color: tema.totalItens > 0 ? tokensUi.status.ok.tinta : designTokens.colorNeutralMedium,
+          backgroundColor: tema.totalItens > 0 ? tokensUi.status.ok.fundo : tokensUi.status.neutro.fundo,
+        }}
+      >
+        <ClipboardTaskListLtr20Regular />
+      </span>
+      <div style={{ minWidth: 0, paddingRight: tomPonto ? 12 : 0 }}>
+        <div style={{ fontSize: 13, fontWeight: tema.totalItens > 0 ? 700 : 500, lineHeight: 1.25 }}>{tema.nome}</div>
+        <div style={{ fontSize: 11.5, color: designTokens.colorNeutralMedium }}>{partes.join(' · ')}</div>
+      </div>
+      {tomPonto && (
+        <span
+          aria-hidden="true"
+          className={tomPonto === 'alerta' ? 'sst-ponto-pulso' : undefined}
+          style={{ position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: '50%', backgroundColor: tokensUi.status[tomPonto].tinta }}
+        />
+      )}
+    </div>
+  );
+}
+
 interface ItemRascunho {
   chave: number;
   descricao: string;
@@ -78,6 +177,8 @@ export function CartoesInspecoes() {
   const cartao = params.get('cartao');
   const sucessoToast = useSucessoToast();
   const [temas, setTemas] = useState<TemaInspecaoResumo[]>([]);
+  const [inspecoes, setInspecoes] = useState<InspecaoCampo[]>([]);
+  const [ocultarSemItens, setOcultarSemItens] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [erroPainel, setErroPainel] = useState<string | null>(null);
   const [painelAberto, setPainelAberto] = useState(false);
@@ -189,47 +290,72 @@ export function CartoesInspecoes() {
     );
   }
 
+  const temasVisiveis = ocultarSemItens ? temas.filter((t) => t.totalItens > 0) : temas;
+  const temasSemItens = temas.filter((t) => t.totalItens === 0).length;
+
+  // Ordem aprovada em 25/11/2026: a lista de inspeções vem primeiro; os cards de Alojamento, Veículos
+  // e dos temas ficam logo abaixo (antes eram 17 cards grandes empurrando a lista para baixo).
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <InspecoesTab aoCarregar={setInspecoes} />
+
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-        {/* Fixo: sempre o primeiro card da fila, antes de Alojamento, Veículos e dos temas. */}
-        <CartaoAcionavel
-          tracejado
-          rotuloAria="Criar novo tema de inspeção"
-          aoAbrir={painelAberto ? () => setPainelAberto(false) : abrirPainel}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+        <CartaoDestaque
+          titulo="Alojamento"
+          descricao="Inspeção de cada alojamento, por obra."
+          icone={<Home24Regular />}
+          inspecoes={inspecoes.filter((i) => i.tipoInspecao === TipoInspecao.Alojamento)}
+          aoAbrir={() => abrir('alojamento')}
+        />
+        <CartaoDestaque
+          titulo="Veículos"
+          descricao="Retroescavadeira, escavadeira e caminhões."
+          icone={<VehicleTruckProfile24Regular />}
+          inspecoes={inspecoes.filter((i) => i.tipoInspecao === TipoInspecao.Veiculo)}
+          aoAbrir={() => abrir('veiculos')}
+        />
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: designTokens.colorNeutralMedium }}>
+          Temas de inspeção <span style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>· {temas.length}</span>
+        </div>
+        {temasSemItens > 0 && (
+          <Button appearance="subtle" size="small" onClick={() => setOcultarSemItens((v) => !v)}>
+            {ocultarSemItens ? `Mostrar todos os ${temas.length} temas` : `Ocultar os ${temasSemItens} temas sem itens`}
+          </Button>
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 10 }}>
+        {temasVisiveis.map((tema) => (
+          <CartaoTema key={tema.id} tema={tema} aoAbrir={() => abrir(`${PREFIXO_TEMA}${tema.id}`)} />
+        ))}
+        {/* "Novo tema" vai para o fim da grade, tracejado e discreto. */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={painelAberto ? 'Fechar o cadastro de tema' : 'Criar novo tema de inspeção'}
+          aria-expanded={painelAberto}
+          onClick={painelAberto ? () => setPainelAberto(false) : abrirPainel}
+          onKeyDown={(evento) => {
+            if (evento.key === 'Enter' || evento.key === ' ') {
+              evento.preventDefault();
+              if (painelAberto) setPainelAberto(false);
+              else abrirPainel();
+            }
+          }}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 12px', minHeight: 52,
+            borderRadius: tokensUi.raio.md, border: `1.5px dashed ${designTokens.colorCardBorder}`, cursor: 'pointer',
+            fontSize: 13, fontWeight: 500, color: designTokens.colorNeutralMedium,
+          }}
         >
           <Add24Regular />
-          <div style={{ fontWeight: 600 }}>{painelAberto ? 'Fechar' : 'Novo tema de inspeção'}</div>
-          <Legenda>Ex.: Andaime, Escada, Extintor…</Legenda>
-        </CartaoAcionavel>
-
-        <CartaoAcionavel rotuloAria="Abrir Alojamento" aoAbrir={() => abrir('alojamento')}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
-            <Home24Regular /> Alojamento
-          </div>
-          <Legenda>Inspeção de cada alojamento, por obra.</Legenda>
-        </CartaoAcionavel>
-
-        <CartaoAcionavel rotuloAria="Abrir Veículos" aoAbrir={() => abrir('veiculos')}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
-            <VehicleTruckProfile24Regular /> Veículos
-          </div>
-          <Legenda>Retroescavadeira, escavadeira e caminhões.</Legenda>
-        </CartaoAcionavel>
-
-        {temas.map((tema) => (
-          <CartaoAcionavel key={tema.id} rotuloAria={`Abrir ${tema.nome}`} aoAbrir={() => abrir(`${PREFIXO_TEMA}${tema.id}`)}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
-              <ClipboardTaskListLtr24Regular /> {tema.nome}
-            </div>
-            <div style={{ fontSize: 12 }}>
-              <span style={{ fontWeight: 600 }}>{tema.totalItens}</span> {tema.totalItens === 1 ? 'item cadastrado' : 'itens cadastrados'}
-            </div>
-            {tema.itensComInspecaoEmAndamento > 0 && <StatusChip tom="info">{tema.itensComInspecaoEmAndamento} em andamento</StatusChip>}
-          </CartaoAcionavel>
-        ))}
+          {painelAberto ? 'Fechar' : 'Novo tema'}
+        </div>
       </div>
 
       <PainelCriacaoInline aberto={painelAberto} titulo="Novo tema de inspeção">
@@ -294,8 +420,6 @@ export function CartoesInspecoes() {
           </FormRodape>
         </FormSection>
       </PainelCriacaoInline>
-
-      <InspecoesTab />
     </div>
   );
 }

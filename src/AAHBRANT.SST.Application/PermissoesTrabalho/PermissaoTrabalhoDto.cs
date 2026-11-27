@@ -21,6 +21,9 @@ public class PermissaoTrabalhoDto
     public DateTime? Validade { get; set; }
     public Guid? ResponsavelExecucaoUsuarioId { get; set; }
     public string? ResponsavelExecucaoUsuarioNome { get; set; }
+    // Foto do responsável pela execução na lista (25/11/2026).
+    public Guid? ResponsavelExecucaoTrabalhadorId { get; set; }
+    public bool ResponsavelExecucaoTemFoto { get; set; }
     public Guid? ResponsavelAreaUsuarioId { get; set; }
     public string? ResponsavelAreaUsuarioNome { get; set; }
     public StatusPt Status { get; set; }

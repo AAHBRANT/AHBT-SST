@@ -1,11 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BotaoAcao,
   Button,
   Campo,
   Card,
+  BarraProgresso,
   CampoData,
+  CelulaDupla,
+  FiltroRapido,
+  PageHeader,
+  PainelCriacaoInline,
+  nivelVencimento,
+  tomDeVencimento,
+  tokensUi,
   DataTable,
   Field,
   FeedbackInline,
@@ -19,9 +27,9 @@ import {
   type Coluna,
   type Tom,
 } from '@ui';
-import { Add24Regular, Delete24Regular, PeopleTeamAdd24Regular } from '@fluentui/react-icons';
+import { Add24Regular, Delete24Regular, DocumentPdf24Regular, Open24Regular, PeopleTeamAdd24Regular, Play24Regular, Search20Regular, Warning20Regular } from '@fluentui/react-icons';
 import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
-import { BotaoAbrirDetalhe } from '../../components/BotaoAbrirDetalhe';
+import { FotoTrabalhador } from '../../components/FotoTrabalhador';
 import { SeletorTrabalhadores } from '../../components/SeletorTrabalhadores';
 import { api, StatusApr, statusAprLabel, type Apr, type Atividade, type Equipe, type NovaApr, type Trabalhador } from '../../lib/api';
 import { useSucessoToast } from '../../hooks/useSucessoToast';
@@ -56,6 +64,51 @@ const tomPorStatusApr: Record<number, Tom> = {
 
 // Onda 2 Task 11 (camada ui/): lista + formulário de criação de APR. Nada de Fluent cru nem de
 // pageStyles aqui — lista em DataTable, seleção de responsáveis em ChipCheckboxGroup.
+// Visual e utilidade aprovados em 25/11/2026 (docs/mockups/dds-apr-pt-visual-2026-11-25.html).
+type FiltroApr = 'todas' | 'elaboracao' | 'aguardando' | 'aprovadas' | 'vencendo' | 'fechadas';
+const MS_DIA = 24 * 60 * 60 * 1000;
+
+function diasAteVencer(validade?: string | null): number | null {
+  if (!validade) return null;
+  const fim = new Date(validade.slice(0, 10) + 'T00:00:00').getTime();
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  return Math.round((fim - hoje.getTime()) / MS_DIA);
+}
+
+// "Vencem em breve": aprovada e com validade até 7 dias à frente.
+function aprVencendo(a: Apr): boolean {
+  const dias = diasAteVencer(a.validade);
+  return a.status === StatusApr.Aprovada && dias !== null && dias >= 0 && dias <= 7;
+}
+
+function passaNoFiltroApr(a: Apr, f: FiltroApr): boolean {
+  switch (f) {
+    case 'elaboracao': return a.status === StatusApr.EmElaboracao;
+    case 'aguardando': return a.status === StatusApr.AguardandoAprovacao;
+    case 'aprovadas': return a.status === StatusApr.Aprovada;
+    case 'vencendo': return aprVencendo(a);
+    case 'fechadas': return a.status === StatusApr.Reprovada || a.status === StatusApr.Encerrada;
+    default: return true;
+  }
+}
+
+function tomDaLinhaApr(a: Apr): Tom {
+  if (a.status === StatusApr.Reprovada) return 'alerta';
+  if (a.status === StatusApr.AguardandoAprovacao || aprVencendo(a)) return 'atencao';
+  if (a.status === StatusApr.Aprovada) return 'ok';
+  return 'neutro';
+}
+
+// Fração do prazo de validade já consumida (data da APR até a validade).
+function fracaoValidade(a: Apr): number {
+  if (!a.validade) return 0;
+  const ini = new Date(a.data.slice(0, 10) + 'T00:00:00').getTime();
+  const fim = new Date(a.validade.slice(0, 10) + 'T00:00:00').getTime();
+  if (!(fim > ini)) return 1;
+  return Math.max(0, Math.min(1, (Date.now() - ini) / (fim - ini)));
+}
+
 export function AprsTab() {
   const souAdministrador = useSouAdministrador();
   const navigate = useNavigate();
@@ -74,6 +127,9 @@ export function AprsTab() {
   const [nomeNovaEquipe, setNomeNovaEquipe] = useState('');
   const [encarregadoNovaEquipe, setEncarregadoNovaEquipe] = useState('');
   const [salvandoEquipe, setSalvandoEquipe] = useState(false);
+  const [painelAberto, setPainelAberto] = useState(false);
+  const [filtro, setFiltro] = useState<FiltroApr>('todas');
+  const [busca, setBusca] = useState('');
   const { confirmar, dialogElement } = useConfirmar();
   const sucessoToast = useSucessoToast();
 
@@ -160,6 +216,7 @@ export function AprsTab() {
         validade: novaApr.validade || null,
       });
       setNovaApr(aprVazia());
+      setPainelAberto(false);
       await carregar();
       sucessoToast('APR criada com sucesso.');
     } catch (e) {
@@ -180,12 +237,93 @@ export function AprsTab() {
     }
   }
 
+  function fecharPainel() {
+    setPainelAberto(false);
+    setNovaApr(aprVazia());
+  }
+
+  function abrirPdf(a: Apr) {
+    void visualizar({ titulo: 'PDF da APR', nomeArquivo: `apr-${a.id}.pdf`, obter: () => api.aprs.exportarPdf(a.id) });
+  }
+
+  const contagem = useMemo(() => {
+    const c: Record<FiltroApr, number> = { todas: aprs.length, elaboracao: 0, aguardando: 0, aprovadas: 0, vencendo: 0, fechadas: 0 };
+    for (const a of aprs) for (const f of ['elaboracao', 'aguardando', 'aprovadas', 'vencendo', 'fechadas'] as const) if (passaNoFiltroApr(a, f)) c[f] += 1;
+    return c;
+  }, [aprs]);
+  const termo = busca.trim().toLocaleLowerCase('pt-BR');
+  const aprsVisiveis = aprs.filter(
+    (a) =>
+      passaNoFiltroApr(a, filtro) &&
+      (!termo || [a.numeroApr, a.atividadeNome, a.local, a.obraNome, a.elaboradorNome].some((v) => v?.toLocaleLowerCase('pt-BR').includes(termo))),
+  );
+
+  const aviso = (texto: string) => <span style={{ color: tokensUi.status.atencao.tinta, fontWeight: 600 }}>{texto}</span>;
+  const fonteDoc = { fontFamily: "'Roboto Mono', ui-monospace, monospace" };
   const colunas: Coluna<Apr>[] = [
-    { chave: 'numeroApr', rotulo: 'Nº APR', render: (a) => a.numeroApr ?? '-' },
-    { chave: 'atividadeNome', rotulo: 'Atividade' },
-    { chave: 'local', rotulo: 'Local' },
+    {
+      chave: 'atividadeNome',
+      rotulo: 'Atividade',
+      render: (a) => {
+        const semPessoas = a.status === StatusApr.EmElaboracao && !a.elaboradorTrabalhadorId && !a.supervisorTrabalhadorId;
+        return (
+          <CelulaDupla
+            inicio={
+              <span aria-hidden="true" style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', color: 'var(--sst-acao-marca-tinta)', backgroundColor: 'var(--sst-acao-marca-wash)' }}>
+                <Warning20Regular />
+              </span>
+            }
+            titulo={a.atividadeNome}
+            detalhe={
+              <>
+                {a.numeroApr && <span style={fonteDoc}>{a.numeroApr}</span>}
+                {semPessoas && <> · {aviso('sem elaborador e sem supervisor')}</>}
+                {a.status === StatusApr.Reprovada && a.motivoReprovacao && <> · {a.motivoReprovacao}</>}
+              </>
+            }
+          />
+        );
+      },
+    },
+    {
+      chave: 'local',
+      rotulo: 'Obra / local',
+      render: (a) => <CelulaDupla tituloLeve titulo={a.obraNome ?? '—'} detalhe={a.local || undefined} />,
+    },
+    {
+      chave: 'elaborador',
+      rotulo: 'Elaboração',
+      render: (a) =>
+        a.elaboradorNome ? (
+          <CelulaDupla
+            tituloLeve
+            inicio={<FotoTrabalhador nome={a.elaboradorNome} trabalhadorId={a.elaboradorTrabalhadorId ?? ''} temFoto={a.elaboradorTemFoto} tamanho={36} />}
+            titulo={a.elaboradorNome}
+            detalhe={a.supervisorNome ? `Supervisão: ${a.supervisorNome}` : undefined}
+          />
+        ) : (
+          <span style={{ fontSize: 12, color: tokensUi.status.neutro.tinta }}>Não definida</span>
+        ),
+    },
     { chave: 'data', rotulo: 'Data', render: (a) => dataBr(a.data) },
-    { chave: 'validade', rotulo: 'Validade', render: (a) => dataBr(a.validade) },
+    {
+      chave: 'validade',
+      rotulo: 'Validade',
+      render: (a) => {
+        if (!a.validade) return <span style={{ fontSize: 12 }}>{aviso('Validade não definida')}</span>;
+        const dias = diasAteVencer(a.validade);
+        const nivel = a.status === StatusApr.Aprovada ? nivelVencimento(a.validade) : null;
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 110 }}>
+            <span>{dataBr(a.validade)}</span>
+            {a.status === StatusApr.Aprovada && (
+              <BarraProgresso percentual={fracaoValidade(a) * 100} tom={nivel ? tomDeVencimento(nivel) : 'ok'} aria-label="Prazo de validade já consumido" />
+            )}
+            {aprVencendo(a) && dias !== null && <span style={{ fontSize: 11.5 }}>{aviso(dias === 0 ? 'vence hoje' : `vence em ${dias} ${dias === 1 ? 'dia' : 'dias'}`)}</span>}
+          </div>
+        );
+      },
+    },
     {
       chave: 'status',
       rotulo: 'Status',
@@ -201,7 +339,27 @@ export function AprsTab() {
         </FeedbackInline>
       )}
 
-      <Card titulo="Análise Preliminar de Risco (APR)">
+      {/* 25/11/2026 (docs/mockups/dds-apr-pt-visual-2026-11-25.html): o formulário ficava sempre aberto,
+          com a grade de todas as pessoas, e a lista só aparecia no fim da página. Agora ele abre pelo
+          botão "Nova APR" (PainelCriacaoInline, mesmo padrão de Inspeções e DDS). Nenhum campo mudou. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader
+        titulo="APRs"
+        subtitulo="Análise Preliminar de Risco"
+        acoes={
+          <Button
+            appearance="primary"
+            icon={<Add24Regular />}
+            onClick={() => (painelAberto ? fecharPainel() : setPainelAberto(true))}
+            aria-expanded={painelAberto}
+            aria-controls="painel-nova-apr"
+          >
+            {painelAberto ? 'Fechar' : 'Nova APR'}
+          </Button>
+        }
+      />
+      <div id="painel-nova-apr">
+      <PainelCriacaoInline aberto={painelAberto} titulo="Nova APR">
         <FormSection titulo="Dados da APR" numero={1} primeira>
           <FormGrid>
             <Campo span={4}>
@@ -368,36 +526,88 @@ export function AprsTab() {
             )}
           </FormGrid>
           <FormRodape>
+            <Button onClick={fecharPainel}>Cancelar</Button>
             <Button appearance="primary" icon={<Add24Regular />} onClick={criar} disabled={carregando}>
               Adicionar APR
             </Button>
           </FormRodape>
         </FormSection>
+      </PainelCriacaoInline>
+      </div>
 
+      <Card densidade="compacta">
+        {aprs.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <FiltroRapido<FiltroApr>
+              aria-label="Filtrar APRs pela situação"
+              valor={filtro}
+              aoMudar={setFiltro}
+              opcoes={[
+                { valor: 'todas', rotulo: 'Todas', contagem: contagem.todas },
+                { valor: 'elaboracao', rotulo: 'Em elaboração', contagem: contagem.elaboracao },
+                { valor: 'aguardando', rotulo: 'Aguardando aprovação', contagem: contagem.aguardando },
+                { valor: 'aprovadas', rotulo: 'Aprovadas', contagem: contagem.aprovadas },
+                { valor: 'vencendo', rotulo: 'Vencem em breve', contagem: contagem.vencendo },
+                { valor: 'fechadas', rotulo: 'Reprovadas e encerradas', contagem: contagem.fechadas },
+              ]}
+            />
+            <Input
+              aria-label="Buscar número, atividade, local ou obra"
+              placeholder="Buscar nº, atividade, local ou obra"
+              contentBefore={<Search20Regular />}
+              value={busca}
+              onChange={(_, d) => setBusca(d.value)}
+              style={{ minWidth: 260 }}
+            />
+          </div>
+        )}
         <DataTable
           aria-label="APRs cadastradas"
           colunas={colunas}
-          linhas={aprs}
+          linhas={aprsVisiveis}
           chaveLinha={(a) => a.id}
           carregando={carregandoLista}
-          vazio={{ titulo: 'Nenhuma APR cadastrada ainda.' }}
+          tomLinha={tomDaLinhaApr}
+          vazio={aprs.length > 0
+            ? { titulo: 'Nenhuma APR nesta seleção', descricao: 'Troque o filtro ou a busca para ver outras APRs.' }
+            : { titulo: 'Nenhuma APR cadastrada ainda.', acao: { rotulo: 'Nova APR', aoClicar: () => setPainelAberto(true) } }}
           // 18/11/2026: APR aprovada ou encerrada abre o PDF; as demais seguem para o preenchimento.
           aoClicarLinha={(a) =>
             a.status === StatusApr.Aprovada || a.status === StatusApr.Encerrada
-              ? void visualizar({ titulo: 'PDF da APR', nomeArquivo: `apr-${a.id}.pdf`, obter: () => api.aprs.exportarPdf(a.id) })
+              ? abrirPdf(a)
               : navigate(`/operacao/apr/${a.id}`)
           }
+          // Ação principal (25/11/2026): em elaboração → Continuar; aguardando aprovação → Aprovar (no
+          // detalhe, onde a decisão já acontece); aprovada/encerrada → PDF. Reprovada → Abrir.
           acoesLinha={(a) => (
             <>
-              <BotaoAbrirDetalhe aoAbrir={() => navigate(`/operacao/apr/${a.id}`)} />
+              {a.status === StatusApr.EmElaboracao && (
+                <BotaoAcao tom="ver" icon={<Play24Regular />} aria-label="Continuar a APR" onClick={(e) => { e.stopPropagation(); navigate(`/operacao/apr/${a.id}`); }}>
+                  Continuar
+                </BotaoAcao>
+              )}
+              {a.status === StatusApr.AguardandoAprovacao && (
+                <BotaoAcao tom="baixar" aria-label="Aprovar ou reprovar a APR" onClick={(e) => { e.stopPropagation(); navigate(`/operacao/apr/${a.id}`); }}>
+                  Aprovar
+                </BotaoAcao>
+              )}
+              {(a.status === StatusApr.Aprovada || a.status === StatusApr.Encerrada) && navigator.onLine && (
+                <BotaoAcao tom="baixar" icon={<DocumentPdf24Regular />} aria-label="Abrir o PDF da APR" onClick={(e) => { e.stopPropagation(); abrirPdf(a); }}>
+                  PDF
+                </BotaoAcao>
+              )}
+              {a.status !== StatusApr.EmElaboracao && (
+                <BotaoAcao tom="ver" icon={<Open24Regular />} aria-label="Abrir detalhe da APR" title="Abrir detalhe" onClick={(e) => { e.stopPropagation(); navigate(`/operacao/apr/${a.id}`); }} />
+              )}
               {/* Exclusão é privilégio de Administrador (o servidor recusa os demais) — ver PoliticasAutorizacao. */}
               {souAdministrador && !travados.has(a.id) && (
-                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={() => excluir(a.id)} aria-label="Excluir" />
+                <BotaoAcao tom="excluir" icon={<Delete24Regular />} onClick={(e) => { e.stopPropagation(); void excluir(a.id); }} aria-label="Excluir" />
               )}
             </>
           )}
         />
       </Card>
+      </div>
       {dialogElement}
       {dialogoVisualizador}
     </>

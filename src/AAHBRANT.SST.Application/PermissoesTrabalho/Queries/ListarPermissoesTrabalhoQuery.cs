@@ -1,3 +1,4 @@
+using AAHBRANT.SST.Application.Common;
 using AAHBRANT.SST.Application.Common.Interfaces;
 using AAHBRANT.SST.Application.Common.Seguranca;
 using MediatR;
@@ -27,6 +28,9 @@ public class ListarPermissoesTrabalhoQueryHandler : IRequestHandler<ListarPermis
             query = query.Where(p => p.AtividadeId == request.AtividadeId.Value);
 
         var permissoes = await query.OrderByDescending(p => p.CreatedAtUtc).ToListAsync(ct);
+        // Responsável pela execução com nome e foto na lista (25/11/2026), sem carregar as imagens.
+        var pessoas = await FotosPessoas.DeUsuariosAsync(_db, permissoes.Select(p => p.ResponsavelExecucaoUsuarioId), ct);
+        PessoaComFoto? Pessoa(Guid? id) => id.HasValue && pessoas.TryGetValue(id.Value, out var p) ? p : null;
 
         return permissoes.Select(p => new PermissaoTrabalhoDto
         {
@@ -44,6 +48,10 @@ public class ListarPermissoesTrabalhoQueryHandler : IRequestHandler<ListarPermis
             HorarioInicio = p.HorarioInicio,
             HorarioFim = p.HorarioFim,
             Validade = p.Validade,
+            ResponsavelExecucaoUsuarioId = p.ResponsavelExecucaoUsuarioId,
+            ResponsavelExecucaoUsuarioNome = Pessoa(p.ResponsavelExecucaoUsuarioId)?.Nome,
+            ResponsavelExecucaoTrabalhadorId = Pessoa(p.ResponsavelExecucaoUsuarioId)?.TrabalhadorId,
+            ResponsavelExecucaoTemFoto = Pessoa(p.ResponsavelExecucaoUsuarioId)?.TemFoto ?? false,
             Status = p.Status,
             AutorizadoPorUsuarioId = p.AutorizadoPorUsuarioId,
             AutorizadoPorUsuarioNome = p.AutorizadoPorUsuario?.Nome,

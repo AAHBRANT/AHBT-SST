@@ -27,6 +27,8 @@ public class AprDto
     public string? ElaboradorNome { get; set; }
     public Guid? SupervisorTrabalhadorId { get; set; }
     public string? SupervisorNome { get; set; }
+    // Foto de quem elabora na lista (25/11/2026).
+    public bool ElaboradorTemFoto { get; set; }
 }
 
 public class AprEtapaRiscoDto
