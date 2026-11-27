@@ -23,7 +23,6 @@ import {
   type Tom,
 } from '@ui';
 import {
-  ArrowDownload24Regular,
   Eye24Regular,
   Open24Regular,
   Signature24Regular,
@@ -97,7 +96,7 @@ function DadoResumo({ rotulo, valor }: { rotulo: string; valor: string }) {
 }
 
 // Onda 2 Task 10 (camada ui/): detalhe de uma execução de inspeção. DetailPageLayout com resumo e a
-// única ação de fluxo (encerrar) na lateral — "Baixar PDF" e "Assinar inspeção" ficam no cabeçalho
+// única ação de fluxo (encerrar) na lateral — "PDF" e "Assinar inspeção" ficam no cabeçalho
 // por serem navegação/exportação, não transição de estado (mesmo critério de AprDetalhePage.tsx: só
 // aprovar/reprovar entram em WorkflowActions, exportar fica em cabecalho.acoes). Retorno antecipado
 // com OU erro OU skeleton na carga inicial, nunca cabeçalho+skeleton+erro empilhados (padrão já
@@ -120,7 +119,6 @@ export function InspecaoDetalhePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
   const [gerandoOcorrenciaId, setGerandoOcorrenciaId] = useState<string | null>(null);
-  const [baixandoPdf, setBaixandoPdf] = useState(false);
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
   const [fotoUrls, setFotoUrls] = useState<Record<string, string>>({});
   const [fotoDepoisUrls, setFotoDepoisUrls] = useState<Record<string, string>>({});
@@ -383,30 +381,11 @@ export function InspecaoDetalhePage() {
     }
   }
 
-  async function baixarPdf() {
-    if (!id || !detalhe) return;
-    try {
-      setBaixandoPdf(true);
-      setErro(null);
-      const blob = await api.inspecoes.baixarPdf(id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = nomeArquivoPdf(detalhe);
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao gerar o PDF da inspeção.');
-    } finally {
-      setBaixandoPdf(false);
-    }
-  }
-
   function nomeArquivoPdf(det: InspecaoDetalhe) {
     return `inspecao-${det.inspecao.data?.slice(0, 10)}.pdf`;
   }
 
-  // Abre o mesmo PDF do "Baixar PDF" numa janela, sem baixar.
+  // Abre o PDF na janela de visualização, que já tem o "Baixar".
   function visualizarPdf() {
     if (!id || !detalhe) return;
     void visualizar({ titulo: 'PDF da inspeção', nomeArquivo: nomeArquivoPdf(detalhe), obter: () => api.inspecoes.baixarPdf(id) });
@@ -510,11 +489,8 @@ export function InspecaoDetalhePage() {
         rotuloVoltar: 'Voltar para Inspeções',
         acoes: (
           <>
-            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
-              Visualizar PDF
-            </BotaoAcao>
-            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf} aria-label="Baixar PDF">
-              Baixar PDF
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Ver e baixar PDF">
+              PDF
             </BotaoAcao>
             {dialogoVisualizador}
             {inspecao.status === StatusInspecao.AguardandoAssinatura && (

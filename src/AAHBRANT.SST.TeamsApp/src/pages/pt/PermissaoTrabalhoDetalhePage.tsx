@@ -18,7 +18,7 @@ import {
   type Tom,
 } from '@ui';
 import { CampoData } from '../../components/CampoData';
-import { ArrowDownload24Regular, Eye24Regular, ShieldCheckmark24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { Eye24Regular, ShieldCheckmark24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { api, StatusPt, statusPtLabel, type PermissaoTrabalhoDetalhe } from '../../lib/api';
 import { PreRequisitosPtTab } from './PreRequisitosPtTab';
 import { TiposTrabalhoPtTab } from './TiposTrabalhoPtTab';
@@ -52,7 +52,6 @@ export function PermissaoTrabalhoDetalhePage() {
   const [aba, setAba] = useState<AbaPt>('preRequisitos');
   const [detalhe, setDetalhe] = useState<PermissaoTrabalhoDetalhe | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [exportando, setExportando] = useState(false);
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   const [motivoSuspensao, setMotivoSuspensao] = useState('');
@@ -138,25 +137,6 @@ export function PermissaoTrabalhoDetalhePage() {
       return false;
     } finally {
       setProcessando(false);
-    }
-  }
-
-  async function exportarPdf() {
-    if (!id) return;
-    try {
-      setExportando(true);
-      setErro(null);
-      const blob = await api.permissoesTrabalho.exportarPdf(id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = nomeArquivoPdf(id);
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao exportar PDF da PT.');
-    } finally {
-      setExportando(false);
     }
   }
 
@@ -268,17 +248,8 @@ export function PermissaoTrabalhoDetalhePage() {
             >
               Assinar PT (ciência da equipe)
             </BotaoAcao>
-            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
-              Visualizar PDF
-            </BotaoAcao>
-            <BotaoAcao
-              tom="baixar"
-              icon={<ArrowDownload24Regular />}
-              onClick={exportarPdf}
-              disabled={exportando}
-              aria-label="Exportar PDF"
-            >
-              Exportar PDF
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Ver e baixar PDF">
+              PDF
             </BotaoAcao>
             {/* 05/11: certificado de assinaturas à parte — a PT fica no local sem biometria exposta. */}
             <BotaoAcao

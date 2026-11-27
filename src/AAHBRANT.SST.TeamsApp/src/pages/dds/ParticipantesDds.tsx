@@ -11,9 +11,7 @@ import { api, type DdsDetalhe, type DdsFuncionario } from '../../lib/api';
 import { capturarDigitalLocal, credencialLeitura, obterDispositivoLocal, type CapturaLocal, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { formatarHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
-import { SeletorFotoCamera } from '../../components/SeletorFotoCamera';
 import { BotaoBiometriaDigital } from '../../components/assinatura/BotaoBiometriaDigital';
-import { ErroFacialDialog } from '../../components/assinatura/ErroFacialDialog';
 import { FilaFacialDds } from '../../components/dds/FilaFacialDds';
 
 const linhaFlex = { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' as const };
@@ -46,12 +44,10 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
   const [carregando, setCarregando] = useState(true);
   const [erroCarga, setErroCarga] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [erroFacial, setErroFacial] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
   const [somenteSelecionados, setSomenteSelecionados] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [selecaoEmGravacao, setSelecaoEmGravacao] = useState<string[] | null>(null);
-  const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
   const [mensagem, setMensagem] = useState('');
   const [dispositivo, setDispositivo] = useState<DispositivoLocal | null>(null);
   const [verificandoLeitor, setVerificandoLeitor] = useState(false);
@@ -122,7 +118,7 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
     .filter((f) => (!somenteSelecionados || selecionados.has(f.trabalhadorId))
       && normalizar(`${f.nome} ${f.matricula ?? ''}`).includes(termo))
     .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-  const ocupado = salvando || confirmandoId !== null;
+  const ocupado = salvando;
   const todosSelecionados = disponiveis.length > 0 && disponiveis.every((f) => selecionados.has(f.trabalhadorId));
 
   async function salvar(ids: string[]) {
@@ -226,45 +222,11 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
 
   useEffect(() => () => { filaAtiva.current = false; }, []);
 
-  // Presença por reconhecimento facial: o operador escolhe o botão facial da linha do funcionário, a
-  // foto é identificada no servidor e o rosto precisa ser o do funcionário da linha.
-  async function confirmarPresencaFacial(funcionario: DdsFuncionario, foto: File) {
-    if (emOperacao.current || somenteLeitura) return;
-    emOperacao.current = true;
-    setConfirmandoId(funcionario.trabalhadorId);
-    setErro(null);
-    setErroFacial(null);
-    setMensagem('');
-    try {
-      await api.dds.registrarParticipanteFacial(dds.id, funcionario.trabalhadorId, foto);
-      tocarBipeAssinaturaAceita();
-      aoAtualizar(await api.dds.obterDetalhe(dds.id));
-      setMensagem(`Presença de ${funcionario.nome} confirmada por reconhecimento facial.`);
-    } catch (e) {
-      setErroFacial(mensagemDoErro(e, 'Falha ao confirmar a presença por reconhecimento facial.'));
-    } finally {
-      emOperacao.current = false;
-      setConfirmandoId(null);
-    }
-  }
-
   function acoesFuncionario(f: DdsFuncionario) {
     const presenca = confirmados.get(f.trabalhadorId);
     if (presenca) return <Checkmark24Regular aria-label="Presença confirmada" />;
     if (somenteLeitura || !selecionados.has(f.trabalhadorId)) return null;
     return <div style={linhaFlex}>
-      <SeletorFotoCamera
-        aoSelecionarArquivo={(foto) => confirmarPresencaFacial(f, foto)}
-        aoErroValidacao={setErroFacial}
-        rotulo="Confirmar por facial"
-        desabilitado={ocupado}
-        tamanho="medium"
-        variante="facialAzure"
-        modoCamera="user"
-        modoCaptura="assinatura"
-        exigirCamera
-        permitirCapturaAutomatica
-      />
       <Button size="small" appearance="subtle" icon={<Dismiss24Regular />} disabled={ocupado}
         aria-label={`Remover ${f.nome} da seleção`} onClick={() => alternar(f.trabalhadorId)}>Remover</Button>
     </div>;
@@ -356,12 +318,11 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
       </div>
       <Legenda>{somenteLeitura
         ? 'Lista deste DDS. As presenças confirmadas constam nos relatórios.'
-        : 'Marque ou desmarque para ajustar a lista. A seleção é salva automaticamente; a presença é confirmada pela fila de digitais ou pelo reconhecimento facial de cada funcionário.'}</Legenda>
+        : 'Marque ou desmarque para ajustar a lista. A seleção é salva automaticamente; a presença é confirmada pela fila de digitais ou pela fila facial.'}</Legenda>
       {erroCarga && <FeedbackInline tom="erro" acao={{ rotulo: 'Tentar novamente', aoClicar: () => void carregarFuncionarios() }}>{erroCarga}</FeedbackInline>}
       {erro && <FeedbackInline tom="erro" aoFechar={() => setErro(null)}>{erro}</FeedbackInline>}
       <div role="status" style={{ color: designTokens.colorNeutralMedium, minHeight: 20 }}>
-        {salvando ? 'Salvando seleção...' : confirmandoId
-          ? `Confirmando a presença de ${mapaFuncionarios.get(confirmandoId)?.nome ?? 'funcionário'}...` : mensagem}
+        {salvando ? 'Salvando seleção...' : mensagem}
       </div>
       <div style={{ maxHeight: 480, overflow: 'auto' }}>
         <DataTable aria-label="Funcionários do DDS" colunas={compacto ? colunasCompactas : colunas} linhas={funcionarios}
@@ -374,11 +335,10 @@ export function ParticipantesDds({ detalhe, somenteLeitura, aoAtualizar }: Props
       </div>
       {!somenteLeitura && totalPendentes > 0 && !dispositivo && <FeedbackInline tom="aviso"
         acao={{ rotulo: verificandoLeitor ? 'Verificando leitor...' : 'Verificar leitor', aoClicar: () => { if (!verificandoLeitor) void verificarLeitor(); } }}>
-        Para abrir a fila de digitais, conecte o leitor Futronic e abra o Agente Biométrico. O reconhecimento facial não depende do leitor. Você já pode organizar a lista.
+        Para abrir a fila de digitais, conecte o leitor Futronic e abra o Agente Biométrico. A fila facial não depende do leitor. Você já pode organizar a lista.
       </FeedbackInline>}
       {!somenteLeitura && confirmados.size > 0 && <Legenda>Funcionários com presença confirmada permanecem na lista ao limpar a seleção.</Legenda>}
     </div>
-    <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
     <FilaFacialDds
       ddsId={dds.id}
       titulo={`Fila facial · DDS ${dds.temaLivreNome ?? ''}`.trim()}

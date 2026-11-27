@@ -17,9 +17,9 @@ import {
   type Coluna,
   type Tom,
 } from '@ui';
-import { ArrowDownload24Regular, Eye24Regular, Filter24Regular, Link24Regular } from '@fluentui/react-icons';
+import { Eye24Regular, Filter24Regular, Link24Regular } from '@fluentui/react-icons';
 import { api, statusDocumentoAssinaturaLabel, type DocumentoAssinaturaResumo } from '../../lib/api';
-import { salvarBlob, useVisualizadorPdf } from '../../components/useVisualizadorPdf';
+import { useVisualizadorPdf } from '../../components/useVisualizadorPdf';
 import { formatarDataHoraBrasilia } from '../../components/assinatura/assinaturaDigital';
 
 // Status do Motor de Assinatura Eletrônica não tinha mapeamento de cor no Badge original (só
@@ -39,7 +39,6 @@ export function PainelAssinaturasTab() {
   const [dataFim, setDataFim] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
-  const [baixandoId, setBaixandoId] = useState<string | null>(null);
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
@@ -64,19 +63,7 @@ export function PainelAssinaturasTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function baixarPdf(documento: DocumentoAssinaturaResumo) {
-    try {
-      setBaixandoId(documento.id);
-      setErro(null);
-      salvarBlob(await api.assinatura.baixarPdf(documento.id), `comprovante-assinatura-${documento.id}.pdf`);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao baixar o PDF do documento.');
-    } finally {
-      setBaixandoId(null);
-    }
-  }
-
-  // Mesmo comprovante do botão "PDF", aberto na janela sem baixar.
+  // Abre o comprovante na janela de visualização, que já tem o "Baixar".
   function visualizarPdf(documento: DocumentoAssinaturaResumo) {
     void visualizar({
       titulo: `Comprovante de assinatura — ${documento.entidadeTipoRotulo || documento.entidadeTipo}`,
@@ -175,18 +162,6 @@ export function PainelAssinaturasTab() {
                   aria-label="Visualizar PDF"
                 >
                   Visualizar
-                </BotaoAcao>
-              )}
-              {documento.temPdf && (
-                <BotaoAcao
-                  tom="baixar"
-                  size="small"
-                  icon={<ArrowDownload24Regular />}
-                  onClick={() => baixarPdf(documento)}
-                  disabled={baixandoId === documento.id}
-                  aria-label="Baixar PDF"
-                >
-                  PDF
                 </BotaoAcao>
               )}
               {documento.tokenValidacaoPublica && (

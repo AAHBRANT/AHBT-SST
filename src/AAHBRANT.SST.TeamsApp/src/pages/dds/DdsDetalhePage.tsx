@@ -17,7 +17,6 @@ import {
   type Tom,
 } from '@ui';
 import {
-  ArrowDownload24Regular,
   Eye24Regular,
 } from '@fluentui/react-icons';
 import {
@@ -43,7 +42,6 @@ export function DdsDetalhePage() {
   const [fotosEvidenciaPreview, setFotosEvidenciaPreview] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
-  const [baixandoPdf, setBaixandoPdf] = useState(false);
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
@@ -110,30 +108,11 @@ export function DdsDetalhePage() {
     }
   }
 
-  async function baixarPdf() {
-    if (!id || !detalhe) return;
-    try {
-      setBaixandoPdf(true);
-      setErro(null);
-      const blob = await api.dds.baixarPdf(id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = nomeArquivoPdf(detalhe);
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao gerar o PDF do DDS.');
-    } finally {
-      setBaixandoPdf(false);
-    }
-  }
-
   function nomeArquivoPdf(det: DdsDetalhe) {
     return `dds-${det.dds.data?.slice(0, 10)}.pdf`;
   }
 
-  // Abre o mesmo PDF do "Baixar PDF" numa janela, sem baixar.
+  // Abre o PDF na janela de visualização, que já tem o "Baixar".
   function visualizarPdf() {
     if (!id || !detalhe) return;
     void visualizar({ titulo: 'PDF do DDS', nomeArquivo: nomeArquivoPdf(detalhe), obter: () => api.dds.baixarPdf(id) });
@@ -196,11 +175,8 @@ export function DdsDetalhePage() {
         acoes: (
           <>
             {/* 06/11: "Assinar DDS" saiu — todos assinam pela fila (digital ou facial), inclusive o técnico responsável. */}
-            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
-              Visualizar PDF
-            </BotaoAcao>
-            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf} aria-label="Baixar PDF">
-              Baixar PDF
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Ver e baixar PDF">
+              PDF
             </BotaoAcao>
             {dialogoVisualizador}
           </>

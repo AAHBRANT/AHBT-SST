@@ -22,7 +22,6 @@ import {
 } from '@ui';
 import {
   Add24Regular,
-  ArrowDownload24Regular,
   ClipboardTaskListLtr24Regular,
   Delete24Regular,
   Edit24Regular,
@@ -61,15 +60,6 @@ function formatarData(data: string) {
   return new Date(data).toLocaleDateString('pt-BR');
 }
 
-function baixarBlob(blob: Blob, nomeArquivo: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = nomeArquivo;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
 function nomePdf(tema: TemaInspecaoResumo, item: ItemInspecionavelResumo, inspecao: AlojamentoInspecaoResumo) {
   const nome = `${tema.nome}-${item.identificacao}`.replace(/[^\w-]+/g, '-');
   return `inspecao-${nome}-${formatarData(inspecao.data).replaceAll('/', '-')}.pdf`;
@@ -104,7 +94,6 @@ export function TemaInspecaoView({
   const [painelAberto, setPainelAberto] = useState(false);
   const [formulario, setFormulario] = useState({ obraId: '', identificacao: '', descricao: '', periodicidadeDias: '', responsavelInspecaoId: '' });
   const [salvando, setSalvando] = useState(false);
-  const [baixandoId, setBaixandoId] = useState<string | null>(null);
 
   async function carregar() {
     try {
@@ -208,18 +197,6 @@ export function TemaInspecaoView({
       });
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível abrir a inspeção deste item.');
-    }
-  }
-
-  async function baixarPdfInspecao(item: ItemInspecionavelResumo, inspecao: AlojamentoInspecaoResumo) {
-    try {
-      setBaixandoId(inspecao.id);
-      setErro(null);
-      baixarBlob(await api.inspecoes.baixarPdf(inspecao.id), nomePdf(tema, item, inspecao));
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Não foi possível baixar o PDF da inspeção.');
-    } finally {
-      setBaixandoId(null);
     }
   }
 
@@ -377,19 +354,8 @@ export function TemaInspecaoView({
                     </Button>
                   )}
                   {ultima && (
-                    <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={() => visualizarPdfInspecao(item, ultima)} aria-label="Visualizar última inspeção">
-                      Visualizar última
-                    </BotaoAcao>
-                  )}
-                  {ultima && (
-                    <BotaoAcao
-                      tom="baixar"
-                      icon={<ArrowDownload24Regular />}
-                      disabled={baixandoId === ultima.id}
-                      onClick={() => baixarPdfInspecao(item, ultima)}
-                      aria-label="Baixar última inspeção"
-                    >
-                      Baixar última
+                    <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={() => visualizarPdfInspecao(item, ultima)} aria-label="Ver e baixar PDF da última inspeção">
+                      PDF
                     </BotaoAcao>
                   )}
                 </div>
@@ -421,16 +387,7 @@ export function TemaInspecaoView({
                                 aria-label="Abrir inspeção"
                               />
                               {inspecao.status !== StatusInspecao.EmAndamento && (
-                                <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={() => visualizarPdfInspecao(item, inspecao)} aria-label="Visualizar PDF" />
-                              )}
-                              {inspecao.status !== StatusInspecao.EmAndamento && (
-                                <BotaoAcao
-                                  tom="baixar"
-                                  icon={<ArrowDownload24Regular />}
-                                  disabled={baixandoId === inspecao.id}
-                                  onClick={() => baixarPdfInspecao(item, inspecao)}
-                                  aria-label="Baixar PDF"
-                                />
+                                <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={() => visualizarPdfInspecao(item, inspecao)} aria-label="Ver e baixar PDF" />
                               )}
                             </div>
                           </div>
