@@ -85,6 +85,7 @@ public static class DependencyInjection
         services.Configure<TelegramSuporteOptions>(configuration.GetSection("Telegram"));
         services.AddScoped<ITelegramSuporteService, TelegramSuporteService>();
         services.AddScoped<ITelegramResumoService, TelegramResumoService>();
+        services.AddScoped<ITelegramAlertaService, TelegramAlertaService>();
         services.AddSingleton<AAHBRANT.SST.Application.Dds.IImagemResumoDdsService, AAHBRANT.SST.Infrastructure.Documentos.ImagemResumoDdsService>();
         services.AddSingleton<AAHBRANT.SST.Application.Relatorios.IImagemListaPresencaService, AAHBRANT.SST.Infrastructure.Documentos.ImagemListaPresencaService>();
         services.AddScoped<ISuporteIaConfiguracao, SuporteIaConfiguracao>();
@@ -94,6 +95,8 @@ public static class DependencyInjection
         services.AddScoped<ClaudeChatJsonCliente>();
         // Agente de suporte da bola flutuante (Claude Managed Agents, 17/11/2026).
         services.AddSingleton<AAHBRANT.SST.Application.AgenteIa.IAgenteSuporteIa, Integracao.AgenteIa.AnthropicAgenteSuporteIa>();
+        services.Configure<Integracao.AgenteIa.AgenteAssinaturaOptions>(configuration.GetSection("AgenteAssinatura"));
+        services.AddSingleton<AAHBRANT.SST.Application.Assinatura.IAgenteAssinaturaDisparador, Integracao.AgenteIa.AnthropicAgenteAssinaturaDisparador>();
         // "Ouvir" do SST IA com voz neural do Azure (19/11/2026). Sem AzureSpeech:ApiKey o app usa a voz do aparelho.
         services.Configure<Integracao.AgenteIa.AzureSpeechOptions>(configuration.GetSection("AzureSpeech"));
         services.AddHttpClient(Integracao.AgenteIa.AzureSpeechSinteseVoz.NomeCliente, c => c.Timeout = TimeSpan.FromSeconds(30));

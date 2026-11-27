@@ -16,6 +16,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<AlertaEngineWorker>();
 builder.Services.AddHostedService<RelatoriosAgendadosWorker>();
 builder.Services.AddHostedService<SessoesAoVivoCameraWorker>();
+builder.Services.AddHostedService<VigiaAssinaturaWorker>();
 
 var host = builder.Build();
 
