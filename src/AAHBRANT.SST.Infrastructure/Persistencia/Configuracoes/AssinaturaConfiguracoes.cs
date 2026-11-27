@@ -144,3 +144,16 @@ public class FalhaReconhecimentoFacialConfiguracao : IEntityTypeConfiguration<Fa
         builder.HasQueryFilter(f => f.Ativo);
     }
 }
+
+public class PropostaAcaoAssinaturaConfiguracao : IEntityTypeConfiguration<PropostaAcaoAssinatura>
+{
+    public void Configure(EntityTypeBuilder<PropostaAcaoAssinatura> builder)
+    {
+        builder.Property(p => p.Alvos).HasMaxLength(8000);
+        builder.Property(p => p.Descricao).HasMaxLength(2000);
+        builder.Property(p => p.Motivo).HasMaxLength(2000);
+        builder.Property(p => p.Resultado).HasMaxLength(2000);
+        builder.HasIndex(p => new { p.ObraId, p.Tipo, p.Status });
+        builder.HasQueryFilter(p => p.Ativo);
+    }
+}

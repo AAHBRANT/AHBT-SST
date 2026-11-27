@@ -511,6 +511,50 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         await TreinarEAguardarAsync(cliente, grupo, ct, tentativas: 60);
     }
 
+    public async Task<int> ExcluirPessoasSemVinculoAsync(Guid obraId, IReadOnlyCollection<string> personIds, CancellationToken ct)
+    {
+        var diagnostico = await DiagnosticarVinculosAsync(obraId, ct);
+        if (diagnostico.GrupoAzure is null || !diagnostico.GrupoExisteNoAzure)
+            throw new InvalidOperationException("O grupo de rostos da obra não existe no Azure.");
+
+        var pedidas = personIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var aindaSoltas = diagnostico.PessoasSemVinculo
+            .Select(p => p.PersonIdAzure)
+            .Where(pedidas.Contains)
+            .ToList();
+        if (aindaSoltas.Count == 0)
+            return 0;
+
+        using var cliente = CriarCliente();
+        var excluidas = 0;
+        foreach (var personId in aindaSoltas)
+        {
+            using var resposta = await EnviarComRetry429Async(
+                () => cliente.DeleteAsync($"face/v1.0/persongroups/{diagnostico.GrupoAzure}/persons/{personId}", ct), ct);
+            if (resposta.IsSuccessStatusCode)
+                excluidas++;
+            else if (resposta.StatusCode != System.Net.HttpStatusCode.NotFound)
+                throw new InvalidOperationException(
+                    $"O Azure recusou a exclusão de uma pessoa ({excluidas} de {aindaSoltas.Count} já excluídas): " +
+                    MontarMensagemErroAzure("delete person", await LerErroAzureAsync(resposta, ct)));
+        }
+
+        // Grupo que ficou vazio não treina ("no persisted face") e não precisa: não há ninguém a reconhecer.
+        if (diagnostico.PessoasNoAzure - excluidas <= 0)
+            return excluidas;
+        try
+        {
+            await TreinarEAguardarAsync(cliente, diagnostico.GrupoAzure, ct, tentativas: 60);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // As exclusões já aconteceram: o aviso precisa dizer isso, não só "falhou".
+            throw new InvalidOperationException(
+                $"{excluidas} pessoa(s) excluída(s), mas o retreino do grupo falhou ({ex.Message}). Retreinar o grupo da obra.", ex);
+        }
+        return excluidas;
+    }
+
     public async Task<DiagnosticoVinculosFacialDto> DiagnosticarVinculosAsync(Guid obraId, CancellationToken ct)
     {
         var obra = await _db.Obras.FirstOrDefaultAsync(o => o.Id == obraId, ct)

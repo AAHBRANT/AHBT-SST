@@ -1,6 +1,7 @@
 using AAHBRANT.SST.Api.Autorizacao;
 using AAHBRANT.SST.Application.Assinatura;
 using AAHBRANT.SST.Application.Common.Interfaces;
+using AAHBRANT.SST.Domain.Entidades;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -44,6 +45,38 @@ public class AgenteAssinaturaController : ControllerBase
         return enviada
             ? Ok(new { enviada = true })
             : StatusCode(StatusCodes.Status502BadGateway, new { enviada = false, erro = "O Telegram não está configurado ou recusou a mensagem." });
+    }
+
+    // Tipo por nome ("ExcluirPessoasFaciaisSoltas"): a API não converte enum de texto por padrão.
+    public record ProporRequest(string? Tipo, Guid? ObraId, string? Motivo);
+
+    // Ação irreversível: o agente só PEDE. O servidor escolhe os alvos e manda os botões Aprovar/Recusar ao
+    // responsável no Telegram; nada é executado aqui. Consulte o desfecho em GET propostas/{id}.
+    [HttpPost("propostas")]
+    public async Task<ActionResult<PropostaAcaoAssinaturaDto>> Propor([FromBody] ProporRequest corpo, CancellationToken ct)
+    {
+        if (corpo.ObraId is null || !Enum.TryParse<TipoAcaoAssinatura>(corpo.Tipo, ignoreCase: true, out var tipo)
+            || !Enum.IsDefined(tipo) || int.TryParse(corpo.Tipo, out _))
+            return BadRequest(new { erro = $"Informe obraId e tipo ({string.Join(", ", Enum.GetNames<TipoAcaoAssinatura>())})." });
+        return Ok(await _mediator.Send(new CriarPropostaAcaoAssinaturaCommand(tipo, corpo.ObraId.Value, corpo.Motivo), ct));
+    }
+
+    [HttpGet("propostas/{propostaId:guid}")]
+    public async Task<ActionResult<PropostaAcaoAssinaturaDto>> Proposta(Guid propostaId, CancellationToken ct)
+        => await _mediator.Send(new ObterPropostaAcaoAssinaturaQuery(propostaId), ct) is { } proposta ? Ok(proposta) : NotFound();
+
+    // Uma vez por ambiente (ou ao trocar o segredo): faz o Telegram entregar os cliques dos botões em
+    // POST api/telegram/webhook, com o segredo Telegram:WebhookSegredo no cabeçalho.
+    [HttpPost("telegram/registrar-webhook")]
+    public async Task<IActionResult> RegistrarWebhook([FromServices] ITelegramAlertaService telegram, [FromServices] IConfiguration configuracao, CancellationToken ct)
+    {
+        var segredo = configuracao[TelegramWebhookController.ConfiguracaoSegredo];
+        if (string.IsNullOrWhiteSpace(segredo) || segredo.Length < ChaveAgenteAssinaturaAttribute.TamanhoMinimo)
+            return BadRequest(new { erro = $"Configure {TelegramWebhookController.ConfiguracaoSegredo} (32 caracteres ou mais)." });
+        var url = $"https://{Request.Host}/{TelegramWebhookController.Rota}";
+        return await telegram.RegistrarWebhookAsync(url, segredo, ct)
+            ? Ok(new { registrado = true, url })
+            : StatusCode(StatusCodes.Status502BadGateway, new { registrado = false, erro = "O Telegram recusou o registro (ver log da API)." });
     }
 
     // Ação segura: recalcula o índice do grupo com as faces que já estão lá. Não cria nem apaga ninguém.

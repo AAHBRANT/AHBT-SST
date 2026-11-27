@@ -63,6 +63,12 @@ public interface IAutenticacaoFacialService
     // pessoa, só recalcula o índice do Azure com as faces que já estão lá.
     Task RetreinarGrupoAsync(Guid obraId, CancellationToken ct) => Task.CompletedTask;
 
+    // IRREVERSÍVEL — só depois de aprovação do responsável (PropostaAcaoAssinatura). Exclui do grupo da obra
+    // as pessoas pedidas que AINDA estão sem funcionário ligado (diagnóstico refeito na hora: quem ganhou
+    // vínculo desde a proposta fica) e retreina o grupo. Devolve quantas saíram.
+    Task<int> ExcluirPessoasSemVinculoAsync(Guid obraId, IReadOnlyCollection<string> personIds, CancellationToken ct)
+        => Task.FromResult(0);
+
     // Compara os cadastros faciais do banco com o grupo da obra no Azure, sem alterar nada.
     Task<DiagnosticoVinculosFacialDto> DiagnosticarVinculosAsync(Guid obraId, CancellationToken ct);
 

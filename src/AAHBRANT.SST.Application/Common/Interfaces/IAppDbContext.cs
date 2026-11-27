@@ -170,6 +170,7 @@ public interface IAppDbContext
     DbSet<FotoCadastroFacial> FotosCadastroFacial { get; }
     DbSet<HistoricoFuncaoTrabalhador> HistoricosFuncaoTrabalhador { get; }
     DbSet<FalhaReconhecimentoFacial> FalhasReconhecimentoFacial { get; }
+    DbSet<PropostaAcaoAssinatura> PropostasAcaoAssinatura { get; }
     DbSet<RelatorioGerado> RelatoriosGerados { get; }
     DbSet<RelatorioEnvio> RelatorioEnvios { get; }
     DbSet<DestinatarioRelatorio> DestinatariosRelatorio { get; }
