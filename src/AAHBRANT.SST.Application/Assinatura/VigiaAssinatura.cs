@@ -71,4 +71,16 @@ public class VigiaAssinatura
             _ => string.Empty,
         };
     }
+
+    public static bool DeveLigar(DecisaoVigiaAssinatura decisao)
+        => decisao is DecisaoVigiaAssinatura.AvisarQueda or DecisaoVigiaAssinatura.LembrarQueda;
+
+    // Texto falado na ligação: curto, sem sigla nem endereço técnico (o detalhe vai no Telegram).
+    public string TextoLigacao(DecisaoVigiaAssinatura decisao, DateTime agoraUtc)
+    {
+        var desde = FusoBrasilia.ParaBrasilia(_foraDesde ?? agoraUtc).ToString("HH:mm");
+        return decisao == DecisaoVigiaAssinatura.LembrarQueda
+            ? $"Alerta do G S S T. O reconhecimento facial continua fora do ar desde as {desde}. As obras devem assinar pela digital. Veja os detalhes no Telegram."
+            : $"Alerta do G S S T. O reconhecimento facial caiu às {desde}. As assinaturas pelo rosto vão falhar e as obras devem usar a digital. Veja os detalhes no Telegram.";
+    }
 }

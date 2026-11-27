@@ -79,6 +79,20 @@ public class AgenteAssinaturaController : ControllerBase
             : StatusCode(StatusCodes.Status502BadGateway, new { registrado = false, erro = "O Telegram recusou o registro (ver log da API)." });
     }
 
+    // Testa a ligação de alerta (Twilio) com um texto fixo: confirma credenciais e números sem derrubar
+    // o reconhecimento facial. O texto não é aceito de fora para a rota não virar um discador.
+    [HttpPost("ligacao/testar")]
+    public async Task<IActionResult> TestarLigacao([FromServices] ILigacaoAlertaService ligacao, CancellationToken ct)
+    {
+        if (!ligacao.Configurada)
+            return BadRequest(new { erro = "Configure Twilio:AccountSid, AuthToken, NumeroOrigem e NumeroDestino." });
+        var chamada = await ligacao.LigarAsync(
+            "Teste do alerta da assinatura do G S S T. Se você está ouvindo, a ligação de emergência está funcionando.", ct);
+        return chamada is not null
+            ? Ok(new { ligando = true, chamada })
+            : StatusCode(StatusCodes.Status502BadGateway, new { ligando = false, erro = "O Twilio recusou a ligação (ver log da API)." });
+    }
+
     // Ação segura: recalcula o índice do grupo com as faces que já estão lá. Não cria nem apaga ninguém.
     [HttpPost("obras/{obraId:guid}/retreinar")]
     public async Task<IActionResult> Retreinar(Guid obraId, [FromServices] IAutenticacaoFacialService facial, CancellationToken ct)

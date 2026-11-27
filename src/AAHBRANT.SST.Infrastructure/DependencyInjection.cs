@@ -86,6 +86,10 @@ public static class DependencyInjection
         services.AddScoped<ITelegramSuporteService, TelegramSuporteService>();
         services.AddScoped<ITelegramResumoService, TelegramResumoService>();
         services.AddScoped<ITelegramAlertaService, TelegramAlertaService>();
+        // Ligação de voz quando a assinatura cai (27/11/2026). Sem a seção Twilio a vigia só manda Telegram.
+        services.Configure<Integracao.Twilio.TwilioOptions>(configuration.GetSection("Twilio"));
+        services.AddHttpClient(Integracao.Twilio.TwilioLigacaoAlertaService.NomeCliente, c => c.Timeout = TimeSpan.FromSeconds(20));
+        services.AddScoped<ILigacaoAlertaService, Integracao.Twilio.TwilioLigacaoAlertaService>();
         services.AddSingleton<AAHBRANT.SST.Application.Dds.IImagemResumoDdsService, AAHBRANT.SST.Infrastructure.Documentos.ImagemResumoDdsService>();
         services.AddSingleton<AAHBRANT.SST.Application.Relatorios.IImagemListaPresencaService, AAHBRANT.SST.Infrastructure.Documentos.ImagemListaPresencaService>();
         services.AddScoped<ISuporteIaConfiguracao, SuporteIaConfiguracao>();

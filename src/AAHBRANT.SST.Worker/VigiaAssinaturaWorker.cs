@@ -103,5 +103,24 @@ public class VigiaAssinaturaWorker : BackgroundService
 
         var telegram = escopo.ServiceProvider.GetRequiredService<ITelegramAlertaService>();
         await telegram.EnviarAsync(_vigia.Mensagem(decisao, resultado, agora, agenteChamado), ct);
+
+        // Queda e lembrete (no máximo um a cada 2 h) também ligam para o celular: de madrugada a mensagem
+        // passa despercebida. A volta não liga.
+        if (VigiaAssinatura.DeveLigar(decisao))
+        {
+            var ligacao = escopo.ServiceProvider.GetRequiredService<ILigacaoAlertaService>();
+            if (ligacao.Configurada)
+            {
+                try
+                {
+                    var chamada = await ligacao.LigarAsync(_vigia.TextoLigacao(decisao, agora), ct);
+                    _logger.LogInformation("Ligação de alerta da assinatura: {Chamada}.", chamada ?? "não feita");
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogError(ex, "Não foi possível ligar para o responsável.");
+                }
+            }
+        }
     }
 }

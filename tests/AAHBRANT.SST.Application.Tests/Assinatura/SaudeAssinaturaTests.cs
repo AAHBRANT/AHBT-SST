@@ -186,4 +186,21 @@ public class SaudeAssinaturaTests
         Assert.Contains("digital", mensagem);
         Assert.Contains("agente engenheiro foi chamado", mensagem);
     }
+
+    [Fact]
+    public void Vigia_LigaNaQuedaENoLembrete_NaoNaVolta_ComHoraDeBrasiliaSemDetalheTecnico()
+    {
+        Assert.True(VigiaAssinatura.DeveLigar(DecisaoVigiaAssinatura.AvisarQueda));
+        Assert.True(VigiaAssinatura.DeveLigar(DecisaoVigiaAssinatura.LembrarQueda));
+        Assert.False(VigiaAssinatura.DeveLigar(DecisaoVigiaAssinatura.AvisarVolta));
+        Assert.False(VigiaAssinatura.DeveLigar(DecisaoVigiaAssinatura.Nada));
+
+        var vigia = new VigiaAssinatura();
+        var queda = new DateTime(2026, 11, 27, 1, 5, 0, DateTimeKind.Utc);
+        var texto = vigia.TextoLigacao(vigia.Avaliar(ServicoFora, queda), queda);
+
+        Assert.Contains("22:05", texto);
+        Assert.Contains("digital", texto);
+        Assert.DoesNotContain(ServicoFora.Endpoint ?? "x-sem-endpoint", texto);
+    }
 }
