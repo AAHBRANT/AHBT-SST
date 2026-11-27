@@ -456,6 +456,105 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
             trabalhadores.Where(t => falharam.Contains(t.Id)).Select(t => t.Nome).ToList());
     }
 
+    // Consulta leve (lista 1 grupo, sem foto) que passa pelo mesmo endereço, chave e cota da assinatura de
+    // verdade: se ela falha, a fila facial também vai falhar. Nunca lança: o resultado diz o que houve.
+    public async Task<VerificacaoServicoFacialDto> VerificarServicoAsync(CancellationToken ct)
+    {
+        var endpoint = string.IsNullOrWhiteSpace(_options.AzureFaceApiEndpoint)
+            ? "(não configurado)"
+            : new Uri(_options.AzureFaceApiEndpoint).Host;
+        var relogio = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            using var cliente = CriarCliente();
+            cliente.Timeout = TimeSpan.FromSeconds(20);
+            using var resposta = await cliente.GetAsync("face/v1.0/persongroups?top=1", ct);
+            if (resposta.IsSuccessStatusCode)
+                return new VerificacaoServicoFacialDto(true, endpoint, (int)resposta.StatusCode, null, null, relogio.ElapsedMilliseconds);
+            var erro = await LerErroAzureAsync(resposta, ct);
+            return new VerificacaoServicoFacialDto(false, endpoint, (int)resposta.StatusCode, erro.Code, erro.Message, relogio.ElapsedMilliseconds);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // Sem resposta (DNS, rede, tempo esgotado) ou configuração faltando.
+            return new VerificacaoServicoFacialDto(false, endpoint, null, ex.GetType().Name, ex.Message, relogio.ElapsedMilliseconds);
+        }
+    }
+
+    public async Task<TreinoGrupoFacialDto?> ObterTreinoGrupoAsync(Guid obraId, CancellationToken ct)
+    {
+        var grupo = await _db.Obras.Where(o => o.Id == obraId).Select(o => o.AzureFacePersonGroupId).FirstOrDefaultAsync(ct);
+        if (grupo is null)
+            return null;
+
+        using var cliente = CriarCliente();
+        using var resposta = await cliente.GetAsync($"face/v1.0/persongroups/{grupo}/training", ct);
+        if (!resposta.IsSuccessStatusCode)
+        {
+            var erro = await LerErroAzureAsync(resposta, ct);
+            return new TreinoGrupoFacialDto(null, null, $"{erro.Code}: {erro.Message}");
+        }
+        var status = await resposta.Content.ReadFromJsonAsync<TreinoStatusResposta>(cancellationToken: ct);
+        return new TreinoGrupoFacialDto(status?.Status, status?.LastActionDateTime?.ToUniversalTime(), status?.Message);
+    }
+
+    public async Task RetreinarGrupoAsync(Guid obraId, CancellationToken ct)
+    {
+        var grupo = await _db.Obras.Where(o => o.Id == obraId).Select(o => o.AzureFacePersonGroupId).FirstOrDefaultAsync(ct)
+            ?? throw new InvalidOperationException("A obra não tem grupo de reconhecimento facial.");
+        using var cliente = CriarCliente();
+        // Grupo grande demora mais que os 10 s do cadastro: até 1 minuto.
+        await TreinarEAguardarAsync(cliente, grupo, ct, tentativas: 60);
+    }
+
+    public async Task<int> ExcluirPessoasSemVinculoAsync(Guid obraId, IReadOnlyCollection<string> personIds, CancellationToken ct)
+    {
+        var diagnostico = await DiagnosticarVinculosAsync(obraId, ct);
+        if (diagnostico.GrupoAzure is null || !diagnostico.GrupoExisteNoAzure)
+            throw new InvalidOperationException("O grupo de rostos da obra não existe no Azure.");
+
+        var pedidas = personIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var aindaSoltas = diagnostico.PessoasSemVinculo
+            .Select(p => p.PersonIdAzure)
+            .Where(pedidas.Contains)
+            .ToList();
+        if (aindaSoltas.Count == 0)
+            return 0;
+
+        using var cliente = CriarCliente();
+        var excluidas = 0;
+        foreach (var personId in aindaSoltas)
+        {
+            using var resposta = await EnviarComRetry429Async(
+                () => cliente.DeleteAsync($"face/v1.0/persongroups/{diagnostico.GrupoAzure}/persons/{personId}", ct), ct);
+            if (resposta.IsSuccessStatusCode)
+                excluidas++;
+            else if (resposta.StatusCode != System.Net.HttpStatusCode.NotFound)
+                throw new InvalidOperationException(
+                    $"O Azure recusou a exclusão de uma pessoa ({excluidas} de {aindaSoltas.Count} já excluídas): " +
+                    MontarMensagemErroAzure("delete person", await LerErroAzureAsync(resposta, ct)));
+        }
+
+        // Grupo que ficou vazio não treina ("no persisted face") e não precisa: não há ninguém a reconhecer.
+        if (diagnostico.PessoasNoAzure - excluidas <= 0)
+            return excluidas;
+        try
+        {
+            await TreinarEAguardarAsync(cliente, diagnostico.GrupoAzure, ct, tentativas: 60);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // As exclusões já aconteceram: o aviso precisa dizer isso, não só "falhou".
+            throw new InvalidOperationException(
+                $"{excluidas} pessoa(s) excluída(s), mas o retreino do grupo falhou ({ex.Message}). Retreinar o grupo da obra.", ex);
+        }
+        return excluidas;
+    }
+
     public async Task<DiagnosticoVinculosFacialDto> DiagnosticarVinculosAsync(Guid obraId, CancellationToken ct)
     {
         var obra = await _db.Obras.FirstOrDefaultAsync(o => o.Id == obraId, ct)
@@ -1257,6 +1356,8 @@ public class AzureFaceAutenticacaoStrategy : IAutenticacaoFacialService
         public string Status { get; set; } = "";
         [JsonPropertyName("message")]
         public string? Message { get; set; }
+        [JsonPropertyName("lastActionDateTime")]
+        public DateTime? LastActionDateTime { get; set; }
     }
 
     private class RostoDetectadoResposta

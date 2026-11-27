@@ -76,8 +76,10 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
         if (signatarios.Count == 0)
             throw new InvalidOperationException("Documento sem nenhuma assinatura não pode ser finalizado.");
         // A OS só fecha com as duas assinaturas; a do técnico (biometria, papel TecnicoSegurancaOs; OS antigas: sessão logada) é sempre a segunda.
+        // Exceção: OS do próprio técnico/engenheiro de segurança fecha com a assinatura dele como dono.
         if (documento.EntidadeTipo == OrdemServico.EntidadeTipoAssinatura
-            && !signatarios.Any(s => s.Papel == PapelAssinatura.TecnicoSegurancaOs || s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada))
+            && !signatarios.Any(s => s.Papel == PapelAssinatura.TecnicoSegurancaOs || s.MetodoAutenticacao == MetodoAutenticacaoAssinatura.SessaoLogada)
+            && !await DonoDaOsDispensaTecnicoAsync(documento.EntidadeId, signatarios.Select(s => s.Id).ToList(), ct))
             throw new InvalidOperationException("A Ordem de Serviço só é finalizada depois da assinatura do técnico de segurança.");
 
         // Ocorrência (23/11/2026): só fecha com as assinaturas do técnico e do engenheiro de segurança.
@@ -156,5 +158,16 @@ public class FinalizarDocumentoCommandHandler : IRequestHandler<FinalizarDocumen
         return new DocumentoAssinaturaDto(
             documento.Id, documento.EntidadeTipo, documento.EntidadeId, documento.Status, signatariosDto,
             documento.ConteudoHash, documento.FinalizadoEm, TemPdf: true, TokenValidacaoPublica: token);
+    }
+
+    // O dono da OS já assinou e é técnico/engenheiro de segurança: a assinatura dele vale pelas duas.
+    private async Task<bool> DonoDaOsDispensaTecnicoAsync(Guid ordemServicoId, IReadOnlyCollection<Guid> assinantes, CancellationToken ct)
+    {
+        var dono = await _db.OrdensServico.IgnoreQueryFilters()
+            .Where(o => o.Id == ordemServicoId)
+            .Join(_db.Trabalhadores.IgnoreQueryFilters(), o => o.TrabalhadorId, t => t.Id,
+                (o, t) => new { t.Id, Funcao = t.Funcao != null ? t.Funcao.Nome : null })
+            .FirstOrDefaultAsync(ct);
+        return dono is not null && assinantes.Contains(dono.Id) && TecnicoOrdemServicoRegra.DonoDispensaTecnico(dono.Funcao);
     }
 }

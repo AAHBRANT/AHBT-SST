@@ -3452,6 +3452,17 @@ public static class NovidadesSeeder
             }),
         new(
             Versao: "5.202.0",
+            Titulo: "OS do técnico de segurança válida com a assinatura dele",
+            DataPublicacao: new DateTime(2026, 11, 27, 0, 0, 0, DateTimeKind.Utc),
+            Itens: new[]
+            {
+                new NovidadeSeedItem(CategoriaNovidade.Correcao,
+                    "Ordem de Serviço de técnico ou engenheiro de segurança não fica mais esperando outro técnico",
+                    "A OS do próprio técnico de segurança ficava em Aguardando técnico mesmo depois de ele assinar, porque o dono da OS não podia assinar como técnico.",
+                    "Quando a OS é de um técnico ou engenheiro de segurança, a assinatura dele por digital ou reconhecimento facial já deixa a OS válida."),
+            }),
+        new(
+            Versao: "5.203.0",
             Titulo: "Inspeções, DDS, APR e PT com listas mais úteis",
             DataPublicacao: new DateTime(2026, 11, 25, 0, 0, 0, DateTimeKind.Utc),
             Itens: new[]

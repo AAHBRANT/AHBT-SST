@@ -180,6 +180,7 @@ public class SstDbContext : DbContext, IAppDbContext
     public DbSet<FotoCadastroFacial> FotosCadastroFacial => Set<FotoCadastroFacial>();
     public DbSet<HistoricoFuncaoTrabalhador> HistoricosFuncaoTrabalhador => Set<HistoricoFuncaoTrabalhador>();
     public DbSet<FalhaReconhecimentoFacial> FalhasReconhecimentoFacial => Set<FalhaReconhecimentoFacial>();
+    public DbSet<PropostaAcaoAssinatura> PropostasAcaoAssinatura => Set<PropostaAcaoAssinatura>();
     public DbSet<RelatorioGerado> RelatoriosGerados => Set<RelatorioGerado>();
     public DbSet<RelatorioEnvio> RelatorioEnvios => Set<RelatorioEnvio>();
     public DbSet<DestinatarioRelatorio> DestinatariosRelatorio => Set<DestinatarioRelatorio>();

@@ -11,6 +11,8 @@ public class TelegramSuporteOptions
     public string? SuporteChatId { get; set; }
     // Opcional: chat próprio para resumos operacionais (ex.: resumo do DDS ao encerrar). Vazio = usa SuporteChatId.
     public string? ResumoChatId { get; set; }
+    // Opcional: chat dos alertas técnicos de engenharia (saúde da assinatura). Vazio = usa SuporteChatId.
+    public string? AlertasChatId { get; set; }
 }
 
 public class TelegramSuporteService : ITelegramSuporteService
