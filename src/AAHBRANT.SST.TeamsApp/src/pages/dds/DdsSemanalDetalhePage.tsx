@@ -22,7 +22,6 @@ import {
 } from '@ui';
 import {
   Add24Regular,
-  ArrowDownload24Regular,
   CalendarCancel24Regular,
   ChevronRight24Regular,
   Dismiss16Regular,
@@ -102,8 +101,6 @@ export function DdsSemanalDetalhePage() {
   const [responsavelTerceirizadaFuncao, setResponsavelTerceirizadaFuncao] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
-  const [baixandoPdf, setBaixandoPdf] = useState(false);
-  const [baixandoSemana, setBaixandoSemana] = useState(false);
   const [assinando, setAssinando] = useState<string | null>(null);
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
@@ -220,45 +217,6 @@ export function DdsSemanalDetalhePage() {
     }
   }
 
-  async function baixarPdf() {
-    if (!id) return;
-    try {
-      setBaixandoPdf(true);
-      setErro(null);
-      const blob = await api.ddsSemanal.baixarPdf(id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = nomeArquivoPdf(id);
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao gerar o PDF da semana.');
-    } finally {
-      setBaixandoPdf(false);
-    }
-  }
-
-  // "Baixar semana": um PDF com o DDS semanal e todos os diários (listas de presença).
-  async function baixarSemanaCompleta() {
-    if (!id) return;
-    try {
-      setBaixandoSemana(true);
-      setErro(null);
-      const blob = await api.ddsSemanal.baixarSemanaCompleta(id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `dds-semana-completa-${id}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao gerar o PDF da semana completa.');
-    } finally {
-      setBaixandoSemana(false);
-    }
-  }
-
   // Assinatura com um clique (sessão logada) de um dos dois campos do documento — o técnico assina
   // cada um no seu botão; o PDF só mostra assinado o campo que de fato foi assinado.
   async function assinarCampo(campo: 'responsavel-dds' | 'responsavel-obra-sst') {
@@ -275,20 +233,10 @@ export function DdsSemanalDetalhePage() {
     }
   }
 
-  function nomeArquivoPdf(semanalId: string) {
-    return `dds-semanal-${semanalId}.pdf`;
-  }
-
-  // Abre o mesmo PDF do "Baixar PDF da semana" numa janela, sem baixar.
-  // "Visualizar semana": mostra na tela o mesmo pacote de "Baixar semana" (semanal + diários).
+  // Um único botão: abre a semana completa (DDS semanal + diários) na janela de visualização, que já tem o "Baixar".
   function visualizarSemanaCompleta() {
     if (!id) return;
-    void visualizar({ titulo: 'Semana completa de DDS', nomeArquivo: `dds-semana-completa-${id}.pdf`, obter: () => api.ddsSemanal.baixarSemanaCompleta(id) });
-  }
-
-  function visualizarPdf() {
-    if (!id) return;
-    void visualizar({ titulo: 'PDF da semana de DDS', nomeArquivo: nomeArquivoPdf(id), obter: () => api.ddsSemanal.baixarPdf(id) });
+    void visualizar({ titulo: 'PDF da semana de DDS', nomeArquivo: `dds-semana-completa-${id}.pdf`, obter: () => api.ddsSemanal.baixarSemanaCompleta(id) });
   }
 
   if (!id) return <FeedbackInline tom="erro">Semana de DDS não encontrada.</FeedbackInline>;
@@ -333,17 +281,8 @@ export function DdsSemanalDetalhePage() {
         rotuloVoltar="Semanas de DDS"
         acoes={
           <>
-            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF da semana">
-              Visualizar PDF da semana
-            </BotaoAcao>
-            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf} aria-label="Baixar PDF da semana">
-              Baixar PDF da semana
-            </BotaoAcao>
-            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarSemanaCompleta} aria-label="Visualizar semana completa">
-              Visualizar semana
-            </BotaoAcao>
-            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarSemanaCompleta} disabled={baixandoSemana} aria-label="Baixar semana completa">
-              {baixandoSemana ? 'Gerando…' : 'Baixar semana'}
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarSemanaCompleta} aria-label="Ver e baixar o PDF da semana">
+              PDF da semana
             </BotaoAcao>
           </>
         }

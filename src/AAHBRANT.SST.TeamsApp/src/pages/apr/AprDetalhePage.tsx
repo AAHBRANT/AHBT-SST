@@ -17,7 +17,7 @@ import {
   type AcaoWorkflow,
   type Tom,
 } from '@ui';
-import { ArrowDownload24Regular, Eye24Regular, ShieldCheckmark24Regular } from '@fluentui/react-icons';
+import { Eye24Regular, ShieldCheckmark24Regular } from '@fluentui/react-icons';
 import { api, StatusApr, statusAprLabel, type AprDetalhe } from '../../lib/api';
 import { AprAssinaturasTab } from './AprAssinaturasTab';
 import { AprEtapasTab } from './AprEtapasTab';
@@ -47,7 +47,6 @@ export function AprDetalhePage() {
   const [erro, setErro] = useState<string | null>(null);
   const [motivoReprovacao, setMotivoReprovacao] = useState('');
   const [processando, setProcessando] = useState(false);
-  const [exportando, setExportando] = useState(false);
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   async function carregar() {
@@ -99,30 +98,11 @@ export function AprDetalhePage() {
     }
   }
 
-  async function exportarPdf() {
-    if (!id) return;
-    try {
-      setExportando(true);
-      setErro(null);
-      const blob = await api.aprs.exportarPdf(id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = nomeArquivoPdf(id);
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao exportar PDF da APR.');
-    } finally {
-      setExportando(false);
-    }
-  }
-
   function nomeArquivoPdf(aprId: string) {
     return `apr-${aprId}.pdf`;
   }
 
-  // Abre o mesmo PDF do "Exportar PDF" numa janela, sem baixar.
+  // Abre o PDF na janela de visualização, que já tem o "Baixar".
   function visualizarPdf() {
     if (!id) return;
     void visualizar({ titulo: 'PDF da APR', nomeArquivo: nomeArquivoPdf(id), obter: () => api.aprs.exportarPdf(id) });
@@ -192,11 +172,8 @@ export function AprDetalhePage() {
         rotuloVoltar: 'Voltar para APR',
         acoes: (
           <>
-            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar PDF">
-              Visualizar PDF
-            </BotaoAcao>
-            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={exportarPdf} disabled={exportando} aria-label="Exportar PDF">
-              Exportar PDF
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Ver e baixar PDF">
+              PDF
             </BotaoAcao>
             <BotaoAcao tom="ver" icon={<ShieldCheckmark24Regular />} onClick={visualizarCertificado} aria-label="Certificado de assinaturas">
               Certificado de assinaturas

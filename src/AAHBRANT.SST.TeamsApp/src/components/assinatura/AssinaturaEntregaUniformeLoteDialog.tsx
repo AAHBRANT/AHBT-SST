@@ -335,7 +335,7 @@ export function AssinaturaEntregaUniformeLoteDialog({
             {!receptorAssinouTodos && (
               <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
                 <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
-                  Facial Azure
+                  Facial
                 </Text>
                 <Text size={200} style={{ display: 'block', marginBottom: 8 }}>
                   Uma única foto assina todas as peças do carrinho ainda pendentes.
@@ -348,7 +348,7 @@ export function AssinaturaEntregaUniformeLoteDialog({
                 <SeletorFotoCamera
                   aoSelecionarArquivo={assinarComFacial}
                   aoErroValidacao={setErroFacialReceptor}
-                  rotulo="Facial Azure"
+                  rotulo="Assinar com facial"
                   desabilitado={carregandoDocs || Object.keys(documentos).length === 0}
                   tamanho="medium"
                   variante="facialAzure"

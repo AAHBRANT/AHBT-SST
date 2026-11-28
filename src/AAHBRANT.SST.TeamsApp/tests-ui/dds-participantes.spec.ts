@@ -10,8 +10,6 @@ async function preparar(page: Page, opcoes: { confirmado?: boolean; concluido?: 
   let selecionados = new Set<string>();
   let falharSalvamento = false;
   let capturaId = 'ana';
-  let rostoRecusado = false;
-  const enviosFaciais: string[] = [];
   const atualizacoes: string[][] = [];
   const presencas = opcoes.confirmado ? [{ id: 'presenca-ana', trabalhadorId: 'ana', trabalhadorNome: 'Ana Souza',
     fotoTipo: 3, assinadoEm: '2026-09-29T10:00:00Z' }] : [];
@@ -42,19 +40,11 @@ async function preparar(page: Page, opcoes: { confirmado?: boolean; concluido?: 
       selecionados = new Set(ids.filter((id) => !presencas.some((p) => p.trabalhadorId === id)));
       return route.fulfill({ json: obterDetalhe() });
     }
-    if (path === '/api/dds/dds-a/participantes/facial') {
-      if (rostoRecusado) return route.fulfill({ status: 400, json: { erro: 'Rosto não reconhecido.', motivo: 'RostoNaoReconhecido' } });
-      const corpo = route.request().postData() ?? '';
-      const id = /name="TrabalhadorId"\r\n\r\n([^\r]+)/.exec(corpo)?.[1] ?? '';
-      enviosFaciais.push(id);
-      presencas.push({ id: `presenca-${id}`, trabalhadorId: id, trabalhadorNome: funcionarios.find((f) => f.trabalhadorId === id)!.nome,
-        fotoTipo: 4, assinadoEm: '2026-09-29T10:00:00Z' });
-      selecionados.delete(id);
-      return route.fulfill({ json: { id: `presenca-${id}` } });
-    }
     if (path === '/api/dds/dds-a/participantes') {
       const id = route.request().postDataJSON().trabalhadorId as string;
-      presencas.push({ id: `presenca-${id}`, trabalhadorId: id, trabalhadorNome: funcionarios.find((f) => f.trabalhadorId === id)!.nome,
+      const funcionario = funcionarios.find((f) => f.trabalhadorId === id);
+      if (!funcionario) return route.fulfill({ status: 400, json: { erro: 'Funcionário não localizado.' } });
+      presencas.push({ id: `presenca-${id}`, trabalhadorId: id, trabalhadorNome: funcionario.nome,
         fotoTipo: 3, assinadoEm: '2026-09-29T10:00:00Z' });
       selecionados.delete(id);
       return route.fulfill({ json: { id: `presenca-${id}` } });
@@ -70,10 +60,9 @@ async function preparar(page: Page, opcoes: { confirmado?: boolean; concluido?: 
   await expect(page.getByText('Funcionários do DDS', { exact: true })).toBeVisible();
   if (!opcoes.concluido) await expect(page.getByRole('checkbox', { name: 'Selecionar Ana Souza', exact: true })).toBeVisible();
   return {
-    atualizacoes, enviosFaciais,
+    atualizacoes,
     falhar: () => { falharSalvamento = true; },
     capturar: (id: string) => { capturaId = id; },
-    recusarRosto: () => { rostoRecusado = true; },
   };
 }
 
@@ -120,19 +109,30 @@ test('limpar preserva participantes com presença e assinatura e funciona em tel
   await page.screenshot({ path: testInfo.outputPath('dds-mobile.png'), fullPage: true });
 });
 
-test('digital de outro funcionário é recusada; digital correta confirma uma única presença', async ({ page }, testInfo) => {
+test('fila de digitais: digital desconhecida é recusada; digital reconhecida confirma uma única presença', async ({ page }, testInfo) => {
   const controles = await preparar(page);
   await page.getByRole('checkbox', { name: 'Selecionar Ana Souza' }).check();
   await expect(page.getByText('1 selecionado', { exact: true })).toBeVisible();
-  controles.capturar('bruno');
-  await page.getByRole('button', { name: 'Confirmar por digital', exact: true }).click();
-  await expect(page.getByText(/A digital capturada não corresponde a Ana Souza/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Confirmar por digital', exact: true })).toHaveCount(0);
+  // Digital que o servidor não reconhece como funcionário (o mock responde 400): erro na tela, nenhuma presença.
+  controles.capturar('desconhecido');
+  await page.getByRole('button', { name: 'Abrir fila', exact: true }).click();
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo.getByText(/Funcionário não localizado/)).toBeVisible();
+  await dialogo.getByRole('button', { name: 'Fechar', exact: true }).click();
+  await expect(dialogo).toHaveCount(0);
+  await expect(page.getByRole('alert').getByText(/Digital não reconhecida/)).toBeVisible();
   await expect(page.getByText('0 presenças confirmadas', { exact: true })).toBeVisible();
+  // Digital da Ana: a próxima leitura da fila confirma a presença dela.
   controles.capturar('ana');
-  await page.getByRole('button', { name: 'Confirmar por digital', exact: true }).click();
+  await expect(page.getByText('Presença de Ana Souza confirmada.', { exact: true })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('1 presença confirmada', { exact: true })).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Selecionar Ana Souza' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Confirmar por digital', exact: true })).toHaveCount(0);
+  // A fila segue aberta e relê a mesma digital: avisa que já confirmou e não duplica a presença.
+  await expect(page.getByText('Ana Souza já teve a presença confirmada.', { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText('1 presença confirmada', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Fechar fila', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Abrir fila', exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('dds-desktop.png'), fullPage: true });
 });
 
@@ -143,7 +143,12 @@ test('falha de gravação mantém a seleção anterior e mostra o erro', async (
   await expect(page.getByText('Seleção salva.', { exact: true })).toBeVisible();
   controles.falhar();
   await page.getByRole('button', { name: 'Remover Ana Souza da seleção' }).click();
-  await expect(page.getByText(/Não foi possível salvar a seleção/)).toBeVisible();
+  // O erro aparece no diálogo de falha (modal) e também na barra da tela; o diálogo é único e acessível.
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo.getByText(/Não foi possível salvar a seleção/)).toBeVisible();
+  await dialogo.getByRole('button', { name: 'Fechar', exact: true }).click();
+  await expect(dialogo).toHaveCount(0);
+  await expect(page.getByRole('alert').getByText(/Não foi possível salvar a seleção/)).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Selecionar Ana Souza' })).toBeChecked();
 });
 
@@ -155,30 +160,10 @@ test('DDS concluído mostra a lista sem ações de edição', async ({ page }) =
   await expect(page.getByRole('button', { name: 'Confirmar por digital', exact: true })).toHaveCount(0);
 });
 
-test('cada linha oferece digital e facial; facial confirma a presença do funcionário da linha', async ({ page }, testInfo) => {
-  const controles = await preparar(page);
+test('facial só pela fila: a linha não tem botão facial e a tela oferece "Abrir fila facial"', async ({ page }) => {
+  await preparar(page);
   await page.getByRole('checkbox', { name: 'Selecionar Ana Souza' }).check();
   await expect(page.getByText('1 selecionado', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Confirmar por digital', exact: true })).toBeVisible();
-  const facial = page.getByRole('button', { name: 'Confirmar por facial', exact: true });
-  await expect(facial).toBeVisible();
-  await expect(page.getByText('Seleção salva.', { exact: true })).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath('dds-botoes-digital-facial.png') });
-  await facial.click();
-  await page.getByRole('button', { name: 'Capturar', exact: true }).click();
-  await expect(page.getByText('1 presença confirmada', { exact: true })).toBeVisible();
-  await expect(page.getByText(/Presença de Ana Souza confirmada por reconhecimento facial/)).toBeVisible();
-  expect(controles.enviosFaciais).toEqual(['ana']);
+  await expect(page.getByRole('button', { name: 'Abrir fila facial', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Confirmar por facial', exact: true })).toHaveCount(0);
-});
-
-test('rosto recusado mostra o motivo e não confirma a presença', async ({ page }) => {
-  const controles = await preparar(page);
-  await page.getByRole('checkbox', { name: 'Selecionar Ana Souza' }).check();
-  await expect(page.getByText('1 selecionado', { exact: true })).toBeVisible();
-  controles.recusarRosto();
-  await page.getByRole('button', { name: 'Confirmar por facial', exact: true }).click();
-  await page.getByRole('button', { name: 'Capturar', exact: true }).click();
-  await expect(page.getByText('Rosto não reconhecido.')).toBeVisible();
-  await expect(page.getByText('0 presenças confirmadas', { exact: true })).toBeVisible();
 });

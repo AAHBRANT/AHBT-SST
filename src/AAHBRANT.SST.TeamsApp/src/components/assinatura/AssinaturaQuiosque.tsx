@@ -17,7 +17,7 @@ import {
   Text,
   tokens,
 } from '@fluentui/react-components';
-import { Checkmark24Filled, LockClosed24Regular, Warning24Regular } from '@fluentui/react-icons';
+import { Camera24Regular, Checkmark24Filled, LockClosed24Regular, Warning24Regular } from '@fluentui/react-icons';
 import { BotaoBiometriaDigital } from './BotaoBiometriaDigital';
 import { AssinaturaConfirmadaTelaCheia } from './AssinaturaConfirmadaTelaCheia';
 import { api, metodoAutenticacaoAssinaturaLabel, StatusDocumentoAssinatura, type DocumentoAssinatura } from '../../lib/api';
@@ -28,6 +28,7 @@ import { formatarAssinaturaDigital } from './assinaturaDigital';
 import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
 import { usePageStyles } from '../../pages/pageStyles';
 import { ErroFacialDialog } from './ErroFacialDialog';
+import { FilaFacialDds, type ResultadoFilaFacial } from '../dds/FilaFacialDds';
 
 function extrairMensagemErro(e: unknown, fallback: string): string {
   if (!(e instanceof Error)) return fallback;
@@ -71,6 +72,7 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
   const [pendenteFacial, setPendenteFacial] = useState(false);
   const [confirmandoFinalizacao, setConfirmandoFinalizacao] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
+  const [filaFacialAberta, setFilaFacialAberta] = useState(false);
 
   useEffect(() => {
     estaAgenteLocalDisponivel().then(async (disponivel) => {
@@ -170,6 +172,24 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
     }
   }
 
+  // Só a entrega/termo/devolução de EPI, com um único funcionário assinando, usa a foto avulsa. Nos demais
+  // documentos (DDS, APR, PT, inspeção, treinamento...) a assinatura facial é só pela fila facial.
+  const facialAvulsa = entidadeTipo === 'EntregaEpi' || entidadeTipo === 'TermoCompromissoEpi' || entidadeTipo === 'DevolucaoEpi';
+
+  // Envio da fila facial: o servidor identifica quem é pela foto e registra a assinatura no documento.
+  async function enviarFotoFila(foto: File): Promise<ResultadoFilaFacial> {
+    if (!documento) throw new Error('Documento ainda carregando.');
+    try {
+      const signatario = await api.assinatura.autenticarFacial(documento.id, obraId, foto);
+      setDocumento(await api.assinatura.obter(entidadeTipo, entidadeId));
+      return { trabalhadorId: signatario.trabalhadorId, trabalhadorNome: signatario.trabalhadorNome, jaConfirmado: false };
+    } catch (e) {
+      if (e instanceof MutacaoEnfileiradaOfflineError) throw new Error('Sem internet: a foto não pôde ser verificada agora.');
+      if (e instanceof Error && /já assinou/i.test(e.message)) return { trabalhadorNome: 'Esta pessoa', jaConfirmado: true };
+      throw e;
+    }
+  }
+
   return (
     <div>
       <AssinaturaConfirmadaTelaCheia nome={ultimoAssinante} />
@@ -222,27 +242,35 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
         </div>
       )}
 
-      {!assinaturaUnicaConcluida && (
+      {!assinaturaUnicaConcluida && !finalizado && (
         <div className={estilos.card} style={{ marginBottom: 16, maxWidth: 480 }}>
           <Text weight="semibold" style={{ display: 'block', marginBottom: 12 }}>
-            Facial Azure
+            Facial
           </Text>
-          {pendenteFacial && (
-            <Text style={{ display: 'block', marginBottom: 8 }}>
-              Sem internet — a foto foi salva neste dispositivo e será verificada assim que a conexão voltar.
-            </Text>
+          {facialAvulsa ? (
+            <>
+              {pendenteFacial && (
+                <Text style={{ display: 'block', marginBottom: 8 }}>
+                  Sem internet — a foto foi salva neste dispositivo e será verificada assim que a conexão voltar.
+                </Text>
+              )}
+              <SeletorFotoCamera
+                aoSelecionarArquivo={assinarComFacial}
+                aoErroValidacao={setErroFacial}
+                rotulo="Assinar com facial"
+                desabilitado={!documento}
+                tamanho="medium"
+                variante="facialAzure"
+                modoCamera="user"
+                modoCaptura="assinatura"
+                exigirCamera
+              />
+            </>
+          ) : (
+            <Button appearance="primary" size="large" icon={<Camera24Regular />} disabled={!documento} onClick={() => setFilaFacialAberta(true)}>
+              Abrir fila facial
+            </Button>
           )}
-          <SeletorFotoCamera
-            aoSelecionarArquivo={assinarComFacial}
-            aoErroValidacao={setErroFacial}
-            rotulo="Facial Azure"
-            desabilitado={!documento}
-            tamanho="medium"
-            variante="facialAzure"
-            modoCamera="user"
-            modoCaptura="assinatura"
-            exigirCamera
-          />
         </div>
       )}
 
@@ -277,6 +305,14 @@ export function AssinaturaQuiosque({ entidadeTipo, entidadeId, obraId }: Assinat
         </Table>
       </div>
       <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
+      <FilaFacialDds
+        enviarFoto={enviarFotoFila}
+        titulo="Fila facial"
+        subtitulo={`${documento?.signatarios.length ?? 0} assinatura(s) registrada(s)`}
+        aberto={filaFacialAberta}
+        aoFechar={() => setFilaFacialAberta(false)}
+        aoPresencaConfirmada={() => undefined}
+      />
       <Dialog open={confirmandoFinalizacao} onOpenChange={(_, d) => { if (!d.open && !finalizando) setConfirmandoFinalizacao(false); }}>
         <DialogSurface>
           <DialogBody>

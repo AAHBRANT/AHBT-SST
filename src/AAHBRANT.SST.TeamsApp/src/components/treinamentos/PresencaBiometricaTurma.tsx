@@ -5,9 +5,6 @@ import { api, type SessaoTreinamentoDetalhe } from '../../lib/api';
 import { capturarDigitalLocal, credencialLeitura, type DispositivoLocal } from '../../lib/agenteBiometricoLocal';
 import { FilaFacialDds, type ResultadoFilaFacial } from '../dds/FilaFacialDds';
 import { tocarBipeAssinaturaAceita } from '../../lib/bipeAssinatura';
-import { SeletorFotoCamera } from '../SeletorFotoCamera';
-import { MutacaoEnfileiradaOfflineError } from '../../lib/offline/syncEngine';
-import { ErroFacialDialog } from '../assinatura/ErroFacialDialog';
 import { BotaoBiometriaDigital } from '../assinatura/BotaoBiometriaDigital';
 
 interface Props {
@@ -36,9 +33,7 @@ interface ContextoFila {
 // e a presença é confirmada sozinha, um após o outro, até alguém fechar a fila.
 export function PresencaBiometricaTurma({ detalhe, somenteLeitura, agenteDisponivel, dispositivoLocal, aoAtualizar, aoErro, textoAjuda }: Props) {
   const sessaoId = detalhe.sessao.id;
-  const [lendoFacial, setLendoFacial] = useState(false);
   const [mensagemPresenca, setMensagemPresenca] = useState<{ tipo: 'success' | 'info' | 'erro'; texto: string } | null>(null);
-  const [erroFacial, setErroFacial] = useState<string | null>(null);
   const [filaAberta, setFilaAberta] = useState(false);
   const [filaFacialAberta, setFilaFacialAberta] = useState(false);
   const filaAtiva = useRef(false);
@@ -119,35 +114,6 @@ export function PresencaBiometricaTurma({ detalhe, somenteLeitura, agenteDisponi
     }
   }
 
-  async function confirmarPresencaFacial(arquivo: File) {
-    try {
-      setLendoFacial(true);
-      aoErro?.(null);
-      setErroFacial(null);
-      setMensagemPresenca(null);
-
-      const resultado = await api.sessoesTreinamento.registrarPresencaFacial(sessaoId, detalhe.sessao.obraId, arquivo);
-      const participante = detalhe.participantes.find((p) => p.trabalhadorId === resultado.trabalhadorId);
-      setMensagemPresenca({
-        tipo: 'success',
-        texto: `Presença de ${participante?.trabalhadorNome ?? 'participante'} confirmada por reconhecimento facial.`,
-      });
-      tocarBipeAssinaturaAceita();
-      await aoAtualizar();
-    } catch (e) {
-      if (e instanceof MutacaoEnfileiradaOfflineError) {
-        setMensagemPresenca({
-          tipo: 'info',
-          texto: 'Sem internet — a foto foi salva neste dispositivo e será verificada assim que a conexão voltar.',
-        });
-        return;
-      }
-      setErroFacial(e instanceof Error ? e.message : 'Falha na validação facial.');
-    } finally {
-      setLendoFacial(false);
-    }
-  }
-
   return (
     <>
       {!somenteLeitura && agenteDisponivel === false && (
@@ -170,7 +136,7 @@ export function PresencaBiometricaTurma({ detalhe, somenteLeitura, agenteDisponi
                 Fechar fila
               </Button>
             ) : (
-              <BotaoBiometriaDigital onClick={abrirFila} disabled={!agenteDisponivel || !dispositivoLocal || lendoFacial}>
+              <BotaoBiometriaDigital onClick={abrirFila} disabled={!agenteDisponivel || !dispositivoLocal}>
                 Abrir fila
               </BotaoBiometriaDigital>
             )}
@@ -178,23 +144,11 @@ export function PresencaBiometricaTurma({ detalhe, somenteLeitura, agenteDisponi
               appearance="primary"
               size="large"
               icon={<Camera24Regular />}
-              disabled={filaAberta || lendoFacial}
+              disabled={filaAberta}
               onClick={() => setFilaFacialAberta(true)}
             >
               Abrir fila facial
             </Button>
-            <SeletorFotoCamera
-              aoSelecionarArquivo={confirmarPresencaFacial}
-              aoErroValidacao={setErroFacial}
-              rotulo="Facial Azure"
-              desabilitado={filaAberta || lendoFacial}
-              tamanho="medium"
-              variante="facialAzure"
-              modoCamera="user"
-              modoCaptura="assinatura"
-              exigirCamera
-              permitirCapturaAutomatica
-            />
           </div>
           {mensagemPresenca && (
             <FeedbackInline tom={mensagemPresenca.tipo === 'success' ? 'sucesso' : mensagemPresenca.tipo === 'erro' ? 'erro' : 'info'}>
@@ -213,7 +167,6 @@ export function PresencaBiometricaTurma({ detalhe, somenteLeitura, agenteDisponi
         aoFechar={() => setFilaFacialAberta(false)}
         aoPresencaConfirmada={() => { void aoAtualizar(); }}
       />
-      <ErroFacialDialog mensagem={erroFacial} aoFechar={() => setErroFacial(null)} />
     </>
   );
 }

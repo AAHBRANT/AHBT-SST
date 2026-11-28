@@ -34,7 +34,7 @@ import {
   type Tom,
   Legenda,
 } from '@ui';
-import { ArrowDownload24Regular, Eye24Regular, Save24Regular, Signature24Regular } from '@fluentui/react-icons';
+import { Eye24Regular, Save24Regular, Signature24Regular } from '@fluentui/react-icons';
 import { MapaCorporal } from '../../components/mapaCorporal/MapaCorporal';
 import { CartaoReuniaoAnalise } from './CartaoReuniaoAnalise';
 import { LembreteProvidenciasObito } from './BlocoPessoasExternas';
@@ -136,7 +136,6 @@ export function AcidenteDetalhePage() {
   const [comoResolvido, setComoResolvido] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
-  const [baixandoPdf, setBaixandoPdf] = useState(false);
   const { visualizar, dialogoVisualizador } = useVisualizadorPdf();
 
   useEffect(() => {
@@ -471,26 +470,6 @@ export function AcidenteDetalhePage() {
     return `investigacao-${tipoOcorrenciaLabel[det.acidente.tipo].toLowerCase().replace(/\s+/g, '-')}-${det.acidente.data?.slice(0, 10)}.pdf`;
   }
 
-  // Relatório de Investigação de Ocorrência — sai a qualquer momento; o próprio PDF mostra a situação.
-  async function baixarPdf() {
-    if (!id || !detalhe) return;
-    try {
-      setBaixandoPdf(true);
-      setErro(null);
-      const blob = await api.acidentes.baixarPdf(id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = nomeArquivoPdf(detalhe);
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao gerar o relatório de investigação.');
-    } finally {
-      setBaixandoPdf(false);
-    }
-  }
-
   function visualizarPdf() {
     if (!id || !detalhe) return;
     void visualizar({ titulo: 'Relatório de investigação', nomeArquivo: nomeArquivoPdf(detalhe), obter: () => api.acidentes.baixarPdf(id) });
@@ -671,11 +650,8 @@ export function AcidenteDetalhePage() {
         rotuloVoltar: 'Voltar para Ocorrências',
         acoes: (
           <>
-            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Visualizar relatório de investigação">
-              Visualizar relatório
-            </BotaoAcao>
-            <BotaoAcao tom="baixar" icon={<ArrowDownload24Regular />} onClick={baixarPdf} disabled={baixandoPdf} aria-label="Baixar relatório de investigação em PDF">
-              Baixar PDF
+            <BotaoAcao tom="ver" icon={<Eye24Regular />} onClick={visualizarPdf} aria-label="Ver e baixar o relatório de investigação">
+              PDF
             </BotaoAcao>
             {dialogoVisualizador}
           </>
